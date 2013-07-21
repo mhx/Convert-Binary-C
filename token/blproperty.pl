@@ -53,9 +53,9 @@ my %engines = (
 
 );
 
-my @properties = do { my %seen; grep !$seen{$_}++,
+my @properties = do { my %seen; sort grep !$seen{$_}++,
                       map keys %$_, values %engines };
-my @values     = do { my %seen; grep !$seen{$_}++,
+my @values     = do { my %seen; sort grep !$seen{$_}++,
                       map { map { exists $_->{choice} ? @{$_->{choice}} : () } values %$_ } values %engines };
 
 my $file = shift;
