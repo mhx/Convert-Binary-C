@@ -185,4 +185,3 @@ for my $test ( @tests ) {
     ok($val, substr($test->{str}, 0, length($val)), "wrong string");
   }
 }
-

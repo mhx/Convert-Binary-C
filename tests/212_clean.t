@@ -46,4 +46,3 @@ eval {
   my $foo = $c->struct;
 };
 ok( $@, qr/without parse data/, "parse data check failed" );
-

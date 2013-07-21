@@ -164,4 +164,3 @@ for( @sbyte ) {
   ok($_->[1] == $pk); chkwarn;
   ok($_->[2] eq $pk); chkwarn;
 }
-

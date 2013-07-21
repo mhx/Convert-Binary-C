@@ -108,7 +108,7 @@ for my $cfg ({ bo => 'BigEndian'    },
   my $bfs = $c->unpack('bfs', pack "C*", (255)x4);
   my $bfue = $c->unpack('bfue', pack "C*", (255)x4);
   my $bfse = $c->unpack('bfse', pack "C*", (255)x4);
-  
+
   for (1 .. 7) {
     is($bfu->{"b$_"}, (1 << $_) - 1);
     is($bfs->{"b$_"}, -1);
@@ -453,4 +453,3 @@ sub packbits
   }
   pack "C*", reverse @b;
 }
-

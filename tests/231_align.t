@@ -136,5 +136,3 @@ sub check_it
     ok(scalar(grep { $_ =~ $r } @m), 1);
   }
 }
-
-

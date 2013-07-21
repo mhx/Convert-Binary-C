@@ -56,4 +56,3 @@ for my $t ( 'char'
   ok($c->typeof($in), $t);
   ok($c->sizeof($in) > 0);
 }
-

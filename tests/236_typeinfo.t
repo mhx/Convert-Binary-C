@@ -119,4 +119,3 @@ ok(defined $pk0);
 ok(defined $pk2);
 ok($pk0->{pack}, 0);
 ok($pk2->{pack}, 2);
-

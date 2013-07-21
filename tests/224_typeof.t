@@ -34,7 +34,7 @@ ok($@,'',"failed to parse C code");
 {
   my @warn;
   local $SIG{__WARN__} = sub { push @warn, $_[0] };
-  
+
   for my $t ( @tests ) {
     ok( $c->typeof($t->{name}), $t->{type} );
   }
@@ -104,4 +104,3 @@ struct foo.c.d                  =>  u_32 :4
 struct foo.c.e                  =>  signed short :5
 struct foo.d                    =>  int :16
 struct foo.e                    =>  int *
-

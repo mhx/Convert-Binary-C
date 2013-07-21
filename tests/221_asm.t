@@ -56,15 +56,15 @@ void main()
   asm("foo");
   __asm__("foo");
   asm("\n\
-	global memctl\n\
+        global memctl\n\
 memctl:\n\
-	movq &75,%d0\n\
-	trap &0\n\
-	bcc.b noerror\n\
-	jmp cerror%\n\
+        movq &75,%d0\n\
+        trap &0\n\
+        bcc.b noerror\n\
+        jmp cerror%\n\
 noerror:\n\
-	movq &0,%d0\n\
-	rts");
+        movq &0,%d0\n\
+        rts");
 }
 
 --------------------------------------------------
@@ -82,10 +82,10 @@ void main()
 
 void main()
 {
-  __asm__ __volatile__ ("getcon	cr%1, %0" : "=r" (res) : "n" (k));
-  __asm__ __volatile__ ("putcon	%0, cr%1" : : "r" (mm), "n" (k));
-  __asm__ __volatile__ ("putcfg	%0, %1, %2" : : "r" (mm), "n" (s), "r" (mw));
-  __asm__ __volatile__ ("ld.b	%m0, r63" : : "o" (((char*)mm)[s]));
+  __asm__ __volatile__ ("getcon cr%1, %0" : "=r" (res) : "n" (k));
+  __asm__ __volatile__ ("putcon %0, cr%1" : : "r" (mm), "n" (k));
+  __asm__ __volatile__ ("putcfg %0, %1, %2" : : "r" (mm), "n" (s), "r" (mw));
+  __asm__ __volatile__ ("ld.b   %m0, r63" : : "o" (((char*)mm)[s]));
   __asm__ __volatile__ ("" : "+m"(x->a) : "r"(x) : "memory", "cc");
   __asm__ ("" : "=r"(tmp), "=r"(ret));
   asm volatile ("sleep");
@@ -128,14 +128,13 @@ void main()
   asm("": "+r" (v) : "r" (0), "r" (1));
   __asm__ ("mull %3" : "=a" (rp[0]), "=d" (rp[1]) : "%0" (7), "rm" (7));
   asm volatile ("" : : :
-		"f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7",
-		"f8", "f9", "f10", "f11", "f12", "f13", "f14", "f15",
-		"f16", "f17", "f18", "f19", "f20", "f21", "f22", "f23",
-		"f24", "f25", "f26", "f27", "f28", "f29", "f30", "f31");
+                "f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7",
+                "f8", "f9", "f10", "f11", "f12", "f13", "f14", "f15",
+                "f16", "f17", "f18", "f19", "f20", "f21", "f22", "f23",
+                "f24", "f25", "f26", "f27", "f28", "f29", "f30", "f31");
 
   asm volatile ("test0 X%0Y%[arg]Z" : [arg] "=g" (x));
   asm volatile ("test1 X%[out]Y%[in]Z" : [out] "=g" (y) : [in] "0"(y));
   asm volatile ("test2 X%a0Y%a[arg]Z" : : [arg] "p" (&z));
   asm volatile ("test3 %[in]" : [inout] "=g"(x) : "[inout]" (x), [in] "g" (y));
 }
-

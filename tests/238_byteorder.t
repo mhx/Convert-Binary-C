@@ -229,4 +229,3 @@ is($phc, 1, 'pack hook calls');
 eval { $c->tag('bits.y', ByteOrder => 'BigEndian'); };
 
 like($@, qr/Cannot use 'ByteOrder' tag on bitfields/, 'tagging bitfield');
-

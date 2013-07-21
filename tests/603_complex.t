@@ -2922,10 +2922,10 @@ sub hexdump
 {
   my $data = shift;
   my $dump = '';
-  
+
   while (length $data) {
     my($i, $d, $t) = (0, '', '');
-    
+
     for my $c (unpack 'C*', substr $data, 0, 16, '') {
       $d .= sprintf "%02X", $c;
       $d .= ' ';
@@ -2934,7 +2934,7 @@ sub hexdump
       $d .= ' ';
       $t .= ' ' unless $i % 8;
     }
-  
+
     $dump .= sprintf "%-53s%s\n", $d, $t;
   }
 
@@ -3345,4 +3345,3 @@ sub packcheck
 
   ($ok, $rcok);
 }
-

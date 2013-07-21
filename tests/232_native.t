@@ -93,4 +93,3 @@ sub byte_order
   my $byteorder = $Config{byteorder} || unpack( "a*", pack "L", 0x34333231 );
   $byteorder eq '4321' || $byteorder eq '87654321' ? 'BigEndian' : 'LittleEndian';
 }
-

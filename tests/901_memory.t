@@ -133,4 +133,3 @@ sub get_alloc_info {
   $info{leakage} = $total;
   %info;
 }
-

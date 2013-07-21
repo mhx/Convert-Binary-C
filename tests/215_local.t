@@ -113,4 +113,3 @@ eval {
   $c->clean->configure(%$CCCFG)->parse_file('tests/include/util.c');
 };
 ok($@,'',"failed to parse file");
-

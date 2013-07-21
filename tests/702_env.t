@@ -76,4 +76,3 @@ $c->OrderMembers(1);
 chkwarn( $ixhash ? () : $w[1] );
 ok( $c->OrderMembers, 1 );
 chkwarn();
-

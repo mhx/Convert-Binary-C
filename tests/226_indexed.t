@@ -86,7 +86,7 @@ for my $i (0 .. $#unp_u) {
     $unp_u->{foo}[0]{$_} == $unp_o->{foo}[0]{$_} or $fail++;
     $unp_u->{foo}[1]{$_} == $unp_o->{foo}[1]{$_} or $fail++;
   }
-  
+
   ok( $fail, 0 );
 
   skip( $reason, $keys.",foo", join(',', keys %$unp_o) );

@@ -269,4 +269,3 @@ ok($rv, "\x00"x24);
 eval { $c->tag('bits.y', Format => 'Binary'); };
 
 ok($@, qr/Cannot use 'Format' tag on bitfields/);
-

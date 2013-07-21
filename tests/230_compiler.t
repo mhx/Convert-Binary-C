@@ -53,7 +53,7 @@ for my $cur (sort keys %cc) {
 
   my $pass = 0;
   my $fail = 0;
-  
+
   for my $i (0 .. $c->sizeof('test')-1) {
     my $a = ord substr $pck, $i, 1;
     my $b = ord substr $bin, $i, 1;

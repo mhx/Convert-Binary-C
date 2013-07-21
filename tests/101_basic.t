@@ -496,5 +496,3 @@ ok($unpacked, 'FOO!');
 $packed = eval { $p->pack('String', $unpacked) };
 ok($@, '');
 ok($packed, $data);
-
-

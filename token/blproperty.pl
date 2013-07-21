@@ -62,7 +62,7 @@ my $file = shift;
 my $fh = IO::File->new(">$file") or die "$file: $!\n";
 
 sub to_name
-{ 
+{
   my($pre, $s) = @_;
   $s =~ s/([A-Z])(?=[a-z])/_$1/g;
   $s = "_$s" unless $s =~ /^_/;
@@ -70,7 +70,7 @@ sub to_name
 }
 
 sub to_member
-{ 
+{
   my $s = shift;
   $s =~ s/([A-Z])/_$1/g;
   $s =~ s/^_//;

@@ -98,7 +98,7 @@ print "# uncached: $iterations iterations in $elapsed_time seconds\n";
 # create cache file
 eval {
   $c = new Convert::Binary::C::Cached Cache => $cache, %$CCCFG;
-                                      
+
   $c->parse_file( 'tests/include/include.c' );
 };
 ok($@,'',"failed to create cache file for speed test");
@@ -127,4 +127,3 @@ print "# speedup is $speedup\n";
 ok( $speedup > 2 );
 
 -e $cache and unlink $cache;
-

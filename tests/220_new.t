@@ -33,4 +33,3 @@ ok( $@, qr/^Number of configuration arguments to new must be even/ );
 
 $c = eval { new Convert::Binary::C foo => 42 };
 ok( $@, qr/^Invalid option 'foo'/ );
-

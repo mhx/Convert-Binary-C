@@ -123,4 +123,3 @@ ok( $r, '[1].x[2][4]' );
 
 ok( scalar @warn, 0, "unexpected warnings" );
 print "# $_" for @warn;
-

@@ -94,4 +94,3 @@ eval qq{
 
 ok( $@, qr/^You must pass an even number of module arguments/ );
 ok( scalar @warnings, 0, "unexpected warning(s)" );
-

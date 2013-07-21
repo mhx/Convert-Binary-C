@@ -29,4 +29,3 @@ is($@, '', 'parse context.c');
 eval { $c->parse_file('tests/parser/bug1.c') };
 
 like($@, qr/syntax error/, 'parse bug1.c');
-

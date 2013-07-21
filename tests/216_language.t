@@ -177,4 +177,3 @@ for my $code (
   ok($s, 0);
   ok(scalar @m, 0);
 }
-

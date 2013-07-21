@@ -664,4 +664,3 @@ ok( compare_config( \%newcfg, $cfg ) );
 
 $debug and $result = checkrc( Convert::Binary::C::__DUMP__( $cfg ) );
 skip( $RDBG, $result );
-

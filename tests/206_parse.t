@@ -545,4 +545,3 @@ $s = eval { $c->typedef('t_bar') };
 
 ok($@, '');
 ok($s->{type}{size}, 12);
-

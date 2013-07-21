@@ -130,4 +130,3 @@ sub SPLICE
  my $len = @_ ? shift : $sz-$off;
  return splice(@$ob,$off,$len,@_);
 }
-

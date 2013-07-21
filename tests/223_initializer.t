@@ -35,7 +35,7 @@ for( $c->typedef_names ) {
   next if $c->sizeof($_) == 0;
   my $pre  = "\n$_ S_$_ = ";
   my $post = ";\n";
-  my $init = $c->unpack( $_, $c->pack($_) ); 
+  my $init = $c->unpack( $_, $c->pack($_) );
   $zero .= $pre . $c->initializer( $_ ) . $post;
   $full .= $pre . $c->initializer( $_, $init ) . $post;
 }
@@ -46,10 +46,10 @@ ok($@,'',"failed to create Convert::Binary::C objects");
 {
   my @warn;
   local $SIG{__WARN__} = sub { push @warn, $_[0] };
-  
+
   eval { $c->clean->parse( $zero ) };
   ok($@,'',"failed to parse zero initialization code");
-  
+
   eval { $c->clean->parse( $full ) };
   ok($@,'',"failed to parse full initialization code");
 
@@ -298,4 +298,3 @@ data = { SOMETHING, 0, { { 0, 0, 0, 0, 0 } } }
 $ = { number => 'SOMETHING' }
 
 data = { 0, SOMETHING, { { 0, 0, 0, 0, 0 } } }
-

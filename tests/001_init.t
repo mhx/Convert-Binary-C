@@ -144,23 +144,23 @@ ok(defined $p);
 for my $class (qw(Convert::Binary::C Convert::Binary::C::Cached)) {
   eval { $p = $class->new };
   is($@, '');
-  
+
   eval { $p->{''} = 0 };
   like($@, qr/^Modification of a read-only value attempted/);
-  
+
   $tmp = delete $p->{''};
-  
+
   eval { $p->clean };
   like($@, qr/THIS is corrupt/);
-  
+
   $p->{''} = $tmp;
-  
+
   $e = {'' => $tmp};
   bless $e, ref $p;
-  
+
   eval { $e->clean };
   like($@, qr/THIS->hv is corrupt/);
-  
+
   # don't forget to rebless to avoid warnings during cleanup
   bless $e, 'main';
 }

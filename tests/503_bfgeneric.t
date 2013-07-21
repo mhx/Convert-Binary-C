@@ -286,7 +286,7 @@ while (1) {
              $code,
              "data = $init\n",
              "expected: ", showbits($packed[$i]), "\n",
-             "     got: ", showbits($p), "\n");       
+             "     got: ", showbits($p), "\n");
       }
 
       my $u = $c[$i]->unpack($type, $packed[$i]);
@@ -87604,4 +87604,3 @@ ffffffa94010c000a0180000c0000000c22b9a02d5000000
 5700000000600300d27d00000100000034a2d81809000000
 0000005700c0c000fba400004000000031b1446809000000
 =
-

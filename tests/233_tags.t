@@ -331,4 +331,3 @@ ok($@, '');
 $rv = eval { $c->tag('int') };
 ok($@, '');
 ok(join(',', sort keys %$rv), '');
-
