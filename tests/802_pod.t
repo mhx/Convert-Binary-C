@@ -19,6 +19,7 @@ if( open F, "MANIFEST" ) {
   chomp( @files = <F> );
   close F;
   for my $f ( @files ) {
+    $f =~ m!^tests! or next;
     $f =~ m!^tests/include! and next;
     if( open F, $f ) {
       while( <F> ) {
