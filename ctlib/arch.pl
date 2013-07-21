@@ -89,7 +89,7 @@ sub is_big_endian ()
 
 sub config ($) {
   local $_ = shift;
-  s/\${([^}]+)}/$cfg{$1}/g;
+  s/\$\{([^}]+)\}/$cfg{$1}/g;
   print OUT;
 }
 
