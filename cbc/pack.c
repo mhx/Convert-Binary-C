@@ -1094,9 +1094,9 @@ static void pack_format(pPACKARGS, const CtTag *format, unsigned size, u_32 flag
       refstr = SvROK(sv) ? " (Are you sure you want to pack a reference type?)"
                          : "";
 
-      WARN((aTHX_ "Source string \"%s\" is longer (%d byte%s) than '%s'"
-                  " (%d byte%s) while packing '%s' format%s",
-            copy, len, len == 1 ? "" : "s", idl_to_str(aTHX_ &(PACK->idl)),
+      WARN((aTHX_ "Source string \"%s\" is longer (%u byte%s) than '%s'"
+                  " (%u byte%s) while packing '%s' format%s",
+            copy, (unsigned) len, len == 1 ? "" : "s", idl_to_str(aTHX_ &(PACK->idl)),
             size, size == 1 ? "" : "s", fmtstr, refstr));
 
       len = size;

@@ -353,8 +353,10 @@ int SetDebugMemAlloc( void (*dbfunc)(char *, ...), unsigned long dbflags );
 #ifdef ABORT_IF_NO_MEM
 # define abortMEMALLOC( call, size, expr )                                     \
         do {                                                                   \
-          if( (expr) == NULL && size > 0 ) {                                   \
-            fprintf(stderr, "%s(%d): out of memory!\n", call, size);           \
+          size_t tmp_size__ = (size);                                          \
+          if( (expr) == NULL && tmp_size__ > 0 ) {                             \
+            fprintf(stderr, "%s(%u): out of memory!\n",                        \
+                    call, (unsigned) tmp_size__);                              \
             abort();                                                           \
           }                                                                    \
         } while(0)
