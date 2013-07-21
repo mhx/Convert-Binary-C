@@ -285,7 +285,7 @@ sub checkrc
     if( $2 == 1 ) {
       $succ++
     }
-    elsif ($1 eq 'NULL' && $2 > 10000) { # we hit &PL_sv_undef...
+    elsif ($1 eq 'NULL' && $2 >= 1) { # we hit &PL_sv_undef...
       $succ++
     }
     else {
