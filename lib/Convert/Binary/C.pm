@@ -383,7 +383,7 @@ Or by parsing C code embedded in your script:
   CCODE
 
 Now the object C<$c> will know everything about C<struct foo>.
-The example above uses a so-called here-document. It allows to
+The example above uses a so-called here-document. It allows one to
 easily embed multi-line strings in your code. You can find more
 about here-documents in L<perldata> or L<perlop>.
 
@@ -1140,7 +1140,7 @@ Resulting in:
 
 The final and most powerful way to define a C<Dimension> tag is
 to pass it a subroutine reference. The referenced subroutine can
-execute whatever code is neccessary to determine the size of the
+execute whatever code is necessary to determine the size of the
 tagged array:
 
   sub get_size
@@ -3262,7 +3262,7 @@ are both equivalent and will print
   offset = 4
   offset = 4
 
-This allows to
+This allows one to
 
 =over 2
 

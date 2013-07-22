@@ -678,7 +678,7 @@ sub get_config
 
   # Try to remove as many defines as possible
 
-  $self->_msg( "\nNow let's see which defines aren't neccessary..." );
+  $self->_msg( "\nNow let's see which defines aren't necessary..." );
 
   my %orgdef = %{$self->{predefined}};
   my @additional;
