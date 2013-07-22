@@ -23,8 +23,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.76 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
-$VERSION = eval $VERSION;
+$VERSION = '0.77';
 
 sub new
 {

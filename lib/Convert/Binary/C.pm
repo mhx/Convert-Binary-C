@@ -19,15 +19,13 @@ package Convert::Binary::C;
 use strict;
 use DynaLoader;
 use Carp;
-use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
+use vars qw( @ISA $VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.76 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
-$XS_VERSION = $VERSION;
-$VERSION    = eval $VERSION;
+$VERSION = '0.77';
 
-bootstrap Convert::Binary::C $XS_VERSION;
+bootstrap Convert::Binary::C $VERSION;
 
 # Unfortunately, XS AUTOLOAD isn't supported
 # by stable perl distributions before 5.8.0.

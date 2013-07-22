@@ -1,4 +1,24 @@
 -------------------------
+Version 0.77 (2013-07-21)
+-------------------------
+
+* ensure consistent order of enums when generating code; this was
+  a real bug and caused the configuration part of C::B::C to report
+  wrong (even invalid) configurations back to the user when built
+  using a recent version of Perl that randomises hash keys
+
+* fix cpan #85264: the POD test was reporting a missing =back tag
+  in one of the support modules; the fix was to ensure only the
+  provided modules were POD checked
+
+* fix cpan #83167: an artificially low refcnt for immortal variables
+  introduced recently for debug Perl builds was causing the refcnt
+  tests to fail for SvNULLs; thanks to Reini Urban for his patch;
+  also thanks to Nicholas Clark for pointing me to the Perl commit
+
+* fix some gcc and Perl warnings
+
+-------------------------
 Version 0.76 (2011-04-11)
 -------------------------
 
