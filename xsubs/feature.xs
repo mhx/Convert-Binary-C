@@ -56,15 +56,6 @@ feature(...)
           XSRETURN_NO;
 #endif
         break;
-
-      case 't':
-        if (strEQ(feat, "threads"))
-#ifdef CBC_THREAD_SAFE
-          XSRETURN_YES;
-#else
-          XSRETURN_NO;
-#endif
-        break;
     }
 
     XSRETURN_UNDEF;

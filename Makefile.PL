@@ -151,13 +151,6 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
                e_flags => [qw( CBC_HAVE_IEEE_FP )],
                d_flags => [qw()],
              },
-  ($Config{usethreads} || $Config{use5005threads} || $Config{useithreads}) ? (
-    '~threads' => {
-                 enabled => 1,
-                 e_flags => [qw( CBC_THREAD_SAFE )],
-                 d_flags => [qw()],
-               }
-  ) : (),
   $Config{gccversion} ? (
   '$format-check' => {
                enabled => 0,
