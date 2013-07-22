@@ -8,15 +8,7 @@
 #
 ################################################################################
 #
-# $Project: /Convert-Binary-C $
-# $Author: mhx $
-# $Date: 2011/04/10 13:44:54 +0100 $
-# $Revision: 38 $
-# $Source: /lib/Convert/Binary/C/Cached.pm $
-#
-################################################################################
-#
-# Copyright (c) 2002-2011 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2013 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -447,7 +439,7 @@ algorithm cannot detect that an update is required.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2011 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2013 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
