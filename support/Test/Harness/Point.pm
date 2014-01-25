@@ -70,6 +70,8 @@ Each of the following fields has a getter and setter method.
 
 =item * number
 
+=back
+
 =cut
 
 sub ok              { my $self = shift; $self->{ok} }
