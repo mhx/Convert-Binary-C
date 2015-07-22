@@ -1,4 +1,13 @@
 -------------------------
+Version 0.73 (2009-03-16)
+-------------------------
+
+* fix META.yml generation with newer versions of ExtUtils::MakeMaker
+
+* work around an include path handling bug present in some versions
+  of Test::Harness
+
+-------------------------
 Version 0.72 (2009-03-15)
 -------------------------
 

@@ -3,8 +3,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2009/03/15 03:10:40 +0000 $
-# $Revision: 9 $
+# $Date: 2009/03/16 08:45:48 +0000 $
+# $Revision: 10 $
 # $Source: /test.pl $
 #
 ################################################################################
@@ -46,8 +46,8 @@ ENDWARN
 
       $lib = File::Spec->catfile(getcwd, 'support');
       $lib = qq["$lib"] if $lib =~ /\s/;
-      
-      $Test::Harness::switches = "-I $lib -w";
+
+      $Test::Harness::switches = "-I$lib -w";
     };
   }
 }

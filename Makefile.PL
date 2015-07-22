@@ -3,8 +3,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2009/03/15 03:10:41 +0000 $
-# $Revision: 112 $
+# $Date: 2009/03/16 08:43:00 +0000 $
+# $Revision: 113 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -361,13 +361,29 @@ sub configure
   if (eval $ExtUtils::MakeMaker::VERSION >= 6.30_01) {
     print "Setting license tag...\n";
     $config->{'LICENSE'} = 'perl';
-    $config->{'EXTRA_META'} = <<'META';
+    if (eval $ExtUtils::MakeMaker::VERSION >= 6.45_01) {
+      $config->{'META_MERGE'} = {
+        no_index => {
+          directory => [qw( support )],
+          file      => [qw( bin/elf.PL )],
+        },
+        resources => {
+          license     => 'http://dev.perl.org/licenses/',
+          homepage    => 'http://search.cpan.org/~mhx/Convert-Binary-C/',
+          bugtracker  => 'http://rt.cpan.org/NoAuth/Bugs.html?Dist=Convert-Binary-C',
+          MailingList => 'convert-binary-c@yahoogroups.com',
+        },
+      }
+    }
+    else {
+      $config->{'EXTRA_META'} = <<'META';
 no_index:
     directory:
         - support
     file:
         - bin/elf.PL
 META
+    }
   }
 
   $config;
