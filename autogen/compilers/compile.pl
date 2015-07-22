@@ -13,7 +13,7 @@
 # $Author: mhx $
 # $Date: 2004/05/24 22:46:23 +0100 $
 # $Revision: 1 $
-# $Snapshot: /Convert-Binary-C/0.55 $
+# $Snapshot: /Convert-Binary-C/0.56 $
 # $Source: /autogen/compilers/compile.pl $
 #
 ################################################################################
@@ -31,7 +31,7 @@ use Convert::Binary::C;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = ('$Snapshot: /Convert-Binary-C/0.55 $' =~ /([^\/\s]+)\s*\$$/)[0];
+my $VERSION = ('$Snapshot: /Convert-Binary-C/0.56 $' =~ /([^\/\s]+)\s*\$$/)[0];
 my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT;
 

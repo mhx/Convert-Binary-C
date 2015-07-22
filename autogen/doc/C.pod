@@ -2493,7 +2493,7 @@ being passed.
 You can alternatively call the following functions as methods
 on Convert::Binary::C objects.
 
-=head2 Convert::Binary::C::feature
+=head2 feature
 
 =over 8
 
@@ -2520,7 +2520,7 @@ syntax.
 
 =back
 
-=head2 Convert::Binary::C::native
+=head2 native
 
 =over 8
 
@@ -2735,7 +2735,7 @@ floating point format. During the Convert::Binary::C build
 process, the C<ieeefp> feature will automatically be enabled
 if the host is using IEEE floating point. You can check for
 this feature at runtime using
-the L<C<feature>|/"Convert::Binary::C::feature"> function:
+the L<C<feature>|/"feature"> function:
 
   if (Convert::Binary::C::feature('ieeefp')) {
     # do something
@@ -2892,7 +2892,7 @@ out the differences.
 =head2 C::Include
 
 Like Convert::Binary::C, this module aims at doing
-conversion from an to binary data based on C types.
+conversion from and to binary data based on C types.
 However, its configurability is very limited compared
 to Convert::Binary::C. Also, it does not parse all C
 code correctly. It's slower than Convert::Binary::C,

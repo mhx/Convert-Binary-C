@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2004/08/22 21:42:13 +0100 $
 # $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.55 $
+# $Snapshot: /Convert-Binary-C/0.56 $
 # $Source: /t/132_native.t $
 #
 ################################################################################

@@ -112,7 +112,7 @@ $Data::Dumper::Indent = 1; $^W = 0;
                             },
             'HasCPPComments' => 1,
             'Include' => [
-                           '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.3/include',
+                           '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.4/include',
                            '/usr/include'
                          ],
             'CompoundAlignment' => 1

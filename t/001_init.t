@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2004/08/22 18:18:17 +0100 $
 # $Revision: 15 $
-# $Snapshot: /Convert-Binary-C/0.55 $
+# $Snapshot: /Convert-Binary-C/0.56 $
 # $Source: /t/001_init.t $
 #
 ################################################################################

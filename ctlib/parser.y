@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/05/23 11:37:48 +0100 $
-* $Revision: 36 $
-* $Snapshot: /Convert-Binary-C/0.55 $
+* $Date: 2004/09/18 21:20:43 +0100 $
+* $Revision: 37 $
+* $Snapshot: /Convert-Binary-C/0.56 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -504,6 +504,7 @@ int moo(const int identifier1 (T identifier2 (int identifier3)));
                      postfixing_abstract_declarator
                      array_abstract_declarator
                      member_declaration_list
+                     member_declaration_list_opt
 
 %type <uval>         basic_declaration_specifier
                      declaration_qualifier_list
@@ -1080,7 +1081,7 @@ elaborated_type_name
 	;
 
 aggregate_name
-	: aggregate_key_context '{' member_declaration_list '}'
+	: aggregate_key_context '{' member_declaration_list_opt '}'
 	  {
 	    if( IS_LOCAL ) {
 	      $$.tflags = 0;
@@ -1096,7 +1097,7 @@ aggregate_name
 	      $$.ptr = pStruct;
 	    }
 	  }
-	| aggregate_key_context identifier_or_typedef_name '{' member_declaration_list '}'
+	| aggregate_key_context identifier_or_typedef_name '{' member_declaration_list_opt '}'
 	  {
 	    if( IS_LOCAL ) {
 	      $$.tflags = 0;
@@ -1164,6 +1165,11 @@ aggregate_key_context
 aggregate_key
 	: STRUCT_TOK { $$ = T_STRUCT; }
 	| UNION_TOK  { $$ = T_UNION;  }
+	;
+
+member_declaration_list_opt
+	: /* nothing */           { $$ = LL_new(); }
+	| member_declaration_list { $$ = $1; }
 	;
 
 member_declaration_list

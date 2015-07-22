@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:38:03 +0000 $
-# $Revision: 9 $
-# $Snapshot: /Convert-Binary-C/0.55 $
+# $Date: 2004/09/18 21:21:28 +0100 $
+# $Revision: 10 $
+# $Snapshot: /Convert-Binary-C/0.56 $
 # $Source: /t/116_language.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 19 }
+BEGIN { plan tests => 31 }
 
 eval {
   $c = new Convert::Binary::C;
@@ -137,4 +137,27 @@ typedef __signed __extension__ long long signed;
 END
 };
 ok($@, '');
+
+#------------------------------
+# check empty structs / unions
+#------------------------------
+
+for my $code (
+               "struct test { };",
+               "typedef struct { } test;",
+               "union test { };",
+               "typedef union { } test;",
+             )
+{
+  my $s = -1;
+  my @m;
+  eval {
+    $c->clean->parse("$code\n");
+    $s = $c->sizeof('test');
+    @m = $c->member('test');
+  };
+  ok($@, '', $code);
+  ok($s, 0);
+  ok(scalar @m, 0);
+}
 

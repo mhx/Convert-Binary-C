@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/08/22 21:43:33 +0100 $
-# $Revision: 65 $
-# $Snapshot: /Convert-Binary-C/0.55 $
+# $Date: 2004/09/18 21:21:04 +0100 $
+# $Revision: 66 $
+# $Snapshot: /Convert-Binary-C/0.56 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.55 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.56 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -117,7 +117,7 @@ Convert::Binary::C - Binary Data Conversion using C Types
   #---------------------------------------------------
   # Add include paths and global preprocessor defines
   #---------------------------------------------------
-  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.3/include',
+  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.4/include',
                '/usr/include' )
     ->Define( qw( __USE_POSIX __USE_ISOC99=1 ) );
   
@@ -956,7 +956,7 @@ as it can already handle C<AV> pointers. And this is what we get:
 
   $VAR1 = {
     'sv_any' => {
-      'xav_array' => '137956408',
+      'xav_array' => '137956856',
       'xav_fill' => '0',
       'xav_max' => '0',
       'xof_off' => '0',
@@ -974,12 +974,12 @@ as it can already handle C<AV> pointers. And this is what we get:
           'xhv_riter' => '-1',
           'xhv_eiter' => '0',
           'xhv_pmroot' => '0',
-          'xhv_name' => '138060312'
+          'xhv_name' => '138060760'
         },
         'sv_refcnt' => '2',
         'sv_flags' => '536870923'
       },
-      'xav_alloc' => '137956408',
+      'xav_alloc' => '137956856',
       'xav_arylen' => '0',
       'xav_flags' => '1'
     },
@@ -2819,7 +2819,7 @@ moment it was parsed.
   # Create object, set include path, parse 'string.h' header
   #----------------------------------------------------------
   my $c = Convert::Binary::C->new
-          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.3/include',
+          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.4/include',
                      '/usr/include' )
           ->parse_file( 'string.h' );
   
@@ -2853,23 +2853,23 @@ The above code would print something like this:
       'mtime' => 1092288215,
       'size' => 818
     },
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.3/include/stddef.h' => {
-      'ctime' => 1086789971,
-      'mtime' => 1086789970,
-      'size' => 12695
-    },
     '/usr/include/string.h' => {
       'ctime' => 1092288224,
       'mtime' => 1092288215,
       'size' => 15011
+    },
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.4/include/stddef.h' => {
+      'ctime' => 1093624078,
+      'mtime' => 1093624077,
+      'size' => 12695
     }
   };
   @files = (
     '/usr/include/features.h',
     '/usr/include/sys/cdefs.h',
     '/usr/include/gnu/stubs.h',
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.3/include/stddef.h',
-    '/usr/include/string.h'
+    '/usr/include/string.h',
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.4/include/stddef.h'
   );
 
 In list context, the method returns the names of all
@@ -3748,7 +3748,7 @@ being passed.
 You can alternatively call the following functions as methods
 on Convert::Binary::C objects.
 
-=head2 Convert::Binary::C::feature
+=head2 feature
 
 =over 8
 
@@ -3775,7 +3775,7 @@ syntax.
 
 =back
 
-=head2 Convert::Binary::C::native
+=head2 native
 
 =over 8
 
@@ -4043,7 +4043,7 @@ floating point format. During the Convert::Binary::C build
 process, the C<ieeefp> feature will automatically be enabled
 if the host is using IEEE floating point. You can check for
 this feature at runtime using
-the L<C<feature>|/"Convert::Binary::C::feature"> function:
+the L<C<feature>|/"feature"> function:
 
   if (Convert::Binary::C::feature('ieeefp')) {
     # do something
@@ -4253,7 +4253,7 @@ out the differences.
 =head2 C::Include
 
 Like Convert::Binary::C, this module aims at doing
-conversion from an to binary data based on C types.
+conversion from and to binary data based on C types.
 However, its configurability is very limited compared
 to Convert::Binary::C. Also, it does not parse all C
 code correctly. It's slower than Convert::Binary::C,
