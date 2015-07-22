@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/09/09 19:44:35 +0100 $
-# $Revision: 31 $
-# $Snapshot: /Convert-Binary-C/0.46 $
+# $Date: 2003/09/11 15:39:09 +0100 $
+# $Revision: 32 $
+# $Snapshot: /Convert-Binary-C/0.47 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
@@ -21,7 +21,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 4702 }
+BEGIN { plan tests => 4638 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -100,10 +100,6 @@ eval_test(q{
   $x = $p->def( '' );                                      # no warning
   $x = $p->def( 'struct  ' );                              # no warning
   $x = $p->def( 'notthere' );                              # no warning
-  $x = $p->def( 'notthere.yyy' );                          # (1) Ignoring potential member expression ('.yyy') after type name
-  $x = $p->def( 'xxx.yyy' );                               # (1) Ignoring potential member expression ('.yyy') after type name
-  $x = $p->def( 'xxx[yyy]' );                              # (1) Ignoring potential array expression ('[yyy]') after type name
-  $x = $p->def( 'xxx **' );                                # (1) Ignoring garbage ('**') after type name
 
   $x = $p->sourcify;                                       # no warning
   $x = $p->sourcify( 'foo' );                              # (E) Sourcification of individual types is not yet supported

@@ -9,12 +9,15 @@ struct foo {
   enum bar *xxx;
 };
 
+typedef int quad[4];
+
 ENDC
 
-for my $type ( qw( not ptr foo bar xxx ),
+for my $type ( qw( not ptr foo bar xxx foo.xxx foo.abc
+                   xxx.yyy quad quad[3] quad[4] short[1] ),
                'unsigned long' )
 {
   my $def = $c->def( $type );
-  printf "\$c->def( '$type' )  =>  %s\n",
-         defined $def ? "'$def'" : 'undef';
+  printf "%-14s  =>  %s\n", $type, defined $def
+                                   ? "'$def'" : 'undef';
 }

@@ -1151,6 +1151,8 @@ Using L<C<clone>|/"clone"> is just a lot faster.
 
 =item C<def> NAME
 
+=item C<def> TYPE
+
 If you need to know if a definition for a certain type name
 exists, use this method. You pass it the name of an enum,
 struct, union or typedef, and it will return a non-empty
@@ -1161,6 +1163,15 @@ or C<undef> if the name is completely unknown. If the
 type can be interpreted as a basic type, C<"basic"> will
 be returned.
 
+If you pass in a L<TYPE|/"UNDERSTANDING TYPES">, the output
+will be slightly different. If the specified member exists,
+the L<C<def>|/"def"> method will return C<"member">. If the
+member doesn't exist, or if the type cannot have members, the
+empty string will be returned. Again, if the name of the type
+is completely unknown, C<undef> will be returned. This may be
+useful if you want to check if a certain member exists within
+a compound, for example.
+
   $$def.pl$$
 
 The following would be returned by the L<C<def>|/"def"> method:
@@ -1168,7 +1179,7 @@ The following would be returned by the L<C<def>|/"def"> method:
   @@def.pl@@
 
 So, if L<C<def>|/"def"> returns a non-empty string, you can safely use
-any other method with that type's name.
+any other method with that type's name or with that member expression.
 
 In cases where the typedef namespace overlaps with the
 namespace of enums/structs/unions, the L<C<def>|/"def"> method

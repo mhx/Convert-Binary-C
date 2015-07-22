@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/09/09 19:43:19 +0100 $
-* $Revision: 99 $
-* $Snapshot: /Convert-Binary-C/0.46 $
+* $Date: 2003/09/11 15:37:57 +0100 $
+* $Revision: 100 $
+* $Snapshot: /Convert-Binary-C/0.47 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -710,8 +710,9 @@ static SV *GetMemberString( pTHX_ const MemberInfo *pMI, int offset, GMSInfo *pI
 
 static int  SearchStructMember( Struct *pStruct, const char *elem,
                                 StructDeclaration **ppSD, Declarator **ppD );
-static void GetMember( pTHX_ const MemberInfo *pMI, const char *member,
-                             MemberInfo *pMIout, int accept_dotless_member );
+static int  GetMember( pTHX_ const MemberInfo *pMI, const char *member,
+                             MemberInfo *pMIout,
+                             int accept_dotless_member, int dont_croak );
 
 static void *GetTypePointer( CBC *THIS, const char *name, const char **pEOS );
 static int   GetTypeSpec( CBC *THIS, const char *name, const char **pEOS, TypeSpec *pTS );
@@ -4121,16 +4122,20 @@ static int SearchStructMember( Struct *pStruct, const char *elem,
             }                                              \
           } while(0)
 
-#define PROPAGATE_FLAGS( from ) pMIout->flags |= (from) & (T_HASBITFIELD | T_UNSAFE_VAL);
+#define PROPAGATE_FLAGS( from )                                                \
+        do {                                                                   \
+          if( pMIout )                                                         \
+            pMIout->flags |= (from) & (T_HASBITFIELD | T_UNSAFE_VAL);          \
+        } while(0)
 
-static void GetMember( pTHX_ const MemberInfo *pMI, const char *member,
-                             MemberInfo *pMIout, int accept_dotless_member )
+static int GetMember( pTHX_ const MemberInfo *pMI, const char *member,
+                            MemberInfo *pMIout,
+                            int accept_dotless_member, int dont_croak )
 {
   const TypeSpec    *pType;
   const char        *c, *ixstr, *dot;
   char              *e, *elem;
-  unsigned           size;
-  int                level, t_off, inc_c;
+  int                size, level, t_off, inc_c;
   UV                 offset;
   Struct            *pStruct;
   StructDeclaration *pSD;
@@ -4146,7 +4151,8 @@ static void GetMember( pTHX_ const MemberInfo *pMI, const char *member,
 
   Newz( 0, elem, strlen(member)+1, char );
 
-  pMIout->flags = 0;
+  if( pMIout )
+    pMIout->flags = 0;
 
   pType = &pMI->type;
   pDecl = pMI->pDecl;
@@ -4392,16 +4398,21 @@ static void GetMember( pTHX_ const MemberInfo *pMI, const char *member,
   error:
   Safefree( elem );
 
-  if( err != NULL )
+  if( err != NULL ) {
+    if( dont_croak )
+      return 0;
     Perl_croak(aTHX_ "%s", err);
+  }
 
   if( pMIout ) {
     pMIout->type   = *pType;
     pMIout->pDecl  = pDecl;
     pMIout->level  = level;
     pMIout->offset = offset;
-    pMIout->size   = size;
+    pMIout->size   = (unsigned) size;
   }
+
+  return 1;
 }
 
 #undef TRUNC_ELEM
@@ -4658,7 +4669,7 @@ static int GetMemberInfo( pTHX_ CBC *THIS, const char *name, MemberInfo *pMI )
     if( member && *member ) {
       mi.pDecl = NULL;
       mi.level = 0;
-      GetMember( aTHX_ &mi, member, pMI, 0 );
+      (void) GetMember( aTHX_ &mi, member, pMI, 0, 0 );
     }
     else if( mi.type.ptr == NULL ) {
       ErrorGTI err;
@@ -6232,52 +6243,47 @@ CBC::def( type )
 
 	PREINIT:
 		CBC_METHOD( def );
-		void *ptr;
-		const char *eos = NULL;
+		MemberInfo mi;
+		const char *member = NULL;
 
 	CODE:
 		CT_DEBUG_METHOD1( "'%s'", type );
 
 		CHECK_VOID_CONTEXT;
 
-		ptr = GetTypePointer( THIS, type, &eos );
+		if( GetTypeSpec( THIS, type, &member, &mi.type ) == 0 )
+		  XSRETURN_UNDEF;
 
-		if( ptr == NULL && GetBasicTypeSpec( type, NULL ) )
+		if( mi.type.ptr == NULL )
 		  RETVAL = "basic";
 		else {
-		  if( eos && *eos != '\0' ) {
-		    const char *kind;
-		    switch( *eos ) {
-		      default : kind = "garbage";                     break;
-		      case '.': kind = "potential member expression"; break;
-		      case '[': kind = "potential array expression";  break;
-		    }
-		    WARN((aTHX_ "Ignoring %s ('%s') after type name", kind, eos));
+		  void *ptr = mi.type.ptr;
+		  switch( GET_CTYPE( ptr ) ) {
+		    case TYP_TYPEDEF:
+		      RETVAL = IsTypedefDefined( (Typedef *) ptr ) ? "typedef" : "";
+		      break;
+
+		    case TYP_STRUCT:
+		      if( ((Struct *) ptr)->declarations )
+		        RETVAL = ((Struct *) ptr)->tflags & T_STRUCT ? "struct" : "union";
+		      else
+		        RETVAL = "";
+		      break;
+
+		    case TYP_ENUM:
+		      RETVAL = ((EnumSpecifier *) ptr)->enumerators ? "enum" : "";
+		      break;
+
+		    default:
+		      fatal("GetTypePointer returned an invalid type (%d) in "
+		      XSCLASS "::def( '%s' )", GET_CTYPE( ptr ), type);
+		      break;
 		  }
-		  if( ptr == NULL )
-		    XSRETURN_UNDEF;
-		  else {
-		    switch( GET_CTYPE( ptr ) ) {
-		      case TYP_TYPEDEF:
-		        RETVAL = IsTypedefDefined( (Typedef *) ptr ) ? "typedef" : "";
-		        break;
-
-		      case TYP_STRUCT:
-		        if( ((Struct *) ptr)->declarations )
-		          RETVAL = ((Struct *) ptr)->tflags & T_STRUCT ? "struct" : "union";
-		        else
-		          RETVAL = "";
-		        break;
-
-		      case TYP_ENUM:
-		        RETVAL = ((EnumSpecifier *) ptr)->enumerators ? "enum" : "";
-		        break;
-
-		      default:
-		        fatal("GetTypePointer returned an invalid type (%d) in "
-		        XSCLASS "::def( '%s' )", GET_CTYPE( ptr ), type);
-		        break;
-		    }
+		  if( member && *member != '\0' && *RETVAL != '\0' ) {
+		    mi.pDecl = NULL;
+		    mi.level = 0;
+		    RETVAL   = GetMember( aTHX_ &mi, member, NULL, 0, 1 )
+		               ? "member" : "";
 		  }
 		}
 
@@ -6578,7 +6584,7 @@ CBC::offsetof( type, member )
 		if( !GetMemberInfo( aTHX_ THIS, type, &mi ) )
 		  Perl_croak(aTHX_ "Cannot find '%s'", type);
 
-		GetMember( aTHX_ &mi, member, &mi2, 1 );
+		(void) GetMember( aTHX_ &mi, member, &mi2, 1, 0 );
 
 		if( mi2.pDecl && mi2.pDecl->bitfield_size >= 0 )
 		  Perl_croak(aTHX_ "Cannot use %s on bitfields", method);

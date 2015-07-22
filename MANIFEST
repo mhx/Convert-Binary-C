@@ -117,6 +117,7 @@ t/804_complex.t
 t/805_examples.t
 t/806_env.t
 t/901_memory.t
+t/902_pod.t
 t/cache/cache.1
 t/cache/cache.2
 t/cache/header.1

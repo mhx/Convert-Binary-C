@@ -12,7 +12,7 @@
 # $Author: mhx $
 # $Date: 2003/08/18 10:19:20 +0100 $
 # $Revision: 8 $
-# $Snapshot: /Convert-Binary-C/0.46 $
+# $Snapshot: /Convert-Binary-C/0.47 $
 # $Source: /ctlib/t_config.pl $
 #
 ################################################################################

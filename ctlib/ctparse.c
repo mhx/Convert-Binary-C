@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/06/10 14:34:29 +0100 $
-* $Revision: 28 $
-* $Snapshot: /Convert-Binary-C/0.46 $
+* $Date: 2003/09/11 15:38:20 +0100 $
+* $Revision: 29 $
+* $Snapshot: /Convert-Binary-C/0.47 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -806,7 +806,7 @@ void clone_parse_info( CParseInfo *pDest, CParseInfo *pSrc )
     if( ptr )
       pES->context.pFI = ptr;
     else
-      PTR_NOT_FOUND( pES->context.pFI );
+      PTR_NOT_FOUND( (void *) pES->context.pFI );
   }
 
   CT_DEBUG( CTLIB, ("remapping pointers for structs") );
@@ -842,7 +842,7 @@ void clone_parse_info( CParseInfo *pDest, CParseInfo *pSrc )
     if( ptr )
       pStruct->context.pFI = ptr;
     else
-      PTR_NOT_FOUND( pStruct->context.pFI );
+      PTR_NOT_FOUND( (void *) pStruct->context.pFI );
   }
 
   CT_DEBUG( CTLIB, ("remapping pointers for typedef lists") );

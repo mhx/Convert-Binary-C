@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/09/09 19:43:31 +0100 $
-# $Revision: 51 $
-# $Snapshot: /Convert-Binary-C/0.46 $
+# $Date: 2003/09/11 15:41:19 +0100 $
+# $Revision: 52 $
+# $Snapshot: /Convert-Binary-C/0.47 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.46 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.47 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -1519,6 +1519,8 @@ Using L<C<clone>|/"clone"> is just a lot faster.
 
 =item C<def> NAME
 
+=item C<def> TYPE
+
 If you need to know if a definition for a certain type name
 exists, use this method. You pass it the name of an enum,
 struct, union or typedef, and it will return a non-empty
@@ -1528,6 +1530,15 @@ question, an empty string if there's no such definition,
 or C<undef> if the name is completely unknown. If the
 type can be interpreted as a basic type, C<"basic"> will
 be returned.
+
+If you pass in a L<TYPE|/"UNDERSTANDING TYPES">, the output
+will be slightly different. If the specified member exists,
+the L<C<def>|/"def"> method will return C<"member">. If the
+member doesn't exist, or if the type cannot have members, the
+empty string will be returned. Again, if the name of the type
+is completely unknown, C<undef> will be returned. This may be
+useful if you want to check if a certain member exists within
+a compound, for example.
 
   use Convert::Binary::C;
   
@@ -1540,27 +1551,37 @@ be returned.
     enum bar *xxx;
   };
   
+  typedef int quad[4];
+  
   ENDC
   
-  for my $type ( qw( not ptr foo bar xxx ),
+  for my $type ( qw( not ptr foo bar xxx foo.xxx foo.abc
+                     xxx.yyy quad quad[3] quad[4] short[1] ),
                  'unsigned long' )
   {
     my $def = $c->def( $type );
-    printf "\$c->def( '$type' )  =>  %s\n",
-           defined $def ? "'$def'" : 'undef';
+    printf "%-14s  =>  %s\n", $type, defined $def
+                                     ? "'$def'" : 'undef';
   }
 
 The following would be returned by the L<C<def>|/"def"> method:
 
-  $c->def( 'not' )  =>  ''
-  $c->def( 'ptr' )  =>  'typedef'
-  $c->def( 'foo' )  =>  'struct'
-  $c->def( 'bar' )  =>  ''
-  $c->def( 'xxx' )  =>  undef
-  $c->def( 'unsigned long' )  =>  'basic'
+  not             =>  ''
+  ptr             =>  'typedef'
+  foo             =>  'struct'
+  bar             =>  ''
+  xxx             =>  undef
+  foo.xxx         =>  'member'
+  foo.abc         =>  ''
+  xxx.yyy         =>  undef
+  quad            =>  'typedef'
+  quad[3]         =>  'member'
+  quad[4]         =>  ''
+  short[1]        =>  undef
+  unsigned long   =>  'basic'
 
 So, if L<C<def>|/"def"> returns a non-empty string, you can safely use
-any other method with that type's name.
+any other method with that type's name or with that member expression.
 
 In cases where the typedef namespace overlaps with the
 namespace of enums/structs/unions, the L<C<def>|/"def"> method

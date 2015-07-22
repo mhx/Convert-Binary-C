@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/17 13:39:09 +0100 $
-# $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.46 $
+# $Date: 2003/09/11 15:39:45 +0100 $
+# $Revision: 4 $
+# $Snapshot: /Convert-Binary-C/0.47 $
 # $Source: /t/119_def.t $
 #
 ################################################################################
@@ -21,7 +21,7 @@ use Convert::Binary::C @ARGV;
 $^W = 1;
 
 BEGIN {
-  plan tests => 58;
+  plan tests => 119;
 }
 
 $SIG{__WARN__} = sub { push @warn, $_[0] };
@@ -57,43 +57,72 @@ typedef enum enu enu;
 enum enu { ENU };
 
 struct su { union uni *ptr; };
-union uni2 { int foo; };
+union uni2 { int foo[3][4]; };
 enum  enu2 { FOO };
 
 ENDC
 
 @tests = (
-  ['foo'          => undef    ],
-  ['int'          => 'basic'  ],
-  [' long double' => 'basic'  ],
-  ['__int'        => 'typedef'],
-  ['__array'      => 'typedef'],
-  ['__ptr'        => 'typedef'],
-  ['__ptr.foo'    => 'typedef'],
-  ['__ptr [10]'   => 'typedef'],
-  ['__ptr !&'     => 'typedef'],
-  ['test'         => 'typedef'],
-  ['struct test'  => 'struct' ],
-  ['test2'        => 'typedef'],
-  ['undef'        => ''       ],
-  ['undef2'       => 'typedef'],
-  ['struct undef' => ''       ],
-  ['uni'          => 'typedef'],
-  ['noenu'        => ''       ],
-  ['enu'          => 'typedef'],
-  ['su'           => 'struct' ],
-  ['union uni'    => ''       ],
-  ['struct bar'   => undef    ],
-  ['uni2'         => 'union'  ],
-  ['enu2'         => 'enum'   ],
+  ['foo'             => undef    ],
+  ['int'             => 'basic'  ],
+  [' long double'    => 'basic'  ],
+  ['__int'           => 'typedef'],
+  ['__array'         => 'typedef'],
+  ['__ptr'           => 'typedef'],
+  ['__ptr.foo'       => ''       ],
+  ['__ptr [10]'      => ''       ],
+  ['__ptr !&'        => ''       ],
+  ['test'            => 'typedef'],
+  ['struct test'     => 'struct' ],
+  ['test2'           => 'typedef'],
+  ['undef'           => ''       ],
+  ['undef2'          => 'typedef'],
+  ['struct undef'    => ''       ],
+  ['uni'             => 'typedef'],
+  ['noenu'           => ''       ],
+  ['enum enu'        => 'enum'   ],
+  ['enu'             => 'typedef'],
+  ['su'              => 'struct' ],
+  ['union uni'       => ''       ],
+  ['struct bar'      => undef    ],
+  ['uni2'            => 'union'  ],
+  ['enu2'            => 'enum'   ],
+  ['test.foo'        => 'member' ],
+  ['test.bar'        => ''       ],
+  ['test2.foo'       => 'member' ],
+  ['test2[3]'        => ''       ],
+  ['test2.foo.x'     => ''       ],
+  ['test2.foo[1]'    => ''       ],
+  ['uni2.foo[1]'     => 'member' ],
+  ['uni2.foo[2][3]'  => 'member' ],
+  ['uni2.foo[-1]'    => ''       ],
+  ['uni2.foo[2][-1]' => ''       ],
+  ['uni2.foo[3]'     => ''       ],
+  ['uni2.foo[2][4]'  => ''       ],
+  ['undef.x'         => ''       ],
+  ['__array[9]'      => 'member' ],
+  ['__array[10]'     => ''       ],
+  ['__array.xxx'     => ''       ],
+  ['enu.xxx'         => ''       ],
+  ['enu???'          => ''       ],
+  ['enu[0]'          => ''       ],
+  ['noenu.xxx'       => ''       ],
+  ['noenu???'        => ''       ],
+  ['noenu[0]'        => ''       ],
+  ['.xxx'            => undef    ],
+  ['???'             => undef    ],
+  ['[0]'             => undef    ],
+  ['foo.xxx'         => undef    ],
+  ['foo???'          => undef    ],
+  ['foo[0]'          => undef    ],
+  ['short int .xxx'  => undef    ],
+  ['short int ???'   => undef    ],
+  ['short int [0]'   => undef    ],
 );
 
 run_tests( $c, @tests );
 
-ok( scalar @warn, 3 );
-ok( $warn[0], qr/^\QIgnoring potential member expression ('.foo') after type name/ );
-ok( $warn[1], qr/^\QIgnoring potential array expression ('[10]') after type name/ );
-ok( $warn[2], qr/^\QIgnoring garbage ('!&') after type name/ );
+ok( scalar @warn, 0 );
 
 sub run_tests
 {
