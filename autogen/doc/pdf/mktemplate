@@ -1,0 +1,139 @@
+#!/usr/bin/perl -w
+use strict;
+
+my($class, $version) = splice @ARGV, 0, 2;
+
+my %opt = (
+  a4     => {
+              PAPER          => 'a4paper',
+              TEXTWIDTH      => '16cm',
+              ODDSIDEMARGIN  => '0.46cm',
+              EVENSIDEMARGIN => '-0.54cm',
+              TOPMARGIN      => '-0.81cm',
+              TEXTHEIGHT     => '22.7cm',
+            },
+
+  letter => {
+              PAPER          => 'letterpaper',
+              TEXTWIDTH      => '6.5in',
+              ODDSIDEMARGIN  => '0.25in',
+              EVENSIDEMARGIN => '-0.25in',
+              TOPMARGIN      => '-0.5in',
+              TEXTHEIGHT     => '8.75in',
+            },
+
+  VERSION => $version,
+  MAIL    => 'mhx@cpan.org',
+
+  @ARGV,
+);
+
+my $cbcversion = shift;
+
+while( <DATA> ) {
+  s/\%\%(\w+)\%\%/$opt{$class}{$1}||$opt{$1}||''/ge;
+  print;
+}
+
+__DATA__
+\pdfoutput=1
+\pdfadjustspacing=2
+\pdfcompresslevel=9
+\pdfinfo {
+  /Title (Convert::Binary::C)
+  /Subject (Binary Data Conversion using C Types)
+  /Author (Marcus Holland-Moritz <%%MAIL%%>)
+}
+
+\documentclass[10pt,%%PAPER%%,twoside,pdftex]{report}
+
+\sloppy
+\clubpenalty=4500
+\widowpenalty=10000
+\raggedbottom
+
+\setlength{\textwidth}{%%TEXTWIDTH%%}
+\setlength{\oddsidemargin}{%%ODDSIDEMARGIN%%}
+\setlength{\evensidemargin}{%%EVENSIDEMARGIN%%}
+\setlength{\topmargin}{%%TOPMARGIN%%}
+\setlength{\textheight}{%%TEXTHEIGHT%%}
+\setlength{\marginparsep}{0cm}
+\setlength{\marginparwidth}{0cm}
+\setlength{\parindent}{0cm}
+\setlength{\partopsep}{0cm}
+\setlength{\skip\footins}{14.5pt plus 4pt minus 2pt}
+\setlength{\abovecaptionskip}{6pt}
+\setlength{\belowcaptionskip}{0pt}
+
+\usepackage{amssymb, latexsym, color}
+\usepackage[ansinew]{inputenc}
+
+\usepackage{booktabs, dcolumn, flafter, verbatim, makeidx}
+\usepackage[hang]{caption2}
+\usepackage[fleqn]{amsmath}
+\usepackage[clearempty]{titlesec}
+\usepackage{ifthen}
+
+%% Online (PDF) mode. Turn off for black links.
+\newboolean{online}
+\setboolean{online}{true}
+
+\usepackage{cbc}
+
+\definecolor{internallinks}{cmyk}{0,1,1,0}
+\definecolor{wwwlinks}{cmyk}{0.9,0.8,0,0}
+\definecolor{locallinks}{cmyk}{0,1,1,0}
+
+\usepackage[colorlinks=true,%
+            linkcolor=internallinks,%
+            citecolor=internallinks,%
+            urlcolor=wwwlinks,%
+            filecolor=locallinks,%
+            pdfpagemode={UseOutlines},%
+            bookmarks=true,%
+            bookmarksopen=true,%
+            bookmarksnumbered=false]{hyperref}
+
+\renewcommand{\myleftmark}{\rule[-3pt]{0pt}{11pt}}
+\renewcommand{\myrightmark}{\rule[-3pt]{0pt}{11pt}}
+
+\renewcommand{\captionfont}{\normalfont\sffamily\itshape}
+\renewcommand{\captionlabelfont}{\normalfont\sffamily\bfseries}
+\renewcommand{\captionlabeldelim}{:}
+
+\newfont{\titlefont}{cmtt12 scaled 2600}
+
+\makeindex
+
+\pagestyle{empty}
+
+\begin{document}
+
+  \title{{\titlefont Convert::Binary::C}\\[6pt]
+         {\LARGE\sffamily Binary Data Conversion using C Types}\\[12pt]
+         {\large\itshape Version %%VERSION%%}}
+
+  \author{{\sffamily\bfseries Marcus Holland-Moritz}\\[2pt]
+          \href{mailto:%%MAIL%%}{\ttfamily %%MAIL%%}}
+  \date{\sffamily\bfseries \today}
+  
+  \maketitle
+  \thispagestyle{empty}
+  
+  \cleardoublepage
+  \pagestyle{headings}
+
+  \setlength{\parskip}{.1\baselineskip plus 1pt}
+
+  \tableofcontents
+
+  \cleardoublepage
+
+  \setlength{\parskip}{.5\baselineskip plus 2pt}
+
+  \input{main}
+
+%  \setlength{\columnsep}{1cm}
+%  \printindex
+
+\end{document}

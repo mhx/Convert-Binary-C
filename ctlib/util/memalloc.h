@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/04/14 19:59:04 +0100 $
-* $Revision: 6 $
-* $Snapshot: /Convert-Binary-C/0.47 $
+* $Date: 2003/10/02 09:56:01 +0100 $
+* $Revision: 12 $
+* $Snapshot: /Convert-Binary-C/0.48 $
 * $Source: /ctlib/util/memalloc.h $
 *
 ********************************************************************************
@@ -89,22 +89,25 @@
 #ifndef _UTIL_MEMALLOC_H
 #define _UTIL_MEMALLOC_H
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #define DB_MEMALLOC_TRACE    0x00000001
 #define DB_MEMALLOC_ASSERT   0x00000002
 
 #ifdef DEBUG_MEMALLOC
-void *_MemAlloc( size_t size, char *file, int line );
-void *_MemCAlloc( size_t nobj, size_t size, char *file, int line );
-void *_MemReAlloc( void *p, size_t size, char *file, int line );
-void  _MemFree( void *p, char *file, int line );
-void  _AssertValidPtr( void *p, char *file, int line );
-void  _AssertValidBlock( void *p, size_t size, char *file, int line );
+void *_memAlloc( size_t size, char *file, int line );
+void *_memCAlloc( size_t nobj, size_t size, char *file, int line );
+void *_memReAlloc( void *p, size_t size, char *file, int line );
+void  _memFree( void *p, char *file, int line );
+void  _assertValidPtr( void *p, char *file, int line );
+void  _assertValidBlock( void *p, size_t size, char *file, int line );
 int    SetDebugMemAlloc( void (*dbfunc)(const char *, ...), unsigned long dbflags );
 #else
-void *_MemAlloc( size_t size );
-void *_MemCAlloc( size_t nobj, size_t size );
-void *_MemReAlloc( void *p, size_t size );
-void  _MemFree( void *p );
+void *_memAlloc( size_t size );
+void *_memCAlloc( size_t nobj, size_t size );
+void *_memReAlloc( void *p, size_t size );
+void  _memFree( void *p );
 #endif
 
 /***************************************************************/
@@ -114,19 +117,61 @@ void  _MemFree( void *p );
 #ifdef DOXYGEN
 
 /**
- *  Make Alloc() abort when out of memory
+ *  Make Alloc(), CAlloc() and ReAlloc() abort when out of memory
  *
- *  Set this preprocessor flag if you want the Alloc()
- *  function to abort if the system runs out of memory.
+ *  Set this preprocessor flag if you want the Alloc(), CAlloc()
+ *  and ReAlloc() functions to abort if the system runs out of
+ *  memory.
  */
 
 #define ABORT_IF_NO_MEM
 
 /**
- *  Compile with debugging/tracing support
+ *  Compile with debugging support
  */
 
 #define DEBUG_MEMALLOC
+
+/**
+ *  Compile with tracing / leak detection support
+ *
+ *  This may slow down memory allocation if lots of blocks
+ *  are simultaneously allocted. It will also increase the
+ *  memory requirements of your application.
+ *
+ *  On the plus side, you get run-time memory allocation tracing,
+ *  assertion checking, leak detection and memory statistics.
+ *  You can control the amount of statistics by setting the
+ *  MEMALLOC_STAT_LEVEL environment variable to a value between
+ *  0 and 3, with increasing amount of output.
+ *
+ *  If an assertion fails, the program will usually abort.
+ *  You can choose not to abort the program by setting
+ *  MEMALLOC_SOFT_ASSERT to a nonzero value in your
+ *  environment.
+ *
+ *  Only works if DEBUG_MEMALLOC is also defined.
+ */
+
+#define TRACE_MEMALLOC
+
+/**
+ *  Build with memory allocator that automatically purges
+ *  allocated / freed memory blocks.
+ *
+ *  Only works if DEBUG_MEMALLOC is also defined.
+ */
+
+#define AUTOPURGE_MEMALLOC
+
+/**
+ *  Build without support for the Alloc(), CAlloc() and
+ *  ReAlloc() functions. Memory management is completely
+ *  carried out through the use of the fast allocation
+ *  macros AllocF(), CAllocF() and ReAllocF().
+ */
+
+#define NO_SLOW_MEMALLOC_CALLS
 
 /**
  *  Allocate a memory block
@@ -144,7 +189,7 @@ void  _MemFree( void *p );
 void *Alloc( size_t size );
 
 /**
- *  Allocate a memory block and initializes to zero
+ *  Allocate a memory block and initialize to zero
  *
  *  Allocates a memory block to hold \a nobj times
  *  \a size bytes. If the files were compiled with the
@@ -177,6 +222,57 @@ void *CAlloc( size_t nobj, size_t size );
  */
 
 void *ReAlloc( void *ptr, size_t size );
+
+/**
+ *  Fast Alloc Macro
+ *
+ *  Allocates a memory block of \a size bytes. If the files
+ *  were compiled with the #ABORT_IF_NO_MEM preprocessor flag,
+ *  the function aborts if no memory can be allocated.
+ *
+ *  \param cast           Pointer cast.
+ *
+ *  \param ptr            Pointer to memory block.
+ *
+ *  \param size           Size of the memory block in bytes.
+ */
+
+#define AllocF( cast, ptr, size )
+
+/**
+ *  Fast CAlloc Macro
+ *
+ *  Allocates a memory block to hold \a nobj times
+ *  \a size bytes. If the files were compiled with the
+ *  #ABORT_IF_NO_MEM preprocessor flag, the function
+ *  aborts if no memory can be allocated.
+ *
+ *  \param cast           Pointer cast.
+ *
+ *  \param ptr            Pointer to memory block.
+ *
+ *  \param nobj           Number of objects.
+ *
+ *  \param size           Size of one object in bytes.
+ */
+
+#define CAllocF( cast, ptr, nobj, size )
+
+/**
+ *  Fast ReAlloc Macro
+ *
+ *  Reallocates a memory block of \a size bytes. If the files
+ *  were compiled with the #ABORT_IF_NO_MEM preprocessor flag,
+ *  the function aborts if no memory can be allocated.
+ *
+ *  \param cast           Pointer cast.
+ *
+ *  \param ptr            Pointer to memory block.
+ *
+ *  \param size           Size of new memory block in bytes.
+ */
+
+#define ReAllocF( cast, ptr, size )
 
 /**
  *  Free a memory block
@@ -235,24 +331,62 @@ int SetDebugMemAlloc( void (*dbfunc)(char *, ...), unsigned long dbflags );
 /*                    END OF DOCUMENTATION                     */
 /***************************************************************/
 
+#ifdef ABORT_IF_NO_MEM
+# define abortMEMALLOC( call, size, expr )                                     \
+        do {                                                                   \
+          if( (expr) == NULL && size > 0 ) {                                   \
+            fprintf(stderr, "%s(%d): out of memory!\n", call, size);           \
+            abort();                                                           \
+          }                                                                    \
+        } while(0)
+#else
+# define abortMEMALLOC( call, size, expr )  do { expr; } while(0)
+#endif
+
 #ifdef DEBUG_MEMALLOC
 
-#define ReAlloc( ptr, size )            _MemReAlloc( ptr, size, __FILE__, __LINE__ )
-#define CAlloc( nobj, size )            _MemCAlloc( nobj, size, __FILE__, __LINE__ )
-#define Alloc( size )                   _MemAlloc( size, __FILE__, __LINE__ )
-#define Free( ptr )                     _MemFree( ptr, __FILE__, __LINE__ )
-#define AssertValidPtr( ptr )           _AssertValidPtr( ptr, __FILE__, __LINE__ )
-#define AssertValidBlock( ptr, size )   _AssertValidBlock( ptr, size, __FILE__, __LINE__ )
+# ifndef NO_SLOW_MEMALLOC_CALLS
+#  define ReAlloc( ptr, size )           _memReAlloc( ptr, size, __FILE__, __LINE__ )
+#  define CAlloc( nobj, size )           _memCAlloc( nobj, size, __FILE__, __LINE__ )
+#  define Alloc( size )                  _memAlloc( size, __FILE__, __LINE__ )
+# endif
+
+# define Free( ptr )                     _memFree( ptr, __FILE__, __LINE__ )
+# define AssertValidPtr( ptr )           _assertValidPtr( ptr, __FILE__, __LINE__ )
+# define AssertValidBlock( ptr, size )   _assertValidBlock( ptr, size, __FILE__, __LINE__ )
+
+# define ReAllocF( cast, ptr, size ) \
+          do { ptr = (cast) _memReAlloc( ptr, size, __FILE__, __LINE__ ); } while(0)
+# define CAllocF( cast, ptr, nobj, size ) \
+          do { ptr = (cast) _memCAlloc( nobj, size, __FILE__, __LINE__ ); } while(0)
+# define AllocF( cast, ptr, size ) \
+          do { ptr = (cast) _memAlloc( size, __FILE__, __LINE__ ); } while(0)
 
 #else /* !DEBUG_MEMALLOC */
 
-#define ReAlloc( ptr, size )            _MemReAlloc( ptr, size )
-#define CAlloc( nobj, size )            _MemCAlloc( nobj, size )
-#define Alloc( size )                   _MemAlloc( size )
-#define Free( ptr )                     _MemFree( ptr )
-#define AssertValidPtr( ptr )
-#define AssertValidBlock( ptr, size )
-#define SetDebugMemAlloc( func, flags ) 0
+# ifndef NO_SLOW_MEMALLOC_CALLS
+#  ifdef ABORT_IF_NO_MEM
+#   define ReAlloc( ptr, size )          _memReAlloc( ptr, size )
+#   define CAlloc( nobj, size )          _memCAlloc( nobj, size )
+#   define Alloc( size )                 _memAlloc( size )
+#  else
+#   define ReAlloc( ptr, size )          realloc( ptr, size )
+#   define CAlloc( nobj, size )          calloc( nobj, size )
+#   define Alloc( size )                 malloc( size )
+#  endif
+# endif
+
+# define Free( ptr )                     do { if( ptr ) free( ptr ); } while(0)
+# define AssertValidPtr( ptr )           (void) 0
+# define AssertValidBlock( ptr, size )   (void) 0
+# define SetDebugMemAlloc( func, flags ) 0
+
+# define ReAllocF( cast, ptr, size ) \
+           abortMEMALLOC( "ReAllocF", size, ptr = (cast) realloc( ptr, size ) )
+# define CAllocF( cast, ptr, nobj, size ) \
+           abortMEMALLOC( "CAllocF", nobj*size, ptr = (cast) calloc( nobj, size ) )
+# define AllocF( cast, ptr, size ) \
+           abortMEMALLOC( "AllocF", size, ptr = (cast) malloc( size ) )
 
 #endif /* DEBUG_MEMALLOC */
 

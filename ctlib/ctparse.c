@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/09/11 15:38:20 +0100 $
-* $Revision: 29 $
-* $Snapshot: /Convert-Binary-C/0.47 $
+* $Date: 2003/09/28 21:08:50 +0100 $
+* $Revision: 30 $
+* $Snapshot: /Convert-Binary-C/0.48 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -263,7 +263,7 @@ static char *get_path_name( const char *dir, const char *file )
 
   filelen = strlen( file );
 
-  buf = (char *) Alloc( dirlen + append_delim + filelen + 1 );
+  AllocF( char *, buf, dirlen + append_delim + filelen + 1 );
   
   if( dir != NULL )
     strcpy( buf, dir );
@@ -1054,7 +1054,7 @@ ErrorGTI get_type_info( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDe
         do {                                                                   \
           int _copy;                                                           \
           if( (_copy = (count)) > 0 ) {                                        \
-            buf = (char *) ReAlloc( buf, len + _copy + 1 );                    \
+            ReAllocF( char *, buf, len + _copy + 1 );                          \
             memcpy( buf+len, from, _copy );                                    \
             len += _copy;                                                      \
           }                                                                    \
@@ -1080,7 +1080,7 @@ void format_error( CParseInfo *pCPI, char *format, ... )
   int len = 0;
   char *f, *buf;
 
-  buf = (char *) Alloc( len + 1 );
+  AllocF( char *, buf, len + 1 );
 
   va_start( args, format );
 

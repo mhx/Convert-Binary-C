@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/04/17 13:39:05 +0100 $
-* $Revision: 7 $
-* $Snapshot: /Convert-Binary-C/0.47 $
+* $Date: 2003/09/28 21:08:54 +0100 $
+* $Revision: 9 $
+* $Snapshot: /Convert-Binary-C/0.48 $
 * $Source: /ctlib/util/list.c $
 *
 ********************************************************************************
@@ -41,15 +41,15 @@
 /*----------*/
 /* Typedefs */
 /*----------*/
-typedef struct _Link Link;
+typedef struct _link Link;
 
-struct _Link {
+struct _link {
   void *pObj;
   Link *prev;
   Link *next;
 };
 
-struct _LinkedList {
+struct _linkedList {
   Link  link;
   Link *cur;
   int   size;
@@ -142,7 +142,7 @@ static inline Link *Insert( const LinkedList list, Link *pLink, void *pObj )
 {
   Link *pLinkNew;
 
-  pLinkNew = Alloc( sizeof( Link ) );
+  AllocF( Link *, pLinkNew, sizeof( Link ) );
 
   pLinkNew->pObj = pObj;
 
@@ -229,7 +229,7 @@ LinkedList LL_new( void )
 {
   LinkedList list;
 
-  list = Alloc( sizeof( struct _LinkedList ) );
+  AllocF( LinkedList, list, sizeof( struct _linkedList ) );
 
   list->link.prev = list->link.next = list->cur = &list->link;
   list->link.pObj = NULL;

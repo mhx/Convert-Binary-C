@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/06/23 10:41:23 +0100 $
-* $Revision: 26 $
-* $Snapshot: /Convert-Binary-C/0.47 $
+* $Date: 2003/10/02 09:30:51 +0100 $
+* $Revision: 30 $
+* $Snapshot: /Convert-Binary-C/0.48 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -106,8 +106,9 @@ colleagues include: Bruce Blodgett, and Mark Langley.
 
 /* ADDITIONAL BISON CONFIGURATION */
 
-#define YYPARSE_PARAM pState
-#define YYLEX_PARAM   pState
+#define YYMAXDEPTH        10000
+#define YYPARSE_PARAM    pState
+#define YYLEX_PARAM      pState
 #define YYERROR_VERBOSE
 
 /*
@@ -196,7 +197,7 @@ colleagues include: Bruce Blodgett, and Mark Langley.
 
 /*===== TYPEDEFS =============================================================*/
 
-struct _ParserState {
+struct _parserState {
 
   const CParseConfig *pCPC;
 
@@ -1546,6 +1547,7 @@ type_name
 	    if( !IS_LOCAL ) {
 	      if( $2.pointer_flag ) {
 	        $$.iv = PSTATE->pCPC->ptr_size * $2.multiplicator;
+	        $$.flags = 0;
 	      }
 	      else {
 	        unsigned size;
@@ -2501,7 +2503,7 @@ ParserState *c_parser_new( const CParseConfig *pCPC, CParseInfo *pCPI,
   if( pCPC == NULL || pCPI == NULL || pLexer == NULL )
     return NULL;
 
-  pState = (ParserState *) Alloc( sizeof( ParserState ) );
+  AllocF( ParserState *, pState, sizeof( ParserState ) );
 
   pState->pCPI                = pCPI;
   pState->pCPC                = pCPC;

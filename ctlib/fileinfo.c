@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/14 20:13:47 +0000 $
-* $Revision: 3 $
-* $Snapshot: /Convert-Binary-C/0.47 $
+* $Date: 2003/09/28 21:08:53 +0100 $
+* $Revision: 4 $
+* $Snapshot: /Convert-Binary-C/0.48 $
 * $Source: /ctlib/fileinfo.c $
 *
 ********************************************************************************
@@ -79,7 +79,7 @@ FileInfo *fileinfo_new( FILE *file, char *name, size_t name_len )
   if( name != NULL && name_len == 0 )
     name_len = strlen( name );
 
-  pFileInfo = (FileInfo *) Alloc( offsetof( FileInfo, name ) + name_len + 1 );
+  AllocF( FileInfo *, pFileInfo, offsetof( FileInfo, name ) + name_len + 1 );
 
   if( name != NULL )
     strcpy( pFileInfo->name, name );
@@ -156,7 +156,7 @@ FileInfo *fileinfo_clone( const FileInfo *pSrc )
   if( pSrc->name[0] != '\0' )
     size += strlen( pSrc->name );
 
-  pDest = (FileInfo *) Alloc( size );
+  AllocF( FileInfo *, pDest, size );
   memcpy( pDest, pSrc, size );
 
   return pDest;

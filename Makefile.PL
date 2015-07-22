@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/08/18 10:19:55 +0100 $
-# $Revision: 44 $
-# $Snapshot: /Convert-Binary-C/0.47 $
+# $Date: 2003/10/27 07:32:32 +0000 $
+# $Revision: 50 $
+# $Snapshot: /Convert-Binary-C/0.48 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -112,6 +112,7 @@ unshift @OBJECT, $MODULE =~ /([^:]+)$/;
 
 @DEFINE = qw(
   ABORT_IF_NO_MEM
+  NO_SLOW_MEMALLOC_CALLS
   UCPP_CONFIG
 );
 
@@ -152,7 +153,7 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
   ) : (),
   '$mem-check' => {
                enabled => 0,
-               e_flags => [qw( MEM_DEBUG )],
+               e_flags => [qw( MEM_DEBUG DEBUG_MEMALLOC TRACE_MEMALLOC )],
                d_flags => [qw()],
              },
 );
@@ -287,7 +288,7 @@ if( $Config{usemymalloc} eq 'y' and $FEATURES{threads}{enabled} ) {
 --> !! S T O P !!    Unsupported Perl configuration detected!
 --> !!!!!!!!!!!!!   ------------------------------------------
 -->
--->   You're using multithreaded Perl binary that was configured
+-->   You're using a multithreaded Perl binary that was configured
 -->   with -Dusemymalloc=y. This configuration is very dangerous
 -->   when using XS modules. Convert::Binary::C will work as long
 -->   as you're not actually using threads, but there's a 100%
@@ -422,6 +423,28 @@ sub MY::installbin {
   $ibin
 }
 
+sub MY::metafile {
+  package MY;
+  my $self = shift;
+  eval { require YAML; 1 }
+      or return $self->SUPER::metafile_target(@_);
+
+  my $node = new YAML::Node {};
+
+  $node->{name}              = $self->{DISTNAME};
+  $node->{version}           = $self->{VERSION};
+  $node->{license}           = 'perl';
+  $node->{distribution_type} = 'module';
+  $node->{generated_by}      = "$::MODULE $0";
+
+  my $dump = YAML::Dump( $node );
+
+  $dump =~ s/^(.*)$/\t\$(NOECHO) \$(ECHO) "$1" >>META.yml/gm;
+  $dump =~ s/>>META\.yml/>META.yml/;
+
+  return "metafile:\n$dump";
+}
+
 # The following routines will extract the include dependencies
 # from the source files.
 
@@ -536,7 +559,7 @@ sub check_ieee_fp
   for my $t ( @test ) {
     my $s = pack 'f', $t->{value};
     my $d = pack 'd', $t->{value};
-    unless( &is_big_endian ) { $_ = reverse $_ for $s, $d }
+    unless( &is_big_endian ) { for( $s, $d ) { $_ = reverse $_ } }
 
     $s eq $t->{single} or push @fail,
         { value => $t->{value}, check => 'single', expected => $t->{single}, got => $s }; 

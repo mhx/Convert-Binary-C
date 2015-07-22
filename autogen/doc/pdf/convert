@@ -1,0 +1,50 @@
+#!/usr/bin/perl -w
+use strict;
+use lib '.';
+use Pod::MyLaTeX;
+use Data::Dumper;
+use Symbol;
+
+my($out) = shift;
+
+my %PODs;
+
+for my $pod (@ARGV) {
+  my $podfh = gensym;
+  open $podfh, "<$pod" or die "Could not open pod file $pod: $!\n";
+  my $pod = do { local $/; <$podfh> };
+  close $podfh;
+  while( $pod =~ /^=head1\s+NAME\s+([\w:]+)\s*/mg ) {
+    $PODs{$1}=1;
+  }
+}
+
+print Dumper( \%PODs );
+
+my $outfh = gensym;
+open $outfh, ">$out" or die "Could not open output file: $!\n";
+
+# Loop over the input files
+foreach my $pod (@ARGV) {
+
+  warn "Converting $pod\n";
+
+  my $podfh = gensym;
+  open $podfh, "<$pod" or die "Could not open pod file $pod: $!\n";
+
+  my $parser = new Pod::MyLaTeX(
+                          KnownPODs => \%PODs,
+    			  MakeIndex => 1,
+    			  ReplaceNAMEwithSection => 1,
+    			  UniqueLabels => 1,
+    			  StartWithNewPage => 1,
+    			  AddPreamble => 0,
+    			  AddPostamble => 0,
+    			  Head1Level => 0,
+    			  LevelNoNum => 3,
+    			 );
+
+  $parser->parse_from_filehandle($podfh, $outfh);
+
+  close $podfh;
+}

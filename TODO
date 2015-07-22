@@ -5,6 +5,32 @@ What's to do?
 for future releases (in no special order):
 ------------------------------------------
 
+* check if there's a need for additional SvGETMAGIC's
+
+* reentrant ucpp
+
+* support for unsigned and 64-bit integer arithmetics
+
+    use ucpp's (reentrant) arith.c?
+
+* make cast operators work
+
+* support flexible array members?
+
+* have an eval method that allows to evaluate a
+  constant C expression (including preprocessor
+  expansion), so
+
+    $c->parse( <<ENDC )
+    #define FOO 1
+    #define BAR 2
+    #define VALUE (2*FOO+BAR)
+    ENDC
+
+    print $c->eval("VALUE+2");
+
+  would then print 6.
+
 * bitfields: add state to all functions processing bitfields
 
     type => current type of bitfield, to detect
@@ -34,12 +60,8 @@ for future releases (in no special order):
     #pragma pack( push, foobar )
 
 * support gcc's __attribute__, at least for struct packing
-
-* support for unsigned and 64-bit integer arithmetics
-
-    use ucpp's (reentrant) arith.c?
-
-* make cast operators work
+  (actually, this is worse than it seems, because it behaves
+  completely different than #pragma pack...)
 
 * support constant address arithmetics
 
@@ -83,8 +105,6 @@ for future releases (in no special order):
 * maybe add a more complete preprocessor testsuite?
 
 * character arrays => strings?
-
-* support flexible array members?
 
 * perhaps bless (tie) long double SV's and store binary data (?)
 

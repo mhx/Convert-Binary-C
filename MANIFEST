@@ -1,6 +1,7 @@
 C.xs
 Changes
 MANIFEST
+META.yml
 Makefile.PL
 README
 TODO
@@ -110,6 +111,8 @@ t/121_asm.t
 t/122_ieee.t
 t/123_initializer.t
 t/124_typeof.t
+t/125_magic.t
+t/126_indexed.t
 t/801_speed.t
 t/802_threads.t
 t/803_debug.t

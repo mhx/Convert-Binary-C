@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/04/17 13:39:04 +0100 $
-* $Revision: 7 $
-* $Snapshot: /Convert-Binary-C/0.47 $
+* $Date: 2003/09/28 21:08:54 +0100 $
+* $Revision: 8 $
+* $Snapshot: /Convert-Binary-C/0.48 $
 * $Source: /ctlib/pragma.y $
 *
 ********************************************************************************
@@ -264,7 +264,7 @@ static PackElement *packelem_new( unsigned size )
 {
   PackElement *pPack;
 
-  pPack = (PackElement *) Alloc( sizeof( PackElement ) );
+  AllocF( PackElement *, pPack, sizeof( PackElement ) );
 
   pPack->size = size;
 

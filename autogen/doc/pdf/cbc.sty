@@ -1,0 +1,316 @@
+\NeedsTeXFormat{LaTeX2e}[1995/12/01]
+
+%
+%  New headings
+%
+\newcommand{\myleftmark}{}
+\newcommand{\myrightmark}{}
+\newdimen\fullwidth    \fullwidth=\textwidth
+
+\advance\fullwidth by\marginparwidth
+\advance\fullwidth by\marginparsep
+\if@twocolumn\advance\fullwidth by\marginparwidth
+    \advance\fullwidth by\marginparsep \fi
+
+\def\chaptermark#1{}   \def\subsectionmark#1{}
+
+\newdimen\emptyfoot    \advance\headsep by 0.5\baselineskip
+\emptyfoot=\topmargin  \advance\emptyfoot by 1\baselineskip
+
+\if@twoside
+    \def\ps@headings{\let\@mkboth=\markboth \topmargin\emptyfoot
+        \def\@evenfoot{} \def\@oddfoot{}
+        \def\@evenhead{\hss\vbox{\hsize\fullwidth
+                        \hbox to \fullwidth{\textbf{\thepage}\quad
+                                 \textsf{\myleftmark}\hfil\textit{\leftmark}}%
+                        \vskip 1pt \hrule}\if@twocolumn\hss\fi}%
+        \def\@oddhead{\if@twocolumn\hss\fi\vbox{\hsize\fullwidth
+                       \hbox to \fullwidth{\textit{\rightmark}\hfil\textsf{\myrightmark}\quad  
+                                                \textbf{\thepage}}%
+                       \vskip 1pt \hrule}\hss}%
+        \def\chaptermark##1{\markboth
+           {{\ifnum\c@secnumdepth>\m@ne \@chapapp\ \thechapter:\enspace\fi ##1}}%
+           {} }
+        \def\sectionmark##1{\markright
+           {{\ifnum\c@secnumdepth>\z@ \thesection:\enspace\fi ##1}}} }
+\else
+    \def\ps@headings{\let\@mkboth=\markboth \topmargin\emptyfoot
+        \def\@evenfoot{} \def\@oddfoot{}
+        \def\@oddhead{\if@twocolumn\hss\fi\vbox{\hsize\fullwidth
+                       \hbox to \fullwidth{\textit{\rightmark}\hfil\textsf{\myrightmark}\quad  
+                                                \textbf{\thepage}}%
+                       \vskip 1pt \hrule}\hss}%
+        \def\chaptermark##1{\markright
+           {{\ifnum\c@secnumdepth>\m@ne \@chapapp\ \thechapter:\enspace\fi ##1}}} }
+\fi
+\pagestyle{headings}
+%
+%  some redefinitions
+%
+\NeedsTeXFormat{LaTeX2e}[1995/12/01]
+\renewcommand\tableofcontents{%
+    \if@twocolumn
+      \@restonecoltrue\onecolumn
+    \else
+      \@restonecolfalse
+    \fi
+    \chapter*{\contentsname%
+        \@mkboth{\contentsname}{\contentsname}}%
+    \addcontentsline{toc}{chapter}{\contentsname}%
+    \thispagestyle{headings}%
+    \@starttoc{toc}%
+    \if@restonecol\twocolumn\fi
+    }
+\renewcommand\listoffigures{%
+    \if@twocolumn
+      \@restonecoltrue\onecolumn
+    \else
+      \@restonecolfalse
+    \fi
+    \section*{\listfigurename
+      \@mkboth{\listfigurename}{\listfigurename}}%
+    \addcontentsline{toc}{section}{\listfigurename}%
+    \thispagestyle{headings}%
+    \@starttoc{lof}%
+    \if@restonecol\twocolumn\fi
+    }
+\renewcommand\listoftables{%
+    \if@twocolumn
+      \@restonecoltrue\onecolumn
+    \else
+      \@restonecolfalse
+    \fi
+    \section*{\listtablename
+      \@mkboth{\listtablename}{\listtablename}}%
+    \addcontentsline{toc}{section}{\listtablename}%
+    \thispagestyle{headings}%
+    \@starttoc{lot}%
+    \if@restonecol\twocolumn\fi
+    }
+\renewenvironment{thebibliography}[1]
+     { \chapter*{\bibname}%
+        \@mkboth{\bibname}{\bibname}%
+        \addcontentsline{toc}{chapter}{\bibname}%
+        \thispagestyle{headings}%
+      \list{\@biblabel{\@arabic\c@enumiv}}%
+           {\settowidth\labelwidth{\@biblabel{#1}}%
+            \leftmargin\labelwidth
+            \advance\leftmargin\labelsep
+            \@openbib@code
+            \usecounter{enumiv}%
+            \let\p@enumiv\@empty
+            \renewcommand\theenumiv{\@arabic\c@enumiv}}%
+      \sloppy
+      \clubpenalty4000
+      \@clubpenalty \clubpenalty
+      \widowpenalty4000%
+      \sfcode`\.\@m}
+     {\def\@noitemerr
+       {\@latex@warning{Empty `thebibliography' environment}}%
+      \endlist}
+\renewenvironment{theindex}
+               {\twocolumn%
+                \chapter*{\indexname}%
+                \@mkboth{\indexname}%
+                        {\indexname}%
+                \addcontentsline{toc}{chapter}{\indexname}%
+                \thispagestyle{headings}\parindent\z@
+                \parskip\z@ \@plus .3\p@\relax
+                \let\item\@idxitem}
+               {\if@restonecol\onecolumn\else\clearpage\fi}
+
+\renewenvironment{figure}[1][tbp]{%
+  \@float{figure}[#1]%
+  \centering
+  \sffamily
+  \addtolength{\abovecaptionskip}{-9pt}
+}{%
+  \end@float
+}
+
+\renewenvironment{figure*}[1][tbp]{%
+  \@dblfloat{figure}[#1]%
+  \centering
+  \sffamily
+  \addtolength{\abovecaptionskip}{-9pt}
+}{%
+  \end@dblfloat
+}
+
+\renewenvironment{table}[1][tbp]{%
+  \@float{table}[#1]%
+  \centering
+  \sffamily
+  \setlength{\@tempdima}{%
+    \abovecaptionskip
+  }%
+  \setlength{\abovecaptionskip}{%
+    \belowcaptionskip
+  }%
+  \setlength{\belowcaptionskip}{%
+    \@tempdima
+  }%
+  \addtolength{\abovecaptionskip}{6pt}
+}{%
+  \end@float
+}
+\renewenvironment{table*}[1][tbp]{
+  \@dblfloat{table}%
+  \centering
+  \sffamily
+  \setlength{\@tempdima}{%
+    \abovecaptionskip
+  }%
+  \setlength{\abovecaptionskip}{%
+    \belowcaptionskip
+  }%
+  \setlength{\belowcaptionskip}{%
+    \@tempdima
+  }%
+  \addtolength{\abovecaptionskip}{6pt}
+}{
+  \end@dblfloat
+}
+
+\def\DC@#1#2#3{%
+  \uccode`\~=`#1\relax
+  \m@th
+  \afterassignment\DC@x\count@#3\relax{#1}{#2}}
+\def\DC@x#1\relax#2#3{%
+  \ifnum\z@>\count@
+    \expandafter\DC@centre
+  \else
+    \expandafter\DC@right
+  \fi
+  {#2}{#3}{#1}}
+\def\DC@centre#1#2#3{%
+  \let\DC@end\DC@endcentre
+  \uppercase{\def~}{\egroup$\egroup\setbox\tw@=\hbox\bgroup${#2}\mathsf\bgroup}%
+  \setbox\tw@=\hbox{${\phantom{{#2}}}$}%
+  \setbox\z@=\hbox\bgroup$\mathsf\bgroup\mathcode`#1="8000 }
+\def\DC@endcentre{\egroup$\egroup
+    \ifdim \wd\z@>\wd\tw@
+      \setbox\tw@=\hbox to\wd\z@{\unhbox\tw@\hfill}%
+    \else
+      \setbox\z@=\hbox to\wd\tw@{\hfill\unhbox\z@}\fi
+    \box\z@\box\tw@}
+\def\DC@right#1#2#3{%
+  \ifx\relax#3\relax
+    \hfill
+    \let\DC@rl\bgroup
+  \else
+    \edef\DC@rl{to\the\count@\dimen@ii\bgroup\hss\hfill}%
+    \count@\@gobble#3\relax
+  \fi
+  \let\DC@end\DC@endright
+  \uppercase{\def~}{\egroup$\egroup\setbox\tw@\hbox to\dimen@\bgroup${#2}\mathsf\bgroup}%
+   \setbox\z@\hbox{$1$}\dimen@ii\wd\z@
+   \dimen@\count@\dimen@ii
+   \setbox\z@\hbox{${#2}$}\advance\dimen@\wd\z@
+   \setbox\tw@\hbox to\dimen@{}%
+   \setbox\z@\hbox\DC@rl$\mathsf\bgroup\mathcode`#1="8000 }
+\def\DC@endright{\egroup$\hfil\egroup\box\z@\box\tw@}
+
+\newcolumntype{N}{>{\small}l}
+
+\newcolumntype{V}[1]{%
+>{\small\raggedright\hspace{0pt}}p{#1}%
+}
+
+\newcolumntype{s}[1]{%
+>{\DC@{.}{.}{#1}}l%
+<{\DC@end}%
+}
+
+\newcommand{\nonumchapter}[1]{%
+\chapter*{#1}
+\addcontentsline{toc}{chapter}{#1}%
+\@mkboth{#1}{#1}%
+}
+
+\newcommand{\nonumsection}[1]{%
+\section*{#1}
+\addcontentsline{toc}{section}{#1}%
+%\@mkboth{#1}{#1}%
+}
+
+%
+% New marginpars
+%
+\def \@marginparreset {%
+        \reset@font
+        \sffamily\itshape\scriptsize
+        \ifodd\count\z@
+          \raggedright%
+        \else 
+          \raggedleft%
+        \fi
+        \@setminipage
+}
+
+\definecolor{seccolor}{cmyk}{1,0.5,0,0}
+
+%
+% All sections will now be in \sffamily
+%
+\def\@makechapterhead#1{%
+  \vspace*{30\p@}%
+  {\parindent \z@ \raggedright \normalfont
+    \ifnum \c@secnumdepth >\m@ne
+        %\Huge\sffamily\bfseries \thechapter
+        %\huge\sffamily\bfseries \@chapapp\space \thechapter
+        \par\nobreak
+        %\vskip 20\p@
+    \fi
+    \interlinepenalty\@M
+    %\Huge \sffamily\bfseries\color{seccolor}\thispagestyle{empty}\thechapter\space\space #1\par\nobreak
+    \Huge \sffamily\bfseries\color{seccolor}\thispagestyle{empty} #1\par\nobreak
+    \vskip 40\p@
+  }}
+\def\@schapter#1{\if@twocolumn
+                   \@topnewpage[\@makeschapterhead{#1}]%
+                 \else
+                   \@makeschapterhead{#1}%
+                   \@afterheading
+                 \fi}
+\def\@makeschapterhead#1{%
+  \vspace*{30\p@}%
+  {\parindent \z@ \raggedright
+    \normalfont
+    \interlinepenalty\@M
+    \Huge \sffamily\bfseries\color{seccolor}\thispagestyle{empty}  #1\par\nobreak
+    \vskip 40\p@
+  }}
+
+\renewcommand\section{\@startsection {section}{1}{\z@}%
+{-3.5ex \@plus -1ex \@minus -.2ex}%
+{2.3ex \@plus.2ex}%
+{\normalfont\Large\sffamily\bfseries}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
+{-3.25ex\@plus -1ex \@minus -.2ex}%
+{1.5ex \@plus .2ex}%
+{\normalfont\large\sffamily\bfseries}}
+\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}%
+{-3.25ex\@plus -1ex \@minus -.2ex}%
+{1.5ex \@plus .2ex}%
+{\normalfont\normalsize\sffamily\bfseries}}
+\renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}%
+{3.25ex \@plus1ex \@minus.2ex}%
+{-1em}%
+{\normalfont\normalsize\sffamily\bfseries}}
+\renewcommand\subparagraph{\@startsection{subparagraph}{5}{\parindent}%
+{3.25ex \@plus1ex \@minus .2ex}%
+{-1em}%
+{\normalfont\normalsize\sffamily\bfseries}}
+
+\newcommand{\glshead}{\chapter{Glossar}\thispagestyle{headings}}
+
+\ifthenelse{\boolean{online}}{%
+\newcommand{\glspage}[1]{\hyperlink{page.#1}{\mbox{\emph{Seite~#1}}}}
+}{%
+\newcommand{\glspage}[1]{\mbox{\emph{Seite~#1}}}
+}
+
+\newcommand{\glentry}[2]{\glossary{#1@[\protect\bfseries #1] #2|glspage}}
+
+\newcommand{\printglossary}{\InputIfFileExists{\jobname.gls}{\glshead}{}}

@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2003/04/17 13:39:09 +0100 $
 # $Revision: 8 $
-# $Snapshot: /Convert-Binary-C/0.47 $
+# $Snapshot: /Convert-Binary-C/0.48 $
 # $Source: /t/116_language.t $
 #
 ################################################################################

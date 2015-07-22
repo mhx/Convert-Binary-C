@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/08/18 10:19:20 +0100 $
-# $Revision: 8 $
-# $Snapshot: /Convert-Binary-C/0.47 $
+# $Date: 2003/10/27 06:58:53 +0000 $
+# $Revision: 9 $
+# $Snapshot: /Convert-Binary-C/0.48 $
 # $Source: /ctlib/t_config.pl $
 #
 ################################################################################
@@ -47,6 +47,7 @@ use Devel::Tokenizer::C;
   EnumType
   HasCPPComments
   HasMacroVAARGS
+  OrderMembers
 );
 
 @sourcify = qw(

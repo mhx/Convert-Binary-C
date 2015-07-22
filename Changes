@@ -1,4 +1,22 @@
 ------------
+Version 0.48
+------------
+
+* added new 'OrderMembers' option: this option allows you
+  to tie all hashes returned by the unpack method to either
+  Tie::Hash::Indexed or Tie::IxHash, thus preserving the
+  order of compound members when e.g. dumping the hashes or
+  iterating through their keys/values
+
+* slightly improved performance for pack method
+
+* added META.yml
+
+* lots of code cleanups 
+
+* small bugfixes
+
+------------
 Version 0.47
 ------------
 

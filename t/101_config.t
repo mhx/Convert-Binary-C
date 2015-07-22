@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/17 13:39:06 +0100 $
-# $Revision: 18 $
-# $Snapshot: /Convert-Binary-C/0.47 $
+# $Date: 2003/10/30 09:32:11 +0000 $
+# $Revision: 19 $
+# $Snapshot: /Convert-Binary-C/0.48 $
 # $Source: /t/101_config.t $
 #
 ################################################################################
@@ -23,7 +23,7 @@ use constant FAIL    => 0;
 
 $^W = 1;
 
-BEGIN { plan tests => 1706 }
+BEGIN { plan tests => 1762 }
 
 $debug = Convert::Binary::C::feature( 'debug' );
 
@@ -43,69 +43,90 @@ $thisfile = quotemeta "at $0";
 
 sub check_config
 {
-  my $reason = shift;
+  my $opt = ref($_[0]) eq 'HASH' ? shift : {};
+  my $reason = $opt->{skip} || '';
   my $option = shift;
-  my @warn;
   my $value;
 
-  local $SIG{__WARN__} = sub { push @warn, shift };
 
   for my $config ( @_ ) {
-    @warn = ();
+    my @warn;
 
-    my $reference = $config->{out} || $config->{in};
+    {
+      local $SIG{__WARN__} = sub { push @warn, shift };
 
-    eval { $p = new Convert::Binary::C };
-    skip($reason, $@, '', "failed to create Convert::Binary::C object");
+      my $reference = $config->{out} || $config->{in};
 
-    print "# \$p->configure( $option => $config->{in} )\n";
-    eval { $p->configure( $option => $config->{in} ) };
-    if( $@ ) {
-      my $err = $@;
-      $err =~ s/^/#   /g;
-      print "# failed due to:\n$err";
+      eval { $p = new Convert::Binary::C };
+      skip($reason, $@, '', "failed to create Convert::Binary::C object");
+
+      print "# \$p->configure( $option => $config->{in} )\n";
+      eval { $p->configure( $option => $config->{in} ) };
+      if( $@ ) {
+        my $err = $@;
+        $err =~ s/^/#   /g;
+        print "# failed due to:\n$err";
+      }
+      skip( $reason, ($@ eq '' ? SUCCEED : FAIL), $config->{result},
+            "$option => $config->{in}" );
+      skip( $reason, $@, qr/$option must be.*not.*$thisfile/ ) if $config->{result} == FAIL;
+
+      print "# \$p->$option( $config->{in} )\n";
+      eval { $p->$option( $config->{in} ) };
+      if( $@ ) {
+        my $err = $@;
+        $err =~ s/^/#   /g;
+        print "# failed due to:\n$err";
+      }
+      skip( $reason, ($@ eq '' ? SUCCEED : FAIL), $config->{result},
+            "$option => $config->{in}" );
+      skip( $reason, $@, qr/$option must be.*not.*$thisfile/ ) if $config->{result} == FAIL;
+
+      if( $config->{result} == SUCCEED ) {
+        print "# \$value = \$p->configure( $option )\n";
+        eval { $value = $p->configure( $option ) };
+        skip( $reason, $@, '', "cannot get value for '$option' via configure" );
+        skip( $reason, $value, $reference, "invalid value for '$option' via configure" );
+
+        print "# \$value = \$p->$option\n";
+        eval { $value = $p->$option() };
+        skip( $reason, $@, '', "cannot get value for '$option' via $option" );
+        skip( $reason, $value, $reference, "invalid value for '$option' via $option" );
+      }
     }
-    skip( $reason, ($@ eq '' ? SUCCEED : FAIL), $config->{result},
-          "$option => $config->{in}" );
-    skip( $reason, $@, qr/$option must be.*not.*$thisfile/ ) if $config->{result} == FAIL;
 
-    print "# \$p->$option( $config->{in} )\n";
-    eval { $p->$option( $config->{in} ) };
-    if( $@ ) {
-      my $err = $@;
-      $err =~ s/^/#   /g;
-      print "# failed due to:\n$err";
+    if( exists $config->{warnings} ) {
+      my $fail = 0;
+      for my $warning ( @warn ) {
+        print "# $warning";
+        my $expected = 0;
+        $warning =~ $_ and $expected++ for @{$config->{warnings}};
+        $expected == 1 or $fail++;
+      }
+      skip( $reason, $fail, 0, "unexpected warnings issued for option '$option'" );
     }
-    skip( $reason, ($@ eq '' ? SUCCEED : FAIL), $config->{result},
-          "$option => $config->{in}" );
-    skip( $reason, $@, qr/$option must be.*not.*$thisfile/ ) if $config->{result} == FAIL;
-
-    if( $config->{result} == SUCCEED ) {
-      print "# \$value = \$p->configure( $option )\n";
-      eval { $value = $p->configure( $option ) };
-      skip( $reason, $@, '', "cannot get value for '$option' via configure" );
-      skip( $reason, $value, $reference, "invalid value for '$option' via configure" );
-
-      print "# \$value = \$p->$option\n";
-      eval { $value = $p->$option() };
-      skip( $reason, $@, '', "cannot get value for '$option' via $option" );
-      skip( $reason, $value, $reference, "invalid value for '$option' via $option" );
+    else {
+      skip( $reason, scalar @warn, 0, "warnings issued for option '$option'" );
     }
-
-    skip( $reason, scalar @warn, 0, "warnings issued for option '$option'" );
   }
 
-  @warn = ();
   print "# \$p->configure( $option )\n";
-  eval { $p->configure( $option ) };
+  my @warn;
+  {
+    local $SIG{__WARN__} = sub { push @warn, shift };
+    eval { $p->configure( $option ) };
+  }
   skip( $reason, $@, '', "failed to call configure in void context" );
   if( @warn ) { print "# issued warnings:\n", map "#   $_", @warn }
   skip( $reason, scalar @warn, 1, "invalid number of warnings issued" );
   skip( $reason, $warn[0], qr/Useless use of configure in void context.*$thisfile/ );
 
-  @warn = ();
   print "# \$p->$option\n";
-  eval { $p->$option() };
+  @warn = ();
+  {
+    local $SIG{__WARN__} = sub { push @warn, shift };
+    eval { $p->$option() };
+  }
   skip( $reason, $@, '', "failed to call $option in void context" );
   if( @warn ) { print "# issued warnings:\n", map "#   $_", @warn }
   skip( $reason, scalar @warn, 1, "invalid number of warnings issued" );
@@ -114,7 +135,7 @@ sub check_config
 
 sub check_config_bool
 {
-  my $reason = shift;
+  my $opt = ref($_[0]) eq 'HASH' ? shift : {};
   my $option = shift;
 
   my @tests = (
@@ -125,7 +146,7 @@ sub check_config_bool
      @refs
   );
 
-  check_config( $reason, $option, @tests );
+  check_config( $opt, $option, @tests );
 }
 
 sub check_option_strlist
@@ -276,7 +297,7 @@ sub checkrc
   @refs
 );
 
-check_config( '', 'EnumSize', @tests );
+check_config( 'EnumSize', @tests );
 
 @tests = (
   { in => -1,  result => FAIL    },
@@ -293,11 +314,11 @@ check_config( '', 'EnumSize', @tests );
   @refs
 );
 
-check_config( '', $_, @tests ) for qw( PointerSize
-                                       IntSize
-                                       ShortSize
-                                       LongSize
-                                       LongLongSize );
+check_config( $_, @tests ) for qw( PointerSize
+                                   IntSize
+                                   ShortSize
+                                   LongSize
+                                   LongLongSize );
 
 @tests = (
   { in => -1, result => FAIL    },
@@ -322,9 +343,9 @@ check_config( '', $_, @tests ) for qw( PointerSize
   @refs
 );
 
-check_config( '', $_, @tests ) for qw( FloatSize
-                                       DoubleSize
-                                       LongDoubleSize );
+check_config( $_, @tests ) for qw( FloatSize
+                                   DoubleSize
+                                   LongDoubleSize );
 
 @tests = (
   { in => -1, result => FAIL    },
@@ -349,16 +370,16 @@ check_config( '', $_, @tests ) for qw( FloatSize
   @refs
 );
 
-check_config( '', $_, @tests ) for qw( Alignment );
+check_config( $_, @tests ) for qw( Alignment );
 
-check_config( '', 'ByteOrder',
+check_config( 'ByteOrder',
   { in => 'BigEndian',    result => SUCCEED },
   { in => 'LittleEndian', result => SUCCEED },
   { in => 'NoEndian',     result => FAIL    },
   @refs
 );
 
-check_config( '', 'EnumType',
+check_config( 'EnumType',
   { in => 'Integer', result => SUCCEED },
   { in => 'String',  result => SUCCEED },
   { in => 'Both',    result => SUCCEED },
@@ -366,10 +387,10 @@ check_config( '', 'EnumType',
   @refs
 );
 
-check_config_bool( '', $_ ) for qw( UnsignedChars
-                                    Warnings
-                                    HasCPPComments
-                                    HasMacroVAARGS );
+check_config_bool( $_ ) for qw( UnsignedChars
+                                Warnings
+                                HasCPPComments
+                                HasMacroVAARGS );
 
 check_option_strlist( $_ ) for qw( Include
                                    Define
@@ -379,6 +400,24 @@ check_option_strlist( $_ ) for qw( Include
 check_option_strlist_args( $_ ) for qw( Include
                                         Define
                                         Assert);
+
+{
+  my @warn;
+
+  eval { require Tie::Hash::Indexed };
+  $@ and eval { require Tie::IxHash };
+  $@ and push @warn, qr/^Couldn't load a module for member ordering.*$thisfile/;
+
+  @tests = (
+     { in =>     0, out => 0, result => SUCCEED, warnings => [] },
+     { in =>     1, out => 1, result => SUCCEED, warnings => \@warn },
+     { in =>  4711, out => 1, result => SUCCEED, warnings => \@warn },
+     { in =>   -42, out => 1, result => SUCCEED, warnings => \@warn },
+     @refs
+  );
+
+  check_config( 'OrderMembers', @tests );
+}
 
 #===================================================================
 # check DisabledKeywords option
@@ -519,7 +558,8 @@ ok( $@, qr/Invalid method some_method called.*$thisfile/ );
   'IntSize' => 4,
   'PointerSize' => 4,
   'LongLongSize' => 8,
-  'LongDoubleSize' => 12
+  'LongDoubleSize' => 12,
+  'OrderMembers' => 0
 );
 
 eval {
@@ -555,7 +595,8 @@ ok( compare_config( \%config, $cfg ) );
   'IntSize' => 4,
   'PointerSize' => 2,
   'LongLongSize' => 8,
-  'LongDoubleSize' => 12
+  'LongDoubleSize' => 12,
+  'OrderMembers' => 0
 );
 
 @warn = ();

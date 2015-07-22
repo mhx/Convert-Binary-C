@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/09/11 15:41:19 +0100 $
-# $Revision: 52 $
-# $Snapshot: /Convert-Binary-C/0.47 $
+# $Date: 2003/10/30 07:26:55 +0000 $
+# $Revision: 55 $
+# $Snapshot: /Convert-Binary-C/0.48 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.47 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.48 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -51,8 +51,19 @@ sub AUTOLOAD
     carp "Useless use of $opt in void context";
     return;
   }
-  $opt = eval { $self->configure( $opt, @_ ) };
-  $@ =~ s/\s+at.*?C\.pm.*//s, croak $@ if $@;
+  my @warn;
+  {
+    local $SIG{__WARN__} = sub { push @warn, $_[0] };
+    $opt = eval { $self->configure( $opt, @_ ) };
+  }
+  for my $w ( @warn ) {
+    $w =~ s/\s+at.*?C\.pm.*//s;
+    carp $w;
+  }
+  if( $@ ) {
+    $@ =~ s/\s+at.*?C\.pm.*//s;
+    croak $@;
+  }
   $opt;
 }
 
@@ -787,7 +798,8 @@ Which will print something like this:
     'Include' => [
       '/usr/include'
     ],
-    'Warnings' => 0
+    'Warnings' => 0,
+    'OrderMembers' => 0
   };
 
 Since you may not always want to write a L<C<configure>|/"configure"> call
@@ -1376,6 +1388,91 @@ defined is a bit different and mimics the way they
 are defined with the C<#assert> directive:
 
   $c->configure( Assert => ['foo(bar)'] );
+
+=item C<OrderMembers> =E<gt> 0 | 1
+
+When using L<C<unpack>|/"unpack"> on compounds and
+iterating over the returned hash, the order of the
+compound members is generally not preserved due to
+the nature of hash tables. It is not even guaranteed
+that the order is the same between different runs of
+the same program. This can be very annoying if you
+simply use to dump your data structures and the
+compound members always show up in a different order.
+
+By setting C<OrderMembers> to a non-zero value, all
+hashes returned by L<C<unpack>|/"unpack"> are tied to
+a class that preserves the order of the hash keys.
+This way, all compound members will be returned in
+the correct order just as they are defined in your C
+code.
+
+  use Convert::Binary::C;
+  use Data::Dumper;
+  
+  $c = Convert::Binary::C->new->parse( <<'ENDC' );
+  struct test {
+    char one;
+    char two;
+    struct {
+      char never;
+      char change;
+      char this;
+      char order;
+    } three;
+    char four;
+  };
+  ENDC
+  
+  $data = "Convert";
+  
+  $u1 = $c->unpack( 'test', $data );
+  $c->OrderMembers(1);
+  $u2 = $c->unpack( 'test', $data );
+  
+  print Data::Dumper->Dump( [$u1, $u2], [qw(u1 u2)] );
+
+This will print something like:
+
+  $u1 = {
+    'three' => {
+      'change' => 118,
+      'order' => 114,
+      'this' => 101,
+      'never' => 110
+    },
+    'one' => 67,
+    'two' => 111,
+    'four' => 116
+  };
+  $u2 = {
+    'one' => '67',
+    'two' => '111',
+    'three' => {
+      'never' => '110',
+      'change' => '118',
+      'this' => '101',
+      'order' => '114'
+    },
+    'four' => '116'
+  };
+
+To be able to use this option, you have to install
+either the L<Tie::Hash::Indexed|Tie::Hash::Indexed> or
+the L<Tie::IxHash|Tie::IxHash> module. If both are
+installed, Convert::Binary::C will give preference
+to L<Tie::Hash::Indexed|Tie::Hash::Indexed> because
+it's faster.
+
+When using this option, you should keep in mind that
+tied hashes are significantly slower and consume
+more memory than ordinary hashes, even when the class
+they're tied to is implemented efficiently. So don't
+turn this option on if you don't have to.
+
+You can also influence hash member ordering by using
+the L<C<CBC_ORDER_MEMBERS>|/"CBC_ORDER_MEMBERS"> environment
+variable.
 
 =back
 
@@ -2388,8 +2485,8 @@ The above code would print something like this:
       'size' => 1111
     },
     '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.3/include/stddef.h' => {
-      'ctime' => 1058687450,
-      'mtime' => 1058687443,
+      'ctime' => 1065452957,
+      'mtime' => 1065452944,
       'size' => 12695
     },
     '/usr/include/string.h' => {
@@ -3268,6 +3365,16 @@ variables will simply be ignored.
 
 =head1 ENVIRONMENT
 
+=head2 C<CBC_ORDER_MEMBERS>
+
+Setting this variable to a non-zero value will globally
+turn on hash key ordering for compound members. Have a
+look at the C<OrderMembers> option for details.
+
+Setting the variable to the name of a perl module will
+additionally use this module instead of the predefined
+modules for member ordering to tie the hashes to.
+
 =head2 C<CBC_DEBUG_OPT>
 
 If Convert::Binary::C is built with debugging
@@ -3531,4 +3638,5 @@ linked to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar> and L<Data::Dumper>.
 
 =cut
+
 

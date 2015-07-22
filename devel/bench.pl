@@ -1,7 +1,20 @@
 use Convert::Binary::C;
+use Getopt::Long;
 use Data::Dumper;
 use Benchmark;
 use strict;
+
+my %opt = ( order => 0 );
+
+GetOptions(\%opt, qw( order iterations=i time=i ));
+
+exists $opt{iterations} and exists $opt{time}
+    and die "Cannot configure both iterations and time\n";
+
+my $iter = -10;
+
+$opt{iterations} and $iter =  $opt{iterations};
+$opt{time}       and $iter = -$opt{time};
 
 my $c = new Convert::Binary::C ByteOrder    => 'BigEndian',
                                IntSize      => 4,
@@ -11,6 +24,7 @@ my $c = new Convert::Binary::C ByteOrder    => 'BigEndian',
                                PointerSize  => 4,
                                EnumSize     => 0,
                                Alignment    => 8,
+                               OrderMembers => $opt{order},
                                Include      => ['t/include/perlinc',
                                                 't/include/include'];
 
@@ -84,7 +98,7 @@ if( @ARGV ) {
   $only{$_} or delete $tests{$_} for keys %tests;
 }
 
-my $res = timethese( -10, \%tests );
+my $res = timethese( $iter, \%tests );
 
 my %corr = (
   member   => scalar @o,

@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/08/03 13:22:12 +0100 $
-# $Revision: 17 $
-# $Snapshot: /Convert-Binary-C/0.47 $
+# $Date: 2003/09/27 12:26:01 +0100 $
+# $Revision: 18 $
+# $Snapshot: /Convert-Binary-C/0.48 $
 # $Source: /t/106_parse.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 79 }
+BEGIN { plan tests => 81 }
 
 #===================================================================
 # create object (1 tests)
@@ -387,5 +387,24 @@ for( keys %rc ) {
     # print "# $_ (succ = $succ, fail = $fail)\n";
   }
   skip( $debug ? '' : 'skip: no debugging', $fail == 0 && $succ > 0 );
+}
+
+#===================================================================
+# check parser stack (2 tests)
+#===================================================================
+
+my @tests = (
+  { level => 4997, error => ''           },
+  { level => 4998, error => qr/overflow/ },
+);
+
+for my $t ( @tests ) {
+  my $c = new Convert::Binary::C;
+  my $pre  = 'struct { ' x $t->{level};
+  my $post = ' x; }'     x $t->{level};
+  eval { $c->parse("typedef $pre int $post deep;") };
+  ok( $@, $t->{error} );
+  # Don't try to unpack data (or even worse, call $c->typedef('deep')).
+  # Doing so can result in a stack overflow in perl during destruction.
 }
 

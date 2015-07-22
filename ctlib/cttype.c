@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/04/17 13:39:03 +0100 $
-* $Revision: 13 $
-* $Snapshot: /Convert-Binary-C/0.47 $
+* $Date: 2003/09/28 21:08:52 +0100 $
+* $Revision: 14 $
+* $Snapshot: /Convert-Binary-C/0.48 $
 * $Source: /ctlib/cttype.c $
 *
 ********************************************************************************
@@ -43,20 +43,20 @@
 
 #define CONSTRUCT_OBJECT( type, name )                                         \
   type *name;                                                                  \
-  name = (type *) Alloc( sizeof( type ) )
+  AllocF( type *, name, sizeof( type ) )
 
 #define CLONE_OBJECT( type, dest, src )                                        \
   type *dest;                                                                  \
   if( (src) == NULL )                                                          \
     return NULL;                                                               \
-  dest = (type *) Alloc( sizeof( type ) );                                     \
+  AllocF( type *, dest, sizeof( type ) );                                      \
   memcpy( dest, src, sizeof( type ) )
 
 #define CONSTRUCT_OBJECT_IDENT( type, name )                                   \
   type *name;                                                                  \
   if( identifier && id_len == 0 )                                              \
     id_len = strlen( identifier );                                             \
-  name = (type *) Alloc( offsetof( type, identifier ) + id_len + 1 );          \
+  AllocF( type *, name, offsetof( type, identifier ) + id_len + 1 );           \
   if( identifier )                                                             \
     strcpy( name->identifier, identifier );                                    \
   else                                                                         \
@@ -69,7 +69,7 @@
     return NULL;                                                               \
   if( src->identifier[0] )                                                     \
     count += strlen( src->identifier );                                        \
-  dest = (type *) Alloc( count );                                              \
+  AllocF( type *, dest, count );                                               \
   memcpy( dest, src, count )
 
 

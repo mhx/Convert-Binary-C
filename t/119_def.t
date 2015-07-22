@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2003/09/11 15:39:45 +0100 $
 # $Revision: 4 $
-# $Snapshot: /Convert-Binary-C/0.47 $
+# $Snapshot: /Convert-Binary-C/0.48 $
 # $Source: /t/119_def.t $
 #
 ################################################################################

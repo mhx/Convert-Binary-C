@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/04/17 13:39:05 +0100 $
-* $Revision: 11 $
-* $Snapshot: /Convert-Binary-C/0.47 $
+* $Date: 2003/09/27 00:14:45 +0100 $
+* $Revision: 13 $
+* $Snapshot: /Convert-Binary-C/0.48 $
 * $Source: /ctlib/util/hash.h $
 *
 ********************************************************************************
@@ -150,7 +150,7 @@
 /**
  *  Hash Table Handle
  */
-typedef struct _HashTable * HashTable;
+typedef struct _hashTable * HashTable;
 
 /**
  *  Hash Sum
@@ -160,9 +160,9 @@ typedef unsigned long HashSum;
 /**
  *  Hash Node
  */
-typedef struct _HashNode *HashNode;
+typedef struct _hashNode *HashNode;
 
-struct _HashNode {
+struct _hashNode {
   HashNode    next;
   void       *pObj;
   HashSum     hash;
@@ -180,7 +180,6 @@ typedef void (* HTDestroyFunc)(void *);
  */
 typedef void * (* HTCloneFunc)(const void *);
 
-HashTable  HT_new( int size );
 HashTable  HT_new_ex( int size, unsigned long flags );
 void       HT_delete( HashTable table );
 void       HT_flush( HashTable table, HTDestroyFunc destroy );
@@ -220,6 +219,30 @@ int  SetDebugHash( void (*dbfunc)(const char *, ...), unsigned long dbflags );
 #else
 #define SetDebugHash( func, flags ) 0
 #endif
+
+/**
+ *  Constructor
+ *
+ *  Using the HT_new() function you create an empty hash table.
+ *
+ *  \param size         Hash table base size. You can specify
+ *                      any value between 1 and 16. Depending
+ *                      on how many elements you plan to store
+ *                      in the hash table, values from 6 to 12
+ *                      can be considered useful. The number
+ *                      of buckets created is 2^size, so if
+ *                      you specify a size of 10, 1024 buckets
+ *                      will be created and the empty hash
+ *                      table will consume about 4kB of memory.
+ *                      However, 1024 buckets will be enough
+ *                      to very efficiently manage 100000 hash
+ *                      elements.
+ *
+ *  \return A handle to the newly created hash table.
+ *
+ *  \see HT_new_ex(), HT_delete() and HT_destroy()
+ */
+#define HT_new( size ) HT_new_ex( size, 0 )
 
 /**
  *  Loop over all hash elements.

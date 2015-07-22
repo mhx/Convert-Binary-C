@@ -1,0 +1,7 @@
+quote '~'
+delim_0 " \\dotfill\\ "
+delim_1 " \\dotfill\\ "
+delim_2 " \\dotfill\\ "
+headings_flag 1
+heading_prefix "{\\huge\\sffamily\\bfseries\\raisebox{0ex}[3ex][1ex]{"
+heading_suffix "}}"

@@ -11,10 +11,10 @@ CCCONFIG  = ../../bin/ccconfig
 
 GENERATED = C.pm Cached.pm ccconfig
 
-all :: install clean html
+all :: install clean html genpdf
 
-pdf: all
-	@cd pdf && make realclean && make
+genpdf:
+	@cd pdf && make realclean && make && make clean
 
 ../../blib:
 	@cd ../.. && $(PERL) Makefile.PL && make
@@ -25,17 +25,17 @@ pm :: $(GENERATED)
 
 install :: ins_c ins_cached ins_ccconfig
 
-C.pm: module
+C.pm: module include
 	@$(BLUE) "making C.pm"
 	@$(PERL) -ne'print;/^__END__/ and exit' <$(CBC_PM) >C.pm
 	@$(PERL) ./gendoc.pl <C.pod >>C.pm
 
-Cached.pm: module
+Cached.pm: module include
 	@$(BLUE) "making Cached.pm"
 	@$(PERL) -ne'print;/^__END__/ and exit' <$(CBCC_PM) >Cached.pm
 	@$(PERL) ./gendoc.pl <Cached.pod >>Cached.pm
 
-ccconfig: module
+ccconfig: module include
 	@$(BLUE) "making ccconfig"
 	@$(PERL) -ne'print;/^__END__/ and exit' <$(CCCONFIG) >ccconfig
 	@$(PERL) ./gendoc.pl <ccconfig.pod >>ccconfig
@@ -45,6 +45,7 @@ clean:
 	@$(BLUE) "cleaning up"
 	@rm -f *.html
 	@rm -f $(GENERATED)
+	@rm -f include
 
 ins_c : C.pm
 	@if diff C.pm $(CBC_PM) >/dev/null ; then                          \
@@ -86,3 +87,6 @@ ispell:
 	@$(ISPELL) C.pod
 	@$(ISPELL) Cached.pod
 	@$(ISPELL) ccconfig.pod
+
+include:
+	@ln -s ../../t/include/include include

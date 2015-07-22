@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/04/12 03:44:13 +0100 $
-* $Revision: 8 $
-* $Snapshot: /Convert-Binary-C/0.47 $
+* $Date: 2003/09/27 12:11:52 +0100 $
+* $Revision: 9 $
+* $Snapshot: /Convert-Binary-C/0.48 $
 * $Source: /ctlib/parser.h $
 *
 ********************************************************************************
@@ -37,7 +37,7 @@
 
 /*===== TYPEDEFS =============================================================*/
 
-typedef struct _ParserState ParserState;
+typedef struct _parserState ParserState;
 
 typedef struct {
   const int   token;
