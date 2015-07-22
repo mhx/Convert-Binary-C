@@ -3,6 +3,8 @@ use strict;
 
 my($class, $version) = splice @ARGV, 0, 2;
 
+$version =~ s/_/\\_/g;
+
 my %opt = (
   a4     => {
               PAPER          => 'a4paper',
@@ -28,9 +30,7 @@ my %opt = (
   @ARGV,
 );
 
-my $cbcversion = shift;
-
-while( <DATA> ) {
+while (<DATA>) {
   s/\%\%(\w+)\%\%/$opt{$class}{$1}||$opt{$1}||''/ge;
   print;
 }

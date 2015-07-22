@@ -409,8 +409,10 @@ static void reinit_lexer_state(struct lexer_state *ls, int wb)
 	ls->ltwnl = 1;
 	ls->oline = 1;
 	ls->pending_token = 0;
+#ifndef NO_UCPP_COPY_LINE
 	ls->cli = 0;
 	ls->copy_line[COPY_LINE_LENGTH - 1] = 0;
+#endif
 	ls->ifnest = 0;
 	ls->condf[0] = ls->condf[1] = 0;
 }

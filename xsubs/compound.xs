@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/21 09:18:44 +0000 $
-# $Revision: 2 $
+# $Date: 2006/01/04 22:44:07 +0000 $
+# $Revision: 5 $
 # $Source: /xsubs/compound.xs $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -140,6 +140,8 @@ CBC::compound(...)
       }
     }
 
+    NEED_PARSE_DATA;
+
     if (items > 1)
     {
       int i;
@@ -183,7 +185,7 @@ CBC::compound(...)
         pStruct = HT_get(THIS->cpi.htStructs, name, 0, 0);
 
         if (pStruct && pStruct->tflags & limit)
-          PUSHs(sv_2mortal(get_struct_spec_def(aTHX_ pStruct)));
+          PUSHs(sv_2mortal(get_struct_spec_def(aTHX_ &THIS->cfg, pStruct)));
         else
           PUSHs(&PL_sv_undef);
       }
@@ -197,7 +199,7 @@ CBC::compound(...)
       LL_foreach(pStruct, THIS->cpi.structs)
         if (pStruct->tflags & mask)
         {
-          XPUSHs(sv_2mortal(get_struct_spec_def(aTHX_ pStruct)));
+          XPUSHs(sv_2mortal(get_struct_spec_def(aTHX_ &THIS->cfg, pStruct)));
           count++;
         }
 

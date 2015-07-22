@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/10/25 17:42:33 +0100 $
-# $Revision: 61 $
+# $Date: 2006/01/04 12:47:22 +0000 $
+# $Revision: 63 $
 # $Source: /tests/103_warnings.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -20,7 +20,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 5674 }
+BEGIN { plan tests => 5698 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -564,6 +564,9 @@ eval_test(q{
   $p->tag('int', Format => undef);                              # no error
   $p->tag('array', Format => undef);                            # no error
   $p->tag('inner.u.x', Format => undef);                        # no error
+
+  $p->tag('hasbf.bf.c', Format => 'Binary');                    # (E) Cannot use 'Format' tag on bitfields
+  $p->tag('hasbf.bf.c', ByteOrder => 'BigEndian');              # (E) Cannot use 'ByteOrder' tag on bitfields
 
 }, [0 .. 2], [qw( Convert::Binary::C Convert::Binary::C::Cached )]);
 

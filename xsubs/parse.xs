@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/21 09:18:42 +0000 $
-# $Revision: 2 $
+# $Date: 2006/01/04 16:07:53 +0000 $
+# $Revision: 4 $
 # $Source: /xsubs/parse.xs $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -60,10 +60,6 @@ CBC::parse(code)
     if (temp)
       SvREFCNT_dec(temp);
 
-    /* make sure the update is done even if there are errors */
-    update_parse_info(&THIS->cpi, &THIS->cfg);
-
-    /* this may croak */
     handle_parse_errors(aTHX_ THIS->cpi.errorStack);
 
     if (GIMME_V != G_VOID)
@@ -95,10 +91,6 @@ CBC::parse_file(file)
 #if defined(CBC_THREAD_SAFE) && !defined(UCPP_REENTRANT)
     MUTEX_UNLOCK(&gs_parse_mutex);
 #endif
-    /* make sure the update is done even if there are errors */
-    update_parse_info(&THIS->cpi, &THIS->cfg);
-
-    /* this may croak */
     handle_parse_errors(aTHX_ THIS->cpi.errorStack);
 
     if (GIMME_V != G_VOID)

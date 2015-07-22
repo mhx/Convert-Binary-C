@@ -1,3 +1,28 @@
+----------------------------
+Version 0.63_01 (2006-01-09)
+----------------------------
+
+* fix: using the Format tag on bitfield members now throws
+  an exception
+ 
+* added experimental ByteOrder tag
+
+* added ELF parser example
+
+* improve internals
+
+  o better encapsulation of the pack/unpack code
+
+  o avoid unneccessary computations
+
+  o thanks to the cachegrind tool (http://valgrind.org), some
+    expressions in the lexer code of the ucpp preprocessor
+    could be optimized, making the preprocessor more than
+    10% faster on x86 platforms; this means that parsing
+    should be about 7% faster now
+
+* improve test coverage
+
 -------------------------
 Version 0.63 (2005-12-29)
 -------------------------

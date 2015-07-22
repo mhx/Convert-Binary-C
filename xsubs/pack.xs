@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/12/01 18:04:48 +0000 $
-# $Revision: 7 $
+# $Date: 2006/01/04 23:54:29 +0000 $
+# $Revision: 13 $
 # $Source: /xsubs/pack.xs $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -34,7 +34,7 @@ CBC::pack(type, data = &PL_sv_undef, string = NULL)
     CBC_METHOD(pack);
     char *buffer;
     MemberInfo mi;
-    PackInfo pack;
+    PackHandle pack;
     SV *rv;
     dXCPT;
 
@@ -50,14 +50,17 @@ CBC::pack(type, data = &PL_sv_undef, string = NULL)
     if (string != NULL)
     {
       SvGETMAGIC(string);
+      
       if ((SvFLAGS(string) & (SVf_POK|SVp_POK)) == 0)
         Perl_croak(aTHX_ "Type of arg 3 to pack must be string");
+
       if (GIMME_V == G_VOID && SvREADONLY(string))
-        Perl_croak(aTHX_ "Modification of a read-only value "
-                         "attempted");
+        Perl_croak(aTHX_ "Modification of a read-only value attempted");
     }
 
-    if (!get_member_info(aTHX_ THIS, type, &mi))
+    NEED_PARSE_DATA;
+
+    if (!get_member_info(aTHX_ THIS, type, &mi, 0))
       Perl_croak(aTHX_ "Cannot find '%s'", type);
 
     if (mi.flags)
@@ -103,27 +106,19 @@ CBC::pack(type, data = &PL_sv_undef, string = NULL)
         Zero(buffer+len, max+1-len, char);
     }
 
-    /* may be used to grow the buffer */
-    pack.self       = ST(0);
-    pack.bufsv      = rv ? rv : string;
-
-    pack.buf.buffer = buffer;
-    pack.buf.length = mi.size;
-    pack.buf.pos    = 0;
-
-    IDLIST_INIT(&pack.idl);
-    IDLIST_PUSH(&pack.idl, ID);
-    IDLIST_SET_ID(&pack.idl, type);
+    pack = pk_create(THIS, ST(0));
+    pk_set_type(pack, type);
+    pk_set_buffer(pack, rv ? rv : string, buffer, mi.size);
 
     SvGETMAGIC(data);
 
     XCPT_TRY_START
     {
-      pack_type(aTHX_ THIS, &pack, &mi.type, mi.pDecl, mi.level, data);
+      pk_pack(aTHX_ pack, &mi.type, mi.pDecl, mi.level, data);
     }
     XCPT_TRY_END
 
-    IDLIST_FREE(&pack.idl);
+    pk_delete(pack);
 
     XCPT_CATCH
     {
@@ -160,9 +155,9 @@ CBC::unpack(type, string)
 
   PREINIT:
     CBC_METHOD(unpack);
+    char *buf;
     STRLEN len;
     MemberInfo mi;
-    PackInfo pack;
     unsigned long count;
 
   PPCODE:
@@ -175,15 +170,15 @@ CBC::unpack(type, string)
     if ((SvFLAGS(string) & (SVf_POK|SVp_POK)) == 0)
       Perl_croak(aTHX_ "Type of arg 2 to unpack must be string");
 
-    if (!get_member_info(aTHX_ THIS, type, &mi))
+    NEED_PARSE_DATA;
+
+    if (!get_member_info(aTHX_ THIS, type, &mi, 0))
       Perl_croak(aTHX_ "Cannot find '%s'", type);
 
     if (mi.flags)
       WARN_FLAGS(type, mi.flags);
 
-    pack.self       = ST(0);
-    pack.buf.buffer = SvPV(string, len);
-    pack.buf.length = len;
+    buf = SvPV(string, len);
 
     if (GIMME_V == G_SCALAR)
     {
@@ -199,6 +194,7 @@ CBC::unpack(type, string)
     {
       dXCPT;
       unsigned long i;
+      PackHandle pack;
       SV **sva;
 
       /* newHV_indexed() messes with the stack, so we cannot
@@ -207,17 +203,22 @@ CBC::unpack(type, string)
 
       Newz(0, sva, count, SV *);
 
+      pack = pk_create(THIS, ST(0));
+      pk_set_buffer(pack, NULL, buf, len);
+
       XCPT_TRY_START
       {
         for (i = 0; i < count; i++)
         {
-          pack.buf.pos = i*mi.size;
-          sva[i] = unpack_type(aTHX_ THIS, &pack, &mi.type, mi.pDecl, mi.level);
+          pk_set_buffer_pos(pack, i*mi.size);
+          sva[i] = pk_unpack(aTHX_ pack, &mi.type, mi.pDecl, mi.level);
         }
 
       }
       XCPT_TRY_END
 
+      pk_delete(pack);
+	      
       XCPT_CATCH
       {
         for (i = 0; i < count; i++)

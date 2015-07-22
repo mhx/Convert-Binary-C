@@ -1,5 +1,6 @@
 bin/ccconfig
 bin/convert.PL
+bin/elf.PL
 bin/memmap.PL
 bin/perltypes.PL
 C.xs
@@ -53,12 +54,12 @@ ctlib/fileinfo.c
 ctlib/fileinfo.h
 ctlib/layout.c
 ctlib/layout.h
-ctlib/parser.c
 ctlib/parser.h
 ctlib/parser.y
-ctlib/pragma.c
 ctlib/pragma.h
 ctlib/pragma.y
+ctlib/y_parser.c
+ctlib/y_pragma.c
 examples/README
 lib/Convert/Binary/C.pm
 lib/Convert/Binary/C/Cached.pm
@@ -116,6 +117,7 @@ tests/134_format.t
 tests/135_basic.t
 tests/136_typeinfo.t
 tests/137_parser.t
+tests/138_byteorder.t
 tests/501_bfsimple.t
 tests/502_bfmicrosoft.t
 tests/503_bfgeneric.t

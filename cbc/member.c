@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/10/19 10:31:12 +0100 $
-* $Revision: 11 $
+* $Date: 2006/01/04 23:49:59 +0000 $
+* $Revision: 15 $
 * $Source: /cbc/member.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -589,7 +589,10 @@ static int search_struct_member(Struct *pStruct, const char *elem,
   *ppSD = pStructDecl;
   *ppD  = pDecl;
 
-  return pDecl ? offset : -1;
+  if (pDecl)
+    return offset < 0 ? 0 : offset;
+
+  return -1;
 }
 
 
@@ -729,8 +732,10 @@ SV *get_member_string(pTHX_ const MemberInfo *pMI, int offset, GMSInfo *pInfo)
         } STMT_END
 
 int get_member(pTHX_ const MemberInfo *pMI, const char *member,
-               MemberInfo *pMIout, int accept_dotless_member, int dont_croak)
+               MemberInfo *pMIout, unsigned gm_flags)
 {
+  int                accept_dotless_member = gm_flags & CBC_GM_ACCEPT_DOTLESS_MEMBER;
+  const int          do_calc = (gm_flags & CBC_GM_NO_OFFSET_SIZE_CALC) == 0;
   const TypeSpec    *pType;
   const char        *c, *ixstr, *dot;
   char              *e, *elem;
@@ -777,9 +782,9 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
   state  = ST_SEARCH;
   offset = 0;
   level  = pMI->level;
-  size   = -1;
+  size   = do_calc ? -1 : 0;
 
-  if (pDecl)
+  if (do_calc && pDecl)
   {
     int i;
 
@@ -833,9 +838,13 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
           goto error;
         }
 
-        size    = pDecl->size;
-        offset += t_off;
-        level   = 0;
+        if (do_calc)
+        {
+          size    = pDecl->size;
+          offset += t_off;
+        }
+
+        level = 0;
 
         state = ST_SEARCH;
         break;
@@ -888,13 +897,16 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
 
             if (pValue->flags & V_IS_UNDEF)
             {
-              size = pDecl->item_size;
+              if (do_calc)
+              {
+                size = pDecl->item_size;
 
-              if (size <= 0)
-                fatal("pDecl->item_size is not initialized in get_member()");
+                if (size <= 0)
+                  fatal("pDecl->item_size is not initialized in get_member()");
 
-              while (dim-- > level+1)
-                size *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
+                while (dim-- > level+1)
+                  size *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
+              }
             }
             else
             {
@@ -908,16 +920,23 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
                 goto error;
               }
 
+              if (do_calc)
+              {
+                if (size < 0)
+                  fatal("size is not initialized in get_member()");
+
+                size /= dim;
+              }
+            }
+
+            if (do_calc)
+            {
               if (size < 0)
                 fatal("size is not initialized in get_member()");
 
-              size /= dim;
+              offset += index * size;
             }
 
-            if (size < 0)
-              fatal("size is not initialized in get_member()");
-
-            offset += index * size;
             level++;
           }
         }
@@ -944,7 +963,11 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
                  pType->tflags & T_TYPE &&
                  pDecl->array_flag == 0);
 
-          size  = pDecl->size;
+          if (do_calc)
+          {
+            size = pDecl->size;
+          }
+
           level = 0;
         }
 
@@ -970,7 +993,11 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
               if (*p == '\0')
               {
                 /* quit */
-                offset += atoi(c+1);
+                if (do_calc)
+                {
+                  offset += atoi(c+1);
+                }
+
                 c = p;
                 inc_c = 0;
                 break;
@@ -1050,7 +1077,7 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
 
   if (err != NULL)
   {
-    if (dont_croak)
+    if (gm_flags & CBC_GM_DONT_CROAK)
       return 0;
     Perl_croak(aTHX_ "%s", err);
   }

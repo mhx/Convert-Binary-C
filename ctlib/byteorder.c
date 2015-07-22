@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/12/26 11:27:24 +0000 $
-* $Revision: 19 $
+* $Date: 2006/01/03 12:33:58 +0000 $
+* $Revision: 22 $
 * $Source: /ctlib/byteorder.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -1125,14 +1125,14 @@ void fetch_integer(unsigned size, unsigned sign, unsigned bits, unsigned shift,
       break;
 
     case 2:
-      if (bo == AS_BO_BIG_ENDIAN)
+      if (bo == CBO_BIG_ENDIAN)
         FETCH(BE, WORD);
       else
         FETCH(LE, WORD);
       break;
 
     case 4:
-      if (bo == AS_BO_BIG_ENDIAN)
+      if (bo == CBO_BIG_ENDIAN)
         FETCH(BE, LONG);
       else
         FETCH(LE, LONG);
@@ -1140,12 +1140,12 @@ void fetch_integer(unsigned size, unsigned sign, unsigned bits, unsigned shift,
 
     case 8:
 #if ARCH_NATIVE_64_BIT_INTEGER
-      if (bo == AS_BO_BIG_ENDIAN)
+      if (bo == CBO_BIG_ENDIAN)
         FETCH(BE, LONGLONG);
       else
         FETCH(LE, LONGLONG);
 #else
-      if (bo == AS_BO_BIG_ENDIAN)
+      if (bo == CBO_BIG_ENDIAN)
       {
         GET_BE_LONG(ptr,   iv.value.u.h, u);
         GET_BE_LONG(ptr+4, iv.value.u.l, u);
@@ -1245,14 +1245,14 @@ void store_integer(unsigned size, unsigned bits, unsigned shift,
       break;
 
     case 2:
-      if (bo == AS_BO_BIG_ENDIAN)
+      if (bo == CBO_BIG_ENDIAN)
         STORE(BE, WORD);
       else
         STORE(LE, WORD);
       break;
 
     case 4:
-      if (bo == AS_BO_BIG_ENDIAN)
+      if (bo == CBO_BIG_ENDIAN)
         STORE(BE, LONG);
       else
         STORE(LE, LONG);
@@ -1260,12 +1260,12 @@ void store_integer(unsigned size, unsigned bits, unsigned shift,
 
     case 8:
 #if ARCH_NATIVE_64_BIT_INTEGER
-      if (bo == AS_BO_BIG_ENDIAN)
+      if (bo == CBO_BIG_ENDIAN)
         STORE(BE, LONGLONG);
       else
         STORE(LE, LONGLONG);
 #else
-      if (bo == AS_BO_BIG_ENDIAN)
+      if (bo == CBO_BIG_ENDIAN)
       {
         SET_BE_LONG(ptr,   iv.value.u.h);
         SET_BE_LONG(ptr+4, iv.value.u.l);

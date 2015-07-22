@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/10/19 10:31:14 +0100 $
-# $Revision: 3 $
+# $Date: 2006/01/04 22:25:16 +0000 $
+# $Revision: 6 $
 # $Source: /xsubs/def.xs $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -72,7 +72,8 @@ CBC::def(type)
       {
         mi.pDecl = NULL;
         mi.level = 0;
-        RETVAL = get_member(aTHX_ &mi, member, NULL, 0, 1) ? "member" : "";
+        RETVAL = get_member(aTHX_ &mi, member, NULL, CBC_GM_DONT_CROAK | CBC_GM_NO_OFFSET_SIZE_CALC)
+                 ? "member" : "";
       }
     }
 

@@ -1,4 +1,20 @@
 #!/usr/bin/perl -w
+################################################################################
+#
+# $Project: /Convert-Binary-C $
+# $Author: mhx $
+# $Date: 2006/01/01 09:36:50 +0000 $
+# $Revision: 3 $
+# $Source: /test.pl $
+#
+################################################################################
+#
+# Copyright (c) 2005-2006 Marcus Holland-Moritz. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the same terms as Perl itself.
+#
+################################################################################
+
 use strict;
 
 BEGIN {

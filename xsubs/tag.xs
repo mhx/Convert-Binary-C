@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/21 09:18:42 +0000 $
-# $Revision: 3 $
+# $Date: 2006/01/04 22:27:03 +0000 $
+# $Revision: 5 $
 # $Source: /xsubs/tag.xs $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -62,7 +62,7 @@ CBC::tag(type, ...)
 
     tti.type = type;
 
-    if (!get_member_info(aTHX_ THIS, type, &tti.mi))
+    if (!get_member_info(aTHX_ THIS, type, &tti.mi, CBC_GMI_NO_CALC))
       Perl_croak(aTHX_ "Cannot find '%s'", type);
 
     if (tti.mi.level != 0)

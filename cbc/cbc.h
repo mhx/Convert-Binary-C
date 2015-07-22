@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/12/26 11:27:22 +0000 $
-* $Revision: 15 $
+* $Date: 2006/01/04 16:07:50 +0000 $
+* $Revision: 21 $
 * $Source: /cbc/cbc.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -31,7 +31,6 @@
 /*===== LOCAL INCLUDES =======================================================*/
 
 #include "ctlib/arch.h"
-#include "ctlib/byteorder.h"
 #include "ctlib/ctdebug.h"
 #include "ctlib/ctparse.h"
 #include "ctlib/cttype.h"
@@ -190,9 +189,9 @@
 #endif
 
 #if ARCH_NATIVE_BYTEORDER == ARCH_BYTEORDER_BIG_ENDIAN
-#define CBC_NATIVE_BYTEORDER   AS_BO_BIG_ENDIAN
+#define CBC_NATIVE_BYTEORDER   CBO_BIG_ENDIAN
 #elif ARCH_NATIVE_BYTEORDER == ARCH_BYTEORDER_LITTLE_ENDIAN
-#define CBC_NATIVE_BYTEORDER   AS_BO_LITTLE_ENDIAN
+#define CBC_NATIVE_BYTEORDER   CBO_LITTLE_ENDIAN
 #else
 #error "unknown native byte order"
 #endif
@@ -268,10 +267,10 @@
 /* get the size of an enum */
 /*-------------------------*/
 
-#define GET_ENUM_SIZE(pES)                                                     \
-          (THIS->cfg.layout.enum_size > 0                                      \
-            ? (unsigned) THIS->cfg.layout.enum_size                            \
-            : (pES)->sizes[-THIS->cfg.layout.enum_size]) 
+#define GET_ENUM_SIZE(pCfg, pES)                                               \
+          ((pCfg)->layout.enum_size > 0                                        \
+            ? (unsigned) (pCfg)->layout.enum_size                              \
+            : (pES)->sizes[-(pCfg)->layout.enum_size]) 
 
 /*------------------------------------------------*/
 /* this is needed quite often for unnamed structs */
@@ -304,18 +303,12 @@
         } STMT_END
 
 
-#define CBC_HAVE_PARSE_DATA(ptr) ((ptr)->cpi.enums         != NULL &&          \
-                                  (ptr)->cpi.structs       != NULL &&          \
-                                  (ptr)->cpi.typedef_lists != NULL)
-
-
 /*===== TYPEDEFS =============================================================*/
 
 typedef struct {
 
   CParseConfig  cfg;
   CParseInfo    cpi;
-  CByteOrder    byteOrder;
 
   enum {
     ET_INTEGER, ET_STRING, ET_BOTH

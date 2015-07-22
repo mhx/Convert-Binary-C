@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/10/19 10:31:15 +0100 $
-# $Revision: 5 $
+# $Date: 2006/01/04 22:26:28 +0000 $
+# $Revision: 8 $
 # $Source: /xsubs/offsetof.xs $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -46,10 +46,12 @@ CBC::offsetof(type, member)
     if (*m == '\0')
       WARN((aTHX_ "Empty string passed as member expression"));
 
-    if (!get_member_info(aTHX_ THIS, type, &mi))
+    NEED_PARSE_DATA;
+
+    if (!get_member_info(aTHX_ THIS, type, &mi, 0))
       Perl_croak(aTHX_ "Cannot find '%s'", type);
 
-    (void) get_member(aTHX_ &mi, member, &mi2, 1, 0);
+    (void) get_member(aTHX_ &mi, member, &mi2, CBC_GM_ACCEPT_DOTLESS_MEMBER);
 
     if (mi2.pDecl && mi2.pDecl->bitfield_flag)
       Perl_croak(aTHX_ "Cannot use %s on bitfields", method);

@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/21 09:18:43 +0000 $
-# $Revision: 2 $
+# $Date: 2006/01/04 22:44:07 +0000 $
+# $Revision: 6 $
 # $Source: /xsubs/enum.xs $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -103,7 +103,7 @@ CBC::enum(...)
         pEnumSpec = HT_get(THIS->cpi.htEnums, name, 0, 0);
 
         if (pEnumSpec)
-          PUSHs(sv_2mortal(get_enum_spec_def(aTHX_ pEnumSpec)));
+          PUSHs(sv_2mortal(get_enum_spec_def(aTHX_ &THIS->cfg, pEnumSpec)));
         else
           PUSHs(&PL_sv_undef);
       }
@@ -120,7 +120,7 @@ CBC::enum(...)
       EXTEND(SP, size);
 
       LL_foreach(pEnumSpec, THIS->cpi.enums)
-        PUSHs(sv_2mortal(get_enum_spec_def(aTHX_ pEnumSpec)));
+        PUSHs(sv_2mortal(get_enum_spec_def(aTHX_ &THIS->cfg, pEnumSpec)));
 
       XSRETURN(size);
     }

@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/12/26 11:27:24 +0000 $
-* $Revision: 10 $
+* $Date: 2006/01/03 12:33:57 +0000 $
+* $Revision: 13 $
 * $Source: /cbc/object.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -92,7 +92,6 @@ CBC *cbc_new(pTHX)
   if (hv_store(THIS->hv, "", 0, sv, 0) == NULL)
     fatal("Couldn't store THIS into object.");
   
-  THIS->byteOrder                     = CBC_DEFAULT_BYTEORDER;
   THIS->enumType                      = CBC_DEFAULT_ENUMTYPE;
   THIS->ixhash                        = NULL;
 
@@ -110,6 +109,7 @@ CBC *cbc_new(pTHX)
   THIS->cfg.layout.long_double_size   = CBC_DEFAULT_LONG_DOUBLE_SIZE;
   THIS->cfg.layout.alignment          = CBC_DEFAULT_ALIGNMENT;
   THIS->cfg.layout.compound_alignment = CBC_DEFAULT_COMPOUND_ALIGNMENT;
+  THIS->cfg.layout.byte_order         = CBC_DEFAULT_BYTEORDER;
   THIS->cfg.layout.bflayouter         = bl_create("Generic");
 
   THIS->cfg.get_type_info             = get_type_info_generic;

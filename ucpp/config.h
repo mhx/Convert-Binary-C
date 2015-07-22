@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/14 17:42:44 +0000 $
-* $Revision: 12 $
+* $Date: 2006/01/07 14:53:25 +0000 $
+* $Revision: 14 $
 * $Source: /ucpp/config.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -32,6 +32,12 @@
 /*------------------------*/
 
 /* #define UCPP_REENTRANT */
+
+/*-------------------------*/
+/* configure ucpp features */
+/*-------------------------*/
+
+#define NO_UCPP_COPY_LINE
 
 /*------------------------*/
 /* configure ucpp pragmas */

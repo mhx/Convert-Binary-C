@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/10/25 18:55:17 +0100 $
-# $Revision: 5 $
+# $Date: 2006/01/04 17:20:48 +0000 $
+# $Revision: 10 $
 # $Source: /xsubs/configure.xs $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -40,25 +40,27 @@ CBC::configure(...)
     else if (items == 1)
       RETVAL = get_configuration(aTHX_ THIS);
     else if (items == 2)
-      (void) handle_option(aTHX_ THIS, ST(1), NULL, &RETVAL);
+      handle_option(aTHX_ THIS, ST(1), NULL, &RETVAL, NULL);
     else if (items % 2)
     {
-      int i, changes = 0;
+      int i, changes = 0, layout = 0;
+      HandleOptionResult res;
 
       for (i = 1; i < items; i += 2)
-        if (handle_option(aTHX_ THIS, ST(i), ST(i+1), NULL))
-          changes = 1;
-
-      if (changes)
       {
-        post_configure_update(aTHX_ THIS);
+        handle_option(aTHX_ THIS, ST(i), ST(i+1), NULL, &res);
+        if (res.option_modified)
+          changes = 1;
+        if (res.impacts_layout)
+          layout = 1;
+      }
+
+      if (changes && layout)
+      {
         basic_types_reset(THIS->basic);
 
-        if (CBC_HAVE_PARSE_DATA(THIS))
-        {
+        if (THIS->cpi.available && THIS->cpi.ready)
           reset_parse_info(&THIS->cpi);
-          update_parse_info(&THIS->cpi, &THIS->cfg);
-        }
       }
 
       XSRETURN(1);

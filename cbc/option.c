@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/12/26 11:27:24 +0000 $
-* $Revision: 13 $
+* $Date: 2006/01/04 17:20:46 +0000 $
+* $Revision: 19 $
 * $Source: /cbc/option.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -71,8 +71,8 @@ static void bitfields_option(pTHX_ BitfieldLayouter *layouter, SV *sv, SV **rval
 /*===== STATIC VARIABLES =====================================================*/
 
 static const StringOption ByteOrderOption[] = {
-  { AS_BO_BIG_ENDIAN,    "BigEndian"    },
-  { AS_BO_LITTLE_ENDIAN, "LittleEndian" }
+  { CBO_BIG_ENDIAN,    "BigEndian"    },
+  { CBO_LITTLE_ENDIAN, "LittleEndian" }
 };
 
 static const StringOption EnumTypeOption[] = {
@@ -745,33 +745,50 @@ void handle_string_list(pTHX_ const char *option, LinkedList list, SV *sv, SV **
 *******************************************************************************/
 
 #define START_OPTIONS                                                          \
-          int changes = 0;                                                     \
           const char *option;                                                  \
           ConfigOption cfgopt;                                                 \
+          if (p_res)                                                           \
+          {                                                                    \
+            p_res->option_modified = 0;                                        \
+            p_res->impacts_layout = 0;                                         \
+          }                                                                    \
           if (SvROK(opt))                                                      \
             Perl_croak(aTHX_ "Option name must be a string, "                  \
                              "not a reference");                               \
           switch (cfgopt = get_config_option(option = SvPV_nolen(opt))) {
 
+#define DID_CHANGE(change)                                                     \
+        STMT_START {                                                           \
+          if (p_res)                                                           \
+            p_res->option_modified = change;                                   \
+        } STMT_END
+
+#define IMPACTS_LAYOUT(layout)                                                 \
+        STMT_START {                                                           \
+          if (p_res)                                                           \
+            p_res->impacts_layout = layout;                                    \
+        } STMT_END
+
 #define POST_PROCESS      } switch (cfgopt) {
 
-#define END_OPTIONS       default: break; } return changes;
+#define END_OPTIONS       default: break; }
 
-#define OPTION( name )    case OPTION_ ## name : {
+#define OPTION(name)      case OPTION_ ## name : {
 
 #define ENDOPT            } break;
 
-#define UPDATE(option, val)                                                    \
+#define UPDATE_OPT(option, val)                                                \
         STMT_START {                                                           \
           if ((IV) THIS->option != val)                                        \
           {                                                                    \
             THIS->option = val;                                                \
-            changes = 1;                                                       \
+            DID_CHANGE(1);                                                     \
           }                                                                    \
         } STMT_END
 
-#define FLAG_OPTION(name, flag)                                                \
+#define FLAG_OPTION(name, flag, layout)                                        \
           case OPTION_ ## name :                                               \
+            IMPACTS_LAYOUT(layout);                                            \
             if (sv_val)                                                        \
             {                                                                  \
               if (SvROK(sv_val))                                               \
@@ -780,31 +797,33 @@ void handle_string_list(pTHX_ const char *option, LinkedList list, SV *sv, SV **
               else if (THIS->flag != SvIV(sv_val) ? 1 : 0)                     \
               {                                                                \
                 THIS->flag = SvIV(sv_val) ? 1 : 0;                             \
-                changes = 1;                                                   \
+                DID_CHANGE(1);                                                 \
               }                                                                \
             }                                                                  \
             if (rval)                                                          \
               *rval = newSViv(THIS->flag ? 1 : 0);                             \
             break;
 
-#define IVAL_OPTION(name, config)                                              \
+#define IVAL_OPTION(name, config, layout)                                      \
           case OPTION_ ## name :                                               \
+            IMPACTS_LAYOUT(layout);                                            \
             if (sv_val)                                                        \
             {                                                                  \
               IV val;                                                          \
               if (check_integer_option(aTHX_ name ## Option,                   \
                                        sizeof(name ## Option) / sizeof(IV),    \
                                        sv_val, &val, #name))                   \
-                UPDATE(config, val);                                           \
+                UPDATE_OPT(config, val);                                       \
             }                                                                  \
             if (rval)                                                          \
               *rval = newSViv(THIS->config);                                   \
             break;
 
-#define STRLIST_OPTION(name, config)                                           \
+#define STRLIST_OPTION(name, config, layout)                                   \
           case OPTION_ ## name :                                               \
+            IMPACTS_LAYOUT(layout);                                            \
             handle_string_list(aTHX_ #name, THIS->config, sv_val, rval);       \
-            changes = sv_val != NULL;                                          \
+            DID_CHANGE(sv_val != NULL);                                        \
             break;
 
 #define INVALID_OPTION                                                         \
@@ -812,64 +831,69 @@ void handle_string_list(pTHX_ const char *option, LinkedList list, SV *sv, SV **
             Perl_croak(aTHX_ "Invalid option '%s'", option);                   \
             break;
 
-int handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval)
+void handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval, HandleOptionResult *p_res)
 {
   START_OPTIONS
 
-    FLAG_OPTION(OrderMembers,      order_members         )
+    FLAG_OPTION(OrderMembers,      order_members,          0)
 
-    FLAG_OPTION(Warnings,          cfg.issue_warnings    )
-    FLAG_OPTION(HasCPPComments,    cfg.has_cpp_comments  )
-    FLAG_OPTION(HasMacroVAARGS,    cfg.has_macro_vaargs  )
-    FLAG_OPTION(UnsignedChars,     cfg.unsigned_chars    )
-    FLAG_OPTION(UnsignedBitfields, cfg.unsigned_bitfields)
+    FLAG_OPTION(Warnings,          cfg.issue_warnings,     0)
+    FLAG_OPTION(HasCPPComments,    cfg.has_cpp_comments,   0)
+    FLAG_OPTION(HasMacroVAARGS,    cfg.has_macro_vaargs,   0)
+    FLAG_OPTION(UnsignedChars,     cfg.unsigned_chars,     0)
+    FLAG_OPTION(UnsignedBitfields, cfg.unsigned_bitfields, 0)
 
-    IVAL_OPTION(PointerSize,       cfg.layout.ptr_size          )
-    IVAL_OPTION(EnumSize,          cfg.layout.enum_size         )
-    IVAL_OPTION(IntSize,           cfg.layout.int_size          )
-    IVAL_OPTION(CharSize,          cfg.layout.char_size         )
-    IVAL_OPTION(ShortSize,         cfg.layout.short_size        )
-    IVAL_OPTION(LongSize,          cfg.layout.long_size         )
-    IVAL_OPTION(LongLongSize,      cfg.layout.long_long_size    )
-    IVAL_OPTION(FloatSize,         cfg.layout.float_size        )
-    IVAL_OPTION(DoubleSize,        cfg.layout.double_size       )
-    IVAL_OPTION(LongDoubleSize,    cfg.layout.long_double_size  )
-    IVAL_OPTION(Alignment,         cfg.layout.alignment         )
-    IVAL_OPTION(CompoundAlignment, cfg.layout.compound_alignment)
+    IVAL_OPTION(PointerSize,       cfg.layout.ptr_size,           1)
+    IVAL_OPTION(EnumSize,          cfg.layout.enum_size,          1)
+    IVAL_OPTION(IntSize,           cfg.layout.int_size,           1)
+    IVAL_OPTION(CharSize,          cfg.layout.char_size,          1)
+    IVAL_OPTION(ShortSize,         cfg.layout.short_size,         1)
+    IVAL_OPTION(LongSize,          cfg.layout.long_size,          1)
+    IVAL_OPTION(LongLongSize,      cfg.layout.long_long_size,     1)
+    IVAL_OPTION(FloatSize,         cfg.layout.float_size,         1)
+    IVAL_OPTION(DoubleSize,        cfg.layout.double_size,        1)
+    IVAL_OPTION(LongDoubleSize,    cfg.layout.long_double_size,   1)
+    IVAL_OPTION(Alignment,         cfg.layout.alignment,          1)
+    IVAL_OPTION(CompoundAlignment, cfg.layout.compound_alignment, 1)
 
-    STRLIST_OPTION(Include, cfg.includes  )
-    STRLIST_OPTION(Define,  cfg.defines   )
-    STRLIST_OPTION(Assert,  cfg.assertions)
+    STRLIST_OPTION(Include, cfg.includes,   0)
+    STRLIST_OPTION(Define,  cfg.defines,    0)
+    STRLIST_OPTION(Assert,  cfg.assertions, 0)
 
     OPTION(DisabledKeywords)
+      IMPACTS_LAYOUT(0);
       disabled_keywords(aTHX_ &THIS->cfg.disabled_keywords, sv_val, rval,
                         &THIS->cfg.keywords);
-      changes = sv_val != NULL;
+      DID_CHANGE(sv_val != NULL);
     ENDOPT
 
     OPTION(KeywordMap)
+      IMPACTS_LAYOUT(0);
       keyword_map(aTHX_ &THIS->cfg.keyword_map, sv_val, rval);
-      changes = sv_val != NULL;
+      DID_CHANGE(sv_val != NULL);
     ENDOPT
 
     OPTION(ByteOrder)
+      IMPACTS_LAYOUT(1);
       if (sv_val)
       {
         const StringOption *pOpt = GET_STR_OPTION(ByteOrder, 0, sv_val);
-        UPDATE(byteOrder, pOpt->value);
+        UPDATE_OPT(cfg.layout.byte_order, pOpt->value);
       }
       if (rval)
       {
-        const StringOption *pOpt = GET_STR_OPTION(ByteOrder, THIS->byteOrder, NULL);
+        const StringOption *pOpt = GET_STR_OPTION(ByteOrder,
+                                     THIS->cfg.layout.byte_order, NULL);
         *rval = newSVpv(CONST_CHAR(pOpt->string), 0);
       }
     ENDOPT
 
     OPTION(EnumType)
+      IMPACTS_LAYOUT(0);
       if (sv_val)
       {
         const StringOption *pOpt = GET_STR_OPTION(EnumType, 0, sv_val);
-        UPDATE(enumType, pOpt->value);
+        UPDATE_OPT(enumType, pOpt->value);
       }
       if(rval)
       {
@@ -879,8 +903,9 @@ int handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval)
     ENDOPT
 
     OPTION(Bitfields)
+      IMPACTS_LAYOUT(1);
       bitfields_option(aTHX_ &THIS->cfg.layout.bflayouter, sv_val, rval);
-      changes = sv_val != NULL;
+      DID_CHANGE(sv_val != NULL);
     ENDOPT
 
     INVALID_OPTION
@@ -899,7 +924,7 @@ int handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval)
 #undef END_OPTIONS
 #undef OPTION
 #undef ENDOPT
-#undef UPDATE
+#undef UPDATE_OPT
 #undef FLAG_OPTION
 #undef IVAL_OPTION
 #undef STRLIST_OPTION
@@ -971,8 +996,8 @@ SV *get_configuration(pTHX_ CBC *THIS)
   keyword_map(aTHX_ &THIS->cfg.keyword_map, NULL, &sv);
   HV_STORE_CONST(hv, "KeywordMap", sv);
 
-  STRING_OPTION(ByteOrder, THIS->byteOrder)
-  STRING_OPTION(EnumType,  THIS->enumType )
+  STRING_OPTION(ByteOrder, THIS->cfg.layout.byte_order)
+  STRING_OPTION(EnumType,  THIS->enumType)
 
   bitfields_option(aTHX_ &THIS->cfg.layout.bflayouter, NULL, &sv);
   HV_STORE_CONST(hv, "Bitfields", sv);
@@ -1066,49 +1091,5 @@ SV *get_native_property(pTHX_ const char *property)
     default:
       return NULL;
   }
-}
-
-/*******************************************************************************
-*
-*   ROUTINE: post_configure_update
-*
-*   WRITTEN BY: Marcus Holland-Moritz             ON: May 2005
-*   CHANGED BY:                                   ON:
-*
-********************************************************************************
-*
-* DESCRIPTION:
-*
-*   ARGUMENTS:
-*
-*     RETURNS:
-*
-*******************************************************************************/
-
-void post_configure_update(pTHX_ CBC *THIS)
-{
-  BitfieldLayouter bl = THIS->cfg.layout.bflayouter;
-  BLPropValue val = { BLPVT_STR, { 0 } };
-  enum BLError error;
-
-  switch (THIS->byteOrder)
-  {
-    case AS_BO_BIG_ENDIAN:
-      val.v.v_str = BLPV_BIG_ENDIAN;
-      break;
-
-    case AS_BO_LITTLE_ENDIAN:
-      val.v.v_str = BLPV_LITTLE_ENDIAN;
-      break;
-
-    default:
-      fatal("invalid byte-order in post_configure_update()");
-      break;
-  }
-
-  error = bl->m->set(bl, BLP_BYTE_ORDER, &val);
-
-  if (error != BLE_NO_ERROR)
-    fatal("set byte-order failed for '%s' (%d)", bl->m->class_name(bl), error);
 }
 

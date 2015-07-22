@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/06/13 20:35:13 +0100 $
-* $Revision: 149 $
+* $Date: 2006/01/04 16:07:52 +0000 $
+* $Revision: 152 $
 * $Source: /C.xs $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -54,7 +54,6 @@
 #include "cbc/cbc.h"
 #include "cbc/debug.h"
 #include "cbc/hook.h"
-#include "cbc/idl.h"
 #include "cbc/init.h"
 #include "cbc/member.h"
 #include "cbc/object.h"
@@ -98,8 +97,18 @@
 
 #define CHECK_PARSE_DATA                                                       \
           STMT_START {                                                         \
-            if (!CBC_HAVE_PARSE_DATA(THIS))                                    \
+            if (!THIS->cpi.available)                                          \
               Perl_croak(aTHX_ "Call to %s without parse data", method);       \
+          } STMT_END
+
+#define NEED_PARSE_DATA                                                        \
+          STMT_START {                                                         \
+            if (THIS->cpi.available)                                           \
+            {                                                                  \
+              if (!THIS->cpi.ready)                                            \
+                update_parse_info(&THIS->cpi, &THIS->cfg);                     \
+              assert(THIS->cpi.ready);                                         \
+            }                                                                  \
           } STMT_END
 
 #define WARN_VOID_CONTEXT                                                      \

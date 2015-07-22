@@ -3,13 +3,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/12/26 11:28:35 +0000 $
-# $Revision: 82 $
+# $Date: 2006/01/09 18:18:05 +0000 $
+# $Revision: 88 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
 # 
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 # 
@@ -98,8 +98,8 @@ $BISON = $Config{bison} || 'bison';
   ctlib/cttype
   ctlib/fileinfo
   ctlib/layout
-  ctlib/parser
-  ctlib/pragma
+  ctlib/y_parser
+  ctlib/y_pragma
 
   ucpp/assert
   ucpp/cpp
@@ -124,13 +124,14 @@ unshift @OBJECT, $MODULE =~ /([^:]+)$/;
 # Files additionally to be removed on 'make realclean'
 
 @REALCLEAN = qw(
-  ctlib/parser.output
-  ctlib/pragma.output
+  ctlib/y_parser.output
+  ctlib/y_pragma.output
   tests/debug.out
 );
 
 @CLEAN = qw(
   $(OBJECT)
+  tests/*.vg
   tests/*.vgo
   tests/cache.cbc
 );
@@ -378,12 +379,12 @@ sub MY::postamble
     {
       cmd => '$(YACC) -v -p c_ -o {dst} {src}',
       src => 'ctlib/parser.y',
-      dst => ['ctlib/parser.c'],
+      dst => ['ctlib/y_parser.c'],
     },
     {
       cmd => '$(YACC) -v -p pragma_ -o {dst} {src}',
       src => 'ctlib/pragma.y',
-      dst => ['ctlib/pragma.c'],
+      dst => ['ctlib/y_pragma.c'],
     },
     {
       cmd => '$(PERL) {src} {dst}',
@@ -500,36 +501,45 @@ ENDWARN
   $postamble .= <<END;
 
 ctags:
-	\@ctags -f tags --totals=yes */*.[chy]
+	\@ctags --globals --members --declarations --typedefs -f tags */*.[chy]
 END
 
-  if( $::Config{ccflags} =~ /-DDEBUGGING\b/ ) {
-    my $sym = $::MODULE;
-    $sym =~ s/::/.*/g;
-    $postamble .= <<END;
+  if ($^O eq 'linux') {
+    if ($::Config{ccflags} =~ /-DDEBUGGING\b/) {
+      my $sym = $::MODULE;
+      $sym =~ s/::/.*/g;
+      $postamble .= <<END;
 
 valgrind: pure_all
 	\@export PERL_DESTRUCT_LEVEL=2; \\
 	echo PERL_DESTRUCT_LEVEL=\$\$PERL_DESTRUCT_LEVEL; \\
-	for file in tests/*.t; do \\
-	  echo checking \$\$file with valgrind...; \\
-	  valgrind \$(VALGRIND_OPTIONS) \$(PERL) -Mblib \$\$file >\$\$file.vgo 2>&1; \\
+	for file in tests/[0-8]*.t; do \\
+	  rm -f \$\$file.vg; \\
+	  if [ -f \$\$file.vgo ]; then \\
+	    echo \$\$file already tested...; \\
+	  else \\
+	    rm -f \$\$file.vgo; \\
+	    echo checking \$\$file with valgrind...; \\
+	    valgrind \$(VALGRIND_OPTIONS) \$(PERL) -w -Mblib \$\$file >\$\$file.vg 2>&1 || exit 2; \\
+	    mv \$\$file.vg \$\$file.vgo; \\
+	  fi; \\
 	  grep "==.*==.*$sym" \$\$file.vgo; \\
 	done
 END
-  }
-  else {
-    $postamble .= <<END;
+    }
+    else {
+      $postamble .= <<END;
 
 valgrind:
 	\@echo Sorry, I need a debugging version of perl for valgrind.
 END
+    }
   }
 
   $::FEATURES{'$coverage'}{enabled} and $postamble .= <<END;
 
 coverage:
-	\@for file in *.bb *.gcda; do gcov \$\$file; done
+	\@for file in *.bb *.gcda; do gcov -a -b -c -l -p -f \$\$file; done
 END
 
   $postamble;

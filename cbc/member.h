@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/10/19 10:31:14 +0100 $
-* $Revision: 3 $
+* $Date: 2006/01/04 22:21:25 +0000 $
+* $Revision: 5 $
 * $Source: /cbc/member.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -36,6 +36,10 @@
 
 
 /*===== DEFINES ==============================================================*/
+
+#define CBC_GM_ACCEPT_DOTLESS_MEMBER  0x1
+#define CBC_GM_DONT_CROAK             0x2
+#define CBC_GM_NO_OFFSET_SIZE_CALC    0x4
 
 
 /*===== TYPEDEFS =============================================================*/
@@ -65,6 +69,6 @@ SV *get_member_string(pTHX_ const MemberInfo *pMI, int offset, GMSInfo *pInfo);
 
 #define get_member CBC_get_member
 int get_member(pTHX_ const MemberInfo *pMI, const char *member,
-               MemberInfo *pMIout, int accept_dotless_member, int dont_croak);
+               MemberInfo *pMIout, unsigned gm_flags);
 
 #endif

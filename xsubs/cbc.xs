@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/05/29 09:23:03 +0100 $
-# $Revision: 5 $
+# $Date: 2006/01/04 17:20:48 +0000 $
+# $Revision: 9 $
 # $Source: /xsubs/cbc.xs $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -59,9 +59,7 @@ CBC::new(...)
       ST(0) = sv_2mortal(cbc_bless(aTHX_ THIS, CLASS));
 
       for (i = 1; i < items; i += 2)
-        (void) handle_option(aTHX_ THIS, ST(i), ST(i+1), NULL);
-
-      post_configure_update(aTHX_ THIS);
+        handle_option(aTHX_ THIS, ST(i), ST(i+1), NULL, NULL);
 
       if (gs_OrderMembers && THIS->order_members)
         load_indexed_hash_module(aTHX_ THIS);

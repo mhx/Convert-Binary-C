@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/10/25 17:42:34 +0100 $
-# $Revision: 25 $
+# $Date: 2006/01/04 22:45:32 +0000 $
+# $Revision: 27 $
 # $Source: /tests/106_parse.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -19,7 +19,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 90 }
+BEGIN { plan tests => 116 }
 
 #===================================================================
 # create object (1 tests)
@@ -408,7 +408,7 @@ for my $t ( @tests ) {
 # check parse error recovery (9 tests)
 #===================================================================
 
-$c = new Convert::Binary::C IntSize => 4;
+$c = new Convert::Binary::C IntSize => 4, EnumSize => 4;
 
 eval {
   $c->parse(<<ENDC);
@@ -438,4 +438,110 @@ ok($@, '');
 ok($u->{a}, 4711);
 ok($u->{b}, -101);
 ok($u->{c},   42);
+
+# check that another parse updates parse info
+
+eval {
+  $c->parse(<<ENDC);
+
+struct bar {
+  int a;
+  int b;
+};
+
+enum enu { A, B, C };
+
+typedef struct {
+  int x, y, z;
+} t_bar;
+
+ENDC
+};
+
+ok($@, '');
+
+$s = eval { $c->sizeof('bar') };
+
+ok($@, '');
+ok($s, 8);
+
+# check that all possible methods update the parse info
+
+$c->ByteOrder('BigEndian')->ByteOrder('LittleEndian');  # reset
+
+my $d = $c->clone;   # also check cloning here
+
+$s = eval { $c->sizeof('bar') };
+
+ok($@, '');
+ok($s, 8);
+
+$s = eval { $d->sizeof('bar') };
+
+ok($@, '');
+ok($s, 8);
+
+$c->ByteOrder('BigEndian')->ByteOrder('LittleEndian');  # reset
+
+$s = eval { $c->compound('bar') };
+
+ok($@, '');
+ok($s->{size}, 8);
+
+$c->ByteOrder('BigEndian')->ByteOrder('LittleEndian');  # reset
+
+$s = eval { $c->def('bar.a') };
+
+ok($@, '');
+ok($s, 'member');
+
+$c->ByteOrder('BigEndian')->ByteOrder('LittleEndian');  # reset
+
+$s = eval { $c->enum('enu') };
+
+ok($@, '');
+ok($s->{size}, 4);
+
+$c->ByteOrder('BigEndian')->ByteOrder('LittleEndian');  # reset
+
+$s = eval { $c->initializer('bar', { a => 1, b => 2 }) };
+
+ok($@, '');
+ok($s, qr/^\s*\{\s*1,\s*2\s*\}\s*$/);
+
+$c->ByteOrder('BigEndian')->ByteOrder('LittleEndian');  # reset
+
+$s = eval { $c->member('bar', 5) };
+
+ok($@, '');
+ok($s, '.b+1');
+
+$c->ByteOrder('BigEndian')->ByteOrder('LittleEndian');  # reset
+
+$s = eval { $c->offsetof('bar', '.b') };
+
+ok($@, '');
+ok($s, 4);
+
+$c->ByteOrder('BigEndian')->ByteOrder('LittleEndian');  # reset
+
+$s = eval { $c->pack('bar', { a => 1, b => 2 }) };
+
+ok($@, '');
+ok($s, pack('VV', 1, 2));
+
+$c->ByteOrder('BigEndian')->ByteOrder('LittleEndian');  # reset
+
+$s = eval { $c->unpack('bar', pack('VV', 42, 4711)) };
+
+ok($@, '');
+ok($s->{a}, 42);
+ok($s->{b}, 4711);
+
+$c->ByteOrder('BigEndian')->ByteOrder('LittleEndian');  # reset
+
+$s = eval { $c->typedef('t_bar') };
+
+ok($@, '');
+ok($s->{type}{size}, 12);
 

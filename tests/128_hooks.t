@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/06/24 19:29:26 +0100 $
-# $Revision: 15 $
+# $Date: 2006/01/01 09:38:17 +0000 $
+# $Revision: 16 $
 # $Source: /tests/128_hooks.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #

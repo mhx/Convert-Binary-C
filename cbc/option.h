@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/05/19 18:53:43 +0100 $
-* $Revision: 3 $
+* $Date: 2006/01/04 17:20:48 +0000 $
+* $Revision: 7 $
 * $Source: /cbc/option.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -39,6 +39,11 @@
 
 /*===== TYPEDEFS =============================================================*/
 
+typedef struct {
+  unsigned option_modified : 1;
+  unsigned impacts_layout  : 1;
+} HandleOptionResult;
+
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
@@ -46,15 +51,12 @@
 void handle_string_list(pTHX_ const char *option, LinkedList list, SV *sv, SV **rval);
 
 #define handle_option CBC_handle_option
-int handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval);
+void handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval, HandleOptionResult *p_res);
 
 #define get_configuration CBC_get_configuration
 SV *get_configuration(pTHX_ CBC *THIS);
 
 #define get_native_property CBC_get_native_property
 SV *get_native_property(pTHX_ const char *property);
-
-#define post_configure_update CBC_post_configure_update
-void post_configure_update(pTHX_ CBC *THIS);
 
 #endif

@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/05/23 10:03:24 +0100 $
-* $Revision: 8 $
+* $Date: 2006/01/03 12:33:58 +0000 $
+* $Revision: 11 $
 * $Source: /ctlib/layout.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -274,6 +274,24 @@ ErrorGTI get_type_info_generic(const LayoutParam *pLP, const TypeSpec *pTS,
 *
 *******************************************************************************/
 
+#define BL_SET_BYTE_ORDER(byte_order)                                          \
+        do {                                                                   \
+          BLPropValue pv;                                                      \
+          enum BLError error;                                                  \
+          switch (byte_order)                                                  \
+          {                                                                    \
+            case CBO_BIG_ENDIAN:    pv.v.v_str = BLPV_BIG_ENDIAN;    break;    \
+            case CBO_LITTLE_ENDIAN: pv.v.v_str = BLPV_LITTLE_ENDIAN; break;    \
+            default:                                                           \
+              fatal_error("invalid byte-order in BL_SET_BYTEORDER()");         \
+              break;                                                           \
+          }                                                                    \
+          pv.type = BLPVT_STR;                                                 \
+          error = bl->m->set(bl, BLP_BYTE_ORDER, &pv);                         \
+          if (error != BLE_NO_ERROR)                                           \
+            fatal_error(blproperror, 's', BLP_BYTE_ORDER, error);              \
+        } while (0)
+
 #define BL_SET(prop, val)                                                      \
         do {                                                                   \
           BLPropValue pv;                                                      \
@@ -329,6 +347,7 @@ void layout_compound_generic(const LayoutParam *pLP, Struct *pStruct)
                  ? alignment : LAYOUT_COMPOUND_ALIGNMENT(pLP);
 
   BL_SET(MAX_ALIGN, alignment);
+  BL_SET_BYTE_ORDER(pLP->byte_order);
 
   LL_foreach(pStructDecl, pStruct->declarations)
   {

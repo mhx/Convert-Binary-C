@@ -162,8 +162,10 @@ struct lexer_state {
 	int last;
 	int discard;
 	unsigned long utf8;
+#ifndef NO_UCPP_COPY_LINE
 	unsigned char copy_line[COPY_LINE_LENGTH];
 	int cli;
+#endif
 
 	/* output control */
 	FILE *output;

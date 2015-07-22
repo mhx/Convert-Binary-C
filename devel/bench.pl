@@ -4,11 +4,15 @@ use Data::Dumper;
 use Benchmark;
 use strict;
 
+my $t0 = time;
+
 my %opt = (
-  order => 0
+  order => 0,
+  delay => 5,
+  init  => !$ENV{CBC_DISABLE_PARSER},
 );
 
-GetOptions(\%opt, qw( order iterations=i time=i ));
+GetOptions(\%opt, qw( init! order delay=f iterations|i=i time|t=i ));
 
 exists $opt{iterations} and exists $opt{time}
     and die "Cannot configure both iterations and time\n";
@@ -36,7 +40,7 @@ my %config = (
   EnumSize     => 0,
   Alignment    => 8,
   OrderMembers => $opt{order},
-  Include      => ['t/include/perlinc', 't/include/include'],
+  Include      => ['tests/include/perlinc', 'tests/include/include'],
 );
 
 my $c = new Convert::Binary::C;
@@ -49,24 +53,28 @@ for my $k (keys %config) {
   }
 }
 
-$c->parse_file('t/include/include.c');
+$c->parse_file('tests/include/include.c');
 $c->parse_file('devel/bench.h');
-my $type = 'forfaulture';
 
-my $d = 'x' x $c->sizeof( $type );
-my $p = $c->unpack($type, $d);
-my @o = (0 .. $c->sizeof($type)-1);
-my @m = map { $c->member($type, $_) } @o;
-my @a = map { $type.$_ } @m;
+my $type = 'forfaulture';
+my($d, $p, @o, @m, @a);
+
+if ($opt{init}) {
+  $d = 'x' x $c->sizeof( $type );
+  $p = $c->unpack($type, $d);
+  @o = (0 .. $c->sizeof($type)-1);
+  @m = map { $c->member($type, $_) } @o;
+  @a = map { $type.$_ } @m;
+}
 
 my %tests = (
 
   parse        => sub {
-                    $c->clean->parse_file('t/include/include.c')->parse_file('devel/bench.h');
+                    $c->clean->parse_file('tests/include/include.c')->parse_file('devel/bench.h');
                   },
 
   parse_c      => sub {
-                    $c->clean->parse_file('t/include/include.c');
+                    $c->clean->parse_file('tests/include/include.c');
                   },
 
   parse_pp     => sub {
@@ -123,6 +131,12 @@ my %tests = (
 
 );
 
+if (@ARGV) {
+  my %only;
+  @only{@ARGV} = (1)x@ARGV;
+  $only{$_} or delete $tests{$_} for keys %tests;
+}
+
 for my $test (sort keys %tests) {
   eval { $tests{$test}->() };
   if ($@) {
@@ -132,11 +146,7 @@ for my $test (sort keys %tests) {
   }
 }
 
-if (@ARGV) {
-  my %only;
-  @only{@ARGV} = (1)x@ARGV;
-  $only{$_} or delete $tests{$_} for keys %tests;
-}
+while ((time - $t0) < $opt{delay}) { }
 
 my $res = timethese($iter, \%tests);
 

@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/05/29 09:54:10 +0100 $
-* $Revision: 54 $
+* $Date: 2006/01/04 22:23:20 +0000 $
+* $Revision: 57 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -29,6 +29,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stddef.h>
+#include <assert.h>
 
 
 /*===== LOCAL INCLUDES =======================================================*/
@@ -175,9 +176,18 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
   /* Initialize parse info structures */
   /*----------------------------------*/
 
-  if (pCPI->enums == NULL && pCPI->structs == NULL &&
-      pCPI->typedef_lists == NULL)
+  if (!pCPI->available)
   {
+    assert(pCPI->enums == NULL);
+    assert(pCPI->structs == NULL);
+    assert(pCPI->typedef_lists == NULL);
+
+    assert(pCPI->htEnumerators == NULL);
+    assert(pCPI->htEnums == NULL);
+    assert(pCPI->htStructs == NULL);
+    assert(pCPI->htTypedefs == NULL);
+    assert(pCPI->htFiles == NULL);
+
     CT_DEBUG(CTLIB, ("creating linked lists"));
 
     pCPI->enums         = LL_new();
@@ -191,6 +201,8 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
     pCPI->htFiles       = HT_new_ex(3, HT_AUTOGROW);
 
     pCPI->errorStack    = LL_new();
+
+    pCPI->available     = 1;
   }
   else if (pCPI->enums != NULL && pCPI->structs != NULL &&
            pCPI->typedef_lists != NULL)
@@ -200,6 +212,9 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
   }
   else
     fatal_error("CParseInfo is inconsistent!");
+
+  /* make sure we trigger update_parse_info() afterwards */
+  pCPI->ready = 0;
 
   /*----------------------------*/
   /* Try to open the input file */
@@ -450,6 +465,9 @@ void init_parse_info(CParseInfo *pCPI)
     pCPI->htFiles       = NULL;
 
     pCPI->errorStack    = NULL;
+
+    pCPI->available     = 0;
+    pCPI->ready         = 0;
   }
 }
 
@@ -476,21 +494,24 @@ void free_parse_info(CParseInfo *pCPI)
 
   if (pCPI)
   {
-    LL_destroy(pCPI->enums,         (LLDestroyFunc) enumspec_delete);
-    LL_destroy(pCPI->structs,       (LLDestroyFunc) struct_delete);
-    LL_destroy(pCPI->typedef_lists, (LLDestroyFunc) typedef_list_delete);
-
-    HT_destroy(pCPI->htEnumerators, NULL);
-    HT_destroy(pCPI->htEnums,       NULL);
-    HT_destroy(pCPI->htStructs,     NULL);
-    HT_destroy(pCPI->htTypedefs,    NULL);
-
-    HT_destroy(pCPI->htFiles,       (LLDestroyFunc) fileinfo_delete);
-
-    if (pCPI->errorStack)
+    if (pCPI->available)
     {
-      pop_all_errors(pCPI);
-      LL_delete(pCPI->errorStack);
+      LL_destroy(pCPI->enums,         (LLDestroyFunc) enumspec_delete);
+      LL_destroy(pCPI->structs,       (LLDestroyFunc) struct_delete);
+      LL_destroy(pCPI->typedef_lists, (LLDestroyFunc) typedef_list_delete);
+
+      HT_destroy(pCPI->htEnumerators, NULL);
+      HT_destroy(pCPI->htEnums,       NULL);
+      HT_destroy(pCPI->htStructs,     NULL);
+      HT_destroy(pCPI->htTypedefs,    NULL);
+
+      HT_destroy(pCPI->htFiles,       (LLDestroyFunc) fileinfo_delete);
+
+      if (pCPI->errorStack)
+      {
+        pop_all_errors(pCPI);
+        LL_delete(pCPI->errorStack);
+      }
     }
 
     init_parse_info(pCPI);  /* make sure everything is NULL'd */
@@ -539,6 +560,8 @@ void reset_parse_info(CParseInfo *pCPI)
       pTD->pDecl->size      = -1;
       pTD->pDecl->item_size = -1;
     }
+
+  pCPI->ready = 0;
 }
 
 /*******************************************************************************
@@ -590,6 +613,8 @@ void update_parse_info(CParseInfo *pCPI, const CParseConfig *pCPC)
           pTD->pDecl->item_size = (int) item_size;
         }
       }
+
+  pCPI->ready = 1;
 }
 
 /*******************************************************************************
@@ -638,15 +663,18 @@ void clone_parse_info(CParseInfo *pDest, const CParseInfo *pSrc)
 
   CT_DEBUG(CTLIB, ("ctparse::clone_parse_info()"));
 
-  if (pSrc->enums         == NULL || 
-      pSrc->structs       == NULL || 
-      pSrc->typedef_lists == NULL || 
-      pSrc->htEnumerators == NULL || 
-      pSrc->htEnums       == NULL || 
-      pSrc->htStructs     == NULL || 
-      pSrc->htTypedefs    == NULL || 
-      pSrc->htFiles       == NULL)
+  if (!pSrc->available)
     return;  /* don't clone empty objects */
+
+  assert(pSrc->enums != NULL);
+  assert(pSrc->structs != NULL);
+  assert(pSrc->typedef_lists != NULL);
+
+  assert(pSrc->htEnumerators != NULL);
+  assert(pSrc->htEnums != NULL);
+  assert(pSrc->htStructs != NULL);
+  assert(pSrc->htTypedefs != NULL);
+  assert(pSrc->htFiles != NULL);
 
   ptrmap = HT_new_ex(3, HT_AUTOGROW);
 
@@ -658,6 +686,8 @@ void clone_parse_info(CParseInfo *pDest, const CParseInfo *pSrc)
   pDest->htStructs     = HT_new_ex(HT_size(pSrc->htStructs), HT_AUTOGROW);
   pDest->htTypedefs    = HT_new_ex(HT_size(pSrc->htTypedefs), HT_AUTOGROW);
   pDest->errorStack    = LL_new();
+  pDest->available     = pSrc->available;
+  pDest->ready         = pSrc->ready;
 
   CT_DEBUG(CTLIB, ("cloning enums"));
 

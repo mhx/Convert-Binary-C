@@ -10,13 +10,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/21 09:18:41 +0000 $
-# $Revision: 12 $
+# $Date: 2006/01/04 12:44:18 +0000 $
+# $Revision: 14 $
 # $Source: /token/tag.pl $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -27,12 +27,17 @@ use Devel::Tokenizer::C;
 my $TAG_PRE = 'CBC_TAG';
 
 my %tags = (
-  Hooks  => {
-              vtable => 1,
-            },
-  Format => {
-              strval => [qw( String Binary )],
-            }
+  Hooks     => {
+                 vtable => 1,
+               },
+  Format    => {
+                 strval => [qw( String Binary )],
+                 verify => 1,
+               },
+  ByteOrder => {
+                 strval => [qw( BigEndian LittleEndian )],
+                 verify => 1,
+               }
 );
 
 my @tags = sort keys %tags;
@@ -103,9 +108,18 @@ ENDVTBL
                    "static TAG_CLONE($t);",
                    "static TAG_FREE($t);";
     }
-    push @tagmeth, "  { ${t}_Set, ${t}_Get, $vtbl }";
+
     push @proto, "static TAG_SET($t);",
                  "static TAG_GET($t);";
+
+    my $verify = 'NULL';
+
+    if ($tags{$t}{verify}) {
+      $verify = "${t}_Verify";
+      push @proto, "static TAG_VERIFY($t);";
+    }
+
+    push @tagmeth, "  { ${t}_Set, ${t}_Get, $verify, $vtbl }";
 
     if (exists $tags{$t}{strval}) {
       my $tagdef = tag2def($t);
@@ -218,13 +232,14 @@ $s_vtables
  *
  **********************************************************************/
 
-static const struct {
+static const struct tag_tbl_ent {
   TagSetMethod set;
   TagGetMethod get;
+  TagVerifyMethod verify;
   CtTagVtable *vtbl;
 } gs_TagTbl[] = {
 $s_tagmethods,
-  {NULL, NULL, NULL}
+  {NULL, NULL, NULL, NULL}
 };
 
 /**********************************************************************

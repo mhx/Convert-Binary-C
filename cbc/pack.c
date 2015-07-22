@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/12/26 11:27:24 +0000 $
-* $Revision: 35 $
+* $Date: 2006/01/04 13:23:30 +0000 $
+* $Revision: 44 $
 * $Source: /cbc/pack.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -37,12 +37,29 @@
 /*===== LOCAL INCLUDES =======================================================*/
 
 #include "cbc/hook.h"
+#include "cbc/idl.h"
 #include "cbc/pack.h"
 #include "cbc/tag.h"
 #include "cbc/util.h"
 
 
 /*===== DEFINES ==============================================================*/
+
+/*----------------------*/
+/* access configuration */
+/*----------------------*/
+
+#define PCONFIG  (&PACK->THIS->cfg)
+
+/*-----------------------------------*/
+/* arguments to store_/fetch_integer */
+/*-----------------------------------*/
+
+#define SF_INT_ARGS(pBI)                                                       \
+          (pBI) ? (pBI)->bits : 0,                                             \
+          (pBI) ? (pBI)->pos : 0,                                              \
+          (pBI) ? PCONFIG->layout.byte_order : PACK->order,                    \
+          pPACKBUF
 
 /*--------------------------------*/
 /* macros for buffer manipulation */
@@ -84,6 +101,34 @@
 #define IDLP_SET_ID(value)   IDLIST_SET_ID(&(PACK->idl), value)
 #define IDLP_SET_IX(value)   IDLIST_SET_IX(&(PACK->idl), value)
 
+/*---------------------------*/
+/* handling of ByteOrder tag */
+/*---------------------------*/
+
+#define dBYTEORDER           const CByteOrder old_byte_order = PACK->order
+
+#define SET_BYTEORDER(tags)                                                   \
+          STMT_START {                                                        \
+            const CtTag *BOtag = find_tag(tags, CBC_TAG_BYTE_ORDER);          \
+            if (BOtag)                                                        \
+              switch (BOtag->flags)                                           \
+              {                                                               \
+                case CBC_TAG_BYTE_ORDER_BIG_ENDIAN:                           \
+                  PACK->order = CBO_BIG_ENDIAN;                               \
+                  break;                                                      \
+                                                                              \
+                case CBC_TAG_BYTE_ORDER_LITTLE_ENDIAN:                        \
+                  PACK->order = CBO_LITTLE_ENDIAN;                            \
+                  break;                                                      \
+                                                                              \
+                default:                                                      \
+                  fatal("Unknown byte order (%d)", BOtag->flags);             \
+                  break;                                                      \
+              }                                                               \
+          } STMT_END
+
+#define RESTORE_BYTEORDER    PACK->order = old_byte_order
+
 /*------------*/
 /* some flags */
 /*------------*/
@@ -92,6 +137,15 @@
 
 
 /*===== TYPEDEFS =============================================================*/
+
+struct PackInfo {
+  Buffer     buf;
+  IDList     idl;
+  const CBC *THIS;
+  SV        *bufsv;
+  SV        *self;
+  CByteOrder order;
+};
 
 typedef enum {
   FPT_UNKNOWN,
@@ -110,23 +164,23 @@ static SV *fetch_float_sv(pPACKARGS, unsigned size, u_32 flags);
 static void store_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldInfo *pBI, SV *sv);
 static SV *fetch_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldInfo *pBI);
 
-static unsigned load_size(const CBC *THIS, u_32 *pFlags, const BitfieldInfo *pBI);
+static unsigned load_size(const CParseConfig *pCfg, u_32 *pFlags, const BitfieldInfo *pBI);
 
 static void pack_pointer(pPACKARGS, SV *sv);
 static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv, int inlined);
 static void pack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldInfo *pBI, SV *sv);
 static void pack_basic(pPACKARGS, u_32 flags, const BitfieldInfo *pBI, SV *sv);
-static void pack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags, SV *sv);
-static void pack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension,
-                                   const BitfieldInfo *pBI, SV *sv);
+static void pack_format(pPACKARGS, const CtTag *format, unsigned size, u_32 flags, SV *sv);
+static void pack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension,
+                                 const BitfieldInfo *pBI, SV *sv);
 
 static SV *unpack_pointer(pPACKARGS);
 static SV *unpack_struct(pPACKARGS, const Struct *pStruct, HV *hash);
 static SV *unpack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldInfo *pBI);
 static SV *unpack_basic(pPACKARGS, u_32 flags, const BitfieldInfo *pBI);
-static SV *unpack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags);
-static SV *unpack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension,
-                                    const BitfieldInfo *pBI);
+static SV *unpack_format(pPACKARGS, const CtTag *format, unsigned size, u_32 flags);
+static SV *unpack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension,
+                                  const BitfieldInfo *pBI);
 
 static SV *hook_call_typespec(pTHX_ SV *self, const TypeSpec *pTS,
                               enum HookId hook_id, SV *in, int mortal);
@@ -202,7 +256,7 @@ static FPType get_fp_type(u_32 flags)
           int _i;                                                              \
           u_8 *_p = (u_8 *) pPACKBUF;                                          \
           _u.f = (ftype) SvNV(sv);                                             \
-          if (THIS->byteOrder == CBC_NATIVE_BYTEORDER)                         \
+          if (PACK->order == CBC_NATIVE_BYTEORDER)                             \
           {                                                                    \
             for (_i = 0; _i < (int)sizeof(ftype); _i++)                        \
               *_p++ = _u.c[_i];                                                \
@@ -258,7 +312,7 @@ static void store_float_sv(pPACKARGS, unsigned size, u_32 flags, SV *sv)
 
 #else /* ! CBC_HAVE_IEEE_FP */
 
-  if (THIS->byteOrder != CBC_NATIVE_BYTEORDER)
+  if (PACK->order != CBC_NATIVE_BYTEORDER)
     goto non_native;
 
   switch (type)
@@ -312,7 +366,7 @@ finish:
           } _u;                                                                \
           int _i;                                                              \
           u_8 *_p = (u_8 *) pPACKBUF;                                          \
-          if (THIS->byteOrder == CBC_NATIVE_BYTEORDER)                         \
+          if (PACK->order == CBC_NATIVE_BYTEORDER)                             \
           {                                                                    \
             for (_i = 0; _i < (int)sizeof(ftype); _i++)                        \
               _u.c[_i] = *_p++;                                                \
@@ -371,7 +425,7 @@ static SV *fetch_float_sv(pPACKARGS, unsigned size, u_32 flags)
 
 #else /* ! CBC_HAVE_IEEE_FP */
 
-  if (THIS->byteOrder != CBC_NATIVE_BYTEORDER)
+  if (PACK->order != CBC_NATIVE_BYTEORDER)
     goto non_native;
 
   switch (type)
@@ -451,8 +505,7 @@ static void store_int_sv(pPACKARGS, unsigned size, unsigned sign, const Bitfield
     }
   }
 
-  store_integer(size, pBI ? pBI->bits : 0, pBI ? pBI->pos : 0,
-                THIS->byteOrder, pPACKBUF, &iv);
+  store_integer(size, SF_INT_ARGS(pBI), &iv);
 }
 
 /*******************************************************************************
@@ -506,8 +559,7 @@ static SV *fetch_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldI
 
 #endif
 
-  fetch_integer(size, sign, pBI ? pBI->bits : 0, pBI ? pBI->pos : 0,
-                THIS->byteOrder, pPACKBUF, &iv);
+  fetch_integer(size, sign, SF_INT_ARGS(pBI), &iv);
 
   if (iv.string)
     return newSVpv(iv.string, 0);
@@ -539,7 +591,7 @@ static SV *fetch_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldI
 *
 *******************************************************************************/
 
-static unsigned load_size(const CBC *THIS, u_32 *pFlags, const BitfieldInfo *pBI)
+static unsigned load_size(const CParseConfig *pCfg, u_32 *pFlags, const BitfieldInfo *pBI)
 {
   unsigned size;
 
@@ -547,7 +599,7 @@ static unsigned load_size(const CBC *THIS, u_32 *pFlags, const BitfieldInfo *pBI
   {
     size = pBI->size;
 
-    if (THIS->cfg.unsigned_bitfields && (*pFlags & (T_SIGNED | T_UNSIGNED)) == 0)
+    if (pCfg->unsigned_bitfields && (*pFlags & (T_SIGNED | T_UNSIGNED)) == 0)
       *pFlags |= T_UNSIGNED;
   }
   else
@@ -555,15 +607,15 @@ static unsigned load_size(const CBC *THIS, u_32 *pFlags, const BitfieldInfo *pBI
     u_32 flags = *pFlags;
 
 #define LOAD_SIZE(type)                                                        \
-        size = THIS->cfg.layout.type ## _size ? THIS->cfg.layout.type ## _size \
-                                              : CTLIB_ ## type ## _SIZE
+        size = pCfg->layout.type ## _size ? pCfg->layout.type ## _size         \
+                                          : CTLIB_ ## type ## _SIZE
 
     if (flags & T_VOID)  /* XXX: do we want void ? */
       size = 1;
     else if (flags & T_CHAR)
     {
       LOAD_SIZE(char);
-      if (THIS->cfg.unsigned_chars && (flags & (T_SIGNED | T_UNSIGNED)) == 0)
+      if (pCfg->unsigned_chars && (flags & (T_SIGNED | T_UNSIGNED)) == 0)
         flags |= T_UNSIGNED;
     }
     else if ((flags & (T_LONG | T_DOUBLE)) == (T_LONG | T_DOUBLE))
@@ -602,10 +654,10 @@ static unsigned load_size(const CBC *THIS, u_32 *pFlags, const BitfieldInfo *pBI
 
 static void pack_pointer(pPACKARGS, SV *sv)
 {
-  unsigned size = THIS->cfg.layout.ptr_size
-                  ? THIS->cfg.layout.ptr_size : sizeof(void *);
+  unsigned size = PCONFIG->layout.ptr_size
+                  ? PCONFIG->layout.ptr_size : sizeof(void *);
 
-  CT_DEBUG(MAIN, (XSCLASS "::pack_pointer( THIS=%p, sv=%p )", THIS, sv));
+  CT_DEBUG(MAIN, (XSCLASS "::pack_pointer(sv=%p)", sv));
 
   GROW_BUFFER(size, "insufficient space");
 
@@ -635,13 +687,14 @@ static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv, int inlined)
   StructDeclaration *pStructDecl;
   Declarator        *pDecl;
   long               pos;
+  dBYTEORDER;
 
-  CT_DEBUG(MAIN, (XSCLASS "::pack_struct( THIS=%p, pStruct=%p, sv=%p, inlined=%d )",
-           THIS, pStruct, sv, inlined));
+  CT_DEBUG(MAIN, (XSCLASS "::pack_struct(pStruct=%p, sv=%p, inlined=%d)",
+           pStruct, sv, inlined));
 
   if (pStruct->tags && !inlined)
   {
-    CtTag *tag;
+    const CtTag *tag;
 
     if ((tag = find_tag(pStruct->tags, CBC_TAG_HOOKS)) != NULL)
       sv = hook_call(aTHX_ PACK->self, pStruct->tflags & T_STRUCT ? "struct " : "union ",
@@ -652,6 +705,8 @@ static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv, int inlined)
       pack_format(aPACKARGS, tag, pStruct->size, 0, sv);
       return;
     }
+
+    SET_BYTEORDER(pStruct->tags);
   }
 
   pos = PACKPOS;
@@ -698,7 +753,7 @@ static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv, int inlined)
               else
                 pBI = NULL;
 
-              pack_type_i(aPACKARGS, &pStructDecl->type, pDecl, 0, pBI, e ? *e : NULL);
+              pack_type(aPACKARGS, &pStructDecl->type, pDecl, 0, pBI, e ? *e : NULL);
             }
           }
         }
@@ -725,6 +780,8 @@ static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv, int inlined)
       WARN((aTHX_ "'%s' should be a hash reference",
             idl_to_str(aTHX_ &(PACK->idl))));
   }
+
+  RESTORE_BYTEORDER;
 }
 
 /*******************************************************************************
@@ -746,15 +803,15 @@ static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv, int inlined)
 
 static void pack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldInfo *pBI, SV *sv)
 {
-  unsigned size = pBI ? pBI->size : GET_ENUM_SIZE(pEnumSpec);
+  unsigned size = pBI ? pBI->size : GET_ENUM_SIZE(PCONFIG, pEnumSpec);
   IV value = 0;
+  dBYTEORDER;
 
-  CT_DEBUG(MAIN, (XSCLASS "::pack_enum( THIS=%p, pEnumSpec=%p, pBI=%p sv=%p )",
-           THIS, pEnumSpec, pBI, sv));
+  CT_DEBUG(MAIN, (XSCLASS "::pack_enum(pEnumSpec=%p, pBI=%p sv=%p)", pEnumSpec, pBI, sv));
 
   if (pEnumSpec->tags)
   {
-    CtTag *tag;
+    const CtTag *tag;
 
     if ((tag = find_tag(pEnumSpec->tags, CBC_TAG_HOOKS)) != NULL)
       sv = hook_call(aTHX_ PACK->self, "enum ", pEnumSpec->identifier,
@@ -766,6 +823,8 @@ static void pack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldI
       pack_format(aPACKARGS, tag, size, 0, sv);
       return;
     }
+
+    SET_BYTEORDER(pEnumSpec->tags);
   }
 
   /* TODO: add some checks (range, perhaps even value) */
@@ -787,7 +846,7 @@ static void pack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldI
         STRLEN len;
         char *str = SvPV(sv, len);
 
-        pEnum = HT_get(THIS->cpi.htEnumerators, str, len, 0);
+        pEnum = HT_get(PACK->THIS->cpi.htEnumerators, str, len, 0);
 
         if (pEnum)
         {
@@ -813,9 +872,10 @@ static void pack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldI
     iv.value.s.l = value;
 #endif
 
-    store_integer(size, pBI ? pBI->bits : 0, pBI ? pBI->pos : 0,
-                  THIS->byteOrder, pPACKBUF, &iv);
+    store_integer(size, SF_INT_ARGS(pBI), &iv);
   }
+
+  RESTORE_BYTEORDER;
 }
 
 /*******************************************************************************
@@ -839,12 +899,12 @@ static void pack_basic(pPACKARGS, u_32 flags, const BitfieldInfo *pBI, SV *sv)
 {
   unsigned size;
 
-  CT_DEBUG(MAIN, (XSCLASS "::pack_basic( THIS=%p, flags=0x%08lX, pBI=%p sv=%p )",
-           THIS, (unsigned long) flags, pBI, sv));
+  CT_DEBUG(MAIN, (XSCLASS "::pack_basic(flags=0x%08lX, pBI=%p sv=%p)",
+           (unsigned long) flags, pBI, sv));
 
   CT_DEBUG(MAIN, ("buffer.pos=%lu, buffer.length=%lu", PACKPOS, PACKLEN));
 
-  size = load_size(THIS, &flags, pBI);
+  size = load_size(PCONFIG, &flags, pBI);
 
   GROW_BUFFER(size, "insufficient space");
 
@@ -877,10 +937,10 @@ static void pack_basic(pPACKARGS, u_32 flags, const BitfieldInfo *pBI, SV *sv)
 *
 *******************************************************************************/
 
-static void pack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags, SV *sv)
+static void pack_format(pPACKARGS, const CtTag *format, unsigned size, u_32 flags, SV *sv)
 {
-  CT_DEBUG(MAIN, (XSCLASS "::pack_format( THIS=%p, format->flags=0x%lX, size=%u, "
-                  "flags=0x%lX, sv=%p )", THIS, (unsigned long) format->flags,
+  CT_DEBUG(MAIN, (XSCLASS "::pack_format(format->flags=0x%lX, size=%u, "
+                  "flags=0x%lX, sv=%p)", (unsigned long) format->flags,
                   size, (unsigned long) flags, sv));
 
   if (flags & PACK_FLEXIBLE)
@@ -940,7 +1000,7 @@ static void pack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags, SV 
 
 /*******************************************************************************
 *
-*   ROUTINE: pack_type_i
+*   ROUTINE: pack_type
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
 *   CHANGED BY:                                   ON:
@@ -955,20 +1015,21 @@ static void pack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags, SV 
 *
 *******************************************************************************/
 
-static void pack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
-                                   int dimension, const BitfieldInfo *pBI, SV *sv)
+static void pack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
+                                 int dimension, const BitfieldInfo *pBI, SV *sv)
 {
   int dim;
+  dBYTEORDER;
 
-  CT_DEBUG(MAIN, (XSCLASS "::pack_type_i( THIS=%p, pTS=%p, pDecl=%p, "
-           "dimension=%d, pBI=%p, sv=%p )", THIS, pTS, pDecl, dimension, pBI, sv));
+  CT_DEBUG(MAIN, (XSCLASS "::pack_type(pTS=%p, pDecl=%p, dimension=%d, "
+           "pBI=%p, sv=%p)", pTS, pDecl, dimension, pBI, sv));
 
   if (pDecl && dimension == 0 && pDecl->tags)
   {
-    CtTag *tag;
+    const CtTag *tag;
 
     if ((tag = find_tag(pDecl->tags, CBC_TAG_HOOKS)) != NULL)
-      sv = hook_call(aTHX_ PACK->self, "", pDecl->identifier,
+      sv = hook_call(aTHX_ PACK->self, NULL, pDecl->identifier,
                      tag->any, HOOKID_pack, sv, 1);
 
     if ((tag = find_tag(pDecl->tags, CBC_TAG_FORMAT)) != NULL)
@@ -998,6 +1059,8 @@ static void pack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
 
       return;
     }
+
+    SET_BYTEORDER(pDecl->tags);
   }
 
   assert(pDecl == NULL || pDecl->bitfield_flag == 0 || pBI != NULL);
@@ -1044,7 +1107,7 @@ static void pack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
 
         PACKPOS = pos + i * size;
 
-        pack_type_i(aPACKARGS, pTS, pDecl, dimension+1, NULL, e ? *e : NULL);
+        pack_type(aPACKARGS, pTS, pDecl, dimension+1, NULL, e ? *e : NULL);
       }
 
       IDLP_POP;
@@ -1075,7 +1138,7 @@ static void pack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
   else if (pTS->tflags & T_TYPE)
   {
     Typedef *pTD = pTS->ptr;
-    pack_type_i(aPACKARGS, pTD->pType, pTD->pDecl, 0, pBI, sv);
+    pack_type(aPACKARGS, pTD->pType, pTD->pDecl, 0, pBI, sv);
   }
   else if(pTS->tflags & T_COMPOUND)
   {
@@ -1101,6 +1164,8 @@ static void pack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
     else
       pack_basic(aPACKARGS, pTS->tflags, pBI, sv);
   }
+
+  RESTORE_BYTEORDER;
 }
 
 /*******************************************************************************
@@ -1122,10 +1187,10 @@ static void pack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
 
 static SV *unpack_pointer(pPACKARGS)
 {
-  unsigned size = THIS->cfg.layout.ptr_size
-                  ? THIS->cfg.layout.ptr_size : sizeof(void *);
+  unsigned size = PCONFIG->layout.ptr_size
+                  ? PCONFIG->layout.ptr_size : sizeof(void *);
 
-  CT_DEBUG(MAIN, (XSCLASS "::unpack_pointer( THIS=%p )", THIS));
+  CT_DEBUG(MAIN, (XSCLASS "::unpack_pointer()"));
 
   CHECK_BUFFER(size);
 
@@ -1157,16 +1222,16 @@ static SV *unpack_struct(pPACKARGS, const Struct *pStruct, HV *hash)
   long               pos;
   int                ordered;
   SV                *sv;
-  CtTag             *hooks = NULL;
+  const CtTag       *hooks = NULL;
   dTHR;
   dXCPT;
+  dBYTEORDER;
 
-  CT_DEBUG(MAIN, (XSCLASS "::unpack_struct( THIS=%p, pStruct=%p, hash=%p )",
-           THIS, pStruct, hash));
+  CT_DEBUG(MAIN, (XSCLASS "::unpack_struct(pStruct=%p, hash=%p)", pStruct, hash));
 
   if (pStruct->tags && hash == NULL)
   {
-    CtTag *format;
+    const CtTag *format;
 
     hooks = find_tag(pStruct->tags, CBC_TAG_HOOKS);
 
@@ -1175,12 +1240,14 @@ static SV *unpack_struct(pPACKARGS, const Struct *pStruct, HV *hash)
       sv = unpack_format(aPACKARGS, format, pStruct->size, 0);
       goto handle_unpack_hook;
     }
+
+    SET_BYTEORDER(pStruct->tags);
   }
 
-  ordered = THIS->order_members && THIS->ixhash != NULL;
+  ordered = PACK->THIS->order_members && PACK->THIS->ixhash != NULL;
 
   if (h == NULL)
-    h = ordered ? newHV_indexed(aTHX_ THIS) :  newHV();
+    h = ordered ? newHV_indexed(aTHX_ PACK->THIS) :  newHV();
 
   pos = PACKPOS;
 
@@ -1224,7 +1291,7 @@ static SV *unpack_struct(pPACKARGS, const Struct *pStruct, HV *hash)
               else
                 pBI = NULL;
 
-              value = unpack_type_i(aPACKARGS, &pStructDecl->type, pDecl, 0, pBI);
+              value = unpack_type(aPACKARGS, &pStructDecl->type, pDecl, 0, pBI);
               didstore = hv_store(h, pDecl->identifier, klen, value, 0);
 
               if (ordered)
@@ -1250,6 +1317,8 @@ static SV *unpack_struct(pPACKARGS, const Struct *pStruct, HV *hash)
     }
   }
   XCPT_TRY_END
+
+  RESTORE_BYTEORDER;
 
   XCPT_CATCH
   {
@@ -1309,18 +1378,18 @@ handle_unpack_hook:
 static SV *unpack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldInfo *pBI)
 {
   Enumerator *pEnum;
-  unsigned size = pBI ? pBI->size : GET_ENUM_SIZE(pEnumSpec);
+  unsigned size = pBI ? pBI->size : GET_ENUM_SIZE(PCONFIG, pEnumSpec);
   IV value;
   SV *sv;
-  CtTag *hooks = NULL;
+  const CtTag *hooks = NULL;
   IntValue iv;
+  dBYTEORDER;
 
-  CT_DEBUG(MAIN, (XSCLASS "::unpack_enum( THIS=%p, pEnumSpec=%p, pBI=%p )",
-                 THIS, pEnumSpec, pBI));
+  CT_DEBUG(MAIN, (XSCLASS "::unpack_enum(pEnumSpec=%p, pBI=%p)", pEnumSpec, pBI));
 
   if (pEnumSpec->tags)
   {
-    CtTag *format;
+    const CtTag *format;
 
     hooks = find_tag(pEnumSpec->tags, CBC_TAG_HOOKS);
 
@@ -1330,13 +1399,14 @@ static SV *unpack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const Bitfield
       sv = unpack_format(aPACKARGS, format, size, 0);
       goto handle_unpack_hook;
     }
+
+    SET_BYTEORDER(pEnumSpec->tags);
   }
 
   CHECK_BUFFER(size);
 
   iv.string = NULL;
-  fetch_integer(size, pEnumSpec->tflags & T_SIGNED, pBI ? pBI->bits : 0,
-                pBI ? pBI->pos : 0, THIS->byteOrder, pPACKBUF, &iv);
+  fetch_integer(size, pEnumSpec->tflags & T_SIGNED, SF_INT_ARGS(pBI), &iv);
 
   if (pEnumSpec->tflags & T_SIGNED) /* TODO: handle (un)/signed correctly */
   {
@@ -1355,7 +1425,7 @@ static SV *unpack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const Bitfield
 #endif
   }
 
-  if (THIS->enumType == ET_INTEGER)
+  if (PACK->THIS->enumType == ET_INTEGER)
     sv = newSViv(value);
   else
   {
@@ -1372,7 +1442,7 @@ static SV *unpack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const Bitfield
         WARN((aTHX_ "Enumeration contains unsafe values"));
     }
 
-    switch (THIS->enumType)
+    switch (PACK->THIS->enumType)
     {
       case ET_BOTH:
         sv = newSViv(value);
@@ -1391,10 +1461,12 @@ static SV *unpack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const Bitfield
         break;
 
       default:
-        fatal("Invalid enum type (%d) in unpack_enum()!", THIS->enumType);
+        fatal("Invalid enum type (%d) in unpack_enum()!", PACK->THIS->enumType);
         break;
     }
   }
+
+  RESTORE_BYTEORDER;
 
 handle_unpack_hook:
 
@@ -1442,12 +1514,12 @@ static SV *unpack_basic(pPACKARGS, u_32 flags, const BitfieldInfo *pBI)
 {
   unsigned size;
 
-  CT_DEBUG(MAIN, (XSCLASS "::unpack_basic( THIS=%p, flags=0x%08lX, pBI=%p )",
-                  THIS, (unsigned long) flags, pBI));
+  CT_DEBUG(MAIN, (XSCLASS "::unpack_basic(flags=0x%08lX, pBI=%p)",
+           (unsigned long) flags, pBI));
 
   CT_DEBUG(MAIN, ("buffer.pos=%lu, buffer.length=%lu", PACKPOS, PACKLEN));
 
-  size = load_size(THIS, &flags, pBI);
+  size = load_size(PCONFIG, &flags, pBI);
 
   CHECK_BUFFER(size);
 
@@ -1477,13 +1549,12 @@ static SV *unpack_basic(pPACKARGS, u_32 flags, const BitfieldInfo *pBI)
 *
 *******************************************************************************/
 
-static SV *unpack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags)
+static SV *unpack_format(pPACKARGS, const CtTag *format, unsigned size, u_32 flags)
 {
   SV *sv;
 
-  CT_DEBUG(MAIN, (XSCLASS "::unpack_format( THIS=%p, format->flags=0x%lX, "
-                  "size=%u, flags=0x%lX )", THIS, (unsigned long) format->flags,
-                  size, (unsigned long) flags));
+  CT_DEBUG(MAIN, (XSCLASS "::unpack_format(format->flags=0x%lX, size=%u, flags=0x%lX)",
+           (unsigned long) format->flags, size, (unsigned long) flags));
 
   if (PACKPOS + size > PACKLEN)
     return newSVpvn("", 0);
@@ -1530,7 +1601,7 @@ static SV *unpack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags)
 
 /*******************************************************************************
 *
-*   ROUTINE: unpack_type_i
+*   ROUTINE: unpack_type
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
 *   CHANGED BY:                                   ON:
@@ -1545,19 +1616,20 @@ static SV *unpack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags)
 *
 *******************************************************************************/
 
-static SV *unpack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
-                                    int dimension, const BitfieldInfo *pBI)
+static SV *unpack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
+                                  int dimension, const BitfieldInfo *pBI)
 {
   SV *rv = NULL;
-  CtTag *hooks = NULL;
+  const CtTag *hooks = NULL;
   int dim;
+  dBYTEORDER;
 
-  CT_DEBUG(MAIN, (XSCLASS "::unpack_type_i( THIS=%p, pTS=%p, pDecl=%p, "
-                  "dimension=%d, pBI=%p )", THIS, pTS, pDecl, dimension, pBI));
+  CT_DEBUG(MAIN, (XSCLASS "::unpack_type(pTS=%p, pDecl=%p, dimension=%d, pBI=%p)",
+           pTS, pDecl, dimension, pBI));
 
   if (pDecl && dimension == 0 && pDecl->tags)
   {
-    CtTag *format;
+    const CtTag *format;
 
     hooks = find_tag(pDecl->tags, CBC_TAG_HOOKS);
 
@@ -1588,6 +1660,8 @@ static SV *unpack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl
 
       goto handle_unpack_hook;
     }
+
+    SET_BYTEORDER(pDecl->tags);
   }
 
   assert(pDecl == NULL || pDecl->bitfield_flag == 0 || pBI != NULL);
@@ -1625,14 +1699,14 @@ static SV *unpack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl
       for (i = 0; i < s; ++i)
       {
         PACKPOS = pos + i * size;
-        av_store(a, i, unpack_type_i(aPACKARGS, pTS, pDecl, dimension+1, NULL));
+        av_store(a, i, unpack_type(aPACKARGS, pTS, pDecl, dimension+1, NULL));
       }
     }
     XCPT_TRY_END
 
     XCPT_CATCH
     {
-      CT_DEBUG(MAIN, ("freeing av @ %p in unpack_type_i:%d", a, __LINE__));
+      CT_DEBUG(MAIN, ("freeing av @ %p in unpack_type:%d", a, __LINE__));
       SvREFCNT_dec((SV *) a);
       XCPT_RETHROW;
     }
@@ -1656,7 +1730,7 @@ static SV *unpack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl
 
     XCPT_CATCH
     {
-      CT_DEBUG(MAIN, ("freeing rv @ %p in unpack_type_i:%d", rv, __LINE__));
+      CT_DEBUG(MAIN, ("freeing rv @ %p in unpack_type:%d", rv, __LINE__));
       SvREFCNT_dec(rv);
       XCPT_RETHROW;
     }
@@ -1664,7 +1738,7 @@ static SV *unpack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl
   else if (pTS->tflags & T_TYPE)
   {
     Typedef *pTD = pTS->ptr;
-    rv = unpack_type_i(aPACKARGS, pTD->pType, pTD->pDecl, 0, pBI);
+    rv = unpack_type(aPACKARGS, pTD->pType, pTD->pDecl, 0, pBI);
   }
   else if (pTS->tflags & T_COMPOUND)
   {
@@ -1692,6 +1766,8 @@ static SV *unpack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl
 
   assert(rv != NULL);
 
+  RESTORE_BYTEORDER;
+
 handle_unpack_hook:
 
   if (hooks)
@@ -1703,14 +1779,14 @@ handle_unpack_hook:
 
     XCPT_TRY_START
     {
-      rv = hook_call(aTHX_ PACK->self, "", pDecl->identifier,
+      rv = hook_call(aTHX_ PACK->self, NULL, pDecl->identifier,
                      hooks->any, HOOKID_unpack, rv, 0);
     }
     XCPT_TRY_END
 
     XCPT_CATCH
     {
-      CT_DEBUG(MAIN, ("freeing rv @ %p in unpack_type_i:%d", rv, __LINE__));
+      CT_DEBUG(MAIN, ("freeing rv @ %p in unpack_type:%d", rv, __LINE__));
       SvREFCNT_dec(rv);
       XCPT_RETHROW;
     }
@@ -1748,7 +1824,7 @@ static SV *hook_call_typespec(pTHX_ SV *self, const TypeSpec *pTS,
 
     id   = p->pDecl->identifier;
     tags = p->pDecl->tags;
-    pre  = "";
+    pre  = NULL;
   }
   else if (pTS->tflags & T_COMPOUND)
   {
@@ -1769,7 +1845,7 @@ static SV *hook_call_typespec(pTHX_ SV *self, const TypeSpec *pTS,
 
   if (tags)
   {
-    CtTag *hooks = find_tag(tags, CBC_TAG_HOOKS);
+    const CtTag *hooks = find_tag(tags, CBC_TAG_HOOKS);
 
     if (hooks)
       return hook_call(aTHX_ self, pre, id, hooks->any, hook_id, in, mortal);
@@ -1783,9 +1859,9 @@ static SV *hook_call_typespec(pTHX_ SV *self, const TypeSpec *pTS,
 
 /*******************************************************************************
 *
-*   ROUTINE: pack_type
+*   ROUTINE: pk_create
 *
-*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2006
 *   CHANGED BY:                                   ON:
 *
 ********************************************************************************
@@ -1798,14 +1874,111 @@ static SV *hook_call_typespec(pTHX_ SV *self, const TypeSpec *pTS,
 *
 *******************************************************************************/
 
-void pack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension, SV *sv)
+PackHandle pk_create(const CBC *THIS, SV *self)
 {
-  pack_type_i(aPACKARGS, pTS, pDecl, dimension, NULL, sv);
+  PackHandle hdl;
+  Newz(0, hdl, 1, struct PackInfo);
+  hdl->THIS = THIS;
+  hdl->self = self;
+  return hdl;
 }
 
 /*******************************************************************************
 *
-*   ROUTINE: unpack_type
+*   ROUTINE: pk_set_type
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void pk_set_type(PackHandle hdl, const char *type)
+{
+  IDLIST_INIT(&hdl->idl);
+  IDLIST_PUSH(&hdl->idl, ID);
+  IDLIST_SET_ID(&hdl->idl, type);
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: pk_set_buffer
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void pk_set_buffer(PackHandle hdl, SV *bufsv, char *buffer, unsigned long buflen)
+{
+  hdl->bufsv = bufsv;
+  hdl->buf.buffer = buffer;
+  hdl->buf.length = buflen;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: pk_set_buffer_pos
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void pk_set_buffer_pos(PackHandle hdl, unsigned long pos)
+{
+  hdl->buf.pos = pos;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: pk_delete
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void pk_delete(PackHandle hdl)
+{
+  IDLIST_FREE(&hdl->idl);
+  Safefree(hdl);
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: pk_pack
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
 *   CHANGED BY:                                   ON:
@@ -1820,8 +1993,32 @@ void pack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dime
 *
 *******************************************************************************/
 
-SV *unpack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension)
+void pk_pack(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension, SV *sv)
 {
-  return unpack_type_i(aPACKARGS, pTS, pDecl, dimension, NULL);
+  PACK->order = PCONFIG->layout.byte_order;
+  pack_type(aPACKARGS, pTS, pDecl, dimension, NULL, sv);
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: pk_unpack
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+SV *pk_unpack(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension)
+{
+  PACK->order = PCONFIG->layout.byte_order;
+  return unpack_type(aPACKARGS, pTS, pDecl, dimension, NULL);
 }
 

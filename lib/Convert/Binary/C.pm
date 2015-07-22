@@ -10,13 +10,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/12/02 12:20:06 +0000 $
-# $Revision: 76 $
+# $Date: 2006/01/04 22:47:09 +0000 $
+# $Revision: 78 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.63 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.63_01 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -820,6 +820,166 @@ This would print something like:
     0x0000 : 12 67 F0 0F 6E 6F 0A 6E 6F 0A 6E 6F 0A 6E 6F 0A : .g..no.no.no.no.
     0x0010 : 6E 6F 0A 6E 6F 0A 6E 6F 0A 6E 6F 0A 6E 6F 0A 6E : no.no.no.no.no.n
 
+For obvious reasons, it is not allowed to attach a C<Format> tag
+to bitfield members. Trying to do so will result in an exception
+being thrown by the L<C<tag>|/"tag"> method.
+
+=head2 The ByteOrder Tag
+
+The C<ByteOrder> tag allows you to override the byte order of
+certain types or members. The implementation of this tag is
+considered experimental and may be subject to changes in the
+future.
+
+Usually it doesn't make much sense to override the byte order,
+but there may be applications where a sub-structure is packed
+in a different byte order than the surrounding structure.
+
+Take, for example, the following code:
+
+  $c = Convert::Binary::C->new(ByteOrder => 'BigEndian',
+                               OrderMembers => 1);
+  $c->parse(<<'ENDC');
+  
+  typedef unsigned short u_16;
+  
+  struct coords_3d {
+    long x, y, z;
+  };
+  
+  struct coords_msg {
+    u_16 header;
+    u_16 length;
+    struct coords_3d coords;
+  };
+  
+  ENDC
+
+Assume that while C<coords_msg> is big endian, the embedded
+coordinates C<coords_3d> are stored in little endian format
+for some reason. In C, you'll have to handle this manually.
+
+But using Convert::Binary::C, you can simply attach
+a C<ByteOrder> tag to either the C<coords_3d> structure or to
+the C<coords> member of the C<coords_msg> structure. Both
+will work in this case. The only difference is that if you
+tag the C<coords> member, C<coords_3d> will only be treated
+as little endian if you L<C<pack>|/"pack"> or L<C<unpack>|/"unpack"> the
+C<coords_msg> structure. (BTW, you could also tag all members
+of C<coords_3d> individually, but that would be inefficient.)
+
+So, let's attach the C<ByteOrder> tag to the C<coords> member:
+
+  $c->tag('coords_msg.coords', ByteOrder => 'LittleEndian');
+
+Assume the following binary message:
+
+    0x0000 : 00 2A 00 0C FF FF FF FF 02 00 00 00 2A 00 00 00 : .*..........*...
+
+If you unpack this message...
+
+  $msg = $c->unpack('coords_msg', $binary);
+
+...you will get the following data structure:
+
+  $msg = {
+    'header' => '42',
+    'length' => '12',
+    'coords' => {
+      'x' => '-1',
+      'y' => '2',
+      'z' => '42'
+    }
+  };
+
+Without the C<ByteOrder> tag, you would get:
+
+  $msg = {
+    'header' => '42',
+    'length' => '12',
+    'coords' => {
+      'x' => '-1',
+      'y' => '33554432',
+      'z' => '704643072'
+    }
+  };
+
+The C<ByteOrder> tag is a I<recursive> tag, i.e. it applies
+to all children of the tagged object recursively. Of course,
+it is also possible to override a C<ByteOrder> tag by attaching
+another C<ByteOrder> tag to a child type. Confused? Here's an
+example. In addition to tagging the C<coords> member as little
+endian, we now tag C<coords_3d.y> as big endian:
+
+  $c->tag('coords_3d.y', ByteOrder => 'BigEndian');
+  $msg = $c->unpack('coords_msg', $binary);
+
+This will return the following data structure:
+
+  $msg = {
+    'header' => '42',
+    'length' => '12',
+    'coords' => {
+      'x' => '-1',
+      'y' => '33554432',
+      'z' => '42'
+    }
+  };
+
+Note that if you tag both a type and a member of that type
+within a compound, the tag attached to the type itself has
+higher precedence. Using the example above, if you would attach
+a C<ByteOrder> tag to both C<coords_msg.coords> and C<coords_3d>,
+the tag attached to C<coords_3d> would always win.
+
+Also note that the C<ByteOrder> tag might not work as expected
+along with bitfields, which is why the implementation is considered
+experimental. Bitfields are currently B<not> affected by
+the C<ByteOrder> tag at all. This is because the byte order
+would affect the bitfield layout, and a consistent implementation
+supporting multiple layouts of the same struct would be quite
+bulky and probably slow down the whole module.
+
+If you really need the correct behaviour, you can use the
+following trick:
+
+  $le = Convert::Binary::C->new(ByteOrder => 'LittleEndian');
+  
+  $le->parse(<<'ENDC');
+  
+  typedef unsigned short u_16;
+  typedef unsigned long  u_32;
+  
+  struct message {
+    u_16 header;
+    u_16 length;
+    struct {
+      u_32 a;
+      u_32 b;
+      u_32 c :  7;
+      u_32 d :  5;
+      u_32 e : 20;
+    } data;
+  };
+  
+  ENDC
+  
+  $be = $le->clone->ByteOrder('BigEndian');
+  
+  $le->tag('message.data', Format => 'Binary', Hooks => {
+      unpack => sub { $be->unpack('message.data', @_) },
+      pack   => sub { $be->pack('message.data', @_) },
+    });
+  
+  
+  $msg = $le->unpack('message', $binary);
+
+This uses the L<C<Format>|/"The Format Tag"> and L<C<Hooks>|/"The Hooks Tag"> tags
+along with a big endian L<C<clone>|/"clone"> of the original
+little endian object. It attaches hooks to the little endian
+object and in the hooks it uses the big endian object
+to L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> the binary data.
+
 =head2 The Hooks Tag
 
 Hooks are a special kind of tag that can be extremely useful.
@@ -1144,7 +1304,7 @@ as it can already handle C<AV> pointers. And this is what we get:
 
   $VAR1 = {
     'sv_any' => {
-      'xav_array' => '137122056',
+      'xav_array' => '137146800',
       'xav_fill' => '0',
       'xav_max' => '0',
       'xof_off' => '0',
@@ -1162,12 +1322,12 @@ as it can already handle C<AV> pointers. And this is what we get:
           'xhv_riter' => '-1',
           'xhv_eiter' => '0',
           'xhv_pmroot' => '0',
-          'xhv_name' => '136850936'
+          'xhv_name' => '137367704'
         },
         'sv_refcnt' => '2',
         'sv_flags' => '536870923'
       },
-      'xav_alloc' => '137122056',
+      'xav_alloc' => '137146800',
       'xav_arylen' => '0',
       'xav_flags' => '1'
     },
@@ -1191,6 +1351,26 @@ values require hooks to be called, you'll hardly notice the
 difference (if your hooks are implemented efficiently, that is).
 But if all values would require hooks to be called, that alone
 could easily make packing and unpacking very slow.
+
+=head2 Tag Order
+
+Since it is possible to attach multiple tags to a single type,
+the order in which the tags are processed is important. Here's
+a small table that shows the processing order.
+
+  pack        unpack
+  ---------------------
+  Hooks       Format
+  Format      ByteOrder
+  ByteOrder   Hooks
+
+As a general rule, the L<C<Hooks>|/"The Hooks Tag"> tag is always
+the first thing processed when packing data, and the last thing
+processed when unpacking data.
+
+The L<C<Format>|/"The Format Tag"> and L<C<ByteOrder>|/"The ByteOrder Tag"> tags
+are exclusive, but when both are given the L<C<Format>|/"The Format Tag"> tag
+wins.
 
 =head1 METHODS
 
@@ -3650,6 +3830,7 @@ similar to this:
       },
       'identifier' => '__socket_type',
       'context' => 'definitions.c(4)',
+      'size' => 4,
       'sign' => 0
     }
   );
@@ -4754,7 +4935,7 @@ want to rate the module at L<http://cpanratings.perl.org/>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
@@ -4773,3 +4954,5 @@ linked to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
+
+

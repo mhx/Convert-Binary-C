@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/01/23 11:49:38 +0000 $
-* $Revision: 24 $
+* $Date: 2006/01/04 11:19:34 +0000 $
+* $Revision: 26 $
 * $Source: /util/hash.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of either the Artistic License or the
@@ -136,8 +136,10 @@ static unsigned long gs_dbflags             = 0;
 /* static functions */
 
 #if defined(DEBUG_HASH) && defined(UTIL_FORMAT_CHECK)
-static void debug_check( char *str __attribute__(( __unused__ )), ... )
-            __attribute__(( __format__( __printf__, 1, 2 ), __noreturn__ ))
+static void debug_check(char *str, ...)
+            __attribute__(( __format__( __printf__, 1, 2 ), __noreturn__ ));
+
+static void debug_check(char *str __attribute__(( __unused__ )), ...)
 {
   fprintf( stderr, "compiled with UTIL_FORMAT_CHECK, please don't run\n" );
   abort();

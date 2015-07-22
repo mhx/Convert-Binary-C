@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:39 +0000 $
-* $Revision: 2 $
+* $Date: 2006/01/04 22:44:07 +0000 $
+* $Revision: 4 $
 * $Source: /cbc/typeinfo.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -30,6 +30,7 @@
 
 /*===== LOCAL INCLUDES =======================================================*/
 
+#include "ctlib/ctparse.h"
 #include "ctlib/cttype.h"
 
 
@@ -42,12 +43,12 @@
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
 #define get_typedef_def CBC_get_typedef_def
-SV *get_typedef_def(pTHX_ Typedef *pTypedef);
+SV *get_typedef_def(pTHX_ const CParseConfig *pCfg, const Typedef *pTypedef);
 
 #define get_enum_spec_def CBC_get_enum_spec_def
-SV *get_enum_spec_def(pTHX_ EnumSpecifier *pEnumSpec);
+SV *get_enum_spec_def(pTHX_ const CParseConfig *pCfg, const EnumSpecifier *pEnumSpec);
 
 #define get_struct_spec_def CBC_get_struct_spec_def
-SV *get_struct_spec_def(pTHX_ Struct *pStruct);
+SV *get_struct_spec_def(pTHX_ const CParseConfig *pCfg, const Struct *pStruct);
 
 #endif

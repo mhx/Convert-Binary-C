@@ -431,6 +431,9 @@ value), if your struct lexer_state is called ls, use this code:
 
 This will add a trailing 0 if the line was not read entirely.
 
+You can disable the COPY_LINE buffer by defining NO_UCPP_COPY_LINE
+(in tune.h, for example). This will make the code slightly faster.
+
 
 ucpp may be configured at runtime to accept alternate characters as
 possible parts of identifiers. Typical intended usage is for the '$'

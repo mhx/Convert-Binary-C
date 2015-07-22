@@ -348,13 +348,16 @@ struct _cppm {
 	int cppm_vch[MSTATE];
 };
 
-#define cppm		(REENTR->_lexer.sm->cppm)
-#define cppm_vch	(REENTR->_lexer.sm->cppm_vch)
+#define dCPPM       int (*cppm)[MAX_CHAR_VAL] = REENTR->_lexer.sm->cppm
+#define dCPPM_VCH   int *cppm_vch = REENTR->_lexer.sm->cppm_vch
 
 #else
 
 static int cppm[MSTATE][MAX_CHAR_VAL];
 static int cppm_vch[MSTATE];
+
+#define dCPPM
+#define dCPPM_VCH
 
 #endif /* UCPP_REENTRANT */
 
@@ -384,6 +387,8 @@ void init_cppm(pCPP)
 	static unsigned char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static unsigned char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	unsigned char *cp;
+	dCPPM;
+	dCPPM_VCH;
 
 	for (i = 0; i < MSTATE; i ++) {
 		for (j = 0; j < MAX_CHAR_VAL; j ++) cppm[i][j] = S_OUCH;
@@ -434,6 +439,7 @@ void init_cppm(pCPP)
  */
 void set_identifier_char(pCPP_ int c)
 {
+	dCPPM;
 	cppm[S_START][c] = PUT(S_NAME);
 	cppm[S_NAME][c] = PUT(S_NAME);
 }
@@ -443,6 +449,7 @@ void set_identifier_char(pCPP_ int c)
  */
 void unset_identifier_char(pCPP_ int c)
 {
+	dCPPM;
 	cppm[S_START][c] = S_ILL;
 	cppm[S_NAME][c] = FRZ(STO(NAME));
 }
@@ -540,6 +547,7 @@ static inline int read_char(struct lexer_state *ls)
 		if (x == EOF) return -1;
 		c = x;
 #endif
+#ifndef NO_UCPP_COPY_LINE
 		if (ls->flags & COPY_LINE) {
 			if (c == '\n') {
 				ls->copy_line[ls->cli] = 0;
@@ -548,7 +556,8 @@ static inline int read_char(struct lexer_state *ls)
 				ls->copy_line[ls->cli ++] = c;
 			}
 		}
-		if (ls->macfile && c == '\n') {
+#endif
+		if (c == '\n' && ls->macfile) {
 			ls->macfile = 0;
 			continue;
 		}
@@ -827,6 +836,7 @@ static inline int read_token(pCPP_ struct lexer_state *ls)
 	int shift_state;
 	unsigned long utf8;
 	long l = ls->line;
+	dCPPM;
 
 	ls->ctok->line = l;
 	if (ls->pending_token) {
@@ -846,7 +856,8 @@ static inline int read_token(pCPP_ struct lexer_state *ls)
 	do {
 		c = next_char(aCPP_ ls);
 		if (c < 0) {
-			if ((ls->flags & UTF8_SOURCE) && shift_state) {
+			dCPPM_VCH;
+			if (shift_state && (ls->flags & UTF8_SOURCE)) {
 				if (ls->flags & WARN_STANDARD)
 					warning(aCPP_ ls->line, "truncated UTF-8 "
 						"character");
@@ -898,7 +909,7 @@ static inline int read_token(pCPP_ struct lexer_state *ls)
 		/*
 		 * disable C++-like comments
 		 */
-		if (nstat == S_COMMENT5 && !(ls->flags & CPLUSPLUS_COMMENTS))
+		if (noMOD(nstat) == S_COMMENT5 && !(ls->flags & CPLUSPLUS_COMMENTS))
 			nstat = FRZ(STO(SLASH));
 
 		if (noMOD(nstat) >= MSTATE && !ttSTO(nstat))
@@ -992,7 +1003,7 @@ static inline int read_token(pCPP_ struct lexer_state *ls)
 				ucn_in_id = 1;
 				wan(ls->ctok->name, ltok, '\\', ls->tknl);
 			}
-			if ((ls->flags & UTF8_SOURCE) && utf8) {
+			if (utf8 && (ls->flags & UTF8_SOURCE)) {
 				unsigned char buf[11];
 				int i, j;
 

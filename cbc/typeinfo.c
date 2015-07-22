@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/04/22 21:33:41 +0100 $
-* $Revision: 8 $
+* $Date: 2006/01/05 00:46:16 +0000 $
+* $Revision: 11 $
 * $Source: /cbc/typeinfo.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -45,10 +45,10 @@
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 
-static SV *get_type_spec_def(pTHX_ TypeSpec *pTSpec);
+static SV *get_type_spec_def(pTHX_ const CParseConfig *pCfg, const TypeSpec *pTSpec);
 static SV *get_enumerators_def(pTHX_ LinkedList enumerators);
 static SV *get_declarators_def(pTHX_ LinkedList declarators);
-static SV *get_struct_declarations_def(pTHX_ LinkedList declarations);
+static SV *get_struct_declarations_def(pTHX_ const CParseConfig *pCfg, LinkedList declarations);
 
 
 /*===== EXTERNAL VARIABLES ===================================================*/
@@ -76,7 +76,7 @@ static SV *get_struct_declarations_def(pTHX_ LinkedList declarations);
 *
 *******************************************************************************/
 
-static SV *get_type_spec_def(pTHX_ TypeSpec *pTSpec)
+static SV *get_type_spec_def(pTHX_ const CParseConfig *pCfg, const TypeSpec *pTSpec)
 {
   u_32 flags = pTSpec->tflags;
 
@@ -99,7 +99,7 @@ static SV *get_type_spec_def(pTHX_ TypeSpec *pTSpec)
       if (pEnumSpec->identifier[0])
         return newSVpvf("enum %s", pEnumSpec->identifier);
       else
-        return get_enum_spec_def(aTHX_ pEnumSpec);
+        return get_enum_spec_def(aTHX_ pCfg, pEnumSpec);
     }
     else
       return NEW_SV_PV_CONST("enum <NULL>");
@@ -115,7 +115,7 @@ static SV *get_type_spec_def(pTHX_ TypeSpec *pTSpec)
       if (pStruct->identifier[0])
         return newSVpvf("%s %s", type, pStruct->identifier);
       else
-        return get_struct_spec_def(aTHX_ pStruct);
+        return get_struct_spec_def(aTHX_ pCfg, pStruct);
     }
     else
       return newSVpvf("%s <NULL>", type);
@@ -238,7 +238,7 @@ static SV *get_declarators_def(pTHX_ LinkedList declarators)
 *
 *******************************************************************************/
 
-static SV *get_struct_declarations_def(pTHX_ LinkedList declarations)
+static SV *get_struct_declarations_def(pTHX_ const CParseConfig *pCfg, LinkedList declarations)
 {
   StructDeclaration *pStructDecl;
   AV *av = newAV();
@@ -247,7 +247,7 @@ static SV *get_struct_declarations_def(pTHX_ LinkedList declarations)
   {
     HV *hv = newHV();
 
-    HV_STORE_CONST(hv, "type", get_type_spec_def(aTHX_ &pStructDecl->type));
+    HV_STORE_CONST(hv, "type", get_type_spec_def(aTHX_ pCfg, &pStructDecl->type));
 
     if (pStructDecl->declarators)
       HV_STORE_CONST(hv, "declarators",
@@ -279,7 +279,7 @@ static SV *get_struct_declarations_def(pTHX_ LinkedList declarations)
 *
 *******************************************************************************/
 
-SV *get_typedef_def(pTHX_ Typedef *pTypedef)
+SV *get_typedef_def(pTHX_ const CParseConfig *pCfg, const Typedef *pTypedef)
 {
   Declarator *pDecl = pTypedef->pDecl;
   Value *pValue;
@@ -299,7 +299,7 @@ SV *get_typedef_def(pTHX_ Typedef *pTypedef)
   }
 
   HV_STORE_CONST(hv, "declarator", sv);
-  HV_STORE_CONST(hv, "type", get_type_spec_def(aTHX_ pTypedef->pType));
+  HV_STORE_CONST(hv, "type", get_type_spec_def(aTHX_ pCfg, pTypedef->pType));
 
   return newRV_noinc((SV *) hv);
 }
@@ -321,7 +321,7 @@ SV *get_typedef_def(pTHX_ Typedef *pTypedef)
 *
 *******************************************************************************/
 
-SV *get_enum_spec_def(pTHX_ EnumSpecifier *pEnumSpec)
+SV *get_enum_spec_def(pTHX_ const CParseConfig *pCfg, const EnumSpecifier *pEnumSpec)
 {
   HV *hv = newHV();
 
@@ -331,6 +331,7 @@ SV *get_enum_spec_def(pTHX_ EnumSpecifier *pEnumSpec)
   if (pEnumSpec->enumerators)
   {
     HV_STORE_CONST(hv, "sign", newSViv(pEnumSpec->tflags & T_SIGNED ? 1 : 0));
+    HV_STORE_CONST(hv, "size", newSViv(GET_ENUM_SIZE(pCfg, pEnumSpec)));
     HV_STORE_CONST(hv, "enumerators",
                        get_enumerators_def(aTHX_ pEnumSpec->enumerators));
   }
@@ -358,7 +359,7 @@ SV *get_enum_spec_def(pTHX_ EnumSpecifier *pEnumSpec)
 *
 *******************************************************************************/
 
-SV *get_struct_spec_def(pTHX_ Struct *pStruct)
+SV *get_struct_spec_def(pTHX_ const CParseConfig *pCfg, const Struct *pStruct)
 {
   HV *hv = newHV();
   SV *type;
@@ -380,7 +381,7 @@ SV *get_struct_spec_def(pTHX_ Struct *pStruct)
     HV_STORE_CONST(hv, "pack", newSViv(pStruct->pack));
 
     HV_STORE_CONST(hv, "declarations",
-                       get_struct_declarations_def(aTHX_ pStruct->declarations));
+                       get_struct_declarations_def(aTHX_ pCfg, pStruct->declarations));
   }
 
   HV_STORE_CONST(hv, "context", newSVpvf("%s(%lu)",

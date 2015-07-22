@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/05/07 14:07:26 +0100 $
-* $Revision: 3 $
+* $Date: 2006/01/03 12:33:58 +0000 $
+* $Revision: 6 $
 * $Source: /ctlib/layout.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -33,6 +33,7 @@
 #include "ctlib/arch.h"
 #include "ctlib/cttype.h"
 #include "ctlib/bitfields.h"
+#include "ctlib/byteorder.h"
 
 
 /*===== DEFINES ==============================================================*/
@@ -74,18 +75,19 @@ typedef enum {
 } ErrorGTI;
 
 typedef struct {
-  unsigned alignment;
-  unsigned compound_alignment;
-  unsigned char_size;
-  unsigned int_size;
-  unsigned short_size;
-  unsigned long_size;
-  unsigned long_long_size;
-  int      enum_size;
-  unsigned ptr_size;
-  unsigned float_size;
-  unsigned double_size;
-  unsigned long_double_size;
+  unsigned         alignment;
+  unsigned         compound_alignment;
+  unsigned         char_size;
+  unsigned         int_size;
+  unsigned         short_size;
+  unsigned         long_size;
+  unsigned         long_long_size;
+  int              enum_size;
+  unsigned         ptr_size;
+  unsigned         float_size;
+  unsigned         double_size;
+  unsigned         long_double_size;
+  CByteOrder       byte_order;
   BitfieldLayouter bflayouter;
 } LayoutParam;
 

@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/08 19:56:49 +0000 $
-# $Revision: 2 $
+# $Date: 2006/01/04 12:47:00 +0000 $
+# $Revision: 4 $
 # $Source: /tests/134_format.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -19,7 +19,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 147 }
+BEGIN { plan tests => 148 }
 
 # TODO: different alignments
 
@@ -42,6 +42,13 @@ enum weekday {
 
 struct xxx {
   int x, y, z;
+};
+
+struct bits {
+  int a;
+  int y : 15;
+  int z : 17;
+  int b;
 };
 
 struct test {
@@ -254,4 +261,12 @@ ok($@, '');
 
 $rv = $c->pack('multi', '');
 ok($rv, "\x00"x24);
+
+# -----------------
+
+# bitfields cannot be tagged
+
+eval { $c->tag('bits.y', Format => 'Binary'); };
+
+ok($@, qr/Cannot use 'Format' tag on bitfields/);
 

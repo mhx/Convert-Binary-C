@@ -4,11 +4,24 @@ use Net::FTP;
 use IO::Pty;
 use IO::File;
 use POSIX qw( setsid );
+use Getopt::Long;
 use threads;
 use strict;
 
 use constant USER => 'mhx';
 use constant PASS => 'sTGC3kg!';
+
+my %OPT = (
+  upload  => 0,
+  remove  => 1,
+  test    => 1,
+  reports => 1,
+  compile => 1,
+);
+
+GetOptions(\%OPT, qw(
+  upload|u! remove|r! test|t! reports|p! compile|c!
+)) && @ARGV == 1 or die "USAGE: $0 <options> file";
 
 my $HOMEDIR = '/house/mhx';
 my $PROMPT = '/(spe|td)\d{3}(?:\.testdrive\.(?:hp|compaq)\.com)?> $/';
@@ -56,18 +69,22 @@ my @hosts = (
 
 my $file = shift;
 
-upload_file( $hosts[0], $file );
-remove_reports( $hosts[0] );
+$OPT{upload} and upload_file( $hosts[0], $file );
+$OPT{remove} and remove_reports( $hosts[0] );
 
-my @t = map { new threads
- \&test_compile, $_, $file
-# \&version, $_
-} @hosts;
+if ($OPT{compile}) {
+  my @t = map { new threads
+   \&test_compile, $_, $file
+  # \&version, $_
+  } @hosts;
+  
+  $_->join for @t;
+}
 
-$_->join for @t;
-
-collect_reports( $hosts[0] );
-download_file( $hosts[0], 'reports.tar.gz' );
+if ($OPT{reports}) {
+  collect_reports( $hosts[0] );
+  download_file( $hosts[0], 'reports.tar.gz' );
+}
 
 sub upload_file
 {

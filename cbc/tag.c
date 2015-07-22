@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/06/13 20:34:38 +0100 $
-* $Revision: 12 $
+* $Date: 2006/01/04 12:44:55 +0000 $
+* $Revision: 14 $
 * $Source: /cbc/tag.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -49,9 +49,12 @@
 #define TAG_CLONE(name)  void name ## _Clone(CtTag *dst, const CtTag *src)
 #define TAG_FREE(name)   void name ## _Free(CtTag *tag)
 #define TAG_SET(name)    TagSetRV name ## _Set(pTHX_ const TagTypeInfo *ptti PERL_UNUSED_DECL, \
-                                               CtTag *tag, SV *val)
+                                                     CtTag *tag, SV *val)
 #define TAG_GET(name)    SV *     name ## _Get(pTHX_ const TagTypeInfo *ptti PERL_UNUSED_DECL, \
-                                               const CtTag *tag)
+                                                     const CtTag *tag)
+#define TAG_VERIFY(name) void     name ## _Verify(pTHX_ const TagTypeInfo *ptti PERL_UNUSED_DECL, \
+                                                        const CtTag *tag PERL_UNUSED_DECL, \
+                                                        SV *val PERL_UNUSED_DECL)
 
 
 /*===== TYPEDEFS =============================================================*/
@@ -63,6 +66,7 @@ typedef enum {
 
 typedef TagSetRV (* TagSetMethod)(pTHX_ const TagTypeInfo *ptti, CtTag *tag, SV *val);
 typedef SV *     (* TagGetMethod)(pTHX_ const TagTypeInfo *ptti, const CtTag *tag);
+typedef void     (* TagVerifyMethod)(pTHX_ const TagTypeInfo *ptti, const CtTag *tag, SV *val);
 
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
@@ -77,6 +81,75 @@ typedef SV *     (* TagGetMethod)(pTHX_ const TagTypeInfo *ptti, const CtTag *ta
 
 
 /*===== STATIC FUNCTIONS =====================================================*/
+
+/*******************************************************************************
+*
+*   ROUTINE: croak_on_bitfield
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void croak_on_bitfield(pTHX_ const TagTypeInfo *ptti, const char *tagname)
+{
+  Declarator *pDecl = ptti->mi.pDecl;
+
+  if (pDecl && pDecl->bitfield_flag)
+    Perl_croak(aTHX_ "Cannot use '%s' tag on bitfields", tagname);
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: Format_Verify
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static TAG_VERIFY(Format)
+{
+  croak_on_bitfield(aTHX_ ptti, "Format");
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: ByteOrder_Verify
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static TAG_VERIFY(ByteOrder)
+{
+  croak_on_bitfield(aTHX_ ptti, "ByteOrder");
+}
 
 /*******************************************************************************
 *
@@ -197,6 +270,7 @@ SV *get_tags(pTHX_ const TagTypeInfo *ptti, CtTagList taglist)
 
 void handle_tag(pTHX_ const TagTypeInfo *ptti, CtTagList *ptl, SV *name, SV *val, SV **rv)
 {
+  const struct tag_tbl_ent *etbl;
   const char *tagstr;
   CtTagType tagid;
   CtTag *tag;
@@ -216,7 +290,12 @@ void handle_tag(pTHX_ const TagTypeInfo *ptti, CtTagList *ptl, SV *name, SV *val
   if (tagid > NUM_TAGIDS)
     fatal("Unknown tag type (%d) in handle_tag()", (int) tagid);
 
+  etbl = &gs_TagTbl[tagid];
+
   tag = find_tag(*ptl, tagid);
+
+  if (etbl->verify)
+    etbl->verify(aTHX_ ptti, tag, val);
 
   if (val)
   {
@@ -227,10 +306,10 @@ void handle_tag(pTHX_ const TagTypeInfo *ptti, CtTagList *ptl, SV *name, SV *val
       dTHR;
       dXCPT;
 
-      tag = tag_new(tagid, gs_TagTbl[tagid].vtbl);
+      tag = tag_new(tagid, etbl->vtbl);
 
       XCPT_TRY_START {
-        rv = gs_TagTbl[tagid].set(aTHX_ ptti, tag, val);
+        rv = etbl->set(aTHX_ ptti, tag, val);
       } XCPT_TRY_END
 
       XCPT_CATCH
@@ -242,7 +321,7 @@ void handle_tag(pTHX_ const TagTypeInfo *ptti, CtTagList *ptl, SV *name, SV *val
       insert_tag(ptl, tag);
     }
     else
-      rv = gs_TagTbl[tagid].set(aTHX_ ptti, tag, val);
+      rv = etbl->set(aTHX_ ptti, tag, val);
 
     switch (rv)
     {
@@ -260,7 +339,7 @@ void handle_tag(pTHX_ const TagTypeInfo *ptti, CtTagList *ptl, SV *name, SV *val
   }
 
   if (rv)
-    *rv = tag ? gs_TagTbl[tagid].get(aTHX_ ptti, tag) : &PL_sv_undef;
+    *rv = tag ? etbl->get(aTHX_ ptti, tag) : &PL_sv_undef;
 }
 
 /*******************************************************************************

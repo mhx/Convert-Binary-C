@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:38 +0000 $
-* $Revision: 5 $
+* $Date: 2006/01/04 22:22:23 +0000 $
+* $Revision: 7 $
 * $Source: /cbc/type.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -43,6 +43,8 @@
 #define ALLOW_ARRAYS       0x00000010
 #define ALLOW_BASIC_TYPES  0x00000020
 
+#define CBC_GMI_NO_CALC    0x1
+
 
 /*===== TYPEDEFS =============================================================*/
 
@@ -50,7 +52,7 @@
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
 #define get_member_info CBC_get_member_info
-int get_member_info(pTHX_ CBC *THIS, const char *name, MemberInfo *pMI);
+int get_member_info(pTHX_ CBC *THIS, const char *name, MemberInfo *pMI, unsigned gmi_flags);
 
 #define get_type_spec CBC_get_type_spec
 int get_type_spec(CBC *THIS, const char *name, const char **pEOS, TypeSpec *pTS);

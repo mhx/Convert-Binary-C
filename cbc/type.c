@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/10/19 16:31:26 +0100 $
-* $Revision: 17 $
+* $Date: 2006/01/04 22:22:22 +0000 $
+* $Revision: 21 $
 * $Source: /cbc/type.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -81,7 +81,7 @@ static void *get_type_pointer(CBC *THIS, const char *name, const char **pEOS)
   int         len = 0;
   enum { S_UNKNOWN, S_STRUCT, S_UNION, S_ENUM } type = S_UNKNOWN;
 
-  if (!CBC_HAVE_PARSE_DATA(THIS))
+  if (!THIS->cpi.available)
     return NULL;
 
   while (*c && isSPACE(*c))
@@ -196,8 +196,9 @@ static void *get_type_pointer(CBC *THIS, const char *name, const char **pEOS)
 *
 *******************************************************************************/
 
-int get_member_info(pTHX_ CBC *THIS, const char *name, MemberInfo *pMI)
+int get_member_info(pTHX_ CBC *THIS, const char *name, MemberInfo *pMI, unsigned gmi_flags)
 {
+  const int do_calc = (gmi_flags & CBC_GMI_NO_CALC) == 0;
   const char *member;
   MemberInfo mi;
 
@@ -212,7 +213,7 @@ int get_member_info(pTHX_ CBC *THIS, const char *name, MemberInfo *pMI)
     {
       mi.pDecl = NULL;
       mi.level = 0;
-      (void) get_member(aTHX_ &mi, member, pMI, 0, 0);
+      (void) get_member(aTHX_ &mi, member, pMI, do_calc ? 0 : CBC_GM_NO_OFFSET_SIZE_CALC);
     }
     else if (mi.type.ptr == NULL)
     {
@@ -226,7 +227,7 @@ int get_member_info(pTHX_ CBC *THIS, const char *name, MemberInfo *pMI)
         Perl_croak(aTHX_ "Unsupported basic type '%s'", SvPV_nolen(str));
       }
 
-      if (pDecl->size < 0)
+      if (do_calc && pDecl->size < 0)
         (void) THIS->cfg.get_type_info(&THIS->cfg.layout, &mi.type, NULL,
                                        "si", &pDecl->size, &pDecl->item_size);
 
@@ -235,7 +236,7 @@ int get_member_info(pTHX_ CBC *THIS, const char *name, MemberInfo *pMI)
       pMI->flags  = 0;
       pMI->level  = 0;
       pMI->offset = 0;
-      pMI->size   = pDecl->size;
+      pMI->size   = do_calc ? pDecl->size : 0;
     }
     else
     {
@@ -265,13 +266,18 @@ int get_member_info(pTHX_ CBC *THIS, const char *name, MemberInfo *pMI)
           break;
 
         case TYP_ENUM:
-          pMI->size = GET_ENUM_SIZE((EnumSpecifier *) ptr);
+          pMI->size = GET_ENUM_SIZE(&THIS->cfg, (EnumSpecifier *) ptr);
           break;
 
         default:
           fatal("get_type_spec returned an invalid type (%d) in "
                 "get_member_info( '%s' )", GET_CTYPE(ptr), name);
           break;
+      }
+
+      if (!do_calc)
+      {
+        pMI->size = 0;
       }
 
       pMI->type   = mi.type;
@@ -394,7 +400,7 @@ SV *get_type_name_string(pTHX_ const MemberInfo *pMI)
         break;
 
       default:
-        fatal("get_member_info() returned an invalid type (%d) "
+        fatal("GET_CTYPE() returned an invalid type (%d) "
               "in get_type_name_string()", GET_CTYPE(pMI->type.ptr));
         break;
     }

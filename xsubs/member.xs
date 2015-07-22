@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/06/10 13:32:33 +0100 $
-# $Revision: 4 $
+# $Date: 2006/01/04 22:26:10 +0000 $
+# $Revision: 7 $
 # $Source: /xsubs/member.xs $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -42,7 +42,9 @@ CBC::member(type, offset = NULL)
     CHECK_PARSE_DATA;
     CHECK_VOID_CONTEXT;
 
-    if (!get_member_info(aTHX_ THIS, type, &mi))
+    NEED_PARSE_DATA;
+
+    if (!get_member_info(aTHX_ THIS, type, &mi, 0))
       Perl_croak(aTHX_ "Cannot find '%s'", type);
 
     check_allowed_types(aTHX_ &mi, method, ALLOW_STRUCTS

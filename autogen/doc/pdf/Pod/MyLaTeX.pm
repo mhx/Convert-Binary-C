@@ -1414,7 +1414,9 @@ sub head {
   $paragraph =~ s/\\char95\{\}/\\_/g;
 
   my $lcpar = $paragraph;
-  $lcpar =~ s/(^|\s)([^_\W])([^_\W]+)(?=$|\s)/$1$2\L$3/g;
+  if ($lcpar !~ /[a-z]/) {
+    $lcpar =~ s/(^|\s)([^_\W])([^_\W]+)(?=$|\s)/$1$2\L$3/g;
+  }
 
   my $lcparb = $level >= $self->LevelNoNum ? '' : "[$lcpar]";
 
@@ -1783,7 +1785,7 @@ it under the same terms as Perl itself.
 
 =head1 REVISION
 
-$Id: MyLaTeX.pm 4 2005/02/21 07:22:45 +0000 mhx $
+$Id: MyLaTeX.pm 5 2006/01/04 22:24:50 +0000 mhx $
 
 =end __PRIVATE__
 

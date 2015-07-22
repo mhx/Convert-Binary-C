@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/05/29 09:23:02 +0100 $
-* $Revision: 34 $
+* $Date: 2006/01/04 16:07:51 +0000 $
+* $Revision: 36 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -102,6 +102,8 @@ typedef struct {
   HashTable  htTypedefs;
   HashTable  htFiles;
   LinkedList errorStack;
+  unsigned   available : 1;
+  unsigned   ready     : 1;
 } CParseInfo;
 
 
