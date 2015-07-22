@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/06/11 19:59:55 +0100 $
-* $Revision: 14 $
+* $Date: 2008/04/15 14:37:36 +0100 $
+* $Revision: 16 $
 * $Source: /cbc/object.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -122,6 +122,10 @@ CBC *cbc_new(pTHX)
   THIS->cfg.keywords                  = HAS_ALL_KEYWORDS;
   THIS->cfg.has_cpp_comments          = 1;
   THIS->cfg.has_macro_vaargs          = 1;
+  THIS->cfg.has_std_c                 = 1;
+  THIS->cfg.has_std_c_hosted          = 1;
+  THIS->cfg.is_std_c_hosted           = 1;
+  THIS->cfg.std_c_version             = 199901L;
 
   init_parse_info(&THIS->cpi);
 

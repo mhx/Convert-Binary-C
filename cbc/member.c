@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/12/06 20:58:04 +0000 $
-* $Revision: 24 $
+* $Date: 2008/04/15 14:37:36 +0100 $
+* $Revision: 25 $
 * $Source: /cbc/member.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *

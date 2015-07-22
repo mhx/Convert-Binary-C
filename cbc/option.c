@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/06/11 19:59:56 +0100 $
-* $Revision: 26 $
+* $Date: 2008/04/15 14:37:37 +0100 $
+* $Revision: 28 $
 * $Source: /cbc/option.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -831,6 +831,58 @@ void handle_string_list(pTHX_ const char *option, LinkedList list, SV *sv, SV **
               *rval = newSViv(THIS->config);                                   \
             break;
 
+#define TRISTATE_FLAG_OPTION(name, state, flag, layout, pp)                    \
+          case OPTION_ ## name :                                               \
+            IMPACTS_LAYOUT(layout);                                            \
+            IMPACTS_PREPROC(pp);                                               \
+            if (sv_val)                                                        \
+            {                                                                  \
+              unsigned isdef = SvOK(sv_val) != 0;                              \
+              int changed = isdef != THIS->state;                              \
+              THIS->state = isdef;                                             \
+              if (isdef)                                                       \
+              {                                                                \
+                if (SvROK(sv_val))                                             \
+                  Perl_croak(aTHX_ #name " must be undef or a boolean "        \
+                                         "value, not a reference");            \
+                else if (THIS->flag != SvIV(sv_val) ? 1 : 0)                   \
+                {                                                              \
+                  THIS->flag = SvIV(sv_val) ? 1 : 0;                           \
+                  changed = 1;                                                 \
+                }                                                              \
+              }                                                                \
+              DID_CHANGE(changed);                                             \
+            }                                                                  \
+            if (rval)                                                          \
+              *rval = THIS->state ? newSViv(THIS->flag ? 1 : 0) : &PL_sv_undef;\
+            break;
+
+#define TRISTATE_INT_OPTION(name, state, config, layout, pp)                   \
+          case OPTION_ ## name :                                               \
+            IMPACTS_LAYOUT(layout);                                            \
+            IMPACTS_PREPROC(pp);                                               \
+            if (sv_val)                                                        \
+            {                                                                  \
+              unsigned isdef = SvOK(sv_val) != 0;                              \
+              int changed = isdef != THIS->state;                              \
+              THIS->state = isdef;                                             \
+              if (isdef)                                                       \
+              {                                                                \
+                if (SvROK(sv_val))                                             \
+                  Perl_croak(aTHX_ #name " must be undef or an integer "       \
+                                         "value, not a reference");            \
+                else if (THIS->config != SvIV(sv_val))                         \
+                {                                                              \
+                  THIS->config = SvIV(sv_val);                                 \
+                  changed = 1;                                                 \
+                }                                                              \
+              }                                                                \
+              DID_CHANGE(changed);                                             \
+            }                                                                  \
+            if (rval)                                                          \
+              *rval = THIS->state ? newSViv(THIS->config) : &PL_sv_undef;      \
+            break;
+
 #define STRLIST_OPTION(name, config, layout, pp)                               \
           case OPTION_ ## name :                                               \
             IMPACTS_LAYOUT(layout);                                            \
@@ -868,6 +920,10 @@ void handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval, HandleOption
     IVAL_OPTION(LongDoubleSize,    cfg.layout.long_double_size,   1, 0)
     IVAL_OPTION(Alignment,         cfg.layout.alignment,          1, 0)
     IVAL_OPTION(CompoundAlignment, cfg.layout.compound_alignment, 1, 0)
+
+    TRISTATE_FLAG_OPTION(HostedC, cfg.has_std_c_hosted, cfg.is_std_c_hosted, 0, 1)
+
+    TRISTATE_INT_OPTION(StdCVersion, cfg.has_std_c, cfg.std_c_version, 0, 1)
 
     STRLIST_OPTION(Include, cfg.includes,   0, 1)
     STRLIST_OPTION(Define,  cfg.defines,    0, 1)
@@ -908,7 +964,7 @@ void handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval, HandleOption
         const StringOption *pOpt = GET_STR_OPTION(EnumType, 0, sv_val);
         UPDATE_OPT(enumType, pOpt->value);
       }
-      if(rval)
+      if (rval)
       {
         const StringOption *pOpt = GET_STR_OPTION(EnumType, THIS->enumType, NULL);
         *rval = newSVpv(CONST_CHAR(pOpt->string), 0);
@@ -940,6 +996,8 @@ void handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval, HandleOption
 #undef UPDATE_OPT
 #undef FLAG_OPTION
 #undef IVAL_OPTION
+#undef TRISTATE_FLAG_OPTION
+#undef TRISTATE_INT_OPTION
 #undef STRLIST_OPTION
 
 /*******************************************************************************
@@ -971,6 +1029,14 @@ void handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval, HandleOption
           sv = newSViv(THIS->config);                                          \
           HV_STORE_CONST(hv, #name, sv);
 
+#define TRISTATE_FLAG_OPTION(name, state, flag)                                \
+	  sv = THIS->state ? newSViv(THIS->flag ? 1 : 0) : &PL_sv_undef;       \
+          HV_STORE_CONST(hv, #name, sv);
+
+#define TRISTATE_INT_OPTION(name, state, config)                               \
+	  sv = THIS->state ? newSViv(THIS->config) : &PL_sv_undef;             \
+          HV_STORE_CONST(hv, #name, sv);
+
 #define STRING_OPTION(name, value)                                             \
           sv = newSVpv(CONST_CHAR(GET_STR_OPTION(name, value, NULL)->string), 0);\
           HV_STORE_CONST(hv, #name, sv);
@@ -1000,6 +1066,10 @@ SV *get_configuration(pTHX_ CBC *THIS)
   IVAL_OPTION(LongDoubleSize,    cfg.layout.long_double_size  )
   IVAL_OPTION(Alignment,         cfg.layout.alignment         )
   IVAL_OPTION(CompoundAlignment, cfg.layout.compound_alignment)
+
+  TRISTATE_FLAG_OPTION(HostedC, cfg.has_std_c_hosted, cfg.is_std_c_hosted)
+
+  TRISTATE_INT_OPTION(StdCVersion, cfg.has_std_c, cfg.std_c_version)
 
   STRLIST_OPTION(Include,          cfg.includes         )
   STRLIST_OPTION(Define,           cfg.defines          )
@@ -1052,6 +1122,18 @@ SV *get_native_property(pTHX_ const char *property)
 #endif
 		;
 
+#if defined(__STDC_VERSION__)
+# define STD_C_NATIVE newSViv(__STDC_VERSION__)
+#else
+# define STD_C_NATIVE &PL_sv_undef
+#endif
+
+#ifdef __STDC_HOSTED__
+# define HOSTED_C_NATIVE newSViv(__STDC_HOSTED__)
+#else
+# define HOSTED_C_NATIVE &PL_sv_undef
+#endif
+
   if (property == NULL)
   {
     HV *h = newHV();
@@ -1071,6 +1153,8 @@ SV *get_native_property(pTHX_ const char *property)
     HV_STORE_CONST(h, "ByteOrder",         newSVpv(native_byteorder, 0));
     HV_STORE_CONST(h, "UnsignedChars",     newSViv(get_native_unsigned_chars()));
     HV_STORE_CONST(h, "UnsignedBitfields", newSViv(get_native_unsigned_bitfields()));
+    HV_STORE_CONST(h, "StdCVersion",       STD_C_NATIVE);
+    HV_STORE_CONST(h, "HostedC",           HOSTED_C_NATIVE);
     
     return newRV_noinc((SV *)h);
   }
@@ -1092,6 +1176,8 @@ SV *get_native_property(pTHX_ const char *property)
     case OPTION_ByteOrder:         return newSVpv(native_byteorder, 0);
     case OPTION_UnsignedChars:     return newSViv(get_native_unsigned_chars());
     case OPTION_UnsignedBitfields: return newSViv(get_native_unsigned_bitfields());
+    case OPTION_StdCVersion:       return STD_C_NATIVE;
+    case OPTION_HostedC:           return HOSTED_C_NATIVE;
     default:
       return NULL;
   }

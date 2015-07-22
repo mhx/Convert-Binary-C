@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/06/23 23:25:37 +0100 $
-# $Revision: 74 $
+# $Date: 2008/04/15 14:37:48 +0100 $
+# $Revision: 76 $
 # $Source: /tests/203_warnings.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -20,7 +20,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 7254 }
+BEGIN { plan tests => 7302 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -195,6 +195,12 @@ eval_test(q{
   $p->FloatSize([1]);                                           # (E) FloatSize must be an integer value, not a reference
   $p->FloatSize(13);                                            # (E) FloatSize must be 0, 1, 2, 4, 8, 12 or 16, not 13
   $p->FloatSize(1);                                             # no warning
+
+  $p->StdCVersion([1]);                                         # (E) StdCVersion must be undef or an integer value, not a reference
+  $p->StdCVersion(undef);                                       # no warnings
+
+  $p->HostedC([1]);                                             # (E) HostedC must be undef or a boolean value, not a reference
+  $p->HostedC(undef);                                           # no warnings
 
   $p->configure(DisabledKeywords => 42);                        # (E) DisabledKeywords wants a reference to an array of strings
   $p->configure(DisabledKeywords => { foo => 42 });             # (E) DisabledKeywords wants an array reference

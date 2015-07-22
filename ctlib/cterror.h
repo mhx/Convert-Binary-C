@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/06/11 19:59:52 +0100 $
-* $Revision: 20 $
+* $Date: 2008/04/15 14:37:42 +0100 $
+* $Revision: 22 $
 * $Source: /ctlib/cterror.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *

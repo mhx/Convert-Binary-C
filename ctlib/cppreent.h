@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/06/11 19:59:52 +0100 $
-* $Revision: 9 $
+* $Date: 2008/04/15 14:37:41 +0100 $
+* $Revision: 11 $
 * $Source: /ctlib/cppreent.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -66,6 +66,8 @@
 # define r_emit_dependencies   ((struct CPP *) pp)->emit_dependencies
 # define r_current_filename    ((struct CPP *) pp)->current_filename
 # define r_callback_arg        ((struct CPP *) pp)->callback_arg
+# define r_c99_compliant       ((struct CPP *) pp)->c99_compliant
+# define r_c99_hosted          ((struct CPP *) pp)->c99_hosted
 
 /*===== TYPEDEFS =============================================================*/
 

@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/06/11 19:59:54 +0100 $
-* $Revision: 66 $
+* $Date: 2008/04/15 14:37:42 +0100 $
+* $Revision: 69 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -498,6 +498,8 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
     r_emit_defines      = 0;
     r_emit_assertions   = 0;
     r_emit_dependencies = 0;
+    r_c99_compliant     = 0;
+    r_c99_hosted        = 0;
 
     init_tables(aUCPP_ 1);
 
@@ -516,7 +518,9 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
     Free(file);
   }
   else
+  {
     set_init_filename(aUCPP_ BUFFER_NAME, 0);
+  }
 
   init_lexer_state(&lexer);
   init_lexer_mode(&lexer);
@@ -552,6 +556,22 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
   if (pp_needs_init)
   {
     ListIterator li;
+
+    /* Configure standard C features */
+
+    if (pCPC->has_std_c)
+    {
+      char tmp[20 + 4*sizeof(pCPC->std_c_version)];
+      sprintf(tmp, "__STDC_VERSION__=%ldL", pCPC->std_c_version);
+      (void) define_macro(aUCPP_ &lexer, tmp);
+    }
+
+    if (pCPC->has_std_c_hosted)
+    {
+      char tmp[20];
+      sprintf(tmp, "__STDC_HOSTED__=%u", pCPC->is_std_c_hosted);
+      (void) define_macro(aUCPP_ &lexer, tmp);
+    }
 
     /* Add includes */
 

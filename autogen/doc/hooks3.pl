@@ -113,7 +113,7 @@ $Data::Dumper::Indent = 1;
                             },
             'HasCPPComments' => 1,
             'Include' => [
-                           '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include',
+                           '/usr/lib/gcc/i686-pc-linux-gnu/4.1.2/include',
                            '/usr/include'
                          ],
             'CompoundAlignment' => 1
@@ -132,7 +132,7 @@ ENDC
 
 $c->tag($_, Hooks => { unpack_ptr => [\&unpack_ptr,
                                       $c->arg(qw(SELF TYPE DATA))] })
-    for qw( XPVAV XPVHV MAGIC MGVTBL HV );
+    for qw( XPVAV XPVHV );
 
 #-8<-
 
@@ -145,7 +145,8 @@ sub unpack_ptr {
 
 #-8<-
 
-my $ref = bless ["Boo!"], "Foo::Bar";
+my $ref = { foo => 42, bar => 4711 };
 my $ptr = hex(("$ref" =~ /\(0x([[:xdigit:]]+)\)$/)[0]);
 
 print Dumper(unpack_ptr($c, 'AV', $ptr));
+

@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/06/11 19:59:53 +0100 $
-* $Revision: 39 $
+* $Date: 2008/04/15 14:37:43 +0100 $
+* $Revision: 42 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -63,6 +63,11 @@ typedef struct {
   unsigned disable_parser     : 1;
   unsigned has_cpp_comments   : 1;
   unsigned has_macro_vaargs   : 1;
+  unsigned has_std_c          : 1;
+  unsigned has_std_c_hosted   : 1;
+  unsigned is_std_c_hosted    : 1;
+
+  long int std_c_version;
 
   u_32 keywords;
 

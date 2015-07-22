@@ -10,13 +10,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/12/08 14:02:18 +0000 $
-# $Revision: 89 $
+# $Date: 2008/04/15 14:37:46 +0100 $
+# $Revision: 91 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.70 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.71 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 $XS_VERSION = $VERSION;
 $VERSION    = eval $VERSION;
 
@@ -118,7 +118,7 @@ Convert::Binary::C - Binary Data Conversion using C Types
   #---------------------------------------------------
   # Add include paths and global preprocessor defines
   #---------------------------------------------------
-  $c->Include('/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include',
+  $c->Include('/usr/lib/gcc/i686-pc-linux-gnu/4.1.2/include',
               '/usr/include')
     ->Define(qw( __USE_POSIX __USE_ISOC99=1 ));
   
@@ -1468,7 +1468,7 @@ the perl internals using hooks.
   
   $c->tag($_, Hooks => { unpack_ptr => [\&unpack_ptr,
                                         $c->arg(qw(SELF TYPE DATA))] })
-      for qw( XPVAV XPVHV MAGIC MGVTBL HV );
+      for qw( XPVAV XPVHV );
 
 First, we add the perl core include path and parse F<perl.h>. Then,
 we add an C<unpack_ptr> hook for a couple of the internal data types.
@@ -1507,7 +1507,7 @@ this may of course again call other hooks.)
 
 Now, let's test that:
 
-  my $ref = bless ["Boo!"], "Foo::Bar";
+  my $ref = { foo => 42, bar => 4711 };
   my $ptr = hex(("$ref" =~ /\(0x([[:xdigit:]]+)\)$/)[0]);
   
   print Dumper(unpack_ptr($c, 'AV', $ptr));
@@ -1522,115 +1522,44 @@ as it can already handle C<AV> pointers. And this is what we get:
   $VAR1 = {
     'sv_any' => {
       'xnv_u' => {
-        'xnv_nv' => '0',
-        'xgv_stash' => '<NULL>',
+        'xnv_nv' => '2.18376848395956105e-4933',
+        'xgv_stash' => 0,
         'xpad_cop_seq' => {
           'xlow' => 0,
-          'xhigh' => 0
+          'xhigh' => 139484332
         },
         'xbm_s' => {
           'xbm_previous' => 0,
-          'xbm_flags' => 0,
-          'xbm_rare' => 0
+          'xbm_flags' => 172,
+          'xbm_rare' => 92
         }
       },
-      'xav_fill' => 0,
-      'xav_max' => 0,
+      'xav_fill' => 2,
+      'xav_max' => 7,
       'xiv_u' => {
-        'xivu_iv' => 141176388,
-        'xivu_uv' => 141176388,
-        'xivu_p1' => 141176388,
-        'xivu_i32' => 141176388,
-        'xivu_namehek' => 141176388
+        'xivu_iv' => 2,
+        'xivu_uv' => 2,
+        'xivu_p1' => 2,
+        'xivu_i32' => 2,
+        'xivu_namehek' => 2,
+        'xivu_hv' => 2
       },
       'xmg_u' => {
-        'xmg_magic' => '<NULL>',
-        'xmg_ourstash' => '<NULL>'
+        'xmg_magic' => 0,
+        'xmg_ourstash' => 0
       },
-      'xmg_stash' => {
-        'sv_any' => {
-          'xnv_u' => {
-            'xnv_nv' => '0',
-            'xgv_stash' => '<NULL>',
-            'xpad_cop_seq' => {
-              'xlow' => 0,
-              'xhigh' => 0
-            },
-            'xbm_s' => {
-              'xbm_previous' => 0,
-              'xbm_flags' => 0,
-              'xbm_rare' => 0
-            }
-          },
-          'xhv_fill' => 2,
-          'xhv_max' => 7,
-          'xiv_u' => {
-            'xivu_iv' => 2,
-            'xivu_uv' => 2,
-            'xivu_p1' => 2,
-            'xivu_i32' => 2,
-            'xivu_namehek' => 2
-          },
-          'xmg_u' => {
-            'xmg_magic' => {
-              'mg_moremagic' => '<NULL>',
-              'mg_virtual' => {
-                'svt_get' => 0,
-                'svt_set' => 0,
-                'svt_len' => 0,
-                'svt_clear' => 0,
-                'svt_free' => 137040321,
-                'svt_copy' => 0,
-                'svt_dup' => 0,
-                'svt_local' => 0
-              },
-              'mg_private' => 0,
-              'mg_type' => 99,
-              'mg_flags' => 0,
-              'mg_len' => 12,
-              'mg_obj' => 0,
-              'mg_ptr' => 140265332
-            },
-            'xmg_ourstash' => {
-              'sv_any' => '<NULL>',
-              'sv_refcnt' => 137909216,
-              'sv_flags' => 6488064,
-              'sv_u' => {
-                'svu_iv' => 12,
-                'svu_uv' => 12,
-                'svu_rv' => 12,
-                'svu_pv' => 12,
-                'svu_array' => 12,
-                'svu_hash' => 12,
-                'svu_gp' => 12
-              }
-            }
-          },
-          'xmg_stash' => '<NULL>'
-        },
-        'sv_refcnt' => 2,
-        'sv_flags' => 578813964,
-        'sv_u' => {
-          'svu_iv' => '593020634507353364',
-          'svu_uv' => '593020634507353364',
-          'svu_rv' => 139042068,
-          'svu_pv' => 139042068,
-          'svu_array' => 139042068,
-          'svu_hash' => 139042068,
-          'svu_gp' => 139042068
-        }
-      }
+      'xmg_stash' => 0
     },
     'sv_refcnt' => 1,
-    'sv_flags' => 1074790411,
+    'sv_flags' => 536870924,
     'sv_u' => {
-      'svu_iv' => 141176388,
-      'svu_uv' => 141176388,
-      'svu_rv' => 141176388,
-      'svu_pv' => 141176388,
-      'svu_array' => 141176388,
-      'svu_hash' => 141176388,
-      'svu_gp' => 141176388
+      'svu_iv' => 139483844,
+      'svu_uv' => 139483844,
+      'svu_rv' => 139483844,
+      'svu_pv' => 139483844,
+      'svu_array' => 139483844,
+      'svu_hash' => 139483844,
+      'svu_gp' => 139483844
     }
   };
 
@@ -1741,9 +1670,11 @@ Which will print something like this:
       'DEBUGGING',
       'FOO=123'
     ],
+    'StdCVersion' => 199901,
     'ByteOrder' => 'LittleEndian',
     'LongSize' => 4,
     'IntSize' => 4,
+    'HostedC' => 1,
     'ShortSize' => 2,
     'HasMacroVAARGS' => 1,
     'Assert' => [],
@@ -2407,6 +2338,18 @@ variable length argument lists in your preprocessor macros.
   #define DEBUG( ... )  fprintf( stderr, __VA_ARGS__ )
 
 There's normally no reason to turn that feature off.
+
+=item C<StdCVersion> =E<gt> undef | INTEGER
+
+Use this option to change the value of the preprocessor's
+predefined C<__STDC_VERSION__> macro. When set to C<undef>,
+the macro will not be defined.
+
+=item C<HostedC> =E<gt> undef | 0 | 1
+
+Use this option to change the value of the preprocessor's
+predefined C<__STDC_HOSTED__> macro. When set to C<undef>,
+the macro will not be defined.
 
 =item C<Include> =E<gt> [ INCLUDES ]
 
@@ -3917,7 +3860,7 @@ moment it was parsed.
   # Create object, set include path, parse 'string.h' header
   #----------------------------------------------------------
   my $c = Convert::Binary::C->new
-          ->Include('/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include',
+          ->Include('/usr/lib/gcc/i686-pc-linux-gnu/4.1.2/include',
                     '/usr/include')
           ->parse_file('string.h');
   
@@ -3956,15 +3899,15 @@ The above code would print something like this:
       'mtime' => 1196609232,
       'size' => 315
     },
+    '/usr/lib/gcc/i686-pc-linux-gnu/4.1.2/include/stddef.h' => {
+      'ctime' => 1203359674,
+      'mtime' => 1203357922,
+      'size' => 12695
+    },
     '/usr/include/string.h' => {
       'ctime' => 1196609327,
       'mtime' => 1196609262,
       'size' => 16438
-    },
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include/stddef.h' => {
-      'ctime' => 1192854535,
-      'mtime' => 1167821861,
-      'size' => 12695
     },
     '/usr/include/bits/wordsize.h' => {
       'ctime' => 1196609327,
@@ -3977,8 +3920,8 @@ The above code would print something like this:
     '/usr/include/gnu/stubs-32.h',
     '/usr/include/sys/cdefs.h',
     '/usr/include/gnu/stubs.h',
+    '/usr/lib/gcc/i686-pc-linux-gnu/4.1.2/include/stddef.h',
     '/usr/include/string.h',
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include/stddef.h',
     '/usr/include/bits/wordsize.h'
   );
 
@@ -4895,12 +4838,14 @@ The following properties can be queried:
   DoubleSize
   EnumSize
   FloatSize
+  HostedC
   IntSize
   LongDoubleSize
   LongLongSize
   LongSize
   PointerSize
   ShortSize
+  StdCVersion
   UnsignedBitfields
   UnsignedChars
 
@@ -4909,21 +4854,23 @@ in which case it will return a reference to a hash with all
 properties, like:
 
   $native = {
+    'StdCVersion' => undef,
     'ByteOrder' => 'LittleEndian',
     'LongSize' => 4,
     'IntSize' => 4,
+    'HostedC' => 1,
     'ShortSize' => 2,
-    'FloatSize' => 4,
-    'Alignment' => 4,
-    'LongLongSize' => 8,
-    'LongDoubleSize' => 12,
     'UnsignedChars' => 0,
     'DoubleSize' => 8,
     'CharSize' => 1,
-    'UnsignedBitfields' => 0,
     'EnumSize' => 4,
-    'CompoundAlignment' => 1,
-    'PointerSize' => 4
+    'PointerSize' => 4,
+    'FloatSize' => 4,
+    'LongLongSize' => 8,
+    'Alignment' => 4,
+    'LongDoubleSize' => 12,
+    'UnsignedBitfields' => 0,
+    'CompoundAlignment' => 1
   };
 
 The contents of that hash are suitable for passing them to
@@ -5518,7 +5465,7 @@ want to rate the module at L<http://cpanratings.perl.org/>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 

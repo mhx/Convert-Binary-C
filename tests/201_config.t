@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/06/11 19:59:47 +0100 $
-# $Revision: 36 $
+# $Date: 2008/04/15 14:37:48 +0100 $
+# $Revision: 38 $
 # $Source: /tests/201_config.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -265,7 +265,12 @@ sub compare_config
       }
     }
     else {
-      $cfg1->{$key} eq $cfg2->{$key} or $fail++;
+      if (defined($cfg1->{$key}) && defined($cfg2->{$key})) {
+        $cfg1->{$key} eq $cfg2->{$key} or $fail++;
+      }
+      else {
+        defined($cfg1->{$key}) == defined($cfg2->{$key}) or $fail++;
+      }
     }
   }
   return $fail == 0;
@@ -276,10 +281,15 @@ sub checkrc
   my $rc = shift;
   my $fail = 0;
   my $succ = 0;
-  while( $rc =~ /REFCNT\s*=\s*(\d+)/g ) {
-    if( $1 == 1 ) { $succ++ }
+  while( $rc =~ /SV\s*=\s*(\S+).*?REFCNT\s*=\s*(\d+)/g ) {
+    if( $2 == 1 ) {
+      $succ++
+    }
+    elsif ($1 eq 'NULL' && $2 > 10000) { # we hit &PL_sv_undef...
+      $succ++
+    }
     else {
-      print "# REFCNT = $1, should be 1\n";
+      print "# REFCNT = $2 for Sv$1, should be 1\n";
       $fail++;
     }
   }
@@ -570,7 +580,9 @@ ok( $@, qr/Invalid method some_method called.*$thisfile/ );
   'LongLongSize' => 8,
   'LongDoubleSize' => 12,
   'OrderMembers' => 0,
-  'Bitfields' => { Engine => 'Simple', BlockSize => 2 }
+  'Bitfields' => { Engine => 'Simple', BlockSize => 2 },
+  'StdCVersion' => undef,
+  'HostedC' => 0,
 );
 
 eval {
@@ -611,7 +623,9 @@ ok( compare_config( \%config, $cfg ) );
   'LongLongSize' => 8,
   'LongDoubleSize' => 12,
   'OrderMembers' => 0,
-  'Bitfields' => { Engine => 'Simple', BlockSize => 4 }
+  'Bitfields' => { Engine => 'Simple', BlockSize => 4 },
+  'StdCVersion' => 199901,
+  'HostedC' => undef,
 );
 
 @warn = ();
@@ -634,6 +648,10 @@ eval {
   $p->CharSize(2);
 
   $p->Bitfields( { BlockSize => 4 } );
+
+  $p->configure(StdCVersion => 199901);
+
+  $p->HostedC(undef);
 
   $cfg = $p->configure;
 };

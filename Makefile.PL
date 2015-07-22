@@ -3,13 +3,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/12/06 20:59:00 +0000 $
-# $Revision: 109 $
+# $Date: 2008/04/15 14:37:47 +0100 $
+# $Revision: 110 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
 # 
-# Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 # 

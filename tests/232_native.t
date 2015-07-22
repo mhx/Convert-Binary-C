@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/06/11 19:59:42 +0100 $
-# $Revision: 13 $
+# $Date: 2008/04/15 14:37:35 +0100 $
+# $Revision: 15 $
 # $Source: /tests/232_native.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 65 }
+BEGIN { plan tests => 69 }
 
 eval {
   $s = Convert::Binary::C::native('IntSize');

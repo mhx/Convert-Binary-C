@@ -2,24 +2,27 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/06/11 19:59:45 +0100 $
-# $Revision: 18 $
+# $Date: 2008/04/15 14:37:31 +0100 $
+# $Revision: 20 $
 # $Source: /tests/217_preproc.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
 ################################################################################
 
-use Test::More tests => 29;
+use Test::More tests => 37;
 use Convert::Binary::C @ARGV;
+use strict;
 
-eval {
-  $c = new Convert::Binary::C Define  => ['b=a'],
-                              Include => ['tests/include/files', 'include/files'];
+BEGIN { $^W = 1 }
+
+my $c = eval {
+  Convert::Binary::C->new(Define  => ['b=a'],
+                          Include => ['tests/include/files', 'include/files']);
 };
 is($@, '', "create Convert::Binary::C::Cached object");
 
@@ -275,6 +278,55 @@ END
 };
 
 like($@, qr/constant too large/);
+
+#------------------------------
+# test StdCVersion and HostedC
+#------------------------------
+
+$c = Convert::Binary::C->new;
+
+is($c->StdCVersion, 199901, "StdCVersion default");
+is($c->HostedC, 1, "HostedC default");
+
+my $code = <<ENDC;
+enum test {
+  STDC =
+#ifdef __STDC_VERSION__
+  __STDC_VERSION__
+#else
+  -1
+#endif
+  ,
+  HOSTED =
+#ifdef __STDC_VERSION__
+  __STDC_HOSTED__
+#else
+  -1
+#endif
+};
+ENDC
+
+$c->clean
+  ->configure(StdCVersion => undef, HostedC => undef)
+  ->parse($code);
+
+is($c->unpack('test', $c->pack('test', 'STDC')), -1);
+is($c->unpack('test', $c->pack('test', 'HOSTED')), -1);
+
+$c->clean
+  ->configure(StdCVersion => '4711', HostedC => 0)
+  ->parse($code);
+
+is($c->unpack('test', $c->pack('test', 'STDC')), 4711);
+is($c->unpack('test', $c->pack('test', 'HOSTED')), 0);
+
+$c->clean
+  ->configure(StdCVersion => '199901', HostedC => 1)
+  ->parse($code);
+
+is($c->unpack('test', $c->pack('test', 'STDC')), 199901);
+is($c->unpack('test', $c->pack('test', 'HOSTED')), 1);
+
 
 # TODO: more arith checks (errors/warnings)
 

@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/06/11 19:59:58 +0100 $
-* $Revision: 16 $
+* $Date: 2008/04/15 14:37:40 +0100 $
+* $Revision: 19 $
 * $Source: /cbc/util.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -588,24 +588,30 @@ void dump_sv(pTHX_ SV *buf, int level, SV *sv)
   char *str;
   svtype type = SvTYPE(sv);
 
-  switch (type)
+  if (SvROK(sv))
   {
-    case SVt_NULL: str = "NULL"; break;
-    case SVt_IV:   str = "IV";   break;
-    case SVt_NV:   str = "NV";   break;
-    case SVt_RV:   str = "RV";   break;
-    case SVt_PV:   str = "PV";   break;
-    case SVt_PVIV: str = "PVIV"; break;
-    case SVt_PVNV: str = "PVNV"; break;
-    case SVt_PVMG: str = "PVMG"; break;
-    case SVt_PVLV: str = "PVLV"; break;
-    case SVt_PVAV: str = "PVAV"; break;
-    case SVt_PVHV: str = "PVHV"; break;
-    case SVt_PVCV: str = "PVCV"; break;
-    case SVt_PVGV: str = "PVGV"; break;
-    case SVt_PVFM: str = "PVFM"; break;
-    case SVt_PVIO: str = "PVIO"; break;
-    default      : str = "UNKNOWN";
+    str = "RV";
+  }
+  else
+  {
+    switch (type)
+    {
+      case SVt_NULL: str = "NULL"; break;
+      case SVt_IV:   str = "IV";   break;
+      case SVt_NV:   str = "NV";   break;
+      case SVt_PV:   str = "PV";   break;
+      case SVt_PVIV: str = "PVIV"; break;
+      case SVt_PVNV: str = "PVNV"; break;
+      case SVt_PVMG: str = "PVMG"; break;
+      case SVt_PVLV: str = "PVLV"; break;
+      case SVt_PVAV: str = "PVAV"; break;
+      case SVt_PVHV: str = "PVHV"; break;
+      case SVt_PVCV: str = "PVCV"; break;
+      case SVt_PVGV: str = "PVGV"; break;
+      case SVt_PVFM: str = "PVFM"; break;
+      case SVt_PVIO: str = "PVIO"; break;
+      default      : str = "UNKNOWN";
+    }
   }
 
   CT_DEBUG(MAIN, (XSCLASS "::dump_sv( level=%d, sv=\"%s\" )", level, str));
@@ -636,12 +642,14 @@ void dump_sv(pTHX_ SV *buf, int level, SV *sv)
   sv_catpvf(buf, "SV = %s @ %p (REFCNT = %lu)\n",
                  str, sv, (unsigned long) SvREFCNT(sv));
 
+  if (SvROK(sv))
+  {
+    dump_sv(aTHX_ buf, level, SvRV(sv));
+    return;
+  }
+
   switch (type)
   {
-    case SVt_RV:
-      dump_sv(aTHX_ buf, level, SvRV(sv));
-      break;
-
     case SVt_PVAV:
       {
         AV *av = (AV *) sv;

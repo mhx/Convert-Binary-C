@@ -1,4 +1,13 @@
 -------------------------
+Version 0.71 (2008-04-15)
+-------------------------
+
+* added new 'StdCVersion' and 'HostedC' options for configuring
+  the predefined macros of the preprocessor
+
+* fix debugging build with development version of Perl
+
+-------------------------
 Version 0.70 (2007-12-24)
 -------------------------
 

@@ -11,13 +11,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/11/12 21:18:41 +0000 $
-# $Revision: 65 $
+# $Date: 2008/04/15 14:37:31 +0100 $
+# $Revision: 67 $
 # $Source: /bin/ccconfig $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -29,7 +29,7 @@ use Data::Dumper;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = ('$Snapshot: /Convert-Binary-C/0.70 $' =~ /([^\/\s]+)\s*\$$/)[0];
+my $VERSION = ('$Snapshot: /Convert-Binary-C/0.71 $' =~ /([^\/\s]+)\s*\$$/)[0];
 my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT = (
   'output-format' => 'dumper',
@@ -56,7 +56,7 @@ unless( GetOptions( \%OPT, qw(
 if( $OPT{version} ) {
   print <<VERSION;
 $MESSAGE
-Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
@@ -173,44 +173,45 @@ sub _preset_names
     amiga AMIGAOS AMIX ansi ANSI_C_SOURCE ANSI_COMPAT AOUT APCS_26 APCS_32
     apollo APOLLO_SOURCE APPLE APPLE_CC APX386 arc arch64 arch_ arch__v3
     arch__v8 ARCH_COM ARCH_PPC ARCH_PPC64 ARCH_PWR ARCH_PWR2 arch_v10
-    arch_v3 arch_v8 ARCHITECTURE ardent arm arm2 arm32 arm6 ARM_ARCH_2
-    ARM_ARCH_3 ARM_ARCH_3M ARM_ARCH_4 ARM_ARCH_4T ARM_ARCH_5 ARM_ARCH_5E
-    ARM_ARCH_5T ARM_ARCH_5TE arm_elf arm_oabi ARMEB ARMEL ARMWEL atarist
-    athlon athlon_sse att386 att3b AUX AUX_SOURCE AVR AVR_ARCH AVR_ASM_ONLY
-    AVR_AT43USB320 AVR_AT43USB355 AVR_AT76C711 AVR_AT90C8534 AVR_AT90S1200
-    AVR_AT90S2313 AVR_AT90S2323 AVR_AT90S2333 AVR_AT90S2343 AVR_AT90S4414
-    AVR_AT90S4433 AVR_AT90S4434 AVR_AT90S8515 AVR_AT90S8535 AVR_AT94K
-    AVR_ATmega103 AVR_ATmega128 AVR_ATmega16 AVR_ATmega161 AVR_ATmega163
-    AVR_ATmega32 AVR_ATmega323 AVR_ATmega603 AVR_ATmega64 AVR_ATmega8
-    AVR_ATmega83 AVR_ATmega85 AVR_ATtiny11 AVR_ATtiny12 AVR_ATtiny15
-    AVR_ATtiny22 AVR_ATtiny28 AVR_ENHANCED AVR_MEGA base BeOS BIG_ENDIAN
-    BIGMODEL BIT_MSF bool BSD bsd43 bsd4_2 BSD4_3 bsd4_4 BSD_4_3 BSD_4_4
-    BSD_C BSD_NET2 BSD_SOURCE BSD_TIME BSD_TYPES BSDCOMPAT bsdi BUFSIZ bull
-    BULL_SOURCE BYTE_MSF BYTE_ORDER c C30 C31 C32 C33 C3x C40 C44 C4x
-    cadmus CALL_AIX CALL_AIXDESC CALL_NT CALL_SYSV cdecl CHAR_UNSIGNED
-    CLASSIFY_TYPE clipper CMU COFF COMPILER_VERSION CONCURRENT CONIX convex
-    convex_c1 convex_c2 convex_c32 convex_c34 convex_c38 CONVEX_FLOAT_
-    CONVEX_SOURCE cplusplus CPU CPU_FAMILY CPU_VARIANT CRAY CRAYIEEE
-    CRAYMPP CRAYT3E CRIS CRIS_ABI_version CRIS_arch_tune CRIS_arch_version
-    ctix CX_UX CYGWIN CYGWIN32 D30V DCC DCE_THREADS DCPLUSPLUS declspec
-    DGUX DGUX_SOURCE DGUX_TARGET DIAB_TOOL DJGPP dmert DOLPHIN
-    DOUBLE_IS_32BITS DPX2 DSO DSP1600 DSP1610 DYNAMIC Dynix DynixPTX EABI
-    ECOFF ELF elinux elxsi embedded EMBEDDED_CROSS encore EPI EXTENSIONS
-    EXTERN_PREFIX FAVOR_BSD FILE_OFFSET_BITS FILENAME_MAX float128 float80
-    fpreg fr30 FreeBSD frv FRV_ACC FRV_DWORD FRV_FPR FRV_GPR FRV_HARD_FLOAT
-    FRV_UNDERSCORE FRV_VLIW G_FLOAT gcc GCC_NEW_VARARGS gcos gcx GFLOAT
-    gimpel GLIBC GLIBC_MINOR gmicro GNU GNU_CRIS gnu_hurd GNU_LIBRARY
-    gnu_linux GNU_SOURCE GNUC GNUC_MINOR GNUC_PATCHLEVEL GO32 gould
-    GOULD_PN GP_SUPPORT H3050R H3050RX H8300 H8300H H8300S hardfp
-    HAVE_68881 HAVE_CE HAVE_FPA HAVE_FPU HAVE_SHORT_DOUBLE HAVE_SHORT_INT
-    HAVE_SKY hbullx20 hcx HITACHI HIUX_SOURCE host_mips hp200 hp300 hp64000
-    hp64902 hp64903 HP700 hp800 hp9000 hp9000ipc hp9000s200 hp9000s300
-    hp9000s400 hp9000s500 hp9000s700 hp9000s800 hp9k8 HP_aCC hp_osf hppa
-    hpux HPUX_ASM HPUX_SOURCE hypersparc i186 i286 i370 i386 i486 i586 i686
-    i8086 I80960 i860 i960 i960_CA i960_CC i960_CF i960_KA i960_KB i960_MC
-    i960_SA i960_SB i960CA i960CC i960CF i960JA i960JD i960JF i960KA i960KB
-    i960MC i960RP i960SA i960SB IA64 iAPX286 IBITS32 ibm ibm032 ibmesa
-    IBMR2 ibmrt IEEE_FLOAT IEEE_FLOAT_ IEEE_FP IEEE_FP_INEXACT ILP32 ILP64
+    arch_v3 arch_v32 arch_v8 ARCHITECTURE ardent arm arm2 arm32 arm6
+    ARM_ARCH_2 ARM_ARCH_3 ARM_ARCH_3M ARM_ARCH_4 ARM_ARCH_4T ARM_ARCH_5
+    ARM_ARCH_5E ARM_ARCH_5T ARM_ARCH_5TE arm_elf arm_oabi ARMEB ARMEL
+    ARMWEL atarist athlon athlon_sse att386 att3b AUX AUX_SOURCE AVR
+    AVR_ARCH AVR_ASM_ONLY AVR_AT43USB320 AVR_AT43USB355 AVR_AT76C711
+    AVR_AT90C8534 AVR_AT90S1200 AVR_AT90S2313 AVR_AT90S2323 AVR_AT90S2333
+    AVR_AT90S2343 AVR_AT90S4414 AVR_AT90S4433 AVR_AT90S4434 AVR_AT90S8515
+    AVR_AT90S8535 AVR_AT94K AVR_ATmega103 AVR_ATmega128 AVR_ATmega16
+    AVR_ATmega161 AVR_ATmega163 AVR_ATmega32 AVR_ATmega323 AVR_ATmega603
+    AVR_ATmega64 AVR_ATmega8 AVR_ATmega83 AVR_ATmega85 AVR_ATtiny11
+    AVR_ATtiny12 AVR_ATtiny15 AVR_ATtiny22 AVR_ATtiny28 AVR_ENHANCED
+    AVR_MEGA base BeOS BIG_ENDIAN BIGMODEL BIT_MSF bool BSD bsd43 bsd4_2
+    BSD4_3 bsd4_4 BSD_4_3 BSD_4_4 BSD_C BSD_NET2 BSD_SOURCE BSD_TIME
+    BSD_TYPES BSDCOMPAT bsdi BUFSIZ bull BULL_SOURCE BYTE_MSF BYTE_ORDER c
+    C30 C31 C32 C33 C3x C40 C44 C4x cadmus CALL_AIX CALL_AIXDESC CALL_NT
+    CALL_SYSV cdecl CHAR_UNSIGNED CLASSIFY_TYPE clipper CMU COFF COMPATMATH
+    COMPILER_VERSION CONCURRENT CONIX convex convex_c1 convex_c2 convex_c32
+    convex_c34 convex_c38 CONVEX_FLOAT_ CONVEX_SOURCE cplusplus CPU
+    CPU_FAMILY CPU_VARIANT CRAY CRAYIEEE CRAYMPP CRAYT3E CRIS
+    CRIS_ABI_version CRIS_arch_tune CRIS_arch_version ctix CX_UX CYGWIN
+    CYGWIN32 D30V DCC DCE_THREADS DCPLUSPLUS declspec DGUX DGUX_SOURCE
+    DGUX_TARGET DIAB_TOOL DJGPP dmert DOLPHIN DOUBLE_IS_32BITS DPX2 DSO
+    DSP1600 DSP1610 DYNAMIC Dynix DynixPTX EABI ECOFF ELF elinux elxsi
+    embedded EMBEDDED_CROSS encore EPI EXTENSIONS EXTERN_PREFIX FAVOR_BSD
+    FILE_OFFSET_BITS FILENAME_MAX float128 float80 fpreg fr30 FreeBSD frv
+    FRV_ACC FRV_DWORD FRV_FPR FRV_GPR FRV_HARD_FLOAT FRV_UNDERSCORE
+    FRV_VLIW G_FLOAT gcc GCC_NEW_VARARGS gcos gcx GFLOAT gimpel GLIBC
+    GLIBC_MINOR gmicro GNU GNU_CRIS gnu_hurd GNU_LIBRARY gnu_linux
+    GNU_SOURCE GNUC GNUC_MINOR GNUC_PATCHLEVEL GO32 gould GOULD_PN
+    GP_SUPPORT H3050R H3050RX H8300 H8300H H8300S hardfp HAVE_68881 HAVE_CE
+    HAVE_FPA HAVE_FPU HAVE_SHORT_DOUBLE HAVE_SHORT_INT HAVE_SKY hbullx20
+    hcx HITACHI HIUX_SOURCE host_mips hp200 hp300 hp64000 hp64902 hp64903
+    HP700 hp800 hp9000 hp9000ipc hp9000s200 hp9000s300 hp9000s400
+    hp9000s500 hp9000s700 hp9000s800 hp9k8 HP_aCC hp_osf hppa hpux HPUX_ASM
+    HPUX_SOURCE hypersparc i186 i286 i370 i386 i486 i586 i686 i8086 I80960
+    i860 i960 i960_CA i960_CC i960_CF i960_KA i960_KB i960_MC i960_SA
+    i960_SB i960CA i960CC i960CF i960JA i960JD i960JF i960KA i960KB i960MC
+    i960RP i960SA i960SB IA64 iAPX286 IBITS32 ibm ibm032 ibmesa IBMR2 ibmrt
+    IEEE_FLOAT IEEE_FLOAT_ IEEE_FP IEEE_FP_INEXACT ILP32 ILP64
     INCLUDE__STDC__ INCLUDE_LONGLONG INLINE INLINE_INTRINSICS INT int128
     INT64 INT_MAX INTEL interdata INTERIX INTRINSICS IP2K is68k itanium
     IWMMXT ix86 k6 k6_2 k6_3 KPRINTF_ATTRIBUTE KR ksr1 LANGUAGE_ASSEMBLY
@@ -248,28 +249,29 @@ sub _preset_names
     pyr QNX R3000 R4000 REENTRANT REGPARM RELOCATABLE RES REVARGV Rhapsody
     rios RISC6000 riscbsd riscix riscos ROSE rs6000 RT rtasim rtems RTP
     s390 s390x s64_t SA110 SCO SCO_C_DIALECT SCO_COFF SCO_DS SCO_ELF
-    SCO_ODS_30 SCO_XPG_VERS scs semi sequent SEQUENT_ sgi SGI_SOURCE sh sh1
-    sh2 sh3 SH3E SH4 SH4_100 SH4_200 SH4_300 SH4_340 SH4_400 SH4_500
+    SCO_ODS_30 SCO_XPG_VERS score3 scs semi sequent SEQUENT_ sgi SGI_SOURCE
+    sh sh1 sh2 sh3 SH3E SH4 SH4_100 SH4_200 SH4_300 SH4_340 SH4_400 SH4_500
     SH4_NOFPU SH4_SINGLE SH4_SINGLE_ONLY SH5 SHARED SHMEDIA SHRT_MAX
     simulator sinix SIZE_INT SIZE_LONG SIZE_PTR SIZE_TYPE SNI SOCKET_SOURCE
     SOCKETS_SOURCE SOFT_FLOAT SOFTFP SOLARIS_THREADS sony sony_news
     sonyrisc sparc sparc64 sparc_v8 sparc_v9 sparclet sparclite
     sparclite86x sparcv9 spectrum spur SSE SSE2 stardent STATIC
-    STD_INCLUDE_DIR STDC STDC_EXT stdcall STDCPP stratos STRICT_ANSI
-    STRICT_BSD STRICT_NAMES sun sun3 sun386 Sun386i supersparc SVID SVR3
-    SVR4 SVR4_2 SVR4_ABI SVR4_SOURCE svr5 SX system SYSTYPE_BSD
-    SYSTYPE_BSD43 SYSTYPE_BSD44 SYSTYPE_SVR4 SYSTYPE_SVR5 SYSTYPE_SYSV SYSV
-    SYSV3 SYSV4 SYSV5 sysV68 sysV88 SYSV_SOURCE tahoe Tek4132 Tek4300
-    THREAD_SAFE THREADS_POSIX4ad4 thumb THUMB_INTERWORK THUMBEB THUMBEL
-    titan TM3200 TM5400 TM5600 TMS320C30 TMS320C31 TMS320C32 TMS320C33
-    TMS320C3x TMS320C40 TMS320C44 TMS320C4x tower tower32 tower32_200
-    tower32_600 tower32_700 tower32_800 tower32_850 TOWER_ASM tss tune_
-    tune_athlon tune_athlon_sse tune_i386 tune_i486 tune_i586 tune_i686
-    tune_k6 tune_k6_2 tune_k6_3 tune_pentium tune_pentium2 tune_pentium3
-    tune_pentium4 tune_pentium_mmx tune_pentiumpro tune_v10 tune_v3 tune_v8
-    u370 u3b u3b2 u3b20 u3b200 u3b20d u3b5 u64_t uclinux UINT128_T ultrix
-    UMAXV unaligned UnicomPBB UnicomPBD UNICOS UNICOSMK unix UNIX95 UNIX99
-    unixpc unos USE_BSD USE_FILE_OFFSET64 USE_GNU USE_INIT_FINI USE_ISOC9X
+    STD_INCLUDE_DIR STDC STDC_EXT STDC_HOSTED STDC_VERSION stdcall STDCPP
+    stratos STRICT_ANSI STRICT_BSD STRICT_NAMES sun sun3 sun386 Sun386i
+    supersparc SVID SVR3 SVR4 SVR4_2 SVR4_ABI SVR4_SOURCE svr5 SX system
+    SYSTYPE_BSD SYSTYPE_BSD43 SYSTYPE_BSD44 SYSTYPE_SVR4 SYSTYPE_SVR5
+    SYSTYPE_SYSV SYSV SYSV3 SYSV4 SYSV5 sysV68 sysV88 SYSV_SOURCE tahoe
+    Tek4132 Tek4300 THREAD_SAFE THREADS_POSIX4ad4 thumb THUMB_INTERWORK
+    THUMBEB THUMBEL titan TM3200 TM5400 TM5600 TMS320C30 TMS320C31
+    TMS320C32 TMS320C33 TMS320C3x TMS320C40 TMS320C44 TMS320C4x tower
+    tower32 tower32_200 tower32_600 tower32_700 tower32_800 tower32_850
+    TOWER_ASM tss tune_ tune_athlon tune_athlon_sse tune_i386 tune_i486
+    tune_i586 tune_i686 tune_k6 tune_k6_2 tune_k6_3 tune_pentium
+    tune_pentium2 tune_pentium3 tune_pentium4 tune_pentium_mmx
+    tune_pentiumpro tune_v tune_v10 tune_v3 tune_v8 u370 u3b u3b2 u3b20
+    u3b200 u3b20d u3b5 u64_t uclinux UINT128_T ultrix UMAXV unaligned
+    UnicomPBB UnicomPBD UNICOS UNICOSMK unix UNIX95 UNIX99 unixpc unos
+    USE_BSD USE_FILE_OFFSET64 USE_GNU USE_INIT_FINI USE_ISOC9X
     USE_LARGEFILE USE_LARGEFILE64 USE_MISC USE_POSIX USE_POSIX199309
     USE_POSIX199506 USE_POSIX2 USE_REENTRANT USE_RTC USE_SVID USE_UNIX98
     USE_XOPEN USE_XOPEN_EXTENDED USES_INITFINI USG USGr4 USGr4_2 UTek Utek
@@ -557,6 +559,12 @@ sub get_config
   if( exists $self->{cpp_comments} ) {
     $cfg{HasCPPComments} = $self->{cpp_comments};
   }
+  if( exists $self->{stdc_version} ) {
+    $cfg{StdCVersion} = $self->{stdc_version};
+  }
+  if( exists $self->{stdc_hosted} ) {
+    $cfg{HostedC} = $self->{stdc_hosted};
+  }
   if( exists $self->{'inc-path'} and @{$self->{'inc-path'}} > 0 ) {
     $cfg{Include} = [ map { s/[\\\/]+$//; $_ } @{$self->{'inc-path'}} ];
   }
@@ -806,6 +814,10 @@ sub run_checks
   if ($self->{can_preprocess}) {
     $self->{predefined}         = $self->_get_predefined( $self->{names} );
     $self->{preasserted}        = $self->_get_preasserted( $asserts );
+    $self->{stdc_version}       = delete $self->{predefined}{__STDC_VERSION__};
+    $self->{stdc_hosted}        = delete $self->{predefined}{__STDC_HOSTED__};
+
+    $self->{stdc_version} =~ s/L$// if defined $self->{stdc_version};
   }
 
   if ($self->{can_compile} || $self->{can_run}) {
@@ -1734,8 +1746,7 @@ sub _get_predefined
   my $names = shift;
   my $pos = 0;
 
-  my @stdnames = qw( __LINE__ __FILE__ __DATE__ __TIME__ __STDC__
-                     _Pragma __STDC_VERSION__ __STDC_HOSTED__ );
+  my @stdnames = qw( __LINE__ __FILE__ __DATE__ __TIME__ __STDC__ _Pragma );
 
   $self->_msg( "\nChecking for predefined macros (this may take a while)..." );
 
@@ -2924,7 +2935,7 @@ a suitable configuration using something like:
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 

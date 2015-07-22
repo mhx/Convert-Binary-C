@@ -10,13 +10,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/06/11 19:59:50 +0100 $
-# $Revision: 32 $
+# $Date: 2008/04/15 14:37:46 +0100 $
+# $Revision: 34 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.70 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.71 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 $VERSION = eval $VERSION;
 
 sub new
@@ -373,7 +373,7 @@ Convert::Binary::C::Cached - Caching for Convert::Binary::C
   $c = Convert::Binary::C::Cached->new(
          Cache   => '/tmp/cache.c',
          Include => [
-           '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include',
+           '/usr/lib/gcc/i686-pc-linux-gnu/4.1.2/include',
            '/usr/include',
          ],
        );
@@ -444,7 +444,7 @@ algorithm cannot detect that an update is required.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
