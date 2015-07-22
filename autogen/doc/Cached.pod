@@ -77,10 +77,6 @@ If a dependency file changes, but the change affects neither
 the size nor the timestamps of that file, the caching
 algorithm cannot detect that an update is required.
 
-=head1 BUGS
-
-Well, see L<LIMITATIONS> above... ;-)
-
 =head1 COPYRIGHT
 
 Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
@@ -89,6 +85,6 @@ it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
-L<Convert::Binary::C>.
+See L<Convert::Binary::C>.
 
 =cut

@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/01 11:29:57 +0000 $
-# $Revision: 8 $
-# $Snapshot: /Convert-Binary-C/0.07 $
+# $Date: 2003/01/10 22:26:26 +0000 $
+# $Revision: 9 $
+# $Snapshot: /Convert-Binary-C/0.08 $
 # $Source: /ctlib/Tokenizer.pm $
 #
 ################################################################################
@@ -27,7 +27,7 @@ package Tokenizer;
 use strict;
 use vars '$VERSION';
 
-$VERSION = sprintf '%.2f', 0.01*('$Revision: 8 $' =~ /(\d+)/)[0];
+$VERSION = sprintf '%.2f', 0.01*('$Revision: 9 $' =~ /(\d+)/)[0];
 
 sub new
 {
@@ -48,6 +48,7 @@ sub addtokens
   for( @token ) {
     $self->{tokens}{$_} = $pre;
   }
+  $self;
 }
 
 sub makeswitch

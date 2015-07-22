@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/01 11:30:03 +0000 $
-# $Revision: 11 $
-# $Snapshot: /Convert-Binary-C/0.07 $
+# $Date: 2003/01/14 20:06:53 +0000 $
+# $Revision: 14 $
+# $Snapshot: /Convert-Binary-C/0.08 $
 # $Source: /t/802_threads.t $
 #
 ################################################################################
@@ -55,7 +55,10 @@ if( $have_threads ) {
     @t = map { new threads \&task, $_ } 1 .. NUM_THREADS;
   }
 }
-else { @t = 1 .. NUM_THREADS }
+else {
+  Convert::Binary::C->new->parse('');  # allocate/free some memory
+  @t = 1 .. NUM_THREADS
+}
 
 skip( $have_threads ? '' : "skip: $reason",
       $have_threads ? $_->join : $_, '', "thread failed" ) for @t;

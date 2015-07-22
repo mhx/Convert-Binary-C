@@ -40,7 +40,7 @@
  * memory. It actually also improves performance on large, modern machines
  * (due to less cache pressure). This option implies no limitation (except
  * on the number of arguments a macro may, which is then limited to 32766)
- * so it is on by default. Non-LOW_MEM code is considered as deprecated.
+ * so it is on by default. Non-LOW_MEM code is considered deprecated.
  */
 #define LOW_MEM
 

@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/01 11:29:56 +0000 $
-# $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.07 $
+# $Date: 2003/01/10 22:28:28 +0000 $
+# $Revision: 4 $
+# $Snapshot: /Convert-Binary-C/0.08 $
 # $Source: /ctlib/t_parser.pl $
 #
 ################################################################################
@@ -26,16 +26,8 @@
 use lib 'ctlib';
 use Tokenizer;
 
-$t = new Tokenizer tokfnc => \&tok_code;
-
-# keywords only in C99
-@C99 = qw(
-  inline
-  restrict
-);
-
 # keywords that cannot be disabled
-@ndis = qw(
+@no_disable = qw(
   break
   case char continue
   default do
@@ -50,31 +42,45 @@ $t = new Tokenizer tokfnc => \&tok_code;
   while
 );
 
-# put them in a hash
-@NDIS{@ndis} = (1) x @ndis;
-
-# add all tokens except C99
-$t->addtokens( '', qw(
+# keywords that can be disabled
+@disable = qw(
   auto
   const
   double
   enum extern
   float
+  inline
   long
-  register
+  register restrict
   short signed static
   unsigned
   void volatile
-), @ndis );
+);
 
-# add C99 keywords
-$t->addtokens( 'ANSIC99_EXTENSIONS', @C99 );
+# put them in a hash
+@NDIS{@no_disable} = (1) x @no_disable;
 
-open OUT, ">$ARGV[0]" or die $!;
+$file = shift;
+
+if( $file =~ /t_parser/ ) {
+  $t = Tokenizer->new( tokfnc => \&t_parser )
+                ->addtokens( '', @disable, @no_disable );
+}
+elsif( $file =~ /t_keywords/ ) {
+  $t = Tokenizer->new( tokfnc => \&t_keywords, tokstr => 'str' )
+                ->addtokens( '', @disable );
+}
+elsif( $file =~ /t_ckeytok/ ) {
+  $t = Tokenizer->new( tokfnc => \&t_ckeytok, tokstr => 'name' )
+                ->addtokens( '', @disable, @no_disable );
+}
+else { die "invalid file: $file\n" }
+
+open OUT, ">$file" or die "$file: $!";
 print OUT $t->makeswitch;
 close OUT;
 
-sub tok_code {
+sub t_parser {
   my $token = shift;
   if( exists $NDIS{$token} ) {
     return "return \U$token\E_TOK;\n";
@@ -84,3 +90,18 @@ sub tok_code {
          . "  return \U$token\E_TOK;\n";
   }
 };
+
+sub t_keywords {
+  my $token = shift;
+  return "keywords &= ~HAS_KEYWORD_\U$token\E;\n"
+        ."goto success;\n";
+};
+
+sub t_ckeytok {
+  my $token = shift;
+  return <<END
+static const CKeywordToken ckt = { \U$token\E_TOK, "$token" };
+return &ckt;
+END
+};
+

@@ -12,6 +12,9 @@ GENERATED = C.pm Cached.pm ccconfig
 
 all :: install clean html
 
+pdf: all
+	@cd pdf && make realclean && make
+
 ../../blib:
 	@cd ../.. && $(PERL) Makefile.PL && make
 

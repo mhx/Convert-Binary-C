@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/07 20:54:39 +0000 $
-* $Revision: 20 $
-* $Snapshot: /Convert-Binary-C/0.07 $
+* $Date: 2003/01/14 20:16:20 +0000 $
+* $Revision: 22 $
+* $Snapshot: /Convert-Binary-C/0.08 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -393,13 +393,11 @@ int ParseBuffer( const char *filename, const Buffer *pBuf,
                 |  WARN_TRIGRAPHS
                 |  WARN_TRIGRAPHS_MORE;
 
-#ifdef ANSIC99_EXTENSIONS
   if( pCPC->flags & HAS_CPP_COMMENTS )
     lexer.flags |= CPLUSPLUS_COMMENTS;
 
   if( pCPC->flags & HAS_MACRO_VAARGS )
     lexer.flags |= MACRO_VAARG;
-#endif
 
   if( infile != NULL ) {
     lexer.input        = infile;
@@ -474,10 +472,10 @@ int ParseBuffer( const char *filename, const Buffer *pBuf,
 
   c_parser_delete( pState );
 
-  /* Take out the buffer name from the parsed files table */
+  /* Invalidate the buffer name in the parsed files table */
 
   if( filename == NULL )
-    (void) HT_fetch( pCPI->htFiles, BUFFER_NAME, 0, 0 );
+    ((FileInfo *) HT_get( pCPI->htFiles, BUFFER_NAME, 0, 0 ))->valid = 0;
 
 #if !defined NDEBUG && defined CTYPE_DEBUGGING
   if( DEBUG_FLAG( HASH ) ) {
@@ -731,16 +729,58 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
     LL_push( pDest->typedef_lists, pClone );
   }
 
+  CT_DEBUG( CTLIB, ("cloning file information") );
+
+  {
+    void *pOld, *pNew;
+
+    pDest->htFiles = HT_clone( pSrc->htFiles, (HTCloneFunc) fileinfo_clone );
+
+    HT_reset( pSrc->htFiles );
+    HT_reset( pDest->htFiles );
+
+    while(   HT_next( pSrc->htFiles, NULL, NULL, &pOld)
+          && HT_next( pDest->htFiles, NULL, NULL, &pNew)
+         ) {
+      CT_DEBUG( CTLIB, ("storing pointer to map: 0x%08X <=> 0x%08X", pOld, pNew) );
+      HT_store( ptrmap, (const char *) &pOld, sizeof( pOld ), 0, pNew );
+    }
+  }
+
+  CT_DEBUG( CTLIB, ("remapping pointers for enums") );
+
+  LL_foreach( pES, pDest->enums ) {
+    void *ptr;
+
+    ptr = HT_get( ptrmap, (const char *) &pES->context.pFI,
+                          sizeof(void *), 0 );
+
+    CT_DEBUG( CTLIB, ("EnumSpec @ 0x%08X: 0x%08X => 0x%08X",
+                      pES, pES->context.pFI, ptr) );
+
+    if( ptr )
+      pES->context.pFI = ptr;
+    else {
+      fprintf( stderr, "FATAL: pointer 0x%08X not found!\n",
+                       pES->context.pFI );
+      abort();
+    }
+    
+  }
+
+  CT_DEBUG( CTLIB, ("remapping pointers for structs") );
+
   LL_foreach( pStruct, pDest->structs ) {
     StructDeclaration *pStructDecl;
+    void *ptr;
 
     CT_DEBUG( CTLIB, ("remapping pointers for struct @ 0x%08X ('%s')",
                       pStruct, pStruct->identifier) );
 
     LL_foreach( pStructDecl, pStruct->declarations ) {
       if( pStructDecl->type.ptr != NULL ) {
-        void *ptr = HT_get( ptrmap, (const char *) &pStructDecl->type.ptr,
-                                    sizeof(void *), 0 );
+        ptr = HT_get( ptrmap, (const char *) &pStructDecl->type.ptr,
+                              sizeof(void *), 0 );
 
         CT_DEBUG( CTLIB, ("StructDecl @ 0x%08X: 0x%08X => 0x%08X",
                           pStructDecl, pStructDecl->type.ptr, ptr) );
@@ -753,6 +793,20 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
           abort();
         }
       }
+    }
+
+    ptr = HT_get( ptrmap, (const char *) &pStruct->context.pFI,
+                          sizeof(void *), 0 );
+
+    CT_DEBUG( CTLIB, ("Struct @ 0x%08X: 0x%08X => 0x%08X",
+                      pStruct, pStruct->context.pFI, ptr) );
+
+    if( ptr )
+      pStruct->context.pFI = ptr;
+    else {
+      fprintf( stderr, "FATAL: pointer 0x%08X not found!\n",
+                       pStruct->context.pFI );
+      abort();
     }
   }
 
@@ -777,8 +831,6 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
   }
 
   HT_destroy( ptrmap, NULL );
-
-  pDest->htFiles = HT_clone( pSrc->htFiles, (HTCloneFunc) fileinfo_clone );
 }
 
 /*******************************************************************************

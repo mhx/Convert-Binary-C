@@ -399,6 +399,24 @@ void init_cppm(void)
 	}
 }
 
+/*
+ * Make some character as equivalent to a letter for identifiers.
+ */
+void set_identifier_char(int c)
+{
+	cppm[S_START][c] = PUT(S_NAME);
+	cppm[S_NAME][c] = PUT(S_NAME);
+}
+
+/*
+ * Remove the "identifier" status from a character.
+ */
+void unset_identifier_char(int c)
+{
+	cppm[S_START][c] = S_ILL;
+	cppm[S_NAME][c] = FRZ(STO(NAME));
+}
+
 int space_char(int c)
 {
 	if (c == ' ' || c == '\t' || c == '\v' || c == '\f'

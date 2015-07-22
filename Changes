@@ -169,3 +169,15 @@ Version 0.07
 
 * deprecated 'c99' feature, will be removed in 0.08
 
+------------
+Version 0.08
+------------
+
+* added ccconfig --nodelete option
+
+* added context info for structs/unions/enums
+
+* removed 'c99' feature
+
+* documentation updates and fixes
+

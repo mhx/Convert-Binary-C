@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/09 07:56:04 +0000 $
-# $Revision: 28 $
-# $Snapshot: /Convert-Binary-C/0.07 $
+# $Date: 2003/01/10 22:24:41 +0000 $
+# $Revision: 29 $
+# $Snapshot: /Convert-Binary-C/0.08 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -121,11 +121,6 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
                e_flags => [qw( CTYPE_DEBUGGING DEBUG_MEMALLOC DEBUG_HASH YYDEBUG=1 )],
                d_flags => [qw( NDEBUG )],
              },
-  c99     => {
-               enabled => 1,
-               e_flags => [qw( ANSIC99_EXTENSIONS )],
-               d_flags => [qw()],
-             },
   ($Config{use5005threads} || $Config{useithreads}) ? (
     threads => {
                  enabled => 1,
@@ -148,15 +143,13 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
 
 %GENERATE = (
   %EXAMPLES,
-  'ctlib/arch.pl'       => 'ctlib/arch.h',
-  'ctlib/t_ckeytok.pl'  => 'ctlib/t_ckeytok.c',
-  'ctlib/t_keywords.pl' => 'ctlib/t_keywords.c',
-  'ctlib/t_parser.pl'   => 'ctlib/t_parser.c',
-  'ctlib/t_pragma.pl'   => 'ctlib/t_pragma.c',
-  'ctlib/t_config.pl'   => 'ctlib/t_config.c',
+  'ctlib/arch.pl'     =>  'ctlib/arch.h',
+  'ctlib/t_parser.pl' => ['ctlib/t_parser.c', 'ctlib/t_keywords.c', 'ctlib/t_ckeytok.c'],
+  'ctlib/t_pragma.pl' =>  'ctlib/t_pragma.c',
+  'ctlib/t_config.pl' =>  'ctlib/t_config.c',
 );
 
-push @REALCLEAN, values %GENERATE;
+push @REALCLEAN, map { ref $_ ? @$_ : $_ } values %GENERATE;
 
 # Extract features/optimizations from the commandline arguments
 
@@ -179,27 +172,16 @@ ENDUSAGE
   $myopt ? () : $_
 } @ARGV;
 
-unless( $FEATURES{c99}{enabled} ) {
-  print STDERR <<ENDWARN
-!!!
-!!!  The 'C99' feature is deprecated and
-!!!  will be removed in the next release.
-!!!
-ENDWARN
-}
-
 WriteMakefile(
   'NAME'            => $MODULE,
-  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.07 $'
+  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.08 $'
                                     =~ /(\d+\.\d+(?:_\d+)?)/;
                             @r ? $r[0] : '9.99' },
   'ABSTRACT'        => 'Binary Data Conversion using C Types',
   'AUTHOR'          => 'Marcus Holland-Moritz <mhx@cpan.org>',
   'MYEXTLIB'        => 'libctype$(LIB_EXT)',
   'INC'             => join( ' ', map { "-I$_" } @INC_PATH ),
-  'EXE_FILES'       => [
-                         'bin/ccconfig'
-                       ],
+  'EXE_FILES'       => ['bin/ccconfig'],
   'PL_FILES'        => { %GENERATE },
   'CONFIGURE'       => \&configure,
   'clean'           => { FILES => "\$(MYEXTLIB_OBJ)" },
@@ -297,11 +279,14 @@ sub find_depend {
     my @incs;
     open FILE, $_ or die $!;
     while( <FILE> ) {
-      /^\s*#\s*include\s*"(([^"]+)\.\w+)"/ or next;
+      my($inc,$base) = /^\s*#\s*include\s*"([^"]+\.\w+)"/ or next;
       for my $path ( @inc_path ) {
-        if( -e "$path$1" or -e "$path$2.pl" ) {
-          push @incs, $File::Find::dir . "/$path" . $1;
+        if( -e "$path$inc" ) {
+          push @incs, $File::Find::dir . "/$path" . $inc;
         }
+      }
+      for my $gen ( keys %GENERATE ) {
+        push @incs, grep /\E$inc/, ( ref $GENERATE{$gen} ? @{$GENERATE{$gen}} : $GENERATE{$gen} );
       }
     }
     close FILE;

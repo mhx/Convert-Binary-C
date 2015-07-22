@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/07 21:23:36 +0000 $
-# $Revision: 33 $
-# $Snapshot: /Convert-Binary-C/0.07 $
+# $Date: 2003/01/14 20:11:24 +0000 $
+# $Revision: 35 $
+# $Snapshot: /Convert-Binary-C/0.08 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,8 +32,8 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = sprintf '%.2f', 0.01*('$Revision: 33 $' =~ /(\d+)/)[0];
-$XS_VERSION =  do { my @r = '$Snapshot: /Convert-Binary-C/0.07 $'
+$VERSION    = sprintf '%.2f', 0.01*('$Revision: 35 $' =~ /(\d+)/)[0];
+$XS_VERSION =  do { my @r = '$Snapshot: /Convert-Binary-C/0.08 $'
                             =~ /(\d+\.\d+(?:_\d+)?)/;
                     @r ? $r[0] : '9.99' },
 
@@ -1059,8 +1059,7 @@ parser:
 
   $c->DisabledKeywords( [qw( void )] );
 
-If Convert::Binary::C is built with the C99 feature
-enabled (which is the default), the parser will recognize
+By default, the Convert::Binary::C parser will recognize
 the keywords C<inline> and C<restrict>. If your compiler
 doesn't have these new keywords, it usually doesn't matter.
 Only if you're using the keywords as identifiers, like in
@@ -1069,7 +1068,7 @@ Only if you're using the keywords as identifiers, like in
     int a, b;
   } restrict;
 
-you'll have to disable the ANSI-C99 keywords:
+you'll have to disable these ISO-C99 keywords:
 
   $c->DisabledKeywords( [qw( inline restrict )] );
 
@@ -1762,6 +1761,7 @@ This will print:
     'enumerators' => {
       'INSIDE' => 0
     },
+    'context' => '[buffer](3)',
     'sign' => 0
   };
 
@@ -2022,6 +2022,7 @@ The above code would print something like this:
   
   /* defined enums */
   
+  #line 20 "[buffer]"
   enum count
   {
   	ZERO,
@@ -2033,14 +2034,17 @@ The above code would print something like this:
   
   /* defined structs and unions */
   
+  #line 6 "[buffer]"
   struct _mytype
   {
+  #line 7 "[buffer]"
   	union
   	{
   		int iCount;
   		enum count *pCount;
   	} counter;
   #pragma pack( push, 1 )
+  #line 12 "[buffer]"
   	struct
   	{
   		char string[42];
@@ -2183,6 +2187,7 @@ to this:
         'SOCK_DGRAM' => 2
       },
       'identifier' => '__socket_type',
+      'context' => 'definitions.c(3)',
       'sign' => 0
     }
   );
@@ -2193,6 +2198,11 @@ to this:
 
 holds the enumeration identifier. This key is not
 present if the enumeration has no identifier.
+
+=item C<context>
+
+is the context in which the enumeration is defined. This
+is the filename followed by the line number in parentheses.
 
 =item C<enumerators>
 
@@ -2284,6 +2294,7 @@ to this:
     {
       'identifier' => 'STRUCT_SV',
       'align' => 1,
+      'context' => 'definitions.c(13)',
       'pack' => 0,
       'type' => 'struct',
       'declarations' => [
@@ -2323,6 +2334,7 @@ to this:
     {
       'identifier' => 'xxx',
       'align' => 1,
+      'context' => 'definitions.c(21)',
       'pack' => 0,
       'type' => 'struct',
       'declarations' => [
@@ -2351,6 +2363,7 @@ to this:
     },
     {
       'align' => 1,
+      'context' => 'definitions.c(19)',
       'pack' => 0,
       'type' => 'union',
       'declarations' => [
@@ -2385,6 +2398,11 @@ to this:
 
 holds the struct or union identifier. This
 key is not present if the compound has no identifier.
+
+=item C<context>
+
+is the context in which the struct or union is defined. This
+is the filename followed by the line number in parentheses.
 
 =item C<type>
 
@@ -2559,6 +2577,7 @@ to this:
       'declarator' => 'test',
       'type' => {
         'align' => 1,
+        'context' => 'definitions.c(19)',
         'pack' => 0,
         'type' => 'union',
         'declarations' => [
@@ -2623,8 +2642,7 @@ will check if Convert::Binary::C was built with debugging support
 enabled. The C<feature> function returns C<1> if the feature is
 enabled, C<0> if the feature is disabled, and C<undef> if the
 feature is unknown. Currently the only features that can be checked
-are C<debug>, C<threads> and C<c99>. The latter will check if some
-extensions of the ANSI-C99 standard are enabled.
+are C<debug> and C<threads>.
 
 You can enable or disable certain features at compile time of the
 module by using the
@@ -2664,7 +2682,11 @@ you simply say
 
 which will enable all debug output. However, I don't recommend
 to enable all debug output, because that can be a fairly large
-amount. Instead of saying C<all>, you can pass a string that
+amount.
+
+=head2 Debugging options
+
+Instead of saying C<all>, you can pass a string that
 consists of one or more of the following characters:
 
   m   enable memory allocation tracing
@@ -2697,6 +2719,8 @@ in the F<ctlib/util/tool> directory to extract statistics
 about memory usage and information about memory leaks from
 the resulting debug output.
 
+=head2 Redirecting debug output
+
 By default, all debug output is written to C<stderr>. You
 can, however, redirect the debug output to a file with
 the C<debugfile> option:
@@ -2707,9 +2731,36 @@ the C<debugfile> option:
 If the file cannot be opened, you'll receive a warning and
 the output will go the C<stderr> way again.
 
+Alternatively, you can use the environment
+variables L<C<CBC_DEBUG_OPT>|/"CBC_DEBUG_OPT"> and L<C<CBC_DEBUG_FILE>|/"CBC_DEBUG_FILE"> to
+turn on debug output.
+
 If Convert::Binary::C is built without debugging support,
 passing the C<debug> or C<debugfile> options will cause
-a warning to be issued.
+a warning to be issued. The corresponding environment
+variables will simply be ignored.
+
+=head1 ENVIRONMENT
+
+=head2 C<CBC_DEBUG_OPT>
+
+If Convert::Binary::C is built with debugging
+support, you can use this variable to specify
+the L<debugging options|/"Debugging options">.
+
+=head2 C<CBC_DEBUG_FILE>
+
+If Convert::Binary::C is built with debugging support,
+you can use this variable to L<redirect|/"Redirecting debug output"> the
+debug output to a file.
+
+=head2 C<CBC_DISABLE_PARSER>
+
+This variable is intended purely for development. Setting
+it to a non-zero value disables the Convert::Binary::C parser,
+which means that no information is collected from the file
+or code that is parsed. However, the preprocessor will run,
+which is useful for benchmarking the preprocessor.
 
 =head1 BITFIELDS
 
@@ -2744,6 +2795,7 @@ a call to L<C<struct>|/"struct"> will return
     {
       'identifier' => 'bitfield',
       'align' => 1,
+      'context' => 'bitfields.c(1)',
       'pack' => 0,
       'type' => 'struct',
       'declarations' => [
@@ -2894,6 +2946,6 @@ to the source code of this module in any other way.
 
 =head1 SEE ALSO
 
-L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar> and L<Data::Dumper>.
+See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar> and L<Data::Dumper>.
 
 =cut

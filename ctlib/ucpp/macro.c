@@ -40,10 +40,6 @@
  * we store macros in a hash table, and retrieve them using their name
  * as identifier.
  */
-#if 0
-/* obsolete */
-static struct HT *macros = 0;
-#endif
 static HTT macros;
 static int macros_init_done = 0;
 
@@ -52,10 +48,6 @@ static void del_macro(void *m)
 	struct macro *n = m;
 	size_t i;
 
-#if 0
-/* obsolete */
-	if (n->name) freemem(n->name);
-#endif
 	for (i = 0; (int)i < n->narg; i ++) freemem(n->arg[i]);
 	if (n->narg > 0) freemem(n->arg);
 #ifdef LOW_MEM
@@ -75,10 +67,6 @@ static inline struct macro *new_macro(void)
 {
 	struct macro *m = getmem(sizeof(struct macro));
 
-#if 0
-/* obsolete */
-	m->name = 0;
-#endif
 	m->narg = -1;
 	m->nest = 0;
 #ifdef LOW_MEM
@@ -136,15 +124,6 @@ static void add_special_macros(void)
 	HTT_put(&macros, new_macro(), "__DATE__");
 	HTT_put(&macros, new_macro(), "__TIME__");
 	HTT_put(&macros, new_macro(), "__STDC__");
-#if 0
-/* obsolete */
-	m = new_macro(); m->name = sdup("__LINE__"); putHT(macros, m);
-	m = new_macro(); m->name = sdup("__FILE__"); putHT(macros, m);
-	m = new_macro(); m->name = sdup("__DATE__"); putHT(macros, m);
-	m = new_macro(); m->name = sdup("__TIME__"); putHT(macros, m);
-	m = new_macro(); m->name = sdup("__STDC__"); putHT(macros, m);
-	m = new_macro(); m->name = sdup("_Pragma"); m->narg = 1;
-#endif
 	m = new_macro(); m->narg = 1;
 	m->arg = getmem(sizeof(char *)); m->arg[0] = sdup("foo");
 	HTT_put(&macros, m, "_Pragma");
@@ -389,11 +368,6 @@ int handle_define(struct lexer_state *ls)
 	}
 	if (!redef) {
 		m = new_macro();
-#if 0
-/* obsolete */
-		m->name = mname;
-		mname = 0;
-#endif
 		m->narg = -1;
 #ifdef LOW_MEM
 #define mval	mv
@@ -1755,10 +1729,6 @@ int define_macro(struct lexer_state *ls, char *def)
 #endif
 
 			m = new_macro();
-#if 0
-/* obsolete */
-			m->name = sdup(c);
-#endif
 #ifdef LOW_MEM
 			m->cval.length = 3;
 			m->cval.t = getmem(3);
@@ -1939,10 +1909,6 @@ void init_macros(void)
 	wipe_macros();
 	HTT_init(&macros, del_macro);
 	macros_init_done = 1;
-#if 0
-/* obsolete */
-	macros = newHT(128, cmp_struct, hash_struct, del_macro);
-#endif
 	if (!no_special_macros) add_special_macros();
 }
 

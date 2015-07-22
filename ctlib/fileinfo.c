@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/01 11:29:56 +0000 $
-* $Revision: 2 $
-* $Snapshot: /Convert-Binary-C/0.07 $
+* $Date: 2003/01/14 20:13:47 +0000 $
+* $Revision: 3 $
+* $Snapshot: /Convert-Binary-C/0.08 $
 * $Source: /ctlib/fileinfo.c $
 *
 ********************************************************************************
@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stddef.h>
 
 #include <sys/stat.h>
 
@@ -70,23 +71,35 @@
 *
 *******************************************************************************/
 
-FileInfo *fileinfo_new( FILE *file )
+FileInfo *fileinfo_new( FILE *file, char *name, size_t name_len )
 {
   FileInfo *pFileInfo;
   struct stat buf;
 
-  if( file == NULL )
-    return NULL;
+  if( name != NULL && name_len == 0 )
+    name_len = strlen( name );
 
-  if( fstat( fileno( file ), &buf ) != 0 )
-    return NULL;
+  pFileInfo = (FileInfo *) Alloc( offsetof( FileInfo, name ) + name_len + 1 );
 
-  pFileInfo = (FileInfo *) Alloc( sizeof( FileInfo ) );
+  if( name != NULL )
+    strcpy( pFileInfo->name, name );
+  else
+    pFileInfo->name[0] = '\0';
 
-  pFileInfo->size        = buf.st_size;
-  pFileInfo->access_time = buf.st_atime;
-  pFileInfo->modify_time = buf.st_mtime;
-  pFileInfo->change_time = buf.st_ctime;
+  if( file != NULL && fstat( fileno( file ), &buf ) == 0 ) {
+    pFileInfo->valid       = 1;
+    pFileInfo->size        = buf.st_size;
+    pFileInfo->access_time = buf.st_atime;
+    pFileInfo->modify_time = buf.st_mtime;
+    pFileInfo->change_time = buf.st_ctime;
+  }
+  else {
+    pFileInfo->valid       = 0;
+    pFileInfo->size        = 0;
+    pFileInfo->access_time = 0;
+    pFileInfo->modify_time = 0;
+    pFileInfo->change_time = 0;
+  }
 
   return pFileInfo;
 }
@@ -134,9 +147,17 @@ void fileinfo_delete( FileInfo *pFileInfo )
 FileInfo *fileinfo_clone( const FileInfo *pSrc )
 {
   FileInfo *pDest;
+  size_t size;
 
-  pDest = (FileInfo *) Alloc( sizeof( FileInfo ) );
-  memcpy( pDest, pSrc, sizeof( FileInfo ) );
+  if( pSrc == NULL )
+    return NULL;
+
+  size = offsetof( FileInfo, name ) + 1;
+  if( pSrc->name[0] != '\0' )
+    size += strlen( pSrc->name );
+
+  pDest = (FileInfo *) Alloc( size );
+  memcpy( pDest, pSrc, size );
 
   return pDest;
 }

@@ -264,6 +264,8 @@ void add_incpath(char *);
 void init_tables(int);
 int enter_file(struct lexer_state *, unsigned long);
 int cpp(struct lexer_state *);
+void set_identifier_char(int c);
+void unset_identifier_char(int c);
 
 #ifdef UCPP_MMAP
 FILE *fopen_mmap_file(char *);

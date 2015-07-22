@@ -236,10 +236,6 @@ char *token_name(struct token *t)
  */
 struct found_file {
 	hash_item_header head;    /* first field */
-#if 0
-/* obsolete */
-	char *long_name;	/* first field */
-#endif
 	char *name;
 	char *protect;
 };
@@ -249,18 +245,10 @@ struct found_file {
  */
 struct found_file_sys {
 	hash_item_header head;    /* first field */
-#if 0
-/* obsolete */
-	char *name;
-#endif
 	struct found_file *rff;
 	int incdir;
 };
 
-#if 0
-/* obsolete */
-static struct HT *found_files = 0, *found_files_sys = 0;
-#endif
 static HTT found_files, found_files_sys;
 static int found_files_init_done = 0, found_files_sys_init_done = 0;
 
@@ -268,10 +256,6 @@ static struct found_file *new_found_file(void)
 {
 	struct found_file *ff = getmem(sizeof(struct found_file));
 
-#if 0
-/* obsolete */
-	ff->name = ff->long_name = 0;
-#endif
 	ff->name = 0;
 	ff->protect = 0;
 	return ff;
@@ -282,10 +266,6 @@ static void del_found_file(void *m)
 	struct found_file *ff = (struct found_file *)m;
 
 	if (ff->name) freemem(ff->name);
-#if 0
-/* obsolete */
-	if (ff->long_name) freemem(ff->long_name);
-#endif
 	if (ff->protect) freemem(ff->protect);
 	freemem(ff);
 }
@@ -294,10 +274,6 @@ static struct found_file_sys *new_found_file_sys(void)
 {
 	struct found_file_sys *ffs = getmem(sizeof(struct found_file_sys));
 
-#if 0
-/* obsolete */
-	ffs->name = 0;
-#endif
 	ffs->rff = 0;
 	ffs->incdir = -1;
 	return ffs;
@@ -307,10 +283,6 @@ static void del_found_file_sys(void *m)
 {
 	struct found_file_sys *ffs = (struct found_file_sys *)m;
 
-#if 0
-/* obsolete */
-	if (ffs->name) freemem(ffs->name);
-#endif
 	freemem(ffs);
 }
 
@@ -332,11 +304,6 @@ void set_init_filename(char *x, int real_file)
 		protect_detect.state = 1;
 		protect_detect.ff = new_found_file();
 		protect_detect.ff->name = sdup(x);
-#if 0
-/* obsolete */
-		protect_detect.ff->long_name = sdup(x);
-		putHT(found_files, protect_detect.ff);
-#endif
 		HTT_put(&found_files, protect_detect.ff, x);
 	} else {
 		protect_detect.state = 0;
@@ -817,10 +784,6 @@ static FILE *find_file(char *name, int localdir)
 			 */
 			struct found_file_sys *ffs = new_found_file_sys();
 
-#if 0
-/* obsolete */
-			ffs->name = sdup(name);
-#endif
 			ffs->rff = ff;
 			ffs->incdir = incdir;
 			HTT_put(&found_files_sys, ffs, name);
@@ -890,10 +853,6 @@ found_file:
 	}
 	nff = protect_detect.ff;
 	nff->name = sdup(name);
-#if 0
-/* obsolete */
-	nff->long_name = s ? s : sdup(name);
-#endif
 #ifdef AUDIT
 	if (
 #endif
@@ -905,10 +864,6 @@ found_file:
 	if (!lf) {
 		struct found_file_sys *ffs = new_found_file_sys();
 
-#if 0
-/* obsolete */
-		ffs->name = sdup(name);
-#endif
 		ffs->rff = nff;
 		ffs->incdir = incdir;
 		HTT_put(&found_files_sys, ffs, name);
@@ -999,10 +954,6 @@ static FILE *find_file_next(char *name)
 				}
 				ff = protect_detect.ff = new_found_file();
 				ff->name = sdup(s);
-#if 0
-/* obsolete */
-				ff->long_name = s;
-#endif
 #ifdef AUDIT
 				if (
 #endif
@@ -2205,7 +2156,7 @@ int check_cpp_errors(struct lexer_state *ls)
 	}
 #endif
 	if ((ls->flags & WARN_TRIGRAPHS) && ls->count_trigraphs)
-		warning(0, "%ld trigraphs encountered", ls->count_trigraphs);
+		warning(0, "%ld trigraph(s) encountered", ls->count_trigraphs);
 	return 0;
 }
 
@@ -2589,21 +2540,6 @@ int main(int argc, char *argv[])
 	enter_file(&ls, ls.flags);
 	while ((r = cpp(&ls)) < CPPERR_EOF) fr = fr || (r > 0);
 	fr = fr || check_cpp_errors(&ls);
-#if 0
-/* obsolete */
-	if (ls.flags & KEEP_OUTPUT) {
-		/* while (ls.line > ls.oline) put_char(&ls, '\n'); */
-		put_char(&ls, '\n');
-	}
-	if (emit_dependencies) fputc('\n', emit_output);
-#ifndef NO_UCPP_BUF
-	if (!(ls.flags & LEXER)) {
-		flush_output(&ls);
-	}
-#endif
-	if (ls.flags & WARN_TRIGRAPHS && ls.count_trigraphs)
-		warning(0, "%ld trigraphs encountered", ls.count_trigraphs);
-#endif
 	free_lexer_state(&ls);
 	wipeout();
 #ifdef MEM_DEBUG

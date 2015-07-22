@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/01 11:29:55 +0000 $
-# $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.07 $
+# $Date: 2003/01/10 22:27:38 +0000 $
+# $Revision: 4 $
+# $Snapshot: /Convert-Binary-C/0.08 $
 # $Source: /ctlib/t_config.pl $
 #
 ################################################################################
@@ -25,8 +25,6 @@
 
 use lib 'ctlib';
 use Tokenizer;
-
-$t = new Tokenizer tokfnc => \&tok_code, tokstr => 'option';
 
 @OPT = qw(
   UnsignedChars
@@ -48,27 +46,18 @@ $t = new Tokenizer tokfnc => \&tok_code, tokstr => 'option';
   KeywordMap
   ByteOrder
   EnumType
-);
-
-@C99 = qw(
   HasCPPComments
   HasMacroVAARGS
 );
 
-$t->addtokens( '', @OPT );
-$t->addtokens( 'ANSIC99_EXTENSIONS', @C99 );
-
-$enums     = join "\n", map "  OPTION_$_,", @OPT;
-$enums_c99 = join "\n", map "  OPTION_$_,", @C99;
-$switch    = $t->makeswitch;
+$enums  = join "\n", map "  OPTION_$_,", @OPT;
+$switch = Tokenizer->new( tokfnc => \&tok_code, tokstr => 'option' )
+                   ->addtokens( '', @OPT )->makeswitch;
 
 open OUT, ">$ARGV[0]" or die $!;
 print OUT <<END;
 typedef enum {
 $enums
-#ifdef ANSIC99_EXTENSIONS
-$enums_c99
-#endif
   INVALID_OPTION
 } ConfigOption;
 

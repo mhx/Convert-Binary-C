@@ -6,12 +6,18 @@ What's to do?
 for future releases (in no special order):
 ------------------------------------------
 
+* add platform independent IEEE floating point support
+  (SoftFloat or sth. similar?)
+
+* on parse error, print parser stack?
+
+* add some warnings during parsing
+
+* maybe add routine with checks after parsing
+
 * support gcc's __attribute__, at least for struct packing
 
 * support (read: ignore ;) asm (and variations: asm volatile)
-
-* maybe add routine with checks after parsing. also, add file
-  information (file, line) for each struct (typedef?, enum?)
 
 * maybe add tests for all preprocessor warnings/errors?
 
@@ -41,7 +47,7 @@ for future releases (in no special order):
     doesn't work yet. But I guess such construct is rarely
     used.
 
-* add an object representing a single type
+* maybe add an object representing a single type?
 
   - for example:
 
@@ -58,8 +64,6 @@ for future releases (in no special order):
   - I have to think about that!!!
   - Any suggestions are strongly appreciated!
 
-* add some warnings during parsing
-
 * make the preprocessor re-entrant
 
   - not high priority, since the locking is working fine, too
@@ -69,19 +73,7 @@ for future releases (in no special order):
   - would need something like compiler definition files to
     describe the behaviour of different compilers
 
-* perhaps add better floating-point support
-
-  - same thing as for bitfields
-
-* compiler definition files
-
-  - would be helpful to describe certain properties of a compiler
-
 * do some more optimization in the Get/SetBasicType area
-
-* perhaps add more pragma options
-
-  - any suggestions?
 
 * add even more tests
 

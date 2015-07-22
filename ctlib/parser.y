@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/06 02:40:49 +0000 $
-* $Revision: 18 $
-* $Snapshot: /Convert-Binary-C/0.07 $
+* $Date: 2003/01/14 20:13:03 +0000 $
+* $Revision: 19 $
+* $Snapshot: /Convert-Binary-C/0.08 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -212,7 +212,7 @@ struct _ParserState {
 
   struct lexer_state *pLexer;
 
-  char               *filename;
+  FileInfo           *pFI;
 
   u_32                flags;
 
@@ -391,6 +391,10 @@ int moo(const int identifier1 (T identifier2 (int identifier3)));
   Enumerator        *pEnum;
   TypeSpec           tspec;
   Value              value;
+  struct {
+    unsigned long    uval;
+    ContextInfo      ctx;
+  }                  context;
   signed long        ival;
   unsigned long      uval;
   char               oper;
@@ -498,6 +502,9 @@ int moo(const int identifier1 (T identifier2 (int identifier3)));
                      basic_type_name
                      declaration_qualifier
                      aggregate_key
+
+%type <context>      aggregate_key_context
+                     enum_key_context
 
 %type <value>        string_literal_list
                      primary_expression
@@ -1014,20 +1021,23 @@ elaborated_type_name
 	;
 
 aggregate_name
-	: aggregate_key '{' member_declaration_list '}'
+	: aggregate_key_context '{' member_declaration_list '}'
 	  {
 	    if( IS_LOCAL ) {
 	      $$.tflags = 0;
 	      $$.ptr = NULL;
 	    }
 	    else {
+	      Struct *pStruct;
 	      LinkedList strdecls = EX_STRDECL_LIST( $3 );
-	      $$.tflags = $1;
-	      $$.ptr = struct_new( NULL, 0, $1, PSTATE->pragma.pack.current, strdecls );
-	      LL_push( PSTATE->pCPI->structs, $$.ptr );
+	      pStruct = struct_new( NULL, 0, $1.uval, PSTATE->pragma.pack.current, strdecls );
+	      pStruct->context = $1.ctx;
+	      LL_push( PSTATE->pCPI->structs, pStruct );
+	      $$.tflags = $1.uval;
+	      $$.ptr = pStruct;
 	    }
 	  }
-	| aggregate_key identifier_or_typedef_name '{' member_declaration_list '}'
+	| aggregate_key_context identifier_or_typedef_name '{' member_declaration_list '}'
 	  {
 	    if( IS_LOCAL ) {
 	      $$.tflags = 0;
@@ -1036,27 +1046,29 @@ aggregate_name
 	    else {
 	      LinkedList strdecls = EX_STRDECL_LIST( $4 );
 	      Struct *pStruct = HT_get( PSTATE->pCPI->htStructs, $2.str, $2.len, $2.hash );
-	      $$.tflags = $1;
 
 	      if( pStruct == NULL ) {
-	        $$.ptr = struct_new( $2.str, $2.len, $1, PSTATE->pragma.pack.current, strdecls );
-	        LL_push( PSTATE->pCPI->structs, $$.ptr );
-	        STORE_IN_HASH( htStructs, $2, $$.ptr );
+	        pStruct = struct_new( $2.str, $2.len, $1.uval, PSTATE->pragma.pack.current, strdecls );
+	        pStruct->context = $1.ctx;
+	        LL_push( PSTATE->pCPI->structs, pStruct );
+	        STORE_IN_HASH( htStructs, $2, pStruct );
 	      }
 	      else {
 	        DELETE_NODE( $2 );
-	        $$.ptr = pStruct;
 
 	        if( pStruct->declarations == NULL ) {
+	          pStruct->context      = $1.ctx;
 	          pStruct->declarations = strdecls;
 	          pStruct->pack         = PSTATE->pragma.pack.current;
 	        }
 	        else
 	          LL_destroy( strdecls, (LLDestroyFunc) structdecl_delete );
 	      }
+	      $$.tflags = $1.uval;
+	      $$.ptr = pStruct;
 	    }
 	  }
-	| aggregate_key identifier_or_typedef_name
+	| aggregate_key_context identifier_or_typedef_name
 	  {
 	    if( IS_LOCAL ) {
 	      $$.tflags = 0;
@@ -1065,18 +1077,28 @@ aggregate_name
 	    else {
 	      Struct *pStruct = HT_get( PSTATE->pCPI->htStructs, $2.str, $2.len, $2.hash );
 
-	      $$.tflags = $1;
-
 	      if( pStruct == NULL ) {
-	        $$.ptr = struct_new( $2.str, $2.len, $1, 0, NULL );
-	        LL_push( PSTATE->pCPI->structs, $$.ptr );
-	        STORE_IN_HASH( htStructs, $2, $$.ptr );
+	        pStruct = struct_new( $2.str, $2.len, $1.uval, 0, NULL );
+	        pStruct->context = $1.ctx;
+	        LL_push( PSTATE->pCPI->structs, pStruct );
+	        STORE_IN_HASH( htStructs, $2, pStruct );
 	      }
 	      else {
 	        DELETE_NODE( $2 );
-	        $$.ptr = pStruct;
 	      }
+
+	      $$.tflags = $1.uval;
+	      $$.ptr = pStruct;
 	    }
+	  }
+	;
+
+aggregate_key_context
+	: aggregate_key
+	  {
+	    $$.uval     = $1;
+	    $$.ctx.pFI  = PSTATE->pFI;
+	    $$.ctx.line = PSTATE->pLexer->ctok->line;
 	  }
 	;
 
@@ -1246,7 +1268,7 @@ bit_field_size
 	;
 
 enum_name
-	: ENUM_TOK '{' enumerator_list '}'
+	: enum_key_context '{' enumerator_list '}'
 	  {
 	    if( IS_LOCAL ) {
 	      $$.tflags = 0;
@@ -1254,64 +1276,76 @@ enum_name
 	      LL_destroy( $3, (LLDestroyFunc) enum_delete );
 	    }
 	    else {
+	      EnumSpecifier *pEnum = enumspec_new( NULL, 0, $3 );
+	      pEnum->context = $1.ctx;
+	      LL_push( PSTATE->pCPI->enums, pEnum );
 	      $$.tflags = T_ENUM;
-	      $$.ptr    = enumspec_new( NULL, 0, $3 );
-	      LL_push( PSTATE->pCPI->enums, $$.ptr );
+	      $$.ptr = pEnum;
 	    }
 	    PSTATE->curEnumList = NULL;
 	  }
-	| ENUM_TOK identifier_or_typedef_name '{' enumerator_list '}'
+	| enum_key_context identifier_or_typedef_name '{' enumerator_list '}'
 	  {
 	    if( IS_LOCAL ) {
 	      $$.tflags = 0;
 	      $$.ptr = NULL;
 	    }
 	    else {
-	      EnumSpecifier *pEnum;
-
-	      $$.tflags = T_ENUM;
-	      pEnum = HT_get( PSTATE->pCPI->htEnums, $2.str, $2.len, $2.hash );
+	      EnumSpecifier *pEnum = HT_get( PSTATE->pCPI->htEnums, $2.str, $2.len, $2.hash );
 
 	      if( pEnum == NULL ) {
-	        $$.ptr = enumspec_new( $2.str, $2.len, $4 );
-	        LL_push( PSTATE->pCPI->enums, $$.ptr );
-	        STORE_IN_HASH( htEnums, $2, $$.ptr );
+	        pEnum = enumspec_new( $2.str, $2.len, $4 );
+	        pEnum->context = $1.ctx;
+	        LL_push( PSTATE->pCPI->enums, pEnum );
+	        STORE_IN_HASH( htEnums, $2, pEnum );
 	      }
 	      else {
 	        DELETE_NODE( $2 );
-	        $$.ptr = pEnum;
 
-	        if( pEnum->enumerators == NULL )
+	        if( pEnum->enumerators == NULL ) {
 	          enumspec_update( pEnum, $4 );
+	          pEnum->context = $1.ctx;
+	        }
 	        else
 	          LL_destroy( $4, (LLDestroyFunc) enum_delete );
 	      }
+
+	      $$.tflags = T_ENUM;
+	      $$.ptr = pEnum;
 	    }
 
 	    PSTATE->curEnumList = NULL;
 	  }
-	| ENUM_TOK identifier_or_typedef_name
+	| enum_key_context identifier_or_typedef_name
 	  {
 	    if( IS_LOCAL ) {
 	      $$.tflags = 0;
 	      $$.ptr = NULL;
 	    }
 	    else {
-	      EnumSpecifier *pEnum;
-
-	      $$.tflags = T_ENUM;
-	      pEnum = HT_get( PSTATE->pCPI->htEnums, $2.str, $2.len, $2.hash );
+	      EnumSpecifier *pEnum = HT_get( PSTATE->pCPI->htEnums, $2.str, $2.len, $2.hash );
 
 	      if( pEnum == NULL ) {
-	        $$.ptr = enumspec_new( $2.str, $2.len, NULL );
-	        LL_push( PSTATE->pCPI->enums, $$.ptr );
-	        STORE_IN_HASH( htEnums, $2, $$.ptr );
+	        pEnum = enumspec_new( $2.str, $2.len, NULL );
+	        pEnum->context = $1.ctx;
+	        LL_push( PSTATE->pCPI->enums, pEnum );
+	        STORE_IN_HASH( htEnums, $2, pEnum );
 	      }
 	      else {
 	        DELETE_NODE( $2 );
-	        $$.ptr = pEnum;
 	      }
+
+	      $$.tflags = T_ENUM;
+	      $$.ptr = pEnum;
 	    }
+	  }
+	;
+
+enum_key_context
+	: ENUM_TOK
+	  {
+	    $$.ctx.pFI  = PSTATE->pFI;
+	    $$.ctx.line = PSTATE->pLexer->ctok->line;
 	  }
 	;
 
@@ -2019,20 +2053,20 @@ static int c_lex( void *pYYLVAL, ParserState *pState )
       case CONTEXT:
         CT_DEBUG( CLEXER, ("token-type => CONTEXT => [%s]", pLexer->ctok->name) );
         {
-          int len = strlen( pLexer->ctok->name );
+          FileInfo *pFI;
+          size_t len = strlen( pLexer->ctok->name );
 
           CT_DEBUG( CLEXER, ("new context: file '%s', line %ld",
                              pLexer->ctok->name, pLexer->ctok->line) );
 
-          if( ! HT_exists( pState->pCPI->htFiles, pLexer->ctok->name, len, 0 ) )
-	    HT_store( pState->pCPI->htFiles, pLexer->ctok->name, len, 0, 
-                      fileinfo_new( pLexer->input ) );
+          pFI = HT_get( pState->pCPI->htFiles, pLexer->ctok->name, len, 0 );
 
-          if( pState->filename )
-            Free( pState->filename );
+          if( pFI == NULL ) {
+            pFI = fileinfo_new( pLexer->input, pLexer->ctok->name, len );
+	    HT_store( pState->pCPI->htFiles, pLexer->ctok->name, len, 0, pFI );
+          }
 
-          pState->filename = (char *) Alloc( len + 1 );
-          strcpy( pState->filename, pLexer->ctok->name );
+          pState->pFI = pFI;
         }
         break;
 
@@ -2172,7 +2206,8 @@ static void *ex_object( LinkedList list, void *object )
 static void parser_error( ParserState *pState, char *msg )
 {
   FormatError( pState->pCPI, "%s, line %d: %s",
-               pState->filename, pState->pLexer->ctok->line, msg );
+               pState->pFI ? pState->pFI->name : "[unknown]",
+               pState->pLexer->ctok->line, msg );
 }
 
 /*******************************************************************************
@@ -2417,7 +2452,7 @@ ParserState *c_parser_new( const CParseConfig *pCPC, CParseInfo *pCPI,
   pState->pLexer              = pLexer;
 
   pState->flags               = 0;
-  pState->filename            = NULL;
+  pState->pFI                 = NULL;
   pState->curEnumList         = NULL;
 
   pState->nodeList            = LL_new();
@@ -2480,9 +2515,6 @@ void c_parser_delete( ParserState *pState )
 
   if( pState == NULL )
     return;
-
-  if( pState->filename )
-    Free( pState->filename );
 
   /*-----------------------*/
   /* Cleanup pragma parser */

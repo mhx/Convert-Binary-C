@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/07 22:21:55 +0000 $
-# $Revision: 13 $
-# $Snapshot: /Convert-Binary-C/0.07 $
+# $Date: 2003/01/14 20:07:57 +0000 $
+# $Revision: 14 $
+# $Snapshot: /Convert-Binary-C/0.08 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
@@ -115,8 +115,8 @@ eval_test(q{
                                                            # (1) Data too short
   $x = $p->unpack( 'nonnative', 'x' );                     # (1) Cannot unpack non-native floating point values
 
-  $x = $p->unpack( 'multiple', 'x'x100 );                  # (1) Member 'a' used more than once in struct multiple
-                                                           # (1) Member 'b' used more than once in union
+  $x = $p->unpack( 'multiple', 'x'x100 );                  # (1) Member 'a' used more than once in struct multiple defined in [buffer](71)
+                                                           # (1) Member 'b' used more than once in union defined in [buffer](75)
 
   $p->sizeof( 'na' );                                      # (1) Useless use of sizeof in void context
   $x = $p->sizeof( 'na' );                                 # (E) Cannot find 'na'

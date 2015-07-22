@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/07 20:54:40 +0000 $
-* $Revision: 9 $
-* $Snapshot: /Convert-Binary-C/0.07 $
+* $Date: 2003/01/14 20:14:31 +0000 $
+* $Revision: 10 $
+* $Snapshot: /Convert-Binary-C/0.08 $
 * $Source: /ctlib/cttype.c $
 *
 ********************************************************************************
@@ -47,6 +47,8 @@
 
 #define CLONE_OBJECT( type, dest, src )                                        \
   type *dest;                                                                  \
+  if( (src) == NULL )                                                          \
+    return NULL;                                                               \
   dest = (type *) Alloc( sizeof( type ) );                                     \
   memcpy( dest, src, sizeof( type ) )
 
@@ -63,6 +65,8 @@
 #define CLONE_OBJECT_IDENT( type, dest, src )                                  \
   type *dest;                                                                  \
   size_t count = offsetof( type, identifier ) + 1;                             \
+  if( (src) == NULL )                                                          \
+    return NULL;                                                               \
   if( src->identifier[0] )                                                     \
     count += strlen( src->identifier );                                        \
   dest = (type *) Alloc( count );                                              \

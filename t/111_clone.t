@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/01 11:30:02 +0000 $
-# $Revision: 4 $
-# $Snapshot: /Convert-Binary-C/0.07 $
+# $Date: 2003/01/14 20:07:34 +0000 $
+# $Revision: 5 $
+# $Snapshot: /Convert-Binary-C/0.08 $
 # $Source: /t/111_clone.t $
 #
 ################################################################################
@@ -63,15 +63,26 @@ ok( reccmp($orig->dependencies, $clone->dependencies), 1, "dependencies differ" 
 
 ok( reccmp($orig->configure, $clone->configure), 1, "wrong configuration" );
 
-for my $meth ( qw( enum compound struct union typedef ) ) {
+@meth = qw( enum compound struct union typedef );
+
+for my $meth ( @meth ) {
   my $meth_names = $meth.'_names';
-  my @orig_names = sort $orig->$meth_names();
+  $ORIG{$meth}        = [$orig->$meth()];
+  $ORIG{$meth_names}  = [$orig->$meth_names()];
+  $ORIG{$meth.'hash'} = { map { ($_ => $orig->$meth($_)) } $orig->$meth_names() };
+}
+
+undef $orig;  # destroy original object
+
+for my $meth ( @meth ) {
+  my $meth_names = $meth.'_names';
+  my @orig_names = sort @{$ORIG{$meth_names}};
 
   print "# checking if any names exist\n";
   ok( @orig_names > 0 );
 
-  print "# checking counts for \$clone->$meth_names\n";
-  ok(scalar $orig->$_(), scalar $clone->$_(), "count mismatch in $_")
+  print "# checking counts for \$clone->$meth / \$clone->$meth_names\n";
+  ok(scalar @{$ORIG{$_}}, scalar $clone->$_(), "count mismatch in $_")
       for $meth, $meth_names;
 
   print "# checking parsed names for \$clone->$meth_names\n";
@@ -81,7 +92,7 @@ for my $meth ( qw( enum compound struct union typedef ) ) {
 
   ok( scalar grep $_, map {
         print "# checking \$clone->$meth( \"$_\" )\n";
-        reccmp($orig->$meth($_), $clone->$meth($_))
+        reccmp($ORIG{$meth.'hash'}{$_}, $clone->$meth($_))
       } @orig_names );
 }
 

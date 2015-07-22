@@ -11,9 +11,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/08 09:11:33 +0000 $
-# $Revision: 30 $
-# $Snapshot: /Convert-Binary-C/0.07 $
+# $Date: 2003/01/10 22:35:40 +0000 $
+# $Revision: 32 $
+# $Snapshot: /Convert-Binary-C/0.08 $
 # $Source: /bin/ccconfig $
 #
 ################################################################################
@@ -30,12 +30,13 @@ use Data::Dumper;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = sprintf '%.2f', 0.01*('$Revision: 30 $' =~ /(\d+)/)[0];
+my $VERSION = sprintf '%.2f', 0.01*('$Revision: 32 $' =~ /(\d+)/)[0];
 my $MESSAGE = "\nThis is $NAME $VERSION ($0).\n\n";
 my %OPT;
 
 unless( GetOptions( \%OPT, qw(
-          cc|c=s ppout|p=s temp|t=s debug quiet status! run!
+          cc|c=s ppout|p=s temp|t=s
+          debug quiet status! run! delete!
       ) ) ) {
   # poor man's pod2usage...
   my($USAGE) = do { local(@ARGV,$/)=($0); <> }
@@ -79,6 +80,7 @@ use IPC::Open3;
 use IO::File;
 use Data::Dumper;
 use Text::Wrap;
+use File::Basename;
 use Carp;
 use strict;
 
@@ -255,14 +257,15 @@ sub new
 {
   my $class = shift;
   my $self = bless {
-    headers => [&ANSI_headers],
-    ppline  => qr/^\s*#\s*(?:line\s*)?(\d+)\s*"([^"]*)"/,
-    debug   => 0,
-    quiet   => 0,
-    status  => 1,
-    run     => 1,
-    temp    => '_t_e_s_t.c',
-    timeout => 30,
+    'headers' => [&ANSI_headers],
+    'ppline'  => qr/^\s*#\s*(?:line\s*)?(\d+)\s*"([^"]*)"/,
+    'debug'   => 0,
+    'quiet'   => 0,
+    'status'  => 1,
+    'run'     => 1,
+    'delete'  => 1,
+    'temp'    => '_t_e_s_t.c',
+    'timeout' => 30,
     @_
   }, $class;
 
@@ -643,8 +646,12 @@ finish:
 sub cleanup
 {
   my $self = shift;
-  for( qw( temp obj exe ) ) {
-    exists $self->{$_} and -e $self->{$_} and unlink $self->{$_};
+  if( $self->{'delete'} ) {
+    for( qw( temp obj exe ) ) {
+      exists $self->{$_} and -e $self->{$_} and unlink $self->{$_};
+    }
+    my $base = $self->_basename;
+    for( glob "$base.*" ) { -e and unlink }
   }
 }
 
@@ -1186,9 +1193,10 @@ sub _get_keyword_map
                  @remap, qw( bounded unbounded imag real complex extension );
 
   my @known;
+  my $count = 0;
 
   for my $key ( sort @keywords ) {
-    $self->_work_in_progress( sprintf "%d keywords", scalar @known );
+    $self->_work_in_progress( sprintf "%d/%d keywords", scalar @known, $count++ );
 
     $self->_temp( <<ENDC );
 typedef struct $key { int foo; } $key;
@@ -1227,9 +1235,10 @@ sub _get_invalid_keywords
                      register short signed static unsigned void volatile );
 
   my @invalid;
+  my $count = 0;
 
   for my $key ( sort @keywords ) {
-    $self->_work_in_progress;
+    $self->_work_in_progress( sprintf "%d/%d keywords", scalar @invalid, $count++ );
 
     $self->_temp( <<ENDC );
 typedef struct $key { int foo; } $key;
@@ -1260,7 +1269,7 @@ sub _get_preasserted
   my $self = shift;
   my $assert = shift;
 
-  $self->_msg( "\nChecking for assertions..." );
+  $self->_msg( "\nChecking for assertions (this may take a while)..." );
 
   my $code;
 
@@ -1314,7 +1323,7 @@ sub _get_predefined
   my @stdnames = qw( __LINE__ __FILE__ __DATE__ __TIME__ __STDC__
                      _Pragma __STDC_VERSION__ __STDC_HOSTED__ );
 
-  $self->_msg( "\nChecking for predefined macros..." );
+  $self->_msg( "\nChecking for predefined macros (this may take a while)..." );
 
   my %defs;
 
@@ -1592,6 +1601,13 @@ sub _names
   (\@names, \%asserts);
 }
 
+sub _basename
+{
+  my $self = shift;
+  my($base) = fileparse( $self->{temp}, '\.[cC][^.]*' );
+  $base;
+}
+
 sub _configure
 {
   my $self = shift;
@@ -1698,8 +1714,9 @@ TEMP
     $self->_msg( "  ppout  : $self->{ppout}" );
   }
 
-  ($self->{exe}) = $self->{temp} =~ /([^.\/\\]+)(?:\.[^\/\\]+)?$/;
-  $self->{obj} = $self->{exe};
+  my $base = $self->_basename;
+  $self->{exe} = $base;
+  $self->{obj} = $base;
 
   my $windows = $^O eq 'MSWin32' || $^O eq 'cygwin';
 
@@ -2064,7 +2081,7 @@ __END__
 
 =head1 NAME
 
-ccconfig - Get Convert::Binary::C configuration for a compiler.
+ccconfig - Get Convert::Binary::C configuration for a compiler
 
 =head1 SYNOPSIS
 
@@ -2084,6 +2101,8 @@ I<options>:
   -t
   --temp     file        name of the temporary test file
                          default: _t_e_s_t.c
+  
+  --nodelete             don't delete temporary files
   
   --norun                don't try to run executables
   
@@ -2121,6 +2140,13 @@ compilers.
 =head2 --temp
 
 Allows you to change the name of the temporary test file.
+
+=head2 --nodelete
+
+Don't attempt to delete temporary files that have been created
+by the compiler. Normally, C<ccconfig> will look for all files
+with the same basename as the temporary test file and delete
+them.
 
 =head2 --norun
 
@@ -2185,6 +2211,6 @@ it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
-L<Convert::Binary::C>.
+See L<Convert::Binary::C>.
 
 =cut

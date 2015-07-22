@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/09 07:49:27 +0000 $
-# $Revision: 10 $
-# $Snapshot: /Convert-Binary-C/0.07 $
+# $Date: 2003/01/10 22:27:15 +0000 $
+# $Revision: 11 $
+# $Snapshot: /Convert-Binary-C/0.08 $
 # $Source: /t/102_misc.t $
 #
 ################################################################################
@@ -20,14 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 108 }
-
-{
-  local $SIG{__WARN__} = sub{}; # deprecated #
-  $C99 = Convert::Binary::C::feature( 'c99' );
-}
-
-ok( defined $C99 );
+BEGIN { plan tests => 107 }
 
 #===================================================================
 # perform some average stuff
@@ -147,11 +140,6 @@ struct nopack {
 
 CCODE
 
-$c_code = <<'CCODE' . $code;
-struct ints { int a, b, c; };
-
-CCODE
-
 $c99_code = <<'CCODE' . $code;
 #define \
 MYINTS( ... \
@@ -167,25 +155,15 @@ CCODE
 
 $SIG{__WARN__} = sub { $warn = $_[0] };
 
-if( $C99 ) {
-  eval {
-    $q->HasMacroVAARGS( 0 );
-    $q->parse( $c99_code );
-  };
-  ok($warn,qr/invalid macro argument/);
-  ok($@,qr/(parse|syntax) error/);
+eval {
+  $q->HasMacroVAARGS( 0 );
+  $q->parse( $c99_code );
+};
+ok($warn,qr/invalid macro argument/);
+ok($@,qr/(parse|syntax) error/);
 
-  eval { $p->parse( $c99_code ) };
-  ok($@,'');
-}
-else {
-  eval { $q->parse( $c99_code ) };
-  ok($warn,qr/invalid macro argument/);
-  ok($@,qr/(parse|syntax) error/);
-
-  eval { $p->parse( $c_code ) };
-  ok($@,'');
-}
+eval { $p->parse( $c99_code ) };
+ok($@,'');
 
 $SIG{__WARN__} = 'DEFAULT';
 

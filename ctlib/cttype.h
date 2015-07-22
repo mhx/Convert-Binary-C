@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/07 20:54:40 +0000 $
-* $Revision: 10 $
-* $Snapshot: /Convert-Binary-C/0.07 $
+* $Date: 2003/01/14 20:14:55 +0000 $
+* $Revision: 11 $
+* $Snapshot: /Convert-Binary-C/0.08 $
 * $Source: /ctlib/cttype.h $
 *
 ********************************************************************************
@@ -31,6 +31,7 @@
 /*===== LOCAL INCLUDES =======================================================*/
 
 #include "arch.h"
+#include "fileinfo.h"
 #include "util/list.h"
 
 
@@ -120,6 +121,11 @@ typedef struct {
 } Value;
 
 typedef struct {
+  FileInfo     *pFI;
+  unsigned long line;
+} ContextInfo;
+
+typedef struct {
   void       *ptr;
   u_32        tflags;
 } TypeSpec;
@@ -133,6 +139,7 @@ typedef struct {
   CTType      ctype;
   u_32        tflags;
   unsigned    sizes[ES_NUM_ENUM_SIZES];
+  ContextInfo context;
   LinkedList  enumerators;
   char        identifier[1];
 } EnumSpecifier;
@@ -162,6 +169,7 @@ typedef struct {
   unsigned    align;
   unsigned    size;
   unsigned    pack;
+  ContextInfo context;
   LinkedList  declarations;
   char        identifier[1];
 } Struct;

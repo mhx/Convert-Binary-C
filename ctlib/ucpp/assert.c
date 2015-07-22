@@ -67,10 +67,6 @@ static void del_assertion(void *va)
 	struct assert *a = va;
 	size_t i;
 
-#if 0
-/* obsolete */
-	if (a->name) freemem(a->name);
-#endif
 	for (i = 0; i < a->nbval; i ++) del_token_fifo(a->val + i);
 	if (a->nbval) freemem(a->val);
 	freemem(a);

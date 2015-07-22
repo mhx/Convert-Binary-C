@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/03 02:01:32 +0000 $
-# $Revision: 9 $
-# $Snapshot: /Convert-Binary-C/0.07 $
+# $Date: 2003/01/10 22:40:46 +0000 $
+# $Revision: 10 $
+# $Snapshot: /Convert-Binary-C/0.08 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = sprintf '%.2f', 0.01*('$Revision: 9 $' =~ /(\d+)/)[0];
+$VERSION = sprintf '%.2f', 0.01*('$Revision: 10 $' =~ /(\d+)/)[0];
 
 my %cache;
 
@@ -310,6 +310,7 @@ sub __reccmp
   my($ref, $val) = @_;
 
   !defined($ref) && !defined($val) and return 1;
+  !defined($ref) || !defined($val) and return 0;
 
   ref $ref or return $ref eq $val;
 
@@ -412,10 +413,6 @@ If a dependency file changes, but the change affects neither
 the size nor the timestamps of that file, the caching
 algorithm cannot detect that an update is required.
 
-=head1 BUGS
-
-Well, see L<LIMITATIONS> above... ;-)
-
 =head1 COPYRIGHT
 
 Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
@@ -424,6 +421,6 @@ it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
-L<Convert::Binary::C>.
+See L<Convert::Binary::C>.
 
 =cut

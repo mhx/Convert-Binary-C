@@ -432,6 +432,50 @@ value), if your struct lexer_state is called ls, use this code:
 This will add a trailing 0 if the line was not read entirely.
 
 
+ucpp may be configured at runtime to accept alternate characters as
+possible parts of identifiers. Typical intended usage is for the '$'
+and '@' characters. The two relevant functions are set_identifier_char()
+and unset_identifier_char(). When this call is issued:
+	set_identifier_char('$');
+then for all the remaining input, the '$' character will be considered
+as just another letter, as far as identifier tokenizing is concerned. This
+is for identifiers only; numeric constants are not modified by that setting.
+This call resets things back:
+	unset_identifier_char('$');
+Those two functions modify the static table which is initialized by
+init_cpp(). You may call init_cpp() at any time to restore the table
+to its standard state.
+
+When using this feature, take care of the following points:
+
+-- Do NOT use a character whose numeric value (as an `unsigned char'
+cast into an `int') is greater than or equal to MAX_CHAR_VAL (in tune.h).
+This would lead to unpredictable results, including an abrupt crash of
+ucpp. ucpp makes absolutely no check whatsoever on that matter: this is
+the programmer's responsibility.
+
+-- If you use a standard character such as '+' or '{', tokens which
+begin with those characters cease to exist. This can be troublesome.
+If you use set_identifier_char() on the '<' character, the handling of
+#include directives will be greatly disturbed. Therefore the use of any
+standard C character in set_identifier_char() of unset_identifier_char()
+is declared unsupported, forbidden and altogether unwise.
+
+-- Stricto sensu, when an extra character is declared as part of an
+identifier, ucpp behaviour cease to conform to C99, which mandates that
+characters such as '$' or '@' must be treated as independant tokens of
+their own. Therefore, if your purpose is to use ucpp in a conformant
+C implementation, the use of set_identifier_char() should be made at
+least a runtime option.
+
+-- When enabling a new character in the middle of a macro replacement,
+the effect of that replacement may be delayed up to the end of that
+macro (but this is a "may" !). If you wish to trigger this feature with
+a custom #pragma or _Pragma(), you should remember it (for instance,
+usine _Pragma() in a macro replacement, and then the extra character
+in the same macro replacement, is not reliable).
+
+
 
 COMPATIBILITY NOTES
 -------------------
@@ -692,6 +736,7 @@ From 1.2 to 1.3:
 * relaxed attitude on failed `##' operators
 * bugfix on macro definition on command-line wrt nesting macros
 * support for up to 32766 macro arguments in LOW_MEM code
+* support for optional additional "identifier" characters such as '$' or '@'
 
 From 1.1 to 1.2:
 

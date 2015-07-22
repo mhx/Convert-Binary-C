@@ -83,10 +83,6 @@ int space_char(int);
  */
 struct assert {
 	hash_item_header head;    /* first field */
-#if 0
-/* obsolete */
-	char *name;	/* this must be the first field */
-#endif
 	size_t nbval;
 	struct token_fifo *val;
 };
@@ -108,10 +104,6 @@ void wipe_assertions(void);
  */
 struct macro {
 	hash_item_header head;     /* first field */
-#if 0
-/* obsolete */
-	char *name;	/* this must be the first field */
-#endif
 	int narg;
 	char **arg;
 	int nest;

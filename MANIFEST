@@ -28,9 +28,7 @@ ctlib/parser.y
 ctlib/pragma.c
 ctlib/pragma.h
 ctlib/pragma.y
-ctlib/t_ckeytok.pl
 ctlib/t_config.pl
-ctlib/t_keywords.pl
 ctlib/t_parser.pl
 ctlib/t_pragma.pl
 ctlib/ucpp/Makefile

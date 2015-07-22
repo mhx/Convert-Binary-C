@@ -1,7 +1,7 @@
 
 =head1 NAME
 
-ccconfig - Get Convert::Binary::C configuration for a compiler.
+ccconfig - Get Convert::Binary::C configuration for a compiler
 
 =head1 SYNOPSIS
 
@@ -21,6 +21,8 @@ I<options>:
   -t
   --temp     file        name of the temporary test file
                          default: _t_e_s_t.c
+  
+  --nodelete             don't delete temporary files
   
   --norun                don't try to run executables
   
@@ -58,6 +60,13 @@ compilers.
 =head2 --temp
 
 Allows you to change the name of the temporary test file.
+
+=head2 --nodelete
+
+Don't attempt to delete temporary files that have been created
+by the compiler. Normally, C<ccconfig> will look for all files
+with the same basename as the temporary test file and delete
+them.
 
 =head2 --norun
 
@@ -122,6 +131,6 @@ it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
-L<Convert::Binary::C>.
+See L<Convert::Binary::C>.
 
 =cut

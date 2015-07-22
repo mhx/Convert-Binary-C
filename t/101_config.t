@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/09 07:49:27 +0000 $
-# $Revision: 16 $
-# $Snapshot: /Convert-Binary-C/0.07 $
+# $Date: 2003/01/10 22:27:14 +0000 $
+# $Revision: 17 $
+# $Snapshot: /Convert-Binary-C/0.08 $
 # $Source: /t/101_config.t $
 #
 ################################################################################
@@ -25,15 +25,10 @@ $^W = 1;
 
 BEGIN { plan tests => 1706 }
 
-{
-  local $SIG{__WARN__} = sub{}; # deprecated #
-  $C99 = Convert::Binary::C::feature( 'c99' );
-}
 $debug = Convert::Binary::C::feature( 'debug' );
 
-ok( defined $C99 and defined $debug );
+ok( defined $debug );
 
-$RC99 = $C99   ? '' : 'skip: not built with C99 feature';
 $RDBG = $debug ? '' : 'skip: no debugging';
 
 # passing references as options is not legal, so this is
@@ -372,10 +367,9 @@ check_config( '', 'EnumType',
 );
 
 check_config_bool( '', $_ ) for qw( UnsignedChars
-                                    Warnings );
-
-check_config_bool( $RC99, $_ ) for qw( HasCPPComments
-                                       HasMacroVAARGS );
+                                    Warnings
+                                    HasCPPComments
+                                    HasMacroVAARGS );
 
 check_option_strlist( $_ ) for qw( Include
                                    Define
@@ -528,8 +522,6 @@ ok( $@, qr/Invalid method some_method called.*$thisfile/ );
   'LongDoubleSize' => 12
 );
 
-$C99 or delete @config{qw(HasCPPComments HasMacroVAARGS)};
-
 eval {
   $p = new Convert::Binary::C %config;
   $cfg = $p->configure;
@@ -565,8 +557,6 @@ ok( compare_config( \%config, $cfg ) );
   'LongLongSize' => 8,
   'LongDoubleSize' => 12
 );
-
-$C99 or delete @newcfg{qw(HasCPPComments HasMacroVAARGS)};
 
 @warn = ();
 

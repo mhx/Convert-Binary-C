@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/09 07:49:24 +0000 $
-* $Revision: 47 $
-* $Snapshot: /Convert-Binary-C/0.07 $
+* $Date: 2003/01/14 20:17:20 +0000 $
+* $Revision: 49 $
+* $Snapshot: /Convert-Binary-C/0.08 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -1485,7 +1485,7 @@ static void SetType( CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
       if( sv && SvROK( sv ) )
         WARN(( "'%s' should be a scalar value", name ));
 
-      CT_DEBUG( MAIN, ("SET '%s' @ %d", pDecl->identifier, THIS->buf.pos ) );
+      CT_DEBUG( MAIN, ("SET '%s' @ %d", pDecl ? pDecl->identifier : "", THIS->buf.pos ) );
 
       if( pTS->tflags & T_ENUM )
         SetEnum( THIS, pTS->ptr, sv );
@@ -1575,11 +1575,12 @@ static SV *GetStruct( CBC *THIS, Struct *pStruct, HV *hash )
         U32 klen = strlen(pDecl->identifier);
 
         if( hv_exists( h, pDecl->identifier, klen ) ) {
-          WARN(("Member '%s' used more than once in %s%s%s",
+          WARN(("Member '%s' used more than once in %s%s%s defined in %s(%d)",
                 pDecl->identifier,
                 pStruct->tflags & T_UNION ? "union" : "struct",
                 pStruct->identifier[0] != '\0' ? " " : "",
-                pStruct->identifier[0] != '\0' ? pStruct->identifier : ""));
+                pStruct->identifier[0] != '\0' ? pStruct->identifier : "",
+                pStruct->context.pFI->name, pStruct->context.line));
         }
         else {
           SV *value = GetType( THIS, &pStructDecl->type, pDecl, 0 );
@@ -1863,7 +1864,7 @@ static SV *GetType( CBC *THIS, TypeSpec *pTS,
       return GetStruct( THIS, pTS->ptr, NULL );
     }
 
-    CT_DEBUG( MAIN, ("GET '%s' @ %d", pDecl->identifier, THIS->buf.pos ) );
+    CT_DEBUG( MAIN, ("GET '%s' @ %d", pDecl ? pDecl->identifier : "", THIS->buf.pos ) );
 
     if( pTS->tflags & T_ENUM )             return GetEnum( THIS, pTS->ptr );
 
@@ -2110,6 +2111,15 @@ static void AddEnumSpecStringRec( SV *str, SV *s, EnumSpecifier *pES, int level,
 
   pES->tflags |= T_ALREADY_DUMPED;
 
+#ifndef CBC_NO_SOURCIFY_CONTEXT
+  if( pFlags && (*pFlags & F_NEWLINE) == 0 ) {
+    sv_catpv( s, "\n" );
+    *pFlags &= ~F_KEYWORD;
+    *pFlags |= F_NEWLINE;
+  }
+  sv_catpvf( s, "#line %d \"%s\"\n", pES->context.line, pES->context.pFI->name );
+#endif
+
   if( pFlags && (*pFlags & F_KEYWORD) )
     sv_catpv( s, " " );
   else
@@ -2187,9 +2197,19 @@ static void AddStructSpecStringRec( SV *str, SV *s, Struct *pStruct, int level, 
     if( pFlags && (*pFlags & F_NEWLINE) == 0 ) {
       sv_catpv( s, "\n" );
       *pFlags &= ~F_KEYWORD;
+      *pFlags |= F_NEWLINE;
     }
     sv_catpvf( s, "#pragma pack( push, %d )\n", pStruct->pack );
   }
+
+#ifndef CBC_NO_SOURCIFY_CONTEXT
+  if( pFlags && (*pFlags & F_NEWLINE) == 0 ) {
+    sv_catpv( s, "\n" );
+    *pFlags &= ~F_KEYWORD;
+    *pFlags |= F_NEWLINE;
+  }
+  sv_catpvf( s, "#line %d \"%s\"\n", pStruct->context.line, pStruct->context.pFI->name );
+#endif
 
   if( pFlags && (*pFlags & F_KEYWORD) )
     sv_catpv( s, " " );
@@ -2729,6 +2749,9 @@ static SV *GetEnumSpec( EnumSpecifier *pEnumSpec )
     HV_STORE_CONST( hv, "enumerators", GetEnumerators( pEnumSpec->enumerators ) );
   }
 
+  HV_STORE_CONST( hv, "context", newSVpvf( "%s(%d)", pEnumSpec->context.pFI->name,
+                                                     pEnumSpec->context.line ) );
+
   return newRV_noinc( (SV *) hv );
 }
 
@@ -2861,6 +2884,9 @@ static SV *GetStructSpec( Struct *pStruct )
     HV_STORE_CONST( hv, "declarations",
                         GetStructDeclarations( pStruct->declarations ) );
   }
+
+  HV_STORE_CONST( hv, "context", newSVpvf( "%s(%d)", pStruct->context.pFI->name,
+                                                     pStruct->context.line ) );
 
   return newRV_noinc( (SV *) hv );
 }
@@ -4447,17 +4473,10 @@ static int HandleOption( CBC *THIS, SV *opt, SV *sv_val, SV **rval )
 {
   START_OPTIONS
 
-    /* FLAG_OPTION( HasVOID,        HAS_VOID_KEYWORD   ) */
     FLAG_OPTION( UnsignedChars,  CHARS_ARE_UNSIGNED )
     FLAG_OPTION( Warnings,       ISSUE_WARNINGS     )
-
-#ifdef ANSIC99_EXTENSIONS
-
-    /* FLAG_OPTION( HasC99Keywords, HAS_C99_KEYWORDS ) */
     FLAG_OPTION( HasCPPComments, HAS_CPP_COMMENTS )
     FLAG_OPTION( HasMacroVAARGS, HAS_MACRO_VAARGS )
-
-#endif
 
     IVAL_OPTION( PointerSize,    ptr_size         )
     IVAL_OPTION( EnumSize,       enum_size        )
@@ -4559,17 +4578,10 @@ static SV *GetConfiguration( CBC *THIS )
   HV *hv = newHV();
   SV *sv;
 
-  /* FLAG_OPTION( HasVOID,        HAS_VOID_KEYWORD   ) */
   FLAG_OPTION( UnsignedChars,  CHARS_ARE_UNSIGNED )
   FLAG_OPTION( Warnings,       ISSUE_WARNINGS     )
-
-#ifdef ANSIC99_EXTENSIONS
-
-  /* FLAG_OPTION( HasC99Keywords, HAS_C99_KEYWORDS ) */
   FLAG_OPTION( HasCPPComments, HAS_CPP_COMMENTS )
   FLAG_OPTION( HasMacroVAARGS, HAS_MACRO_VAARGS )
-
-#endif
 
   IVAL_OPTION( PointerSize,    ptr_size         )
   IVAL_OPTION( EnumSize,       enum_size        )
@@ -4686,12 +4698,8 @@ CBC::new( ... )
 		  RETVAL->cfg.long_double_size  = DEFAULT_LONG_DOUBLE_SIZE;
 		  RETVAL->cfg.alignment         = DEFAULT_ALIGNMENT;
 		  RETVAL->cfg.keywords          = HAS_ALL_KEYWORDS;
-		  RETVAL->cfg.flags             = 0
-#ifdef ANSIC99_EXTENSIONS
-		                                | HAS_CPP_COMMENTS
-		                                | HAS_MACRO_VAARGS
-#endif
-		                                ;
+		  RETVAL->cfg.flags             = HAS_CPP_COMMENTS
+		                                | HAS_MACRO_VAARGS;
 
 		  if( gs_DisableParser ) {
 		    warn( XSCLASS " parser is DISABLED" );
@@ -5992,7 +6000,6 @@ CBC::sourcify()
 SV *
 CBC::dependencies()
 	PREINIT:
-		int       len;
 		char     *pKey;
 		FileInfo *pFI;
 		HV       *hv;
@@ -6005,12 +6012,9 @@ CBC::dependencies()
 
 		hv = newHV();
 
-		HT_reset( THIS->cpi.htFiles );
-
-		while( HT_next( THIS->cpi.htFiles, &pKey, &len, (void **) &pFI ) ) {
-		  SV *attr = &PL_sv_undef;
-
-		  if( pFI ) {
+		HT_foreach( pKey, pFI, THIS->cpi.htFiles ) {
+		  if( pFI && pFI->valid ) {
+		    SV *attr;
 		    HV *hattr = newHV();
 #ifdef newSVuv
 		    HV_STORE_CONST( hattr, "size",  newSVuv( pFI->size ) );
@@ -6021,10 +6025,10 @@ CBC::dependencies()
 		    HV_STORE_CONST( hattr, "ctime", newSViv( pFI->change_time ) );
 
 		    attr = newRV_noinc( (SV *) hattr );
-		  }
 
-		  if( hv_store( hv, pKey, len, attr, 0 ) == NULL )
-                    sv_dec( attr );
+		    if( hv_store( hv, pFI->name, strlen( pFI->name ), attr, 0 ) == NULL )
+                      sv_dec( attr );
+		  }
 		}
 
 		RETVAL = newRV_noinc( (SV *) hv );
@@ -6114,15 +6118,7 @@ feature( feat )
 	char *feat
 
 	CODE:
-		if( strEQ( feat, "c99" ) ) {
-		  warn( "Feature 'c99' is deprecated" );
-#ifdef ANSIC99_EXTENSIONS
-		  RETVAL = 1;
-#else
-		  RETVAL = 0;
-#endif
-		}
-		else if( strEQ( feat, "debug" ) )
+		if( strEQ( feat, "debug" ) )
 #ifdef CTYPE_DEBUGGING
 		  RETVAL = 1;
 #else
