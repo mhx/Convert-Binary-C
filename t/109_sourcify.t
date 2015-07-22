@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/01 11:30:02 +0000 $
-# $Revision: 4 $
-# $Snapshot: /Convert-Binary-C/0.10 $
+# $Date: 2003/02/27 18:27:43 +0000 $
+# $Revision: 5 $
+# $Snapshot: /Convert-Binary-C/0.11 $
 # $Source: /t/109_sourcify.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 53 }
+BEGIN { plan tests => 54 }
 
 eval {
   $orig  = new Convert::Binary::C Include => ['t/include/perlinc',
@@ -58,9 +58,6 @@ eval {
 };
 ok($@,'',"failed to parse clone data (1)");
 
-ok($clone[0]->sourcify,
-   $clone[1]->sourcify, "clone dumps differ" );
-
 for my $meth ( qw( enum compound struct union typedef ) ) {
   my $meth_names = $meth.'_names';
   my @orig_names = sort $orig->$meth_names();
@@ -84,6 +81,21 @@ for my $meth ( qw( enum compound struct union typedef ) ) {
         } @orig_names );
   }
 }
+
+eval {
+  $orig->clean->parse( <<ENDC );
+typedef struct { struct B *x; } A;
+typedef struct B { A *x; } B;
+ENDC
+};
+
+ok($@,'',"failed to parse C code");
+
+eval {
+  $clone[0]->parse( $orig->sourcify );
+};
+ok($@,'',"failed to parse sourcified code");
+
 
 sub reccmp
 {

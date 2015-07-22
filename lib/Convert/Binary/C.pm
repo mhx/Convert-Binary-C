@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/14 20:11:24 +0000 $
-# $Revision: 35 $
-# $Snapshot: /Convert-Binary-C/0.10 $
+# $Date: 2003/02/24 07:21:27 +0000 $
+# $Revision: 37 $
+# $Snapshot: /Convert-Binary-C/0.11 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,10 +32,10 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = sprintf '%.2f', 0.01*('$Revision: 35 $' =~ /(\d+)/)[0];
-$XS_VERSION =  do { my @r = '$Snapshot: /Convert-Binary-C/0.10 $'
+$VERSION    = sprintf '%.2f', 0.01*('$Revision: 37 $' =~ /(\d+)/)[0];
+$XS_VERSION =  do { my @r = '$Snapshot: /Convert-Binary-C/0.11 $'
                             =~ /(\d+\.\d+(?:_\d+)?)/;
-                    @r ? $r[0] : '9.99' },
+                    @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $XS_VERSION;
 
@@ -2864,6 +2864,11 @@ on multithreaded perls.
 
 My love Jennifer for always being there, for filling my life with
 joy and last but not least for proofreading the documentation.
+
+=item *
+
+Alain Barbet E<lt>alian@cpan.orgE<gt> for testing and debugging
+support.
 
 =item *
 

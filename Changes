@@ -205,3 +205,11 @@ Version 0.10
 
 * updated README
 
+------------
+Version 0.11
+------------
+
+* fixed problem with recursive data structures in sourcify
+
+* minor cleanups
+

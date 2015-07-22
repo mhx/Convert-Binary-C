@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2003/01/23 18:48:30 +0000 $
 # $Revision: 31 $
-# $Snapshot: /Convert-Binary-C/0.10 $
+# $Snapshot: /Convert-Binary-C/0.11 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -184,7 +184,7 @@ ENDUSAGE
 
 WriteMakefile(
   'NAME'            => $MODULE,
-  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.10 $'
+  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.11 $'
                                     =~ /(\d+\.\d+(?:_\d+)?)/;
                             @r ? $r[0] : '9.99' },
   'ABSTRACT'        => 'Binary Data Conversion using C Types',

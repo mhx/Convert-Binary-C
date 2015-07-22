@@ -2,18 +2,24 @@
 What's to do?
 =============
 
+* COPY_LINE ?
+
+* maybe add DollarsInIdentifiers, AtSignsInIdentifiers?
+
+* on parse error, print parser stack?
+
+* add some warnings during parsing
+  empty arrays in structs a[]
+
+* maybe add routine with checks after parsing
+
+
 
 for future releases (in no special order):
 ------------------------------------------
 
 * add platform independent IEEE floating point support
   (SoftFloat or sth. similar?)
-
-* on parse error, print parser stack?
-
-* add some warnings during parsing
-
-* maybe add routine with checks after parsing
 
 * support gcc's __attribute__, at least for struct packing
 
@@ -22,8 +28,6 @@ for future releases (in no special order):
 * maybe add tests for all preprocessor warnings/errors?
 
 * maybe add a more complete preprocessor testsuite?
-
-* maybe add DollarsInIdentifiers, AtSignsInIdentifiers?
 
 * character arrays => strings?
 

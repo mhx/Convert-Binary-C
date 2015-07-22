@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 18:43:20 +0000 $
-* $Revision: 52 $
-* $Snapshot: /Convert-Binary-C/0.10 $
+* $Date: 2003/02/27 18:27:04 +0000 $
+* $Revision: 53 $
+* $Snapshot: /Convert-Binary-C/0.11 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -474,6 +474,7 @@ void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 
 #define F_NEWLINE         0x00000001
 #define F_KEYWORD         0x00000002
+#define F_DONT_EXPAND     0x00000004
 
 /*-----------------*/
 /* debugging stuff */
@@ -2086,7 +2087,8 @@ static void AddTypeSpecStringRec( SV *str, SV *s, TypeSpec *pTS, int level, U32 
     EnumSpecifier *pES = (EnumSpecifier *) pTS->ptr;
 
     if( pES ) {
-      if( pES->identifier[0] && (pES->tflags & T_ALREADY_DUMPED) ) {
+      if( pES->identifier[0] && ((pES->tflags & T_ALREADY_DUMPED) ||
+                                 (*pFlags & F_DONT_EXPAND)) ) {
         CHECK_SET_KEYWORD;
         sv_catpvf( s, "enum %s", pES->identifier );
       }
@@ -2098,7 +2100,8 @@ static void AddTypeSpecStringRec( SV *str, SV *s, TypeSpec *pTS, int level, U32 
     Struct *pStruct = (Struct *) pTS->ptr;
 
     if( pStruct ) {
-      if( pStruct->identifier[0] && (pStruct->tflags & T_ALREADY_DUMPED) ) {
+      if( pStruct->identifier[0] && ((pStruct->tflags & T_ALREADY_DUMPED) ||
+                                     (*pFlags & F_DONT_EXPAND)) ) {
         CHECK_SET_KEYWORD;
         sv_catpvf( s, "%s %s", flags & T_UNION ? "union" : "struct", pStruct->identifier );
       }
@@ -2265,7 +2268,18 @@ static void AddStructSpecStringRec( SV *str, SV *s, Struct *pStruct, int level, 
       int first = 1, need_def = 0;
       U32 flags = F_NEWLINE;
 
+      LL_foreach( pDecl, pStructDecl->declarators )
+        if( pDecl->pointer_flag == 0 ) {
+          need_def = 1;
+	  break;
+	}
+
+      if( !need_def )
+        flags |= F_DONT_EXPAND;
+
       AddTypeSpecStringRec( str, s, &pStructDecl->type, level+1, &flags );
+
+      flags &= ~F_DONT_EXPAND;
 
       if( flags & F_NEWLINE )
         AddIndent( s, level+1 );
@@ -2274,9 +2288,6 @@ static void AddStructSpecStringRec( SV *str, SV *s, Struct *pStruct, int level, 
 
       LL_foreach( pDecl, pStructDecl->declarators ) {
         Value *pValue;
-
-        if( pDecl->pointer_flag == 0 )
-          need_def = 1;
 
         if( first )
           first = 0;

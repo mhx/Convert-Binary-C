@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/10 22:26:26 +0000 $
-# $Revision: 9 $
-# $Snapshot: /Convert-Binary-C/0.10 $
+# $Date: 2003/02/24 07:21:26 +0000 $
+# $Revision: 10 $
+# $Snapshot: /Convert-Binary-C/0.11 $
 # $Source: /ctlib/Tokenizer.pm $
 #
 ################################################################################
@@ -27,7 +27,7 @@ package Tokenizer;
 use strict;
 use vars '$VERSION';
 
-$VERSION = sprintf '%.2f', 0.01*('$Revision: 9 $' =~ /(\d+)/)[0];
+$VERSION = sprintf '%.2f', 0.01*('$Revision: 10 $' =~ /(\d+)/)[0];
 
 sub new
 {
@@ -133,9 +133,9 @@ Tokenizer - Generate C source for fast keyword tokenizer
 =head1 SYNOPSIS
 
   use Tokenizer;
-
+  
   $t = new Tokenizer tokfnc => sub { "return \U$_[0];\n" };
-
+  
   $t->addtokens( '', qw( bar baz for ) );
   $t->addtokens( 'DIRECTIVE', qw( foo ) );
   
@@ -277,3 +277,5 @@ Perhaps lack of functionality ;-)
 Copyright (c) 2002-2003, Marcus Holland-Moritz. All rights reserved.
 This module is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
+
+=cut

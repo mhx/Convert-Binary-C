@@ -1,0 +1,81 @@
+
+=head1 NAME
+
+Tokenizer - Generate C source for fast keyword tokenizer
+
+=head1 SYNOPSIS
+
+  $$tokenizer.pl$$
+
+=head1 DESCRIPTION
+
+The Tokenizer module provides a small class for creating the
+essential ANSI C source code for a fast keyword tokenizer.
+
+The generated code is optimized for speed. On the ANSI-C
+keyword set, it's 2-3 times faster than equivalent code
+generated with the C<gprof> utility.
+
+The above example would print the following C source code:
+
+  @@tokenizer.pl@@
+
+So the generated code only includes the main switch statement for
+the tokenizer. You can configure most of the generated code to fit
+for your application.
+
+=head1 CONFIGURATION
+
+=head2 tokfnc => SUBROUTINE
+
+A reference to the subroutine that returns the code for each token
+match. The only parameter to the subroutine is the token string.
+
+This is the default subroutine:
+
+  tokfnc => sub { "return $_[0];\n" }
+
+=head2 tokstr => STRING
+
+Identifier of the C character array that contains the token string.
+The default is C<tokstr>.
+
+=head2 ulabel => STRING
+
+Label that should be jumped to via C<goto> if there's no keyword
+matching the token. The default is C<unknown>.
+
+=head2 endtok => STRING
+
+Character that defines the end of each token. The default is the
+null character C<'\0'>.
+
+=head1 ADDING KEYWORDS
+
+You can add tokens using the C<addtokens> method. The first parameter
+is the name of a preprocessor define if you want the code generated
+for the following tokens to be dependent upon that define. If you
+don't want that dependency, pass an empty string. Following is a list
+of all keyword tokens.
+
+=head1 GENERATING THE CODE
+
+The C<makeswitch> method will return a string with the tokenizer
+switch statement.
+
+=head1 AUTHOR
+
+Marcus Holland-Moritz E<lt>mhx@cpan.orgE<gt>
+
+=head1 BUGS
+
+I hope none, since the code is pretty short.
+Perhaps lack of functionality ;-)
+
+=head1 COPYRIGHT
+
+Copyright (c) 2002-2003, Marcus Holland-Moritz. All rights reserved.
+This module is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

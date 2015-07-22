@@ -1961,6 +1961,11 @@ joy and last but not least for proofreading the documentation.
 
 =item *
 
+Alain Barbet E<lt>alian@cpan.orgE<gt> for testing and debugging
+support.
+
+=item *
+
 Michael J. Hohmann E<lt>mjh@scientist.deE<gt> for endless discussions
 on our way to and back home from work, and for making me think
 about supporting L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> for
