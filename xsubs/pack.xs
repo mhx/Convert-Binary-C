@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/05/26 15:26:22 +0100 $
-# $Revision: 6 $
+# $Date: 2005/12/01 18:04:48 +0000 $
+# $Revision: 7 $
 # $Source: /xsubs/pack.xs $
 #
 ################################################################################
@@ -169,6 +169,8 @@ CBC::unpack(type, string)
     CT_DEBUG_METHOD1("'%s'", type);
 
     CHECK_VOID_CONTEXT;
+
+    SvGETMAGIC(string);
 
     if ((SvFLAGS(string) & (SVf_POK|SVp_POK)) == 0)
       Perl_croak(aTHX_ "Type of arg 2 to unpack must be string");

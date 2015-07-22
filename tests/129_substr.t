@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/01/23 11:49:28 +0000 $
-# $Revision: 3 $
+# $Date: 2005/12/01 18:05:09 +0000 $
+# $Revision: 4 $
 # $Source: /tests/129_substr.t $
 #
 ################################################################################
@@ -19,7 +19,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 32 }
+BEGIN { plan tests => 41 }
 
 $SIG{__WARN__} = sub { push @warn, $_[0] };
 sub chkwarn {
@@ -106,3 +106,10 @@ ok($@, '');
 ok($x, pack('N*', 1000000, 5000000, 2000000, 3000000, 4000000));
 chkwarn();
 
+
+for my $ix (0 .. 2) {
+  my $r = eval { $c->unpack('u_32', substr $data, ($ix+1)*$c->sizeof('u_32')) };
+  ok($@, '');
+  ok($r, (unpack "N*", $data)[$ix+1]);
+  chkwarn();
+}

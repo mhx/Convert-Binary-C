@@ -1,4 +1,12 @@
 -------------------------
+Version 0.62 (2005-12-01)
+-------------------------
+
+* fixed a bug in unpack() that would cause an error when
+  repeatedly passing a substr() as the data argument; this
+  is not a critical bug, because there's no silent failure
+
+-------------------------
 Version 0.61 (2005-10-27)
 -------------------------
 

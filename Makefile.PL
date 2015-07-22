@@ -3,8 +3,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/10/27 17:38:52 +0100 $
-# $Revision: 80 $
+# $Date: 2005/12/01 18:05:26 +0000 $
+# $Revision: 81 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -126,13 +126,13 @@ unshift @OBJECT, $MODULE =~ /([^:]+)$/;
 @REALCLEAN = qw(
   ctlib/parser.output
   ctlib/pragma.output
-  t/debug.out
+  tests/debug.out
 );
 
 @CLEAN = qw(
   $(OBJECT)
-  t/*.vgo
-  t/cache.cbc
+  tests/*.vgo
+  tests/cache.cbc
 );
 
 @DEFINE = qw(
@@ -511,7 +511,7 @@ END
 valgrind: pure_all
 	\@export PERL_DESTRUCT_LEVEL=2; \\
 	echo PERL_DESTRUCT_LEVEL=\$\$PERL_DESTRUCT_LEVEL; \\
-	for file in t/*.t; do \\
+	for file in tests/*.t; do \\
 	  echo checking \$\$file with valgrind...; \\
 	  valgrind \$(VALGRIND_OPTIONS) \$(PERL) -Mblib \$\$file >\$\$file.vgo 2>&1; \\
 	  grep "==.*==.*$sym" \$\$file.vgo; \\
@@ -540,7 +540,7 @@ sub MY::test
   package MY;
   my $test = shift->SUPER::test(@_);
   $::FEATURES{debug}{enabled} and
-      $test =~ s!^test\s*:.*!$&$/\t\@\$(RM_F) t/debug.out!m;
+      $test =~ s!^test\s*:.*!$&$/\t\@\$(RM_F) tests/debug.out!m;
   $test
 }
 
@@ -588,7 +588,7 @@ sub find_depend
 
   File::Find::find(sub {
     /\.(?:(xs)|[chy])$/ or return;
-    $File::Find::dir =~ /^\.[\/\\]t[\/\\]/ and return; # exclude test directory
+    $File::Find::dir =~ /^\.[\/\\]tests[\/\\]/ and return; # exclude test directory
     my @incs;
     open FILE, $_ or die "$_: $!";
     my $olddir = getcwd;
