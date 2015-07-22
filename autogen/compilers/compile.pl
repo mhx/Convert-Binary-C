@@ -11,13 +11,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2009/03/15 03:11:01 +0000 $
-# $Revision: 7 $
+# $Date: 2011/04/10 11:32:09 +0100 $
+# $Revision: 8 $
 # $Source: /autogen/compilers/compile.pl $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2011 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -30,7 +30,7 @@ use Convert::Binary::C;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = ('$Snapshot: /Convert-Binary-C/0.74 $' =~ /([^\/\s]+)\s*\$$/)[0];
+my $VERSION = ('$Snapshot: /Convert-Binary-C/0.75 $' =~ /([^\/\s]+)\s*\$$/)[0];
 my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT;
 
@@ -52,7 +52,7 @@ unless( GetOptions( \%OPT, qw(
 if( $OPT{version} ) {
   print <<VERSION;
 $MESSAGE
-Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2011 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
@@ -2688,7 +2688,7 @@ or
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2011 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 

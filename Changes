@@ -1,4 +1,17 @@
 -------------------------
+Version 0.75 (2011-04-10)
+-------------------------
+
+* fix cpan #63381 / perl #79854: make sure warnings cause a cache
+  file not to be used (thanks to Andreas König for reporting this)
+
+* fix bug in unpack where the code would attempt to create an array
+  with negative size when running out of input data
+
+* make sure elf.PL reads/writes in binary mode (thanks to רחלי מרל
+  for finding this problem)
+
+-------------------------
 Version 0.74 (2009-04-18)
 -------------------------
 
@@ -344,7 +357,7 @@ Version 0.57 (2004-11-23)
 * allow empty initializers (spotted by Mike Lamb)
 
 * add CharSize option to support architectures where
-  chars are larger than 8 bits (spotted by Esa �string)
+  chars are larger than 8 bits (spotted by Esa Östring)
 
 -------------------------
 Version 0.56 (2004-09-19)

@@ -2,6 +2,12 @@
 What's to do?
 =============
 
+> Just one minor question: maybe an explicit hint in the documentation
+> would be useful, indicating that decoding any data that follows
+> dynamic elements will not give the expected results. To me, this
+> wasn't immediately clear from the documentation.
+
+
 * Test::RefCount
 
 for future releases (in no special order):

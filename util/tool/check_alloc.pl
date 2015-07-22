@@ -11,13 +11,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2009/03/15 03:10:46 +0000 $
-# $Revision: 12 $
+# $Date: 2011/04/10 11:32:31 +0100 $
+# $Revision: 13 $
 # $Source: /util/tool/check_alloc.pl $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2011 Marcus Holland-Moritz. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of either the Artistic License or the

@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2009/04/18 12:37:07 +0100 $
-# $Revision: 24 $
+# $Date: 2011/04/10 11:32:22 +0100 $
+# $Revision: 25 $
 # $Source: /tests/209_sourcify.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2011 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #

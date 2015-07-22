@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2009/03/15 03:10:51 +0000 $
-* $Revision: 56 $
+* $Date: 2011/04/10 13:17:02 +0100 $
+* $Revision: 59 $
 * $Source: /cbc/pack.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2011 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -1818,16 +1818,25 @@ static SV *unpack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
         s = avail;
       }
       else
+      {
         s = v->iv;
+      }
 
-      av_extend(a, s-1);
+      if (s < 0)
+      {
+        /* if we're unpacking a larger "thing" and run out of data, avail may become */
+        /* negative and we need to protect against creating negatively sized arrays  */
+        s = 0;
+      }
+
+      av_extend(a, s - 1);
 
       pos = PACKPOS;
 
       for (i = 0; i < s; ++i)
       {
         PACKPOS = pos + i * size;
-        av_store(a, i, unpack_type(aPACKARGS, pTS, pDecl, dimension+1, NULL));
+        av_store(a, i, unpack_type(aPACKARGS, pTS, pDecl, dimension + 1, NULL));
       }
     }
     XCPT_TRY_END

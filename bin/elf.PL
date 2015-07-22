@@ -9,13 +9,13 @@ print OUT <<'!NO!SUBS!';
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2009/03/15 03:10:53 +0000 $
-# $Revision: 6 $
+# $Date: 2011/04/10 11:32:12 +0100 $
+# $Revision: 8 $
 # $Source: /bin/elf.PL $
 #
 ################################################################################
 #
-# Copyright (c) 2005-2009 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2005-2011 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -229,6 +229,7 @@ for my $c (qw( Elf32 Elf64 )) {
 #---------------------------------------
 my $elf = do { local($/, *FH);
                open FH, $ARGV[0] or die "$ARGV[0]: $!\n";
+               binmode FH;
                <FH>;
              };
 
@@ -378,9 +379,11 @@ if ($opt{symbols}) {
 if ($opt{section}) {
   my $sec = $opt{section} =~ /^\d+$/ ? $section[$opt{section}]
                                      : $section{$opt{section}};
-  
+
   die "no such section ($opt{section})\n" unless defined $sec;
-  
+
+  binmode STDOUT;
+
   print substr $elf, $sec->{sh_offset}, $sec->{sh_size};
 }
 

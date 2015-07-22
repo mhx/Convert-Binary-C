@@ -10,13 +10,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2009/03/15 03:10:46 +0000 $
-# $Revision: 35 $
+# $Date: 2011/04/10 13:44:54 +0100 $
+# $Revision: 38 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2011 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.74 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.75 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 $VERSION = eval $VERSION;
 
 sub new
@@ -249,6 +249,7 @@ sub __can_use_cache
     return 0;
   }
 
+  my @warnings;
   my @config = do {
     my $config;
     unless (defined($config = <$fh>)) {
@@ -262,11 +263,12 @@ sub __can_use_cache
     local $/ = $/.'#endif';
     chomp($config = <$fh>);
     $config =~ s/^\*//gms;
+    local $SIG{__WARN__} = sub { push @warnings, $_[0] };
     eval $config;
   };
 
   # corrupt config
-  if (@config % 2) {
+  if ($@ or @warnings or @config % 2) {
     $ENV{CBCC_DEBUG} and print STDERR "CBCC: broken configuration\n";
     return 0;
   }
@@ -373,7 +375,8 @@ Convert::Binary::C::Cached - Caching for Convert::Binary::C
   $c = Convert::Binary::C::Cached->new(
          Cache   => '/tmp/cache.c',
          Include => [
-           '/usr/lib/gcc/i686-pc-linux-gnu/4.1.2/include',
+           '/usr/lib/gcc/i686-pc-linux-gnu/4.5.2/include',
+           '/usr/lib/gcc/i686-pc-linux-gnu/4.5.2/include-fixed',
            '/usr/include',
          ],
        );
@@ -444,7 +447,7 @@ algorithm cannot detect that an update is required.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2011 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 

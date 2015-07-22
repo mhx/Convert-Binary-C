@@ -6,7 +6,8 @@ $Data::Dumper::Indent = 1; #-8<-
 # Create object, set include path, parse 'string.h' header
 #----------------------------------------------------------
 my $c = Convert::Binary::C->new
-        ->Include('/usr/lib/gcc/i686-pc-linux-gnu/4.1.2/include',
+        ->Include('/usr/lib/gcc/i686-pc-linux-gnu/4.5.2/include',
+                  '/usr/lib/gcc/i686-pc-linux-gnu/4.5.2/include-fixed',
                   '/usr/include')
         ->parse_file('string.h');
 

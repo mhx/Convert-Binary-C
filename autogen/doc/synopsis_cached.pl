@@ -7,7 +7,8 @@ use Data::Dumper;
 $c = Convert::Binary::C::Cached->new(
        Cache   => '/tmp/cache.c',
        Include => [
-         '/usr/lib/gcc/i686-pc-linux-gnu/4.1.2/include',
+         '/usr/lib/gcc/i686-pc-linux-gnu/4.5.2/include',
+         '/usr/lib/gcc/i686-pc-linux-gnu/4.5.2/include-fixed',
          '/usr/include',
        ],
      );

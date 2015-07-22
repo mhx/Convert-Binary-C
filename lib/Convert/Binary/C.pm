@@ -10,13 +10,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2009/03/15 03:10:46 +0000 $
-# $Revision: 92 $
+# $Date: 2011/04/10 13:44:53 +0100 $
+# $Revision: 94 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2011 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.74 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.75 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 $XS_VERSION = $VERSION;
 $VERSION    = eval $VERSION;
 
@@ -118,7 +118,8 @@ Convert::Binary::C - Binary Data Conversion using C Types
   #---------------------------------------------------
   # Add include paths and global preprocessor defines
   #---------------------------------------------------
-  $c->Include('/usr/lib/gcc/i686-pc-linux-gnu/4.1.2/include',
+  $c->Include('/usr/lib/gcc/i686-pc-linux-gnu/4.5.2/include',
+              '/usr/lib/gcc/i686-pc-linux-gnu/4.5.2/include-fixed',
               '/usr/include')
     ->Define(qw( __USE_POSIX __USE_ISOC99=1 ));
   
@@ -1522,16 +1523,16 @@ as it can already handle C<AV> pointers. And this is what we get:
   $VAR1 = {
     'sv_any' => {
       'xnv_u' => {
-        'xnv_nv' => '2.18376848395956105e-4933',
+        'xnv_nv' => '0',
         'xgv_stash' => 0,
         'xpad_cop_seq' => {
           'xlow' => 0,
-          'xhigh' => 139484332
+          'xhigh' => 0
         },
         'xbm_s' => {
           'xbm_previous' => 0,
-          'xbm_flags' => 172,
-          'xbm_rare' => 92
+          'xbm_flags' => 0,
+          'xbm_rare' => 0
         }
       },
       'xav_fill' => 2,
@@ -1553,13 +1554,13 @@ as it can already handle C<AV> pointers. And this is what we get:
     'sv_refcnt' => 1,
     'sv_flags' => 536870924,
     'sv_u' => {
-      'svu_iv' => 139483844,
-      'svu_uv' => 139483844,
-      'svu_rv' => 139483844,
-      'svu_pv' => 139483844,
-      'svu_array' => 139483844,
-      'svu_hash' => 139483844,
-      'svu_gp' => 139483844
+      'svu_pv' => 142054140,
+      'svu_iv' => 142054140,
+      'svu_uv' => 142054140,
+      'svu_rv' => 142054140,
+      'svu_array' => 142054140,
+      'svu_hash' => 142054140,
+      'svu_gp' => 142054140
     }
   };
 
@@ -3860,7 +3861,8 @@ moment it was parsed.
   # Create object, set include path, parse 'string.h' header
   #----------------------------------------------------------
   my $c = Convert::Binary::C->new
-          ->Include('/usr/lib/gcc/i686-pc-linux-gnu/4.1.2/include',
+          ->Include('/usr/lib/gcc/i686-pc-linux-gnu/4.5.2/include',
+                    '/usr/lib/gcc/i686-pc-linux-gnu/4.5.2/include-fixed',
                     '/usr/include')
           ->parse_file('string.h');
   
@@ -3880,39 +3882,44 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1196609327,
-      'mtime' => 1196609232,
-      'size' => 11688
+      'ctime' => 1300268052,
+      'mtime' => 1300267911,
+      'size' => 12511
     },
     '/usr/include/gnu/stubs-32.h' => {
-      'ctime' => 1196609327,
-      'mtime' => 1196609305,
+      'ctime' => 1300268051,
+      'mtime' => 1300268010,
       'size' => 624
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1196609327,
-      'mtime' => 1196609269,
-      'size' => 11773
+      'ctime' => 1300268051,
+      'mtime' => 1300267957,
+      'size' => 13195
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1196609327,
-      'mtime' => 1196609232,
+      'ctime' => 1300268051,
+      'mtime' => 1300267911,
       'size' => 315
     },
-    '/usr/lib/gcc/i686-pc-linux-gnu/4.1.2/include/stddef.h' => {
-      'ctime' => 1203359674,
-      'mtime' => 1203357922,
-      'size' => 12695
-    },
     '/usr/include/string.h' => {
-      'ctime' => 1196609327,
-      'mtime' => 1196609262,
-      'size' => 16438
+      'ctime' => 1300268052,
+      'mtime' => 1300267944,
+      'size' => 22572
+    },
+    '/usr/lib/gcc/i686-pc-linux-gnu/4.5.2/include/stddef.h' => {
+      'ctime' => 1300365679,
+      'mtime' => 1300363914,
+      'size' => 12542
     },
     '/usr/include/bits/wordsize.h' => {
-      'ctime' => 1196609327,
-      'mtime' => 1196609257,
+      'ctime' => 1300268051,
+      'mtime' => 1300267937,
       'size' => 873
+    },
+    '/usr/include/xlocale.h' => {
+      'ctime' => 1300268051,
+      'mtime' => 1300267915,
+      'size' => 1764
     }
   };
   @files = (
@@ -3920,9 +3927,10 @@ The above code would print something like this:
     '/usr/include/gnu/stubs-32.h',
     '/usr/include/sys/cdefs.h',
     '/usr/include/gnu/stubs.h',
-    '/usr/lib/gcc/i686-pc-linux-gnu/4.1.2/include/stddef.h',
     '/usr/include/string.h',
-    '/usr/include/bits/wordsize.h'
+    '/usr/lib/gcc/i686-pc-linux-gnu/4.5.2/include/stddef.h',
+    '/usr/include/bits/wordsize.h',
+    '/usr/include/xlocale.h'
   );
 
 In list context, the method returns the names of all
@@ -5465,7 +5473,7 @@ want to rate the module at L<http://cpanratings.perl.org/>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2011 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
