@@ -125,15 +125,18 @@ sub translate
     defined $title and $stream->TITLE->text($title)->_TITLE;
     defined $base  and $stream->BASE(href => $base);
 
-    $stream->LINK(rel => 'stylesheet', type => 'text/css', href => 'perldoc.css');
+    $stream->LINK(rel => 'stylesheet', type => 'text/css', href => 'style.css');
 
     $stream->_HEAD
 	   ->BODY(BGCOLOR => $bgcolor, TEXT => $text);
 
-    $stream->H1->text("$title - Contents")->_H1;
-
+    $html->{stream}->DIV( CLASS => 'pod' );
+    $stream->H1->text($title)->_H1;
+    $html->{stream}->DIV( CLASS => 'toc' );
     $html->_emit_toc;
+    $html->{stream}->_DIV;
     $html->_emit_body;
+    $html->{stream}->_DIV;
 
     $stream->nl
 	   ->_BODY
@@ -571,16 +574,8 @@ sub _emit_verbatim
     my($html, $node) = @_;
     my $stream = $html->{stream};
     my $text   = $node->get_text;
-    $text =~ s/\s+$//;
 
-    my $ls;
-    map { (not defined $ls or length $_ < length $ls) and $ls = $_ } $text =~ /^(\s+)\S/g;
-    $text =~ s/^$ls//mg;
-
-    $stream->P->TABLE(CLASS=>'verbatim')
-           ->TR->TD(CLASS=>'verbatim')
-           ->PRE(CLASS=>'verbatim')->text($text)->_PRE
-           ->_TD->_TR->_TABLE->_P;
+    $stream->PRE->text($text)->_PRE;
 }
 
 

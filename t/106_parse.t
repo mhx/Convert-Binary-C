@@ -2,10 +2,10 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/09/25 21:26:44 +0100 $
-# $Revision: 5 $
-# $Snapshot: /Convert-Binary-C/0.03 $
-# $Source: /t/g_parse.t $
+# $Date: 2002/11/27 13:03:18 +0000 $
+# $Revision: 10 $
+# $Snapshot: /Convert-Binary-C/0.04 $
+# $Source: /t/106_parse.t $
 #
 ################################################################################
 # 
@@ -20,21 +20,52 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 64 }
+BEGIN { plan tests => 72 }
+
+#===================================================================
+# create object (1 tests)
+#===================================================================
+eval { $p = new Convert::Binary::C };
+ok($@,'',"failed to create Convert::Binary::C object");
+
+#===================================================================
+# try to parse empty file / empty code (2 tests)
+#===================================================================
+eval { $p->parse_file( 't/include/files/empty.h' ) };
+ok($@,'',"failed to parse empty C-file");
+
+eval { $p->parse( '' ) };
+ok($@,'',"failed to parse empty C-code");
+
+#===================================================================
+# check that parse/parse_file return object references (4 tests)
+#===================================================================
+
+$p = eval { Convert::Binary::C->new->parse_file( 't/include/files/empty.h' ) };
+ok($@,'',"failed to create Convert::Binary::C object");
+ok(ref $p, 'Convert::Binary::C',
+   "object reference not blessed to Convert::Binary::C");
+
+$p = eval { Convert::Binary::C->new->parse( '' ) };
+ok($@,'',"failed to create Convert::Binary::C object");
+ok(ref $p, 'Convert::Binary::C',
+   "object reference not blessed to Convert::Binary::C");
 
 #===================================================================
 # create object (1 tests)
 #===================================================================
 eval {
-  $p = new Convert::Binary::C EnumSize    => 0,
-                              ShortSize   => 2,
-                              IntSize     => 4,
-                              LongSize    => 4,
-                              PointerSize => 4,
-                              FloatSize   => 4,
-                              DoubleSize  => 8,
-                              Include     => ['t/include/perlinc',
-                                              't/include/include'];
+  $p = new Convert::Binary::C EnumSize       => 0,
+                              ShortSize      => 2,
+                              IntSize        => 4,
+                              LongSize       => 4,
+                              LongLongSize   => 8,
+                              PointerSize    => 4,
+                              FloatSize      => 4,
+                              DoubleSize     => 8,
+                              LongDoubleSize => 12,
+                              Include        => ['t/include/perlinc',
+                                                 't/include/include'];
 };
 ok($@,'',"failed to create Convert::Binary::C object");
 
@@ -158,23 +189,35 @@ ok(@fail == 0);
 
 @names = ();
 @fail = ();
-push @names, map { $_->{identifier} || () } $p->enum;
-push @names, map { $_->{identifier} || () } $p->compound;
-push @names, map { $_->{identifier} || () } $p->struct;
-push @names, map { $_->{identifier} || () } $p->union;
-push @names, map { $_->{declarator} =~ /(\w+)/ } $p->typedef;
+push @names, map { { type => qr/^enum$/, id => $_ } }
+             map { $_->{identifier} || () } $p->enum;
+push @names, map { { type => qr/^(?:struct|union)$/, id => $_ } }
+             map { $_->{identifier} || () } $p->compound;
+push @names, map { { type => qr/^struct$/, id => $_ } }
+             map { $_->{identifier} || () } $p->struct;
+push @names, map { { type => qr/^union$/, id => $_ } }
+             map { $_->{identifier} || () } $p->union;
+push @names, map { { type => qr/^typedef$/,
+                     id   => $_->{declarator} =~ /(\w+)/ } } $p->typedef;
 
-foreach( @names ) {
-  $d = $p->def( $_ );
+for( @names ) {
+  my $d = $p->def( $_->{id} );
   unless( defined $d ) {
-    print "# def( '$_' ) = undef for existing type\n";
-    push @fail, $_;
+    print "# def( '$_->{id}' ) = undef for existing type\n";
+    push @fail, $_->{id};
     next;
   }
-  if( $d xor exists $size{$_} ) {
-    print "# def( '$_' ) = $d\n";
-    push @fail, $_;
+  if( $d xor exists $size{$_->{id}} ) {
+    print "# def( '$_->{id}' ) = $d\n";
+    push @fail, $_->{id};
     next;
+  }
+  if( $d and not $d =~ $_->{type} ) {
+    unless( defined $p->$d( $_->{id} ) ) {
+      print "# def( '$_->{id}' ) = $d ($_->{type})\n";
+      push @fail, $_->{id};
+      next;
+    }
   }
 }
 
@@ -200,27 +243,33 @@ sub chkpack
 $data = pack 'C*', map rand 256, 1 .. $max_size;
 @fail = ();
 
-foreach( @enum_ids, @compound_ids, @typedef_ids ) {
-  eval { $x = $p->unpack( $_, $data ) };
+for my $id ( @enum_ids, @compound_ids, @typedef_ids ) {
+
+  # skip long doubles
+  next if grep { $id eq $_ } qw( __convert_long_double float_t double_t );
+
+  eval { $x = $p->unpack( $id, $data ) };
 
   if( $@ ) {
-    print "# unpack failed for '$_': $@\n";
-    push @fail, $_;
+    print "# unpack failed for '$id': $@\n";
+    push @fail, $id;
     next;
   }
 
-  eval { $packed = $p->pack( $_, $x ) };
+  eval { $packed = $p->pack( $id, $x ) };
 
   if( $@ ) {
-    print "# pack failed for '$_': $@\n";
-    push @fail, $_;
+    print "# pack failed for '$id': $@\n";
+    push @fail, $id;
     next;
   }
 
   unless( chkpack( $data, $packed ) ) {
-    print "# inconsistent pack/unpack data for '$_'\n";
-    push @fail, $_;
-    next;
+    print "# inconsistent pack/unpack data for '$id'\n";
+    print "# \$data   => @{[map { sprintf '%02X', $_ } unpack 'C*', substr $data, 0, $p->sizeof($id)]}\n";
+    print "# \$x      => $x\n";
+    print "# \$packed => @{[map { sprintf '%02X', $_ } unpack 'C*', $packed]}\n";
+    push @fail, $id;
   }
 }
 
@@ -300,22 +349,27 @@ eval {
 
     sizeof      => $p->sizeof( 'AMT' ),
     offsetof    => $p->offsetof( 'AMT', 'table[2]' ),
-    member      => $p->member( 'AMT', 100 ),
+    member_sx   => scalar $p->member( 'AMT', 100 ),
+    member_ax   => [$p->member( 'AMT', 100 )],
   );
 };
 ok($@,'',"method call failed");
 
+$debug = Convert::Binary::C::feature( 'debug' );
+
 for( keys %rc ) {
   $fail = $succ = 0;
-  my $r = Convert::Binary::C::__DUMP__( $rc{$_} );
-  while( $r =~ /REFCNT\s*=\s*(\d+)/g ) {
-    if( $1 == 1 ) { $succ++ }
-    else {
-      print "# REFCNT = $1, should be 1\n";
-      $fail++;
+  if( $debug ) {
+    my $r = Convert::Binary::C::__DUMP__( $rc{$_} );
+    while( $r =~ /REFCNT\s*=\s*(\d+)/g ) {
+      if( $1 == 1 ) { $succ++ }
+      else {
+        print "# REFCNT = $1, should be 1\n";
+        $fail++;
+      }
     }
+    print "# $_ (succ = $succ, fail = $fail)\n";
   }
-  print "# $_ (succ = $succ, fail = $fail)\n";
-  ok( $fail == 0 && $succ > 0 );
+  skip( $debug ? '' : 'skip: no debugging', $fail == 0 && $succ > 0 );
 }
 

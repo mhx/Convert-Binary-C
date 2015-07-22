@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/09/25 21:24:10 +0100 $
-# $Revision: 12 $
-# $Snapshot: /Convert-Binary-C/0.03 $
+# $Date: 2002/11/27 19:31:18 +0000 $
+# $Revision: 16 $
+# $Snapshot: /Convert-Binary-C/0.04 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -66,13 +66,21 @@ $MODULE = 'Convert::Binary::C';
 
 $BISON = $Config{bison} || 'bison';
 
+# Where to look for includes
+
+@INC_PATH = qw(
+  ctlib
+);
+
 # All the object files that are linked with the extension
 
 @MYEXTOBJS = qw(
+  ctlib/byteorder
   ctlib/cpperr
   ctlib/ctdebug
   ctlib/ctparse
   ctlib/ctype
+  ctlib/fileinfo
   ctlib/parser
   ctlib/pragma
   ctlib/util/hash
@@ -102,7 +110,6 @@ $BISON = $Config{bison} || 'bison';
 @DEFINE = qw(
   ABORT_IF_NO_MEM
   UCPP_CONFIG
-  _XOPEN_SOURCE_EXTENDED
 );
 
 # Supported features, and flags to set when (e)nabled or (d)isabled
@@ -141,9 +148,13 @@ $BISON = $Config{bison} || 'bison';
 
 @MAKER = (
   'NAME'            => $MODULE,
-  'VERSION_FROM'    => do { my $pm=$MODULE; $pm=~s!::!/!g; "lib/$pm.pm" },
+  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.04 $'
+                                    =~ /(\d+\.\d+(?:_\d+)?)/;
+                            @r ? $r[0] : '9.99' },
+  'ABSTRACT'        => 'Binary Data Conversion using C Types',
+  'AUTHOR'          => 'Marcus Holland-Moritz <mhx@cpan.org>',
   'MYEXTLIB'        => 'libctype$(LIB_EXT)',
-  'INC'             => '-Ictlib',
+  'INC'             => join( ' ', map { "-I$_" } @INC_PATH ),
   'PL_FILES'        => {
                          'ctlib/arch.pl'     => 'ctlib/arch.h',
                          'ctlib/t_parser.pl' => 'ctlib/t_parser.c',
@@ -151,7 +162,6 @@ $BISON = $Config{bison} || 'bison';
                        },
   'clean'           => { FILES => "\$(MYEXTLIB_OBJ)" },
   'realclean'       => { FILES => "@REALCLEAN" },
-  'depend'          => { find_depend() },
 );
 
 # Extract features/optimizations from the commandline arguments
@@ -194,16 +204,6 @@ if( defined $optimize ) {
   $OPTIMIZE{$optimize}->( \@MAKER );
 }
 
-# HP-UX cc/acc compilers cannot access non-aligned data by default
-if( $^O eq 'hpux' and $Config{cc} eq 'cc' || $Config{cc} eq 'aCC' ) {
-  push @MAKER, ('CCFLAGS' => "$Config{ccflags} +u1");
-}
-
-# HP-UX cc/acc compilers cannot access non-aligned data by default
-if( $^O eq 'dec_osf' and $Config{cc} eq 'cc' ) {
-  push @MAKER, ('CCFLAGS' => "$Config{ccflags} -assume noaligned_objects");
-}
-
 # On AIX systems, this should be defined for ucpp
 if( $^O eq 'aix' ) {
   push @DEFINE, qw( POSIX_JMP );
@@ -211,7 +211,7 @@ if( $^O eq 'aix' ) {
 
 push @MAKER, ('DEFINE' => join ' ', map( "-D$_", @DEFINE));
 
-WriteMakefile( @MAKER );
+WriteMakefile( @MAKER, 'depend' => { find_depend( @INC_PATH ) } );
 
 #############################################################################
 
@@ -292,19 +292,26 @@ sub MY::test {
 # from the source files.
 
 sub find_depend {
+  my @inc_path = ('.', @_);
   my(%depend, %d);
+
+  printf "Finding dependencies...\n";
+
+  for( @inc_path ) {
+    /\/$/ or $_ .= '/';
+  }
 
   File::Find::find( sub {
     /\.(?:xs|[chy])$/ or return;
+    $File::Find::dir =~ /^\.[\/\\]t[\/\\]/ and return; # exclude test directory
     my @incs;
     open FILE, $_ or die $!;
     while( <FILE> ) {
       /^\s*#\s*include\s*"(([^"]+)\.\w+)"/ or next;
-      if( -e $1 or -e "$2.pl" ) {
-        push @incs, $File::Find::dir . '/' . $1;
-      }
-      elsif( -e "ctlib/$1" or -e "ctlib/$2.pl" ) {
-        push @incs, $File::Find::dir . '/ctlib/' . $1;
+      for my $path ( @inc_path ) {
+        if( -e "$path$1" or -e "$path$2.pl" ) {
+          push @incs, $File::Find::dir . "/$path" . $1;
+        }
       }
     }
     close FILE;

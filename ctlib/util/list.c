@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/04/21 16:24:06 +0100 $
-* $Revision: 2 $
-* $Snapshot: /Convert-Binary-C/0.03 $
+* $Date: 2002/10/23 11:36:38 +0100 $
+* $Revision: 4 $
+* $Snapshot: /Convert-Binary-C/0.04 $
 * $Source: /ctlib/util/list.c $
 *
 ********************************************************************************
@@ -314,10 +314,47 @@ void LL_destroy( LinkedList list, LLDestroyFunc destroy )
 }
 
 /**
+ *  Cloning a linked list
+ *
+ *  Using the LL_clone() function to create an exact copy
+ *  of a linked list. If the objects stored in the list
+ *  need to be cloned as well, you can pass a pointer to
+ *  a function that clones each element.
+ *
+ *  \param list		Handle to an existing linked list.
+ *
+ *  \param func		Pointer to the cloning function of
+ *			the objects contained in the list.
+ *                      If you pass NULL, the original
+ *                      object is stored in the cloned list
+ *                      instead of a cloned object.
+ *
+ *  \return A handle to the cloned linked list.
+ *
+ *  \see LL_new()
+ */
+
+LinkedList LL_clone( LinkedList list, LLCloneFunc func )
+{
+  LinkedList clone;
+  void *pObj;
+
+  if( list == NULL )
+    return NULL;
+
+  clone = LL_new();
+
+  LL_foreach( pObj, list )
+    LL_push( clone, func ? func( pObj ) : pObj );
+
+  return clone;
+}
+
+/**
  *  Current size of a list
  *
- *  LL_size() will return the size of a linked list as
- *  the number of objects that it contains.
+ *  LL_count() will return the the number of objects that
+ *  a linked list contains.
  *
  *  \param list		Handle to an existing linked list.
  *
@@ -325,7 +362,7 @@ void LL_destroy( LinkedList list, LLDestroyFunc destroy )
  *          was passed.
  */
 
-int LL_size( const LinkedList list )
+int LL_count( const LinkedList list )
 {
   if( list == NULL )
     return -1;
@@ -456,7 +493,7 @@ void *LL_shift( const LinkedList list )
  *                      A value of 0 will insert
  *                      the new element at the start of the
  *                      list, like LL_unshift() would do. A
- *                      value of LL_size() would insert the
+ *                      value of LL_count() would insert the
  *                      element at the end of the list, like
  *                      LL_push() would do. A negative value
  *                      will count backwards from the end of

@@ -80,13 +80,14 @@ void STR_2_U64( U64 *dest, register const char *src )
 
     lval <<= 1;
 
+/*
     temp = lval + (lval << 2) + (int) (*src++ - '0');
 
     if( temp < lval )
       uval++;
 
     lval = temp;
-/*
+*/
     temp = lval + (lval << 2);
 
     if( temp < lval )
@@ -96,7 +97,6 @@ void STR_2_U64( U64 *dest, register const char *src )
 
     if( lval < temp )
       uval++;
-*/
   }
 
   end_of_string:
@@ -108,23 +108,19 @@ void STR_2_U64( U64 *dest, register const char *src )
 int main( void )
 {
   char buffer[32];
-  U64 x = {0x2C0FFEE5, 0xDEADBEEF};
+  // U64 x = {0x2C0FFEE5, 0xDEADBEEF};
+  // U64 x = {0x64D60A35, 0x2D781233};
+  U64 x = {0xf7160ad7, 0x944b8917};
   U64 y;
   U64 z;
 
-  printf("%Lu\n", -1000000000000UL);
-  return 0;
-
-  *((unsigned long long *)&z) = 10ULL*0xFFFFFFFEULL + 9ULL;
-  printf("%Lu\n", ((unsigned long long)z.upper<<32)|z.lower);
-
-  printf("%Lu\n", 0xDEADBEEF2C0FFEE5);
-
-  U64_2_STR( buffer, &z );
+  U64_2_STR( buffer, &x );
+  printf("%Lu\n", ((unsigned long long)x.upper<<32)|x.lower);
   printf("%s\n", buffer);
 
   STR_2_U64( &y, buffer );
   printf("%Lu\n", ((unsigned long long)y.upper<<32)|y.lower);
+  printf("%08X, %08X\n", y.upper, y.lower);
 
   return 0;
 }

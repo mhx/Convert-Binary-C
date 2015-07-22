@@ -2,9 +2,10 @@ CONTENTS
 
 1. DESCRIPTION
 2. INSTALLATION
-3. COMPATIBILITY
-4. FEATURES
-5. COPYRIGHT
+3. DOCUMENTATION
+4. COMPATIBILITY
+5. FEATURES
+6. COPYRIGHT
 
 
 --------------
@@ -41,22 +42,56 @@ and should not be harder than:
   make test
   make install
 
-When running 'make test' on Windows and on slower systems be patient, since
-the 'complex' and 'threads' tests may take quite some time.
+Note that you may need to become superuser to 'make install'.
 
-Even on a 1 GHz machine, the whole test suite may need between 20 and 60
-seconds to complete.
+If you're building the module under Windows, you may need to use a
+different make program, such as 'nmake', instead of 'make'.
+
+When running 'make test' on on slower systems please be patient, since
+some of the tests are quite time consuming. The time required for running
+the whole test suite depends on your Perl version, the features you're
+building the module with, and of course your machine.
+
+On a 1 GHz/P-III machine, using a multithreaded perl 5.8.0 binary, the
+whole test suite needs about 30 seconds. If the debugging feature is
+enabled, this will increase to almost 80 seconds, most of which is used
+up by the final memory leak test.
 
 ----------------
-3. COMPATIBILITY
+3. DOCUMENTATION
+----------------
+
+To see the documentation, use the perldoc command:
+
+  perldoc Convert::Binary::C
+  perldoc Convert::Binary::C::Cached
+
+You can also visit CPAN Search and see the documentation online as
+pretty nice HTML. This is also where you will find the most recent
+version of this module:
+
+  http://search.cpan.org/author/MHX/Convert-Binary-C/
+
+----------------
+4. COMPATIBILITY
 ----------------
 
 The module should build on most of the platforms that Perl runs on. I have
 tested it on:
 
-  - Linux
+  - Various Linux systems
+  - Various BSD systems
   - HP-UX
+  - Compaq/HP Tru64 Unix
+  - Cygwin
   - Windows 98/NT/2000
+
+Also, most architectures should be supported. Tests were done on:
+
+  - Various Intel Pentium and Itanium systems
+  - Various Alpha systems
+  - HP PA-RISC
+  - StrongARM (the module worked fine on an IPAQ system)
 
 The module should build with any perl from 5.005_03 up to 5.8.0.
 
@@ -64,7 +99,7 @@ Multithreaded perl binaries are explicitly supported, as the module is
 intended to be thread-safe.
 
 -----------
-4. FEATURES
+5. FEATURES
 -----------
 
 You can enable or disable certain features at compile time by adding options
@@ -93,7 +128,7 @@ and ANSI-C99 features disabled, you would say:
 This will still allow you to pass other 'standard' arguments to Makefile.PL.
 
 ------------
-5. COPYRIGHT
+6. COPYRIGHT
 ------------
 
 Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
@@ -105,7 +140,7 @@ and redistribution details refer to 'ctlib/ucpp/README'.
 
 Portions copyright (c) 1989, 1990 James A. Roskind.
 
-Some of the include files used for the 't/parse.t' test
+Some of the include files used for the 't/106_parse.t' test
 script are (c) 1991-1999, 2000, 2001 Free Software Foundation,
 Inc. They are neither required to create the binary nor linked
 to the source code of this module in any other way.

@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/08/21 14:58:23 +0100 $
-# $Revision: 9 $
-# $Snapshot: /Convert-Binary-C/0.03 $
+# $Date: 2002/11/27 18:06:30 +0000 $
+# $Revision: 20 $
+# $Snapshot: /Convert-Binary-C/0.04 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -28,12 +28,16 @@ package Convert::Binary::C;
 use strict;
 use DynaLoader;
 use Carp;
-use vars qw( @ISA $VERSION $AUTOLOAD );
+use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
-$VERSION = do{my@r='$Snapshot: /Convert-Binary-C/0.03 $'=~/(\d+\.\d+)/;@r?$r[0]:'9.99'};
 
-bootstrap Convert::Binary::C $VERSION;
+$VERSION    = sprintf '%.2f', 0.01*('$Revision: 20 $' =~ /(\d+)/)[0];
+$XS_VERSION =  do { my @r = '$Snapshot: /Convert-Binary-C/0.04 $'
+                            =~ /(\d+\.\d+(?:_\d+)?)/;
+                    @r ? $r[0] : '9.99' },
+
+bootstrap Convert::Binary::C $XS_VERSION;
 
 # Unfortunately, XS AUTOLOAD isn't supported
 # by stable perl distributions before 5.8.0.
@@ -50,7 +54,7 @@ sub AUTOLOAD
     carp "Useless use of $opt in void context";
     return;
   }
-  eval { $opt = $self->configure( $opt, @_ ) };
+  $opt = eval { $self->configure( $opt, @_ ) };
   $@ =~ s/\s+at.*?C\.pm.*//s, croak $@ if $@;
   $opt;
 }
@@ -216,6 +220,28 @@ Or by parsing C code embedded in your script:
 
 Now $obj will know about the C<foo> struct.
 
+Since the C<parse> and C<parse_file> methods throw an exception
+when a parse error occurs, you usually want to catch these in
+an C<eval> block:
+
+  eval { $obj->parse_file('foo.h') };
+  if( $@ ) {
+    # do something appropriate
+  }
+
+As another feature, C<parse> and C<parse_file> return a reference
+to their object on success, just like C<configure> does when you're
+configuring the object. This will allow you to write constructs
+like this:
+
+  my $obj = eval {
+    Convert::Binary::C->new( Include => ['/usr/include'] )
+                      ->parse_file( 'main.h' )
+  };
+  if( $@ ) {
+    # do something appropriate
+  }
+
 =head2 Packing and unpacking
 
 Convert::Binary::C has two methods, C<pack> and C<unpack>,
@@ -230,10 +256,10 @@ you could write:
   };
   $foo = $obj->pack( 'foo', $data );
 
-Unpacking will work exactly the same way, just that the
-C<unpack> method will take a byte string as its input and
-will return a reference to a (possibly very complex) Perl
-data structure.
+Unpacking will work exactly the same way, just that
+the C<unpack> method will take a byte string as its input
+and will return a reference to a (possibly very complex)
+Perl data structure.
 
 =head2 Preprocessor configuration
 
@@ -315,11 +341,11 @@ described for the C<configure> method.
 This method can be used to configure an existing Convert::Binary::C
 object or to retrieve its current configuration.
 
-To configure the object, the list of options consists of key and
-value pairs and must therefore contain an even number of elements.
-C<configure> (and also C<new> if used with configuration options)
-will throw an exception if you pass an odd number of elements.
-Configuration will normally look like this:
+To configure the object, the list of options consists of key
+and value pairs and must therefore contain an even number of
+elements. C<configure> (and also C<new> if used with configuration
+options) will throw an exception if you pass an odd number of
+elements. Configuration will normally look like this:
 
   $obj->configure( ByteOrder => 'BigEndian', IntSize => 2 );
 
@@ -340,31 +366,32 @@ Data::Dumper module, for example:
 This will print something like this:
 
   $VAR1 = {
-            'UnsignedChars' => 0,
-            'ShortSize' => 2,
-            'EnumType' => 'Integer',
-            'EnumSize' => 4,
-            'Include' => [
-                           '/usr/include'
-                         ],
-            'DoubleSize' => 4,
-            'FloatSize' => 4,
-            'HasCPPComments' => 1,
-            'Alignment' => 1,
             'Define' => [
                           'DEBUGGING',
                           'FOO=123'
                         ],
-            'HasC99Keywords' => 1,
-            'HasMacroVAARGS' => 1,
-            'HashSize' => 'Normal',
-            'LongSize' => 4,
-            'HasVOID' => 1,
-            'Warnings' => 0,
             'ByteOrder' => 'LittleEndian',
-            'Assert' => [],
+            'LongSize' => 4,
             'IntSize' => 4,
-            'PointerSize' => 4
+            'ShortSize' => 2,
+            'HasMacroVAARGS' => 1,
+            'UnsignedChars' => 0,
+            'Assert' => [],
+            'DoubleSize' => 8,
+            'EnumType' => 'Integer',
+            'PointerSize' => 4,
+            'EnumSize' => 4,
+            'HasVOID' => 1,
+            'FloatSize' => 4,
+            'Alignment' => 1,
+            'HasC99Keywords' => 1,
+            'LongLongSize' => 8,
+            'LongDoubleSize' => 12,
+            'Include' => [
+                           '/usr/include'
+                         ],
+            'HasCPPComments' => 1,
+            'Warnings' => 0
           };
 
 Since you may not always want to write a configure call when
@@ -380,8 +407,8 @@ that can take lists (namely C<Include>, C<Define> and C<Assert>)
 may behave slightly different than their C<configure> equivalent.
 If you pass these methods a single argument that is an array
 reference, the current list will be B<replaced> by the new one,
-which is just the behaviour of the corresponding C<configure>
-call. So the following are equivalent:
+which is just the behaviour of the corresponding C<configure> call.
+So the following are equivalent:
 
   $obj->configure( Define => ['foo', 'bar=123'] );
   $obj->Define( ['foo', 'bar=123'] );
@@ -402,20 +429,32 @@ will first print all three include paths, but finally only
 
 will be configured.
 
+Furthermore, configuration methods can be chained together,
+as they return a reference to their object if called as a
+set method. So, if you like, you can configure your object
+like this:
+
+  $obj = Convert::Binary::C->new( IntSize => 4 )
+           ->Define( qw( __DEBUG__ DB_LEVEL=3 ) )
+           ->ByteOrder( 'BigEndian' );
+
+  $obj->configure( EnumType => 'Both', Alignment => 4 )
+      ->Include( '/usr/include', '/usr/local/include' );
+
 You can configure the following options. Unknown options, as well
 as invalid values for an option, will cause the object to throw
 exceptions.
 
 =over 4
 
-=item IntSize =E<gt> 0 | 1 | 2 | 4
+=item IntSize =E<gt> 0 | 1 | 2 | 4 | 8
 
 Set the number of bytes that are occupied by an integer. This is
 in most cases 2 or 4. If you set it to zero, the size of an
 integer on the host system will be used. This is also the
 default.
 
-=item ShortSize =E<gt> 0 | 1 | 2 | 4
+=item ShortSize =E<gt> 0 | 1 | 2 | 4 | 8
 
 Set the number of bytes that are occupied by a short integer.
 Although integers explicitly declared as C<short> should be
@@ -424,16 +463,20 @@ always 16 bit, there are weird compilers that make a short
 integer on the host system will be used. This is also the
 default.
 
-=item LongSize =E<gt> 0 | 1 | 2 | 4
+=item LongSize =E<gt> 0 | 1 | 2 | 4 | 8
 
 Set the number of bytes that are occupied by a long integer.
-Integers explicitly declared as C<long> should always be
-32 bit wide. However, for the sake of completeness, you can
-adjust the size. If you set it to zero, the size of a long
-integer on the host system will be used. This is also the
+If set to zero, the size of a long integer on the host system
+will be used. This is also the default.
+
+=item LongLongSize =E<gt> 0 | 1 | 2 | 4 | 8
+
+Set the number of bytes that are occupied by a long long
+integer. If set to zero, the size of a long long integer
+on the host system, or 8, will be used. This is also the
 default.
 
-=item FloatSize =E<gt> 0 | 1 | 2 | 4 | 8
+=item FloatSize =E<gt> 0 | 1 | 2 | 4 | 8 | 12
 
 Set the number of bytes that are occupied by a single
 precision floating point value.
@@ -442,7 +485,7 @@ host system will be used. This is also the default.
 Values can only be packed and unpacked if the size
 matches the native size of a C<float>.
 
-=item DoubleSize =E<gt> 0 | 1 | 2 | 4 | 8
+=item DoubleSize =E<gt> 0 | 1 | 2 | 4 | 8 | 12
 
 Set the number of bytes that are occupied by a double
 precision floating point value.
@@ -451,7 +494,16 @@ host system will be used. This is also the default.
 Values can only be packed and unpacked if the size
 matches the native size of a C<double>.
 
-=item PointerSize =E<gt> 0 | 1 | 2 | 4
+=item LongDoubleSize =E<gt> 0 | 1 | 2 | 4 | 8 | 12
+
+Set the number of bytes that are occupied by a double
+precision floating point value.
+If you set it to zero, the size of a C<long double> on
+the host system, or 12, will be used. This is also the
+default. Values can only be packed and unpacked if the
+size matches the native size of a C<long double>.
+
+=item PointerSize =E<gt> 0 | 1 | 2 | 4 | 8
 
 Set the number of bytes that are occupied by a pointer. This is
 in most cases 2 or 4. If you set it to zero, the size of a
@@ -504,8 +556,8 @@ the byte order of the host system.
 =item EnumType =E<gt> 'Integer' | 'String' | 'Both'
 
 This option controls the type that enumeration constants
-will have in data structures returned by the C<unpack>
-method. If you have the following definitions:
+will have in data structures returned by the C<unpack> method.
+If you have the following definitions:
 
   typedef enum {
     SUNDAY, MONDAY, TUESDAY, WEDNESDAY,
@@ -570,9 +622,9 @@ integer values.
 
 =item HasVOID =E<gt> 0 | 1
 
-Use this boolean option to turn the recognition of the
-C<void> keyword on or off. The keyword is turned on by
-default. However, there are still compilers out there
+Use this boolean option to turn the recognition of
+the C<void> keyword on or off. The keyword is turned on
+by default. However, there are still compilers out there
 that will not recognize C<void> as a keyword. If someone
 then does a
 
@@ -583,10 +635,10 @@ treats C<void> as a keyword.
 
 =item UnsignedChars =E<gt> 0 | 1
 
-Use this boolean option if you want characters to be
-unsigned if specified without an explicit C<signed> or
-C<unsigned> type specifier. By default, characters are
-signed.
+Use this boolean option if you want characters
+to be unsigned if specified without an
+explicit C<signed> or C<unsigned> type specifier.
+By default, characters are signed.
 
 =item Warnings =E<gt> 0 | 1
 
@@ -678,24 +730,6 @@ are defined with the C<#assert> directive:
 
   $obj->configure( Assert => ['foo(bar)'] );
 
-=item HashSize =E<gt> 'Tiny' | 'Small' | 'Normal' | 'Large' | 'Huge'
-
-This is a special setting and you hardly need to change
-it. It controls the size of the hash tables used by
-Convert::Binary::C internally.
-
-While small hash tables consume less memory, larger
-hash tables might be faster. Unless you parse really
-huge files (with a few thousands of typedefs or struct
-definitions or several thousands of enumeration constants)
-you can leave it as is. If the files you're parsing
-are rather small and you have only little memory, you may
-adjust this setting to C<Small> or C<Tiny>.
-
-If you go from C<Tiny> to C<Huge>, each step will double
-the memory requirements. However, the normal case will
-consume only slightly more than 4k of memory per object.
-
 =back
 
 You can reconfigure all options even after you have
@@ -738,6 +772,7 @@ every call. You may use types previously defined, but
 you are not allowed to redefine types.
 
 C<parse> will throw an exception in case an error occurs.
+On success, the method returns a reference to its object.
 
 =back
 
@@ -752,11 +787,55 @@ type definitions are extracted. You can call
 the C<parse> and C<parse_file> methods as often
 as you like to add further definitions to the
 Convert::Binary::C object.
+
 You must be aware that the preprocessor is reset with
 every call. You may use types previously defined, but
 you are not allowed to redefine types.
 
 C<parse_file> will throw an exception in case an error occurs.
+On success, the method returns a reference to its object.
+
+=back
+
+=head2 clean
+
+=over 8
+
+=item clean
+
+Clears all information that has been parsed during previous
+calls to C<parse> or C<parse_file>.
+You can use this method if you want to parse some entirely
+different code, but with the same configuration.
+
+The C<clean> method returns a reference to its object.
+
+=back
+
+=head2 clone
+
+=over 8
+
+=item clone
+
+Makes the object return an exact independent copy of itself.
+
+  $cbc = new Convert::Binary::C Include => '/usr/include';
+  $cbc->parse( 'something.c' );
+  $clone = $cbc->clone;
+
+The above code is technically equivalent (well, mostly...
+actually, using C<sourcify> and C<parse> might alter the
+order of the parsed data, which would make methods such
+as C<compound> return the definitions in a different order)
+to:
+
+  $cbc = new Convert::Binary::C Include => '/usr/include';
+  $cbc->parse( 'something.c' );
+  $clone = new Convert::Binary::C $cbc->configure;
+  $clone->parse( 'something.c' );
+
+Using C<clone> is just a lot faster.
 
 =back
 
@@ -768,10 +847,12 @@ C<parse_file> will throw an exception in case an error occurs.
 
 If you need to know if a definition for a certain type
 exists, use this method. You pass it the name of an enum,
-struct/union or typedef, and it will return 1 if there's
-a definition for the type in question, or 0 if there's no
-such definition, or C<undef> if the name is completely
-unknown. So after parsing
+struct/union or typedef, and it will return a non-empty
+string being either C<"enum">, C<"struct">, C<"union">,
+or C<"typedef"> if there's a definition for the type in
+question, or an empty string if there's no such definition,
+or C<undef> if the name is completely unknown. So after
+parsing
 
   typedef struct __not  not;
   typedef struct __not *ptr;
@@ -782,14 +863,19 @@ unknown. So after parsing
 
 the following would be returned by the C<def> method:
 
-  $p->def( 'not' )  =>  0
-  $p->def( 'ptr' )  =>  1
-  $p->def( 'foo' )  =>  1
-  $p->def( 'bar' )  =>  0
+  $p->def( 'not' )  =>  ''
+  $p->def( 'ptr' )  =>  'typedef'
+  $p->def( 'foo' )  =>  'struct'
+  $p->def( 'bar' )  =>  ''
   $p->def( 'xxx' )  =>  undef
 
-So, if C<def> is 1, you can safely use any other method
-with that type's name.
+So, if C<def> is a non-empty string, you can safely use
+any other method with that type's name.
+
+In cases where the typedef namespace overlaps with the
+namesapce of enums/structs/unions, the C<def> method
+will give preference to the typedef and will thus return
+the string C<"typedef">.
 
 =back
 
@@ -809,16 +895,26 @@ by references to Perl hashes, C arrays by references to
 Perl arrays. Note that hashes need not contain a key for
 each struct member and arrays may be truncated.
 
+  $packed = $obj->pack( 'foo', { ary => [1, 2], bar => 42 } );
+
 Elements not defined in the Perl data structure will be
 set to zero in the packed byte string. On success, the
 packed byte string is returned.
+
+If TYPE refers to a compound object, you may pack any
+member of that compound object. Simply add a member string
+to the type name, just as you would access the member in
+C:
+
+  $array = $obj->pack( 'foo.ary', [1, 2, 3] );
+  $value = $obj->pack( 'foo.ary[1]', 2 );
 
 Call C<pack> with the optional STRING argument if you
 want to use an existing string to insert the data.
 If called in a void context, C<pack> will directly
 modify the string you passed as the third argument.
-Otherwise, a copy of the string is created, and C<pack>
-will modify and return the copy, so the original string
+Otherwise, a copy of the string is created, and C<pack> will
+modify and return the copy, so the original string
 will remain unchanged.
 
 The 3-argument version may be useful if you want to change
@@ -866,9 +962,18 @@ Use this method to unpack a byte string and create an
 arbitrarily complex Perl data structure based on a
 previously parsed type definition.
 
+  $unpacked = $obj->unpack( 'foo', $string );
+
 On failure, e.g. if the specified type cannot be found,
 the method will throw an exception. On success, a
 reference to a complex Perl data structure is returned.
+
+If TYPE refers to a compound object, you may unpack any
+member of that compound object. Simply add a member string
+to the type name, just as you would access the member in
+C:
+
+  $value = $obj->unpack( 'foo.ary[1]', $str );
 
 =back
 
@@ -881,6 +986,11 @@ reference to a complex Perl data structure is returned.
 This method will return the size of a C type in bytes.
 If it cannot find the type, it will throw an exception.
 
+If the type defines some kind of compound object, you
+may ask for the size of a member of that compound object:
+
+  $c->sizeof( 'mytype.array[3].value' );
+
 =back
 
 =head2 member
@@ -889,9 +999,9 @@ If it cannot find the type, it will throw an exception.
 
 =item member TYPE, OFFSET
 
-You can use this method if you want to retrieve the name
-of the member that is located at a specific offset for a
-previously parsed type.
+You can use this method if you want to retrieve the name,
+and optionally the type, of the member that is located at
+a specific offset for a previously parsed type.
 
   $c = new Convert::Binary::C Alignment => 4;
    
@@ -906,10 +1016,10 @@ previously parsed type.
   };
   CCODE
    
-  print $c->member( 'bar', 16 );  # "zap[2].abc"
-  print $c->member( 'bar', 27 );  # "zap[3]+3"
-  print $c->member( 'bar', 45 );  # "zap[5].day+1"
-  print $c->member( 'bar', 150 ); #  => exception
+  print scalar $c->member( 'bar', 16 );  # "zap[2].abc"
+  print scalar $c->member( 'bar', 27 );  # "zap[3]+3"
+  print scalar $c->member( 'bar', 45 );  # "zap[5].day+1"
+  print scalar $c->member( 'bar', 150 ); #  => exception
 
 The output of the first line is obvious. The
 member C<zap[2].abc> is located at offset 16 of
@@ -927,6 +1037,34 @@ and thus the remaining offset of 1 is also appended.
 The last line causes an exception because the offset
 of 150 is not valid for struct C<bar> since the size
 of struct C<bar> is only 128.
+
+In list context, the C<member> method will also return the
+member's type, which is why we needed to use C<scalar> in
+the example above.
+
+  ($m,$t) = $c->member('bar', 16); # ("zap[2].abc",   "char")
+  ($m,$t) = $c->member('bar', 27); # ("zap[3]+3",     undef )
+  ($m,$t) = $c->member('bar', 45); # ("zap[5].day+1", "long")
+
+If the type is a pointer, a C<"*"> string will be returned.
+If the type cannot be expressed as a string, a reference to
+a definition of that type will be returned. Actually, this
+can only be the case for inlined, unnamed enums:
+
+  struct inlined {
+    char abc;
+    enum {
+      INSIDE = 0
+    }    inside;
+  };
+
+Have a look at the C<enum> method for details on how the
+returned data structure looks like.
+
+You can additionally specify a member for the type passed
+as the first argument:
+
+  ($m,$t) = $c->member('bar.zap[2]', 6); # ("day", "long")
 
 =back
 
@@ -949,6 +1087,13 @@ allowed by C<offsetof>, so
 would not print C<45>, but rather cause an exception
 because an invalid character is being used in the
 expression.
+
+However, you may additionally specify a member for
+the type passed as the first argument, so
+
+  print $c->offsetof( 'bar.zap[2]', 'day' );
+
+would just print C<4>, as expected.
 
 =back
 
@@ -985,6 +1130,109 @@ assume the following piece of C code has been parsed.
   } test;
 
 =over 8
+
+=back
+
+=head2 dependencies
+
+=over 8
+
+=item dependencies
+
+After some code has been parsed using either
+the C<parse> or C<parse_file> methods,
+the C<dependencies> method can be used to
+retrieve information about all files that the object
+depends on, i.e. all files that have been parsed.
+
+The method returns a hash reference. Each key is the
+name of a file, so you could use
+
+  @files = keys %{$c->dependencies};
+
+to retrieve a list of these files. The values are
+again hash references, each of which holds the size,
+modification time (mtime), and change time (ctime)
+of the file at the moment it was parsed:
+
+  {
+    '/usr/include/bits/setjmp.h' => {
+      size  => 1480,
+      mtime => 1033319251,
+      ctime => 1038152806
+    },
+    '/usr/include/netdb.h' => {
+      size  => 17855,
+      mtime => 1033319251,
+      ctime => 1038152806
+    }
+  }
+
+=back
+
+=head2 sourcify
+
+=over 8
+
+=item sourcify
+
+Returns a string that holds the C code neccessary to
+represent all parsed C data structures.
+
+  $c = new Convert::Binary::C;
+  $c->parse( <<'END' );
+  
+  #define NUMBER 42
+  
+  typedef struct {
+    enum count *pCount;
+    union {
+      char string[NUMBER];
+      int  array[NUMBER/sizeof(int)];
+    } storage;
+  } mytype;
+  
+  enum count { ZERO, ONE, TWO, THREE };
+  
+  END
+  
+  print $c->sourcify;
+
+The above code would print something like this:
+
+  typedef struct
+  {
+          enum count
+          {
+                  ZERO = 0,
+                  ONE = 1,
+                  TWO = 2,
+                  THREE = 3
+          } *pCount;
+          union
+          {
+                  char string[42];
+                  int array[10];
+          } storage;
+  } mytype;
+
+The purpose of the C<sourcify> method is to enable some
+kind of platform-independent caching. The C code generated
+by C<sourcify> can be parsed by a standard C compiler, as well
+as of course the Convert::Binary::C parser. However, it might
+be significantly shorter than the code that has originally
+been parsed. When parsing a typical header file, it's
+easily possible that you need to open dozens of other files
+that are included from that file, and end up parsing several
+hundred kilobytes of C code. Since most of it is usually
+preprocessor directives, function prototypes and comments,
+the C<sourcify> function strips this down to a few kilobytes.
+Saving the C<sourcify> string and parsing it next time instead
+of the original code may be a lot faster.
+
+However, this function is in an experimental state. Don't
+expect it to work in any case. It will emit a warning when
+you use it.
 
 =back
 
@@ -1093,8 +1341,8 @@ signed.
 
 is the size in bytes needed to store any enumerator of
 that enumeration. This does B<not> need to be the size
-that is actually occupied by an enum. Only if C<EnumSize>
-is configured to C<0>, these are identical.
+that is actually occupied by an enum. Only if C<EnumSize> is
+configured to C<0>, these are identical.
 
 =back
 
@@ -1330,8 +1578,8 @@ unions. One way to retrieve such lists would be to use
     push @{$_->{type} eq 'union' ? \@unions : \@structs}, $_
   } $p->compound;
 
-However, you should use the C<struct> and C<union>
-methods, which is a lot simpler:
+However, you should use the C<struct> and C<union> methods,
+which is a lot simpler:
 
   @structs = $p->struct;
   @unions  = $p->union;
@@ -1675,9 +1923,9 @@ of a structure yet.
 Convert::Binary::C was designed to be thread-safe.
 
 Since the used preprocessor unfortunately isn't re-entrant,
-source code parsing using the C<parse> and C<parse_file>
-methods is locked, so don't expect these routines to run
-in parallel on multithreaded perls.
+source code parsing using the C<parse> and C<parse_file> methods
+is locked, so don't expect these routines to run in parallel
+on multithreaded perls.
 
 =head1 CREDITS
 
@@ -1685,18 +1933,9 @@ in parallel on multithreaded perls.
 
 =item *
 
-Thomas Pornin E<lt>pornin@bolet.orgE<gt> for his excellent
-ucpp preprocessor library.
-
-=item *
-
-Mark Overmeer E<lt>mark@overmeer.netE<gt> for suggesting the
-module name and giving invaluable feedback.
-
-=item *
-
-Frederic Fabbro E<lt>ffreddo@ibelgique.comE<gt> for testing
-the package and offering continuous help and feedback.
+Michael J. Hohmann E<lt>mjh@scientist.deE<gt> for endless discussions
+on our way to and back home from work, and for making me think
+about supporting pack and unpack for compound members.
 
 =item *
 
@@ -1705,9 +1944,24 @@ on various platforms.
 
 =item *
 
+Mark Overmeer E<lt>mark@overmeer.netE<gt> for suggesting the
+module name and giving invaluable feedback.
+
+=item *
+
+Thomas Pornin E<lt>pornin@bolet.orgE<gt> for his excellent
+ucpp preprocessor library.
+
+=item *
+
 James Roskind, as his C parser was a great starting point to fix
 all the problems I had with my orignal parser based only on the
 ANSI ruleset.
+
+=item *
+
+Steffen Zimmermann for a prolific discussion on the cloning
+algorithm.
 
 =back
 
@@ -1735,7 +1989,10 @@ and redistribution details refer to F<ctlib/ucpp/README>.
 
 Portions copyright (c) 1989, 1990 James A. Roskind.
 
-Some of the include files used for the F<t/parse.t> test
+Some of the include files used for the F<t/106_parse.t> test
 script are (c) 1991-1999, 2000, 2001 Free Software Foundation,
 Inc. They are neither required to create the binary nor linked
 to the source code of this module in any other way.
+
+=cut
+

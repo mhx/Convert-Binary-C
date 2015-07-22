@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/05/22 16:00:24 +0100 $
-* $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.03 $
+* $Date: 2002/11/25 11:46:35 +0000 $
+* $Revision: 9 $
+* $Snapshot: /Convert-Binary-C/0.04 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -35,6 +35,7 @@
 
 #include "ctparse.h"
 #include "ctdebug.h"
+#include "fileinfo.h"
 #include "parser.h"
 #include "ucpp/cpp.h"
 #include "util/memalloc.h"
@@ -57,6 +58,7 @@
 
 #define IS_ANY_DIRECTORY_DELIMITER( c ) ( (c) == '/' || (c) == '\\' )
 
+#define BUFFER_NAME "[buffer]"
 
 /*===== TYPEDEFS =============================================================*/
 
@@ -100,7 +102,7 @@ static void UpdateStruct( CParseConfig *pCPC, Struct *pStruct )
 
   CT_DEBUG( CTLIB, ("UpdateStruct( %s ), got %d struct declaration(s)",
             pStruct->identifier[0] ? pStruct->identifier : "<no-identifier>",
-            LL_size(pStruct->declarations)) );
+            LL_count(pStruct->declarations)) );
 
   if( pStruct->declarations == NULL ) {
     CT_DEBUG( CTLIB, ("no struct declarations in UpdateStruct") );
@@ -112,7 +114,7 @@ static void UpdateStruct( CParseConfig *pCPC, Struct *pStruct )
   LL_foreach( pStructDecl, pStruct->declarations ) {
 
     CT_DEBUG( CTLIB, ("%d declarators in struct declaration, tflags=0x%08X ptr=0x%08X",
-              LL_size(pStructDecl->declarators), pStructDecl->type.tflags,
+              LL_count(pStructDecl->declarators), pStructDecl->type.tflags,
               pStructDecl->type.ptr) );
 
     LL_foreach( pDecl, pStructDecl->declarators ) {
@@ -268,7 +270,7 @@ int ParseBuffer( char *filename, Buffer *pBuf, CParseInfo *pCPI, CParseConfig *p
 
         CT_DEBUG( CTLIB, ("Trying \"%s\"...", file) );
 
-        if( (infile = fopen( file, "r" )) )
+        if( (infile = fopen( file, "r" )) != NULL )
           break;
       }
 
@@ -286,19 +288,22 @@ int ParseBuffer( char *filename, Buffer *pBuf, CParseInfo *pCPI, CParseConfig *p
   state.pCPC = pCPC;
   state.curEnumList = NULL;
 
-  if( pCPI->enums == NULL && pCPI->structs == NULL && pCPI->typedefs == NULL ) {
+  if( pCPI->enums == NULL && pCPI->structs == NULL &&
+      pCPI->typedef_lists == NULL ) {
     CT_DEBUG( CTLIB, ("creating linked lists") );
 
-    pCPI->enums    = LL_new();
-    pCPI->structs  = LL_new();
-    pCPI->typedefs = LL_new();
+    pCPI->enums         = LL_new();
+    pCPI->structs       = LL_new();
+    pCPI->typedef_lists = LL_new();
 
-    pCPI->htEnumerators = HT_new( pCPC->htSizeEnumerators );
-    pCPI->htEnums       = HT_new( pCPC->htSizeEnums );
-    pCPI->htStructs     = HT_new( pCPC->htSizeStructs );
-    pCPI->htTypedefs    = HT_new( pCPC->htSizeTypedefs );
+    pCPI->htEnumerators = HT_new_ex( 5, HT_AUTOGROW );
+    pCPI->htEnums       = HT_new_ex( 4, HT_AUTOGROW );
+    pCPI->htStructs     = HT_new_ex( 4, HT_AUTOGROW );
+    pCPI->htTypedefs    = HT_new_ex( 4, HT_AUTOGROW );
+    pCPI->htFiles       = HT_new_ex( 3, HT_AUTOGROW );
   }
-  else if( pCPI->enums && pCPI->structs && pCPI->typedefs ) {
+  else if( pCPI->enums != NULL && pCPI->structs != NULL &&
+           pCPI->typedef_lists != NULL ) {
     CT_DEBUG( CTLIB, ("re-using linked lists") );
   }
   else {
@@ -341,7 +346,7 @@ int ParseBuffer( char *filename, Buffer *pBuf, CParseInfo *pCPI, CParseConfig *p
   if( filename )
     set_init_filename(filename, 1);
   else
-    set_init_filename("[buffer]", 0);
+    set_init_filename(BUFFER_NAME, 0);
 
   init_lexer_state( &state.lexer );
   init_lexer_mode( &state.lexer );
@@ -431,9 +436,12 @@ cleanup:
   wipeout();
 
 #ifdef MEM_DEBUG
-  fprintf( stderr, "ucpp memory leaks [%s]\n", filename ? filename : "[buffer]" );
+  fprintf( stderr, "ucpp memory leaks [%s]\n", filename ? filename : BUFFER_NAME );
   report_leaks();
 #endif
+
+  if( filename == NULL )
+    (void) HT_fetch( pCPI->htFiles, BUFFER_NAME, 0, 0 );
 
   if( state.filename )
     Free( state.filename );
@@ -451,7 +459,7 @@ cleanup:
 #ifdef CTYPE_DEBUGGING
   if( DEBUG_FLAG( CTLIB ) ) {
     CT_DEBUG( CTLIB, ("cleanup enumerator(s)") );
-    if( state.curEnumList && (count = LL_size( state.curEnumList )) > 0 )
+    if( state.curEnumList && (count = LL_count( state.curEnumList )) > 0 )
       CT_DEBUG( CTLIB, ("%d enumerator(s) still in memory, cleaning up...", count) );
   }
 #endif
@@ -465,7 +473,7 @@ cleanup:
 #ifdef CTYPE_DEBUGGING
   if( DEBUG_FLAG( CTLIB ) ) {
     CT_DEBUG( CTLIB, ("cleanup node(s)") );
-    if( (count = LL_size( state.nodeList )) > 0 ) {
+    if( (count = LL_count( state.nodeList )) > 0 ) {
       HashNode hn;
       CT_DEBUG( CTLIB, ("%d node(s) still in memory, cleaning up...", count) );
       LL_foreach( hn, state.nodeList )
@@ -483,7 +491,7 @@ cleanup:
 #ifdef CTYPE_DEBUGGING
   if( DEBUG_FLAG( CTLIB ) ) {
     CT_DEBUG( CTLIB, ("cleanup declarator(s)") );
-    if( (count = LL_size( state.declaratorList )) > 0 )
+    if( (count = LL_count( state.declaratorList )) > 0 )
       CT_DEBUG( CTLIB, ("%d declarator(s) still in memory, cleaning up...", count) );
   }
 #endif
@@ -498,7 +506,7 @@ cleanup:
   if( DEBUG_FLAG( CTLIB ) ) {
     Value *pVal;
     CT_DEBUG( CTLIB, ("cleanup array(s)") );
-    if( (count = LL_size( state.arrayList )) > 0 ) {
+    if( (count = LL_count( state.arrayList )) > 0 ) {
       CT_DEBUG( CTLIB, ("%d array(s) still in memory, cleaning up...", count) );
       LL_foreach( list, state.arrayList ) {
         CT_DEBUG( CTLIB, ("[ARRAY=0x%08X]", list) );
@@ -521,7 +529,7 @@ cleanup:
 #ifdef CTYPE_DEBUGGING
   if( DEBUG_FLAG( CTLIB ) ) {
     CT_DEBUG( CTLIB, ("cleanup struct declarator(s)") );
-    if( (count = LL_size( state.structDeclList )) > 0 )
+    if( (count = LL_count( state.structDeclList )) > 0 )
       CT_DEBUG( CTLIB, ("%d struct declarator(s) still in memory, cleaning up...", count) );
   }
 #endif
@@ -535,7 +543,7 @@ cleanup:
 #ifdef CTYPE_DEBUGGING
   if( DEBUG_FLAG( CTLIB ) ) {
     CT_DEBUG( CTLIB, ("cleanup struct declarator list(s)") );
-    if( (count = LL_size( state.structDeclListsList )) > 0 )
+    if( (count = LL_count( state.structDeclListsList )) > 0 )
       CT_DEBUG( CTLIB, ("%d struct declarator list(s) still in memory, cleaning up...", count) );
   }
 #endif
@@ -551,6 +559,7 @@ cleanup:
     HT_dump( pCPI->htEnums );
     HT_dump( pCPI->htStructs );
     HT_dump( pCPI->htTypedefs );
+    HT_dump( pCPI->htFiles );
   }
 #endif
 
@@ -579,7 +588,7 @@ void InitParseInfo( CParseInfo *pCPI )
   CT_DEBUG( CTLIB, ("ctparse::InitParseInfo()") );
 
   if( pCPI ) {
-    pCPI->typedefs      = NULL;
+    pCPI->typedef_lists = NULL;
     pCPI->structs       = NULL;
     pCPI->enums         = NULL;
 
@@ -587,6 +596,7 @@ void InitParseInfo( CParseInfo *pCPI )
     pCPI->htEnums       = NULL;
     pCPI->htStructs     = NULL;
     pCPI->htTypedefs    = NULL;
+    pCPI->htFiles       = NULL;
 
     pCPI->errstr        = NULL;
   }
@@ -614,14 +624,16 @@ void FreeParseInfo( CParseInfo *pCPI )
   CT_DEBUG( CTLIB, ("ctparse::FreeParseInfo()") );
 
   if( pCPI ) {
-    LL_destroy( pCPI->enums,    (LLDestroyFunc) enumspec_delete );
-    LL_destroy( pCPI->structs,  (LLDestroyFunc) struct_delete );
-    LL_destroy( pCPI->typedefs, (LLDestroyFunc) typedef_delete );
+    LL_destroy( pCPI->enums,         (LLDestroyFunc) enumspec_delete );
+    LL_destroy( pCPI->structs,       (LLDestroyFunc) struct_delete );
+    LL_destroy( pCPI->typedef_lists, (LLDestroyFunc) typedef_list_delete );
 
     HT_destroy( pCPI->htEnumerators, NULL );
     HT_destroy( pCPI->htEnums,       NULL );
     HT_destroy( pCPI->htStructs,     NULL );
     HT_destroy( pCPI->htTypedefs,    NULL );
+
+    HT_destroy( pCPI->htFiles,       (LLDestroyFunc) fileinfo_delete );
 
     if( pCPI->errstr )
       Free( pCPI->errstr );
@@ -651,7 +663,7 @@ void ResetParseInfo( CParseInfo *pCPI )
 {
   Struct *pStruct;
 
-  CT_DEBUG( CTLIB, ("ctparse::ResetParseInfo(): got %d struct(s)", LL_size( pCPI->structs )) );
+  CT_DEBUG( CTLIB, ("ctparse::ResetParseInfo(): got %d struct(s)", LL_count( pCPI->structs )) );
 
   /* clear size and align fields */
   LL_foreach( pStruct, pCPI->structs ) {
@@ -684,7 +696,7 @@ void UpdateParseInfo( CParseInfo *pCPI, CParseConfig *pCPC )
 {
   Struct *pStruct;
 
-  CT_DEBUG( CTLIB, ("ctparse::UpdateParseInfo(): got %d struct(s)", LL_size( pCPI->structs )) );
+  CT_DEBUG( CTLIB, ("ctparse::UpdateParseInfo(): got %d struct(s)", LL_count( pCPI->structs )) );
 
   /* compute size and alignment */
   LL_foreach( pStruct, pCPI->structs ) {
@@ -694,6 +706,150 @@ void UpdateParseInfo( CParseInfo *pCPI, CParseConfig *pCPC )
     if( pStruct->align == 0 )
       UpdateStruct( pCPC, pStruct );
   }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: CloneParseInfo
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
+{
+  HashTable      ptrmap;
+  EnumSpecifier *pES;
+  Struct        *pStruct;
+  TypedefList   *pTDL;
+  char          *pKey;
+
+  CT_DEBUG( CTLIB, ("ctparse::CloneParseInfo()") );
+
+  if(   pSrc->enums         == NULL
+     || pSrc->structs       == NULL
+     || pSrc->typedef_lists == NULL
+     || pSrc->htEnumerators == NULL
+     || pSrc->htEnums       == NULL
+     || pSrc->htStructs     == NULL
+     || pSrc->htTypedefs    == NULL
+     || pSrc->htFiles       == NULL
+    )
+    return;  /* don't clone empty objects */
+
+  ptrmap = HT_new_ex( 3, HT_AUTOGROW );
+
+  pDest->enums         = LL_new();
+  pDest->structs       = LL_new();
+  pDest->typedef_lists = LL_new();
+  pDest->htEnumerators = HT_new_ex( HT_size( pSrc->htEnumerators ), HT_AUTOGROW );
+  pDest->htEnums       = HT_new_ex( HT_size( pSrc->htEnums ), HT_AUTOGROW );
+  pDest->htStructs     = HT_new_ex( HT_size( pSrc->htStructs ), HT_AUTOGROW );
+  pDest->htTypedefs    = HT_new_ex( HT_size( pSrc->htTypedefs ), HT_AUTOGROW );
+
+  CT_DEBUG( CTLIB, ("cloning enums") );
+
+  LL_foreach( pES, pSrc->enums ) {
+    Enumerator    *pEnum;
+    EnumSpecifier *pClone = enumspec_clone( pES );
+
+    CT_DEBUG( CTLIB, ("storing pointer to map: 0x%08X <=> 0x%08X", pES, pClone) );
+    HT_store( ptrmap, (const char *) &pES, sizeof( pES ), 0, pClone );
+    LL_push( pDest->enums, pClone );
+
+    if( pClone->identifier[0] )
+      HT_store( pDest->htEnums, pClone->identifier, 0, 0, pClone );
+
+    LL_foreach( pEnum, pClone->enumerators )
+      HT_store( pDest->htEnumerators, pEnum->identifier, 0, 0, pEnum );
+  }
+
+  CT_DEBUG( CTLIB, ("cloning structs") );
+
+  LL_foreach( pStruct, pSrc->structs ) {
+    Struct *pClone = struct_clone( pStruct );
+
+    CT_DEBUG( CTLIB, ("storing pointer to map: 0x%08X <=> 0x%08X", pStruct, pClone) );
+    HT_store( ptrmap, (const char *) &pStruct, sizeof( pStruct ), 0, pClone );
+    LL_push( pDest->structs, pClone );
+
+    if( pClone->identifier[0] )
+      HT_store( pDest->htStructs, pClone->identifier, 0, 0, pClone );
+  }
+
+  CT_DEBUG( CTLIB, ("cloning typedefs") );
+
+  LL_foreach( pTDL, pSrc->typedef_lists ) {
+    TypedefList *pClone = typedef_list_clone( pTDL );
+    Typedef *pOld, *pNew;
+
+    LL_reset( pTDL->typedefs );
+    LL_reset( pClone->typedefs );
+
+    while(   (pOld = LL_next(pTDL->typedefs))   != NULL
+          && (pNew = LL_next(pClone->typedefs)) != NULL
+         ) {
+      CT_DEBUG( CTLIB, ("storing pointer to map: 0x%08X <=> 0x%08X", pOld, pNew) );
+      HT_store( ptrmap, (const char *) &pOld, sizeof( pOld ), 0, pNew );
+      HT_store( pDest->htTypedefs, pNew->pDecl->identifier, 0, 0, pNew );
+    }
+
+    LL_push( pDest->typedef_lists, pClone );
+  }
+
+  LL_foreach( pStruct, pDest->structs ) {
+    StructDeclaration *pStructDecl;
+
+    CT_DEBUG( CTLIB, ("remapping pointers for struct @ 0x%08X (\"%s\")",
+                      pStruct, pStruct->identifier) );
+
+    LL_foreach( pStructDecl, pStruct->declarations ) {
+      if( pStructDecl->type.ptr != NULL ) {
+        void *ptr = HT_get( ptrmap, (const char *) &pStructDecl->type.ptr,
+                                    sizeof(void *), 0 );
+
+        CT_DEBUG( CTLIB, ("StructDecl @ 0x%08X: 0x%08X => 0x%08X",
+                          pStructDecl, pStructDecl->type.ptr, ptr) );
+
+        if( ptr )
+          pStructDecl->type.ptr = ptr;
+        else
+          fprintf( stderr, "FATAL: pointer 0x%08X not found!\n",
+                           pStructDecl->type.ptr );
+      }
+    }
+  }
+
+  CT_DEBUG( CTLIB, ("remapping pointers for typedef lists") );
+
+  LL_foreach( pTDL, pDest->typedef_lists ) {
+    if( pTDL->type.ptr != NULL ) {
+      void *ptr = HT_get( ptrmap, (const char *) &pTDL->type.ptr,
+                                  sizeof(void *), 0 );
+
+      CT_DEBUG( CTLIB, ("TypedefList @ 0x%08X: 0x%08X => 0x%08X",
+                        pTDL, pTDL->type.ptr, ptr) );
+
+      if( ptr )
+        pTDL->type.ptr = ptr;
+      else
+        fprintf( stderr, "FATAL: pointer 0x%08X not found!\n",
+                         pTDL->type.ptr );
+    }
+  }
+
+  HT_destroy( ptrmap, NULL );
+
+  pDest->htFiles = HT_clone( pSrc->htFiles, (HTCloneFunc) fileinfo_clone );
 }
 
 /*******************************************************************************
@@ -731,7 +887,7 @@ ErrorGTI GetTypeInfo( CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
 
   if( pDecl && pDecl->pointer_flag ) {
     CT_DEBUG( CTLIB, ("pointer flag set") );
-    size = pCPC->ptr_size ? pCPC->ptr_size : sizeof( void * );
+    size = pCPC->ptr_size ? pCPC->ptr_size : CTLIB_POINTER_SIZE;
     if( pAlign )
       *pAlign = size;
   }
@@ -746,12 +902,12 @@ ErrorGTI GetTypeInfo( CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
       Typedef *pTypedef = (Typedef *) tptr;
       if( pFlags ) {
         u_32 flags;
-        err = GetTypeInfo( pCPC, &pTypedef->type, pTypedef->pDecl, &size,
+        err = GetTypeInfo( pCPC, pTypedef->pType, pTypedef->pDecl, &size,
                            pAlign, NULL, &flags );
         *pFlags |= flags;
       }
       else
-        err = GetTypeInfo( pCPC, &pTypedef->type, pTypedef->pDecl, &size,
+        err = GetTypeInfo( pCPC, pTypedef->pType, pTypedef->pDecl, &size,
                            pAlign, NULL, NULL );
     }
     else {
@@ -815,15 +971,18 @@ ErrorGTI GetTypeInfo( CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
     CT_DEBUG( CTLIB, ("only basic type flags set") );
 
 #define LOAD_SIZE( type ) \
-        size = pCPC->type ## _size ? pCPC->type ## _size : sizeof( type )
+        size = pCPC->type ## _size ? pCPC->type ## _size : CTLIB_ ## type ## _SIZE
 
     if( flags & (T_CHAR | T_VOID) )  /* XXX: do we want void ? */
       size = 1;
-    else if( flags & T_FLOAT )  LOAD_SIZE( float );
-    else if( flags & T_DOUBLE ) LOAD_SIZE( double );
-    else if( flags & T_SHORT )  LOAD_SIZE( short );
-    else if( flags & T_LONG )   LOAD_SIZE( long );
-    else                        LOAD_SIZE( int );
+    else if( (flags & (T_LONG|T_DOUBLE)) == (T_LONG|T_DOUBLE) )
+      LOAD_SIZE( long_double );
+    else if( flags & T_LONGLONG ) LOAD_SIZE( long_long );
+    else if( flags & T_FLOAT )    LOAD_SIZE( float );
+    else if( flags & T_DOUBLE )   LOAD_SIZE( double );
+    else if( flags & T_SHORT )    LOAD_SIZE( short );
+    else if( flags & T_LONG )     LOAD_SIZE( long );
+    else                          LOAD_SIZE( int );
 
 #undef LOAD_SIZE
 

@@ -2,32 +2,108 @@
 Version 0.01
 ------------
 
-- initial release
+* initial release
 
 ------------
 Version 0.02
 ------------
 
-- decreased the complex test file, which speeds up the complex test
+* decreased the complex test file, which speeds up the complex test
   and decreases the size of the distribution file
 
-- decreased the number of threads in the threads test
+* decreased the number of threads in the threads test
 
-- added copyright notice to the README file
+* added copyright notice to the README file
 
-- minor corrections/cleanups
+* minor corrections/cleanups
 
 ------------
 Version 0.03
 ------------
 
-- fixed default sizes for floats and double in object constructor
+* fixed default sizes for floats and double in object constructor
 
-- fixed some 64-bit architecture issues
+* fixed some 64-bit architecture issues
 
-- fixed bug in bison parser
+* fixed bug in bison parser
 
-- fixed problems with some tests
+* fixed problems with some tests
 
-- added support for dec_osf platform
+* added support for dec_osf platform
+
+------------
+Version 0.04
+------------
+
+* support for 64-bit data types on all platforms
+
+* additional data types
+
+  o long long
+
+  o long double
+
+* new methods
+
+  o clean -- cleaning an object
+
+  o clone -- cloning an object
+
+  o depencencies -- retrieve an object's dependencies
+
+  o sourcify -- emit an object's parsed data as C source
+
+* changed method behaviour
+
+  o configure
+
+    - The 'HashSize' option has been removed. I didn't like
+      it anyway, and since the hash tables are now growing
+      automatically, it's completely useless.
+
+  o def
+
+    - Instead of undef, 0 and 1, the def method will now return
+      undef, '' (the empty string) or the kind of the type you
+      passed as an argument, e.g. 'typedef' or 'union'.
+
+* added method behaviour
+
+  o configure
+
+    - Calls to configure (and other configuration methods) can
+      be chained together when they're 'set' method calls.
+
+  o parse, parse_file
+
+    - All method calls that have no return value will return a
+      reference to their object, so method chaining is possible.
+
+  o pack, unpack, sizeof, offsetof, member
+
+    - These methods now can all operate on compound members, i.e.
+      you could say $obj->sizeof( 'type.foo.x' ).
+
+  o member
+
+    - The member method now can optionally return the type of the
+      requested member.
+
+* new Convert::Binary::C::Cached module
+
+  o cached Convert::Binary::C objects
+
+  o identical interface
+
+  o can speed up parsing by up to 10 - 20 times
+
+* increased speed for packing and unpacking arrays
+
+* increased portability
+
+* added new and improved existing tests
+
+* some bug fixes and a lot of code cleanups
+
+* upgraded to bison 1.75
 

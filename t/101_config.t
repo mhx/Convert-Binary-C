@@ -2,10 +2,10 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/06/20 17:46:42 +0100 $
-# $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.03 $
-# $Source: /t/b_config.t $
+# $Date: 2002/11/23 17:24:27 +0000 $
+# $Revision: 9 $
+# $Snapshot: /Convert-Binary-C/0.04 $
+# $Source: /t/101_config.t $
 #
 ################################################################################
 # 
@@ -25,7 +25,7 @@ $^W = 1;
 
 BEGIN {
   $C99 = Convert::Binary::C::feature( 'c99' );
-  plan tests => $C99 ? 1315 : 1144
+  plan tests => $C99 ? 1675 : 1501
 }
 
 ok( defined $C99 );
@@ -38,9 +38,7 @@ ok( defined $C99 );
   { in => {1,2}, result => FAIL },
 );
 
-ok( defined $C99 );
-
-$thisfile = 'at.*config\.t';
+$thisfile = quotemeta "at $0";
 
 sub check_config
 {
@@ -48,7 +46,7 @@ sub check_config
   my @warn;
   my $value;
 
-  $SIG{__WARN__} = sub { push @warn, shift };
+  local $SIG{__WARN__} = sub { push @warn, shift };
 
   for my $config ( @_ ) {
     @warn = ();
@@ -110,8 +108,6 @@ sub check_config
   if( @warn ) { print "# issued warnings:\n", map "#   $_", @warn }
   ok( scalar @warn, 1, "invalid number of warnings issued" );
   ok( $warn[0], qr/Useless use of $option in void context.*$thisfile/ );
-
-  $SIG{__WARN__} = 'DEFAULT';
 }
 
 sub check_config_bool
@@ -140,7 +136,7 @@ sub check_option_strlist
     { in => ['inc', 'usr', 'lib'], result => SUCCEED },
   );
 
-  $SIG{__WARN__} = sub { push @warn, shift };
+  local $SIG{__WARN__} = sub { push @warn, shift };
 
   for my $config ( @tests ) {
     @warn = ();
@@ -212,8 +208,20 @@ sub check_option_strlist
   if( @warn ) { print "# issued warnings:\n", map "#   $_", @warn }
   ok( scalar @warn, 0, "invalid number of warnings issued" );
   ok( "@$value", "@{[qw(foo bar include a b c)]}", "invalid value for '$option'" );
+}
 
-  $SIG{__WARN__} = 'DEFAULT';
+sub compare_config
+{
+  my($cfg1, $cfg2) = @_;
+  ok( scalar keys %$cfg1, scalar keys %$cfg2, "differing options count" );
+  for( keys %$cfg1 ) {
+    if( ref $cfg1->{$_} ) {
+      ok( "@{$cfg1->{$_}}", "@{$cfg2->{$_}}", "option '$_' has different values" );
+    }
+    else {
+      ok( $cfg1->{$_}, $cfg2->{$_}, "option '$_' has different values" );
+    }
+  }
 }
 
 @tests = (
@@ -224,14 +232,35 @@ sub check_option_strlist
   { in =>  3,  result => FAIL    },
   { in =>  4,  result => SUCCEED },
   { in =>  5,  result => FAIL    },
+  { in =>  6,  result => FAIL    },
+  { in =>  7,  result => FAIL    },
+  { in =>  8,  result => SUCCEED },
+  { in =>  9,  result => FAIL    },
   @refs
 );
 
 check_config( $_, @tests ) for qw( PointerSize
-                                   EnumSize
                                    IntSize
                                    ShortSize
-                                   LongSize );
+                                   LongSize
+                                   LongLongSize );
+
+@tests = (
+  { in => -1,  result => FAIL    },
+  { in =>  0,  result => SUCCEED },
+  { in =>  1,  result => SUCCEED },
+  { in =>  2,  result => SUCCEED },
+  { in =>  3,  result => FAIL    },
+  { in =>  4,  result => SUCCEED },
+  { in =>  5,  result => FAIL    },
+  { in =>  6,  result => FAIL    },
+  { in =>  7,  result => FAIL    },
+  { in =>  8,  result => FAIL    },
+  { in =>  9,  result => FAIL    },
+  @refs
+);
+
+check_config( $_, @tests ) for qw( EnumSize );
 
 @tests = (
   { in => -1, result => FAIL    },
@@ -245,11 +274,16 @@ check_config( $_, @tests ) for qw( PointerSize
   { in =>  7, result => FAIL    },
   { in =>  8, result => SUCCEED },
   { in =>  9, result => FAIL    },
+  { in => 10, result => FAIL    },
+  { in => 11, result => FAIL    },
+  { in => 12, result => SUCCEED },
+  { in => 13, result => FAIL    },
   @refs
 );
 
 check_config( $_, @tests ) for qw( FloatSize
-                                   DoubleSize );
+                                   DoubleSize
+                                   LongDoubleSize );
                                    
 @tests = (
   { in => -1, result => FAIL    },
@@ -283,16 +317,6 @@ check_config( 'EnumType',
   @refs
 );
 
-check_config( 'HashSize',
-  { in => 'Tiny',    result => SUCCEED },
-  { in => 'Small',   result => SUCCEED },
-  { in => 'Normal',  result => SUCCEED },
-  { in => 'Large',   result => SUCCEED },
-  { in => 'Huge',    result => SUCCEED },
-  { in => 'Medium',  result => FAIL    },
-  @refs
-);
-
 check_config_bool( $_ ) for qw( HasVOID
                                 UnsignedChars
                                 Warnings );
@@ -308,7 +332,7 @@ check_option_strlist( $_ ) for qw( Include
                                    Assert );
 
 #===================================================================
-# check invalid configuration (4 test)
+# check invalid configuration
 #===================================================================
 @tests = (
   { value => [1, 2, 3], result => FAIL, error => qr/Invalid number of arguments to configure.*$thisfile/ },
@@ -326,7 +350,7 @@ foreach $config ( @tests )
 }
 
 #===================================================================
-# check invalid option (1 test)
+# check invalid option
 #===================================================================
 eval {
   $p = new Convert::Binary::C;
@@ -339,7 +363,7 @@ eval {
 ok( $@, qr/Invalid option 'Something'.*$thisfile/ );
 
 #===================================================================
-# check invalid method (1 test)
+# check invalid method
 #===================================================================
 eval {
   $p = new Convert::Binary::C;
@@ -364,14 +388,15 @@ ok( $@, qr/Invalid method some_method called.*$thisfile/ );
   'Define' => [ 'DEBUGGING', 'FOO=123' ],
   'HasC99Keywords' => 1,
   'HasMacroVAARGS' => 1,
-  'HashSize' => 'Normal',
   'LongSize' => 4,
   'HasVOID' => 1,
   'Warnings' => 0,
   'ByteOrder' => 'LittleEndian',
   'Assert' => [],
   'IntSize' => 4,
-  'PointerSize' => 4
+  'PointerSize' => 4,
+  'LongLongSize' => 8,
+  'LongDoubleSize' => 12
 );
 
 $C99 or delete @config{qw(HasCPPComments HasMacroVAARGS HasC99Keywords)};
@@ -381,13 +406,60 @@ eval {
   $cfg = $p->configure;
 };
 ok( $@, '', "failed to retrieve configuration" );
-ok( scalar keys %config, scalar keys %$cfg, "differing options count" );
-for( keys %config ) {
-  if( ref $config{$_} ) {
-    ok( "@{$config{$_}}", "@{$cfg->{$_}}", "option '$_' has different values" );
-  }
-  else {
-    ok( $config{$_}, $cfg->{$_}, "option '$_' has different values" );
-  }
-}
+
+compare_config( \%config, $cfg );
+
+#===================================================================
+# check option chaining
+#===================================================================
+
+%newcfg = (
+  'UnsignedChars' => 1,
+  'ShortSize' => 4,
+  'EnumType' => 'Both',
+  'EnumSize' => 0,
+  'Include' => [ '/usr/local/include', '/usr/include', '/include' ],
+  'DoubleSize' => 8,
+  'FloatSize' => 8,
+  'HasCPPComments' => 1,
+  'Alignment' => 2,
+  'Define' => [ 'DEBUGGING', 'FOO=123', 'BAR=456' ],
+  'HasC99Keywords' => 1,
+  'HasMacroVAARGS' => 1,
+  'LongSize' => 4,
+  'HasVOID' => 0,
+  'Warnings' => 1,
+  'ByteOrder' => 'BigEndian',
+  'Assert' => [],
+  'IntSize' => 4,
+  'PointerSize' => 2,
+  'LongLongSize' => 8,
+  'LongDoubleSize' => 12
+);
+
+$C99 or delete @newcfg{qw(HasCPPComments HasMacroVAARGS HasC99Keywords)};
+
+@warn = ();
+
+eval {
+  local $SIG{__WARN__} = sub { push @warn, shift };
+
+  $p = new Convert::Binary::C %config;
+  
+  $p->UnsignedChars( 1 )->configure( ShortSize => 4, EnumType => 'Both', EnumSize => 0 )
+    ->Include( ['/usr/local/include'] )->DoubleSize( 8 );
+
+  $p->FloatSize( 8 )->Include( qw( /usr/include /include ) )->HasVOID( 0 )
+    ->Alignment( 2 )->Define( qw( BAR=456 ) )->configure( ByteOrder => 'BigEndian' );
+
+  $p->configure( PointerSize => 2 )->Warnings( 1 );
+
+  $cfg = $p->configure;
+};
+ok( $@, '', "failed to configure object" );
+
+if( @warn ) { print "# issued warnings:\n", map "#   $_", @warn }
+ok( scalar @warn, 0, "invalid number of warnings issued" );
+
+compare_config( \%newcfg, $cfg );
 

@@ -8,6 +8,7 @@ my $first = 1;
 print "$align => {\n";
 for my $type ( keys %member ) {
   my $last;
+  my $size;
   my @members;
   if( $first ) { $first = 0 }
   else {
@@ -17,14 +18,17 @@ for my $type ( keys %member ) {
   for( 0 .. ($member{$type}[-1][1] - 1) ) {
     my $m = find_member( $_, $member{$type} );
     if( defined $last && $m =~ /^\Q$last\E\+(\d+)$/ ) {
-      push @members, $1;
+      $size = $1;
     }
     else {
+      defined $size and push @members, $size+1;
       print join( ',', @members ), ",\n" if @members;
       $last = $m =~ /\+\d+$/ ? undef : $m;
+      $size = undef;
       @members = ("'$m'");
     }
   }
+  defined $size and push @members, $size+1;
   print join( ',', @members ), "\n";
   print "]";
 }

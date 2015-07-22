@@ -1,5 +1,5 @@
 
 $^W = 1;
 
-BEGIN { plan tests => 15 * NALIGN * NTYPES }
+BEGIN { plan tests => 19 * NALIGN * NTYPES }
 

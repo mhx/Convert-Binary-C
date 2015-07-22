@@ -2,7 +2,7 @@
 use strict;
 use constant MAXREC => 3;
 use constant NTYPES => 4;
-use constant NDATA  => 2420;
+use constant NDATA  => 3372;
 use Data::Dumper;
 
 unless( @ARGV ) {
@@ -24,7 +24,7 @@ my %typedef;
   }
 }
 
-srand 2;
+srand 5;
 
 $typedef{&next_id} = GetType( 0, 'COMPOUND' ) for 1 .. NTYPES;
 
@@ -231,7 +231,12 @@ ENDFOR
       $str .= qq[${ci}printf("}");\n];
     }
     else {
-      $str .= qq[${ci}printf("\%$h->{type}[1]", $ident);\n];
+      if( $h->{type}[1] =~ /ll/ ) {
+        $str .= qq[${ci}printf("'\%$h->{type}[1]'", $ident);\n];
+      }
+      else {
+        $str .= qq[${ci}printf("\%$h->{type}[1]", $ident);\n];
+      }
     }
 
     for my $d ( reverse 0..$#{$h->{dim}} ) {
@@ -319,7 +324,7 @@ sub Struct
       }
     }
 
-    $n = $n>=16 ? 1 : 16-$n;
+    $n = $n>=20 ? 1 : 20-$n;
 
     $str .= ' 'x$n . $h->{ident};
     $str .= "[$_]" for @{$h->{dim}};
@@ -334,14 +339,16 @@ sub GetType
   my($rec, @spec) = @_;
 
   my @basic = (
-    ['signed char',    'd'],
-    ['unsigned char',  'u'],
-    ['signed short',   'hd'],
-    ['unsigned short', 'hu'],
-    ['signed long',    'ld'],
-    ['unsigned long',  'lu'],
-    ['int',            'd'],
-    ['unsigned',       'u'],
+    ['signed char',        'd'  ],
+    ['unsigned char',      'u'  ],
+    ['signed short',       'hd' ],
+    ['unsigned short',     'hu' ],
+    ['signed long',        'ld' ],
+    ['unsigned long',      'lu' ],
+    ['signed long long',   'lld'],
+    ['unsigned long long', 'llu'],
+    ['int',                'd'  ],
+    ['unsigned',           'u'  ],
   );
 
   my @compound = (

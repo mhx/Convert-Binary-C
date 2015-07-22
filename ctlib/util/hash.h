@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/05/05 14:19:21 +0100 $
-* $Revision: 3 $
-* $Snapshot: /Convert-Binary-C/0.03 $
+* $Date: 2002/11/25 11:54:01 +0000 $
+* $Revision: 7 $
+* $Snapshot: /Convert-Binary-C/0.04 $
 * $Source: /ctlib/util/hash.h $
 *
 ********************************************************************************
@@ -176,9 +176,21 @@ struct _HashNode {
  */
 typedef void (* HTDestroyFunc)(void *);
 
+/**
+ *  Cloning Function Pointer
+ */
+typedef void * (* HTCloneFunc)(const void *);
+
 HashTable  HT_new( int size );
+HashTable  HT_new_ex( int size, unsigned long flags );
 void       HT_delete( HashTable table );
+void       HT_flush( HashTable table, HTDestroyFunc destroy );
 void       HT_destroy( HashTable table, HTDestroyFunc destroy );
+HashTable  HT_clone( HashTable table, HTCloneFunc func );
+
+int        HT_resize( HashTable table, int size );
+int        HT_size( const HashTable table );
+int        HT_count( const HashTable table );
 
 HashNode   HN_new( const char *key, int keylen, HashSum hash );
 void       HN_delete( HashNode node );
@@ -195,6 +207,12 @@ int        HT_exists( const HashTable table, const char *key, int keylen, HashSu
 void       HT_reset( const HashTable table );
 int        HT_next( const HashTable table, char **pKey, int *pKeylen, void **ppObj );
 
+/* hash table flags */
+#define HT_AUTOGROW            0x00000001
+#define HT_AUTOSHRINK          0x00000002
+#define HT_AUTOSIZE            (HT_AUTOGROW|HT_AUTOSHRINK)
+
+/* debug flags */
 #define DB_HASH_MAIN           0x00000001
 
 #ifdef DEBUG_HASH
@@ -232,5 +250,43 @@ int  SetDebugHash( void (*dbfunc)(char *, ...), unsigned long dbflags );
  */
 #define HT_foreach( pKey, pObj, table ) \
           for( HT_reset(table); HT_next(table, (char **)&(pKey), NULL, (void **)&(pObj)); )
+
+/**
+ *  Loop over all hash keys.
+ *
+ *  Like HT_foreach(), just that the value parameter isn't used.
+ *
+ *  It is safe to use HT_foreach_keys() even if \a hash table handle is NULL.
+ *  In that case, the loop won't be executed.
+ *
+ *  \param pKey		Variable that will receive a pointer
+ *                      to the current hash key string.
+ *
+ *  \param table	Handle to an existing hash table.
+ *
+ *  \see HT_foreach() and HT_foreach_values()
+ *  \hideinitializer
+ */
+#define HT_foreach_keys( pKey, table ) \
+          for( HT_reset(table); HT_next(table, (char **)&(pKey), NULL, NULL); )
+
+/**
+ *  Loop over all hash values.
+ *
+ *  Like HT_foreach(), just that the key parameter isn't used.
+ *
+ *  It is safe to use HT_foreach_values() even if \a hash table handle is NULL.
+ *  In that case, the loop won't be executed.
+ *
+ *  \param pObj		Variable that will receive a pointer
+ *                      to the current object.
+ *
+ *  \param table	Handle to an existing hash table.
+ *
+ *  \see HT_foreach() and HT_foreach_keys()
+ *  \hideinitializer
+ */
+#define HT_foreach_values( pObj, table ) \
+          for( HT_reset(table); HT_next(table, NULL, NULL, (void **)&(pObj)); )
 
 #endif

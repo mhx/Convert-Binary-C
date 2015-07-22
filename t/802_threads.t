@@ -2,10 +2,10 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/08/31 12:36:57 +0100 $
-# $Revision: 6 $
-# $Snapshot: /Convert-Binary-C/0.03 $
-# $Source: /t/w_threads.t $
+# $Date: 2002/11/23 17:31:26 +0000 $
+# $Revision: 10 $
+# $Snapshot: /Convert-Binary-C/0.04 $
+# $Source: /t/802_threads.t $
 #
 ################################################################################
 # 
@@ -18,53 +18,64 @@
 use Test;
 use Config;
 use Convert::Binary::C @ARGV;
+use constant NUM_THREADS => 4;
 
 $^W = 1;
 
 BEGIN {
-  $have_threads = Convert::Binary::C::feature( 'threads' )
-                  && (   ($Config{useithreads} && $] >= 5.008)
-                       || $Config{use5005threads}
-                     );
-  $num = 4;
-  plan tests => $have_threads ? $num : 1 ;
-}
-
-unless( $have_threads ) {
-  my $reason = $Config{useithreads} || $Config{use5005threads}
-               ? (
-                 Convert::Binary::C::feature( 'threads' )
-                 ? "unsupported threads configuration"
-                 : "not built with threads support"
-               )
-               : "no threads";
-  skip( "skip: $reason", 1 );
-  exit;
+  plan tests => NUM_THREADS
 }
 
 #===================================================================
 # load appropriate threads module and start a couple of threads
 #===================================================================
 
-if( $Config{use5005threads} ) {
-  require Thread;
-  @t = map { new Thread \&task, $_ } 1 .. $num;
-}
-elsif( $Config{useithreads} && $] >= 5.008 ) {
-  require threads;
-  @t = map { new threads \&task, $_ } 1 .. $num;
-}
+my $have_threads = Convert::Binary::C::feature( 'threads' )
+                   && (   ($Config{useithreads} && $] >= 5.008)
+                        || $Config{use5005threads}
+                      );
 
-ok( $_->join, '', "thread failed" ) for @t;
+my $reason = $Config{useithreads} || $Config{use5005threads}
+             ? (
+               Convert::Binary::C::feature( 'threads' )
+               ? "unsupported threads configuration"
+               : "not built with threads support"
+             )
+             : "no threads";
+
+my @t;
+
+if( $have_threads ) {
+  if( $Config{use5005threads} ) {
+    require Thread;
+    @t = map { new Thread \&task, $_ } 1 .. NUM_THREADS;
+  }
+  elsif( $Config{useithreads} && $] >= 5.008 ) {
+    require threads;
+    @t = map { new threads \&task, $_ } 1 .. NUM_THREADS;
+  }
+}
+else { @t = 1 .. NUM_THREADS }
+
+skip( $have_threads ? '' : "skip: $reason",
+      $have_threads ? $_->join : $_, '', "thread failed" ) for @t;
 
 sub task {
   my $arg = shift;
   my $p;
 
   eval {
-    $p = new Convert::Binary::C EnumSize => 0,
-                                Include  => ['t/include/perlinc',
-                                             't/include/include'];
+    $p = new Convert::Binary::C EnumSize       => 0,
+                                ShortSize      => 2,
+                                IntSize        => 4,
+                                LongSize       => 4,
+                                LongLongSize   => 8,
+                                PointerSize    => 4,
+                                FloatSize      => 4,
+                                DoubleSize     => 8,
+                                LongDoubleSize => 12,
+                                Include        => ['t/include/perlinc',
+                                                   't/include/include'];
     if( $arg % 2 ) {
       print "# parse_file ($arg) called\n";
       $p->parse_file( 't/include/include.c' );
@@ -115,7 +126,7 @@ END
   my @fail = ();
   
   foreach( @enum_ids, @compound_ids, @typedef_ids ) {
-    eval { $s = $p->sizeof($_) };
+    my $s = eval { $p->sizeof($_) };
   
     if( $@ ) {
       print "# ($arg) sizeof failed for '$_': $@\n";
@@ -139,29 +150,33 @@ END
   
   @fail == 0 or return "size test failed for [@fail]";
 
-  $data = pack 'C*', map rand 256, 1 .. $max_size;
+  my $data = pack 'C*', map rand 256, 1 .. $max_size;
   @fail = ();
   
-  foreach( @enum_ids, @compound_ids, @typedef_ids ) {
-    eval { $x = $p->unpack( $_, $data ) };
+  for my $id ( @enum_ids, @compound_ids, @typedef_ids ) {
+
+    # skip long doubles
+    next if grep { $id eq $_ } qw( __convert_long_double float_t double_t );
+
+    my $x = eval { $p->unpack( $id, $data ) };
   
     if( $@ ) {
-      print "# ($arg) unpack failed for '$_': $@\n";
-      push @fail, $_;
+      print "# ($arg) unpack failed for '$id': $@\n";
+      push @fail, $id;
       next;
     }
   
-    eval { $packed = $p->pack( $_, $x ) };
+    my $packed = eval { $p->pack( $id, $x ) };
   
     if( $@ ) {
-      print "# ($arg) pack failed for '$_': $@\n";
-      push @fail, $_;
+      print "# ($arg) pack failed for '$id': $@\n";
+      push @fail, $id;
       next;
     }
   
     unless( chkpack( $data, $packed ) ) {
-      print "# ($arg) inconsistent pack/unpack data for '$_'\n";
-      push @fail, $_;
+      print "# ($arg) inconsistent pack/unpack data for '$id'\n";
+      push @fail, $id;
       next;
     }
   }

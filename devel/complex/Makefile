@@ -22,11 +22,21 @@ complex.t: Makefile header.pl begin.pl footer.pl test.1 test.2 test.4 members.1 
 	@echo "test file made"
 
 install: complex.t
-	@cp complex.t ../../t/y_complex.t
+	@cp complex.t ../../t/804_complex.t
 	@echo "test file installed"
 
 clean:
 	@rm -f members.* test.* *.t ntypes
+
+test: complex.t
+	perl580 -c complex.t
+
+runtest: complex.t
+	perl580 -I../../blib/lib -I../../blib/arch complex.t
+
+harness: complex.t
+	PERL_DL_NONLAZY=1 /home/mhx/perl/perl-5.8.0/bin/perl \
+	"-MExtUtils::Command::MM" "-e" "test_harness(0, '../../blib/lib', '../../blib/arch')" complex.t
 
 test.1: cgen.pl
 	perl cgen.pl 1 > test.c && $(CC) -o test.1 test.c

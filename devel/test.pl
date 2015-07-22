@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 use strict;
-use Convert::Binary::C;
+use Convert::Binary::C debug => '';
 use Data::Dumper;
 use Devel::Peek;
 
@@ -14,8 +14,15 @@ my $p = new Convert::Binary::C ByteOrder   => 'BigEndian',
 
 $p->parse( $code );
 
-print Data::Dumper->Dump( [[$p->enum],[$p->struct],[$p->typedef]],
-                          [qw(*enum *struct *typedef)] );
+print Dumper( $p->member( 'test', $p->offsetof( 'test', 'ab[1][1].b' ) ) );
+
+# print Dumper( $p->spec( qw( foobar test test.ab test.ab[1] test.ab[1][1]
+#                             test.ab[1][1].a test.ab[1][1].b test.ab[1][1].c ) ) );
+
+# print Dumper( $p->unpack( 'test.ab[2]', pack("N*", (1e7, 314159)x2) ) );
+
+# print Data::Dumper->Dump( [[$p->enum],[$p->struct],[$p->typedef]],
+#                           [qw(*enum *struct *typedef)] );
 
 __DATA__
 
@@ -29,7 +36,8 @@ enum __socket_type
   SOCK_PACKET    = 10
 };
 
-typedef unsigned long U32;
+typedef unsigned long __u32__;
+typedef __u32__ U32;
 
 struct STRUCT_SV {
   void *sv_any;
@@ -41,6 +49,7 @@ typedef union {
   int abc[2];
   struct xxx {
     int a;
-    int b;
+    U32 b;
+    U32 *c;
   }   ab[3][4];
 } test;

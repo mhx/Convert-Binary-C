@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/08/18 17:07:48 +0100 $
-* $Revision: 3 $
-* $Snapshot: /Convert-Binary-C/0.03 $
+* $Date: 2002/11/23 17:06:27 +0000 $
+* $Revision: 7 $
+* $Snapshot: /Convert-Binary-C/0.04 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
@@ -30,12 +30,33 @@
 
 /*===== LOCAL INCLUDES =======================================================*/
 
+#include "arch.h"
 #include "ctype.h"
 #include "util/list.h"
 #include "util/hash.h"
 
 
 /*===== DEFINES ==============================================================*/
+
+#ifdef HAVE_LONG_LONG
+#define CTLIB_long_long_SIZE sizeof( long long )
+#else
+#define CTLIB_long_long_SIZE 8
+#endif
+
+#ifdef HAVE_LONG_DOUBLE
+#define CTLIB_long_double_SIZE sizeof( long double )
+#else
+#define CTLIB_long_double_SIZE 12
+#endif
+
+#define CTLIB_double_SIZE  sizeof( double )
+#define CTLIB_float_SIZE   sizeof( float )
+#define CTLIB_short_SIZE   sizeof( short )
+#define CTLIB_long_SIZE    sizeof( long )
+#define CTLIB_int_SIZE     sizeof( int )
+
+#define CTLIB_POINTER_SIZE sizeof( void * )
 
 /*===== TYPEDEFS =============================================================*/
 
@@ -49,14 +70,12 @@ typedef struct {
   unsigned int_size;
   unsigned short_size;
   unsigned long_size;
+  unsigned long_long_size;
   unsigned enum_size;
   unsigned ptr_size;
   unsigned float_size;
   unsigned double_size;
-  unsigned htSizeEnumerators;
-  unsigned htSizeEnums;
-  unsigned htSizeStructs;
-  unsigned htSizeTypedefs;
+  unsigned long_double_size;
   unsigned flags;
 
 #define HAS_VOID_KEYWORD     0x00000001U
@@ -77,11 +96,12 @@ typedef struct {
 typedef struct {
   LinkedList enums;
   LinkedList structs;
-  LinkedList typedefs;
+  LinkedList typedef_lists;
   HashTable  htEnumerators;
   HashTable  htEnums;
   HashTable  htStructs;
   HashTable  htTypedefs;
+  HashTable  htFiles;
   char      *errstr;
 } CParseInfo;
 
@@ -102,6 +122,7 @@ void InitParseInfo( CParseInfo *pCPI );
 void FreeParseInfo( CParseInfo *pCPI );
 void ResetParseInfo( CParseInfo *pCPI );
 void UpdateParseInfo( CParseInfo *pCPI, CParseConfig *pCPC );
+void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc );
 
 ErrorGTI GetTypeInfo( CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
                       unsigned *pSize, unsigned *pAlign, unsigned *pItemSize,

@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/04/15 22:26:47 +0100 $
-* $Revision: 1 $
-* $Snapshot: /Convert-Binary-C/0.03 $
+* $Date: 2002/10/02 11:39:53 +0100 $
+* $Revision: 3 $
+* $Snapshot: /Convert-Binary-C/0.04 $
 * $Source: /ctlib/util/memalloc.h $
 *
 ********************************************************************************
@@ -94,11 +94,16 @@
 
 #ifdef DEBUG_MEMALLOC
 void *_MemAlloc( size_t size, char *file, int line );
+void *_MemCAlloc( size_t nobj, size_t size, char *file, int line );
+void *_MemReAlloc( void *p, size_t size, char *file, int line );
 void  _MemFree( void *p, char *file, int line );
 void  _AssertValidPtr( void *p, char *file, int line );
+void  _AssertValidBlock( void *p, size_t size, char *file, int line );
 int    SetDebugMemAlloc( void (*dbfunc)(char *, ...), unsigned long dbflags );
 #else
 void *_MemAlloc( size_t size );
+void *_MemCAlloc( size_t nobj, size_t size );
+void *_MemReAlloc( void *p, size_t size );
 void  _MemFree( void *p );
 #endif
 
@@ -139,6 +144,41 @@ void  _MemFree( void *p );
 void *Alloc( size_t size );
 
 /**
+ *  Allocate a memory block and initializes to zero
+ *
+ *  Allocates a memory block to hold \a nobj times
+ *  \a size bytes. If the files were compiled with the
+ *  #ABORT_IF_NO_MEM preprocessor flag, the function
+ *  aborts if no memory can be allocated.
+ *
+ *  \param nobj           Number of objects.
+ *
+ *  \param size           Size of one object in bytes.
+ *
+ *  \return A pointer to the allocated memory block, or NULL
+ *          if memory couldn't be allocated.
+ */
+
+void *CAlloc( size_t nobj, size_t size );
+
+/**
+ *  Reallocate a memory block
+ *
+ *  Reallocates a memory block of \a size bytes. If the files
+ *  were compiled with the #ABORT_IF_NO_MEM preprocessor flag,
+ *  the function aborts if no memory can be allocated.
+ *
+ *  \param ptr            Pointer to an allocated memory block.
+ *
+ *  \param size           Size of new memory block in bytes.
+ *
+ *  \return A pointer to the reallocated memory block, or NULL
+ *          if memory couldn't be reallocated.
+ */
+
+void *ReAlloc( void *ptr, size_t size );
+
+/**
  *  Free a memory block
  *
  *  Frees a memory block that has been previously allocated
@@ -163,6 +203,19 @@ void Free( void *ptr );
 void AssertValidPtr( void *ptr );
 
 /**
+ *  Trace memory block access.
+ *
+ *  Allows checking if a certain memory block lies within
+ *  a previously allocated memory block.
+ *
+ *  \param ptr            Pointer to memory block.
+ *
+ *  \param size           Size of memory block.
+ */
+
+void AssertValidBlock( void *ptr, size_t size );
+
+/**
  *  Configure debugging support.
  *
  *  \param dbfunc         Pointer to a printf() like function
@@ -184,15 +237,21 @@ int SetDebugMemAlloc( void (*dbfunc)(char *, ...), unsigned long dbflags );
 
 #ifdef DEBUG_MEMALLOC
 
-#define Alloc( size )           _MemAlloc( size, __FILE__, __LINE__ )
-#define Free( ptr )             _MemFree( ptr, __FILE__, __LINE__ )
-#define AssertValidPtr( ptr )   _AssertValidPtr( ptr, __FILE__, __LINE__ )
+#define ReAlloc( ptr, size )            _MemReAlloc( ptr, size, __FILE__, __LINE__ )
+#define CAlloc( nobj, size )            _MemCAlloc( nobj, size, __FILE__, __LINE__ )
+#define Alloc( size )                   _MemAlloc( size, __FILE__, __LINE__ )
+#define Free( ptr )                     _MemFree( ptr, __FILE__, __LINE__ )
+#define AssertValidPtr( ptr )           _AssertValidPtr( ptr, __FILE__, __LINE__ )
+#define AssertValidBlock( ptr, size )   _AssertValidBlock( ptr, size, __FILE__, __LINE__ )
 
 #else /* !DEBUG_MEMALLOC */
 
-#define Alloc( size )           _MemAlloc( size )
-#define Free( ptr )             _MemFree( ptr )
+#define ReAlloc( ptr, size )            _MemReAlloc( ptr, size )
+#define CAlloc( nobj, size )            _MemCAlloc( nobj, size )
+#define Alloc( size )                   _MemAlloc( size )
+#define Free( ptr )                     _MemFree( ptr )
 #define AssertValidPtr( ptr )
+#define AssertValidBlock( ptr, size )
 #define SetDebugMemAlloc( func, flags ) 0
 
 #endif /* DEBUG_MEMALLOC */

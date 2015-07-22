@@ -2,10 +2,10 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/09/25 21:29:14 +0100 $
-# $Revision: 5 $
-# $Snapshot: /Convert-Binary-C/0.03 $
-# $Source: /t/z_memory.t $
+# $Date: 2002/11/23 17:33:49 +0000 $
+# $Revision: 13 $
+# $Snapshot: /Convert-Binary-C/0.04 $
+# $Source: /t/901_memory.t $
 #
 ################################################################################
 # 
@@ -21,43 +21,61 @@ use Convert::Binary::C;
 $^W = 1;
 
 BEGIN {
-  $debug = Convert::Binary::C::feature( 'debug' );
-  plan tests => $debug ? 64 : 1
+  @files = grep /[1-7]\d{2}_[a-z]+\.t$/i, <t/*.t>;
+  plan tests => 1 + 9*@files
 }
 
+$debug = Convert::Binary::C::feature( 'debug' );
 ok( defined $debug );
+
 $dbfile = 't/debug.out';
+$cmd  = "$^X -w " . join( ' ', map qq["-I$_"], @INC );
+@args = ( debug => "m", debugfile => $dbfile ); 
 
-if( $debug ) {
-  my $cmd  = "$^X -w -T " . join( ' ', map qq["-I$_"], @INC );
-  my @args = ( debug => "m", debugfile => $dbfile ); 
+for my $test ( @files ) {
+  print "# testing '$test'\n";
 
-  for my $test ( grep /[b-p]_[a-z]+\.t$/i, <t/*.t> ) {
-    print "# testing '$test'\n";
+  -e $dbfile and unlink $dbfile;
 
-    -e $dbfile and unlink $dbfile;
-
+  if( $debug ) {
     open TEST, "$cmd $test @args |" or die $!;
     while(<TEST>){}
     close TEST;
+  }
 
-    my $exf = -e $dbfile;
-    ok( $exf, 1, "dubious: no debug output file created" );
+  my $exf = -e $dbfile ? 1 : 0;
 
-    my %i = $exf ? get_alloc_info( $dbfile ) : ();
+  my $reason = $debug ? '' : 'skip: no debugging';
 
-    skip( !$exf, ($i{allocs} || 0) > 0, 1, "dubious: no memory allocations" );
-    skip( !$exf, $i{allocs}, $i{frees}, "malloc/free mismatch" );
-    skip( !$exf, $i{leakage}, 0, "memory leaks detected" );
+  skip( $reason, $exf, 1, "dubious: no debug output file created" );
 
-    for( qw( multi_alloc null_free unalloc_free not_free assert_fail ) ) {
-      print "# $_:\n";
-      skip( !$exf, exists $i{$_} ? @{$i{$_}} == 0 : 0 );
-      $i{$_} && @{$i{$_}} or next;
-      for( @{$i{$_}} ) { print "# $_\n" }
-    }
+  my %i = $exf ? get_alloc_info( $dbfile ) : ();
+
+  if( $exf ) {
+    print "# results for '$test':\n";
+    print "#   allocs      => $i{allocs} blocks\n";
+    print "#   frees       => $i{frees} blocks\n";
+    print "#   max. blocks => $i{max_blocks} blocks\n";
+    print "#   max. memory => $i{max_total} bytes\n";
+    print "#   leakage     => $i{leakage} bytes\n";
+  }
+
+  if( $debug and !$exf ) {
+    $reason = 'skip: no output file created';
+  }
+
+  skip( $reason, ($i{allocs} || 0) > 0, 1, "dubious: no memory allocations" );
+  skip( $reason, $i{allocs}, $i{frees}, "malloc/free mismatch" );
+  skip( $reason, $i{leakage}, 0, "memory leaks detected" );
+
+  for( qw( multi_alloc null_free unalloc_free not_free assert_fail ) ) {
+    print "# $_:\n";
+    skip( $reason, exists $i{$_} ? @{$i{$_}} == 0 : 0 );
+    $i{$_} && @{$i{$_}} or next;
+    for( @{$i{$_}} ) { print "# $_\n" }
   }
 }
+
 
 sub get_alloc_info {
   my $file = shift;

@@ -2,10 +2,10 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/08/19 11:50:43 +0100 $
-# $Revision: 7 $
-# $Snapshot: /Convert-Binary-C/0.03 $
-# $Source: /t/x_debug.t $
+# $Date: 2002/11/21 21:00:25 +0000 $
+# $Revision: 9 $
+# $Snapshot: /Convert-Binary-C/0.04 $
+# $Source: /t/803_debug.t $
 #
 ################################################################################
 # 

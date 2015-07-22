@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/04/15 22:26:46 +0100 $
-* $Revision: 1 $
-* $Snapshot: /Convert-Binary-C/0.03 $
+* $Date: 2002/10/26 19:17:12 +0100 $
+* $Revision: 5 $
+* $Snapshot: /Convert-Binary-C/0.04 $
 * $Source: /ctlib/ctype.h $
 *
 ********************************************************************************
@@ -70,6 +70,16 @@
 
 #define T_TYPE                         0x00001000
 #define T_TYPEDEF                      0x00002000
+#define T_LONGLONG                     0x00004000
+
+/* these flags are reserved for user defined purposes */
+#define T_USER_FLAG_1                  0x00100000
+#define T_USER_FLAG_2                  0x00200000
+#define T_USER_FLAG_3                  0x00400000
+#define T_USER_FLAG_4                  0x00800000
+
+/* this flag indicates if a enum/struct/union has been typedef'd */
+#define T_HASTYPEDEF                   0x20000000
 
 /* this flag indicates the usage of bitfields in structures as they're unsupported */
 #define T_HASBITFIELD                  0x40000000
@@ -80,8 +90,23 @@
 #define ANY_TYPE_NAME ( T_VOID | T_CHAR | T_SHORT | T_INT | T_LONG | T_FLOAT | T_DOUBLE \
                         | T_SIGNED | T_UNSIGNED | T_ENUM | T_STRUCT | T_UNION | T_TYPE )
 
+/* get the type out of a pointer to EnumSpecifier / Struct / Typedef */
+#define GET_CTYPE( ptr ) (*((CTType *) ptr))
+
+#define IS_TYP_ENUM( ptr )            ( GET_CTYPE( ptr ) == TYP_ENUM )
+#define IS_TYP_STRUCT( ptr )          ( GET_CTYPE( ptr ) == TYP_STRUCT )
+#define IS_TYP_TYPEDEF( ptr )         ( GET_CTYPE( ptr ) == TYP_TYPEDEF )
+#define IS_TYP_TYPEDEF_LIST( ptr )    ( GET_CTYPE( ptr ) == TYP_TYPEDEF_LIST )
+
 
 /*===== TYPEDEFS =============================================================*/
+
+typedef enum {
+  TYP_ENUM,
+  TYP_STRUCT,
+  TYP_TYPEDEF,
+  TYP_TYPEDEF_LIST
+} CTType;
 
 typedef struct {
   signed long iv;
@@ -99,9 +124,10 @@ typedef struct {
 } Enumerator;
 
 typedef struct {
-  LinkedList  enumerators;
+  CTType      ctype;
   u_32        tflags;
   int         size;
+  LinkedList  enumerators;
   char        identifier[1];
 } EnumSpecifier;
 
@@ -124,7 +150,8 @@ typedef struct {
 } StructDeclaration;
 
 typedef struct {
-  unsigned    tflags;
+  CTType      ctype;
+  u_32        tflags;
   unsigned    align;
   unsigned    size;
   unsigned    pack;
@@ -133,34 +160,53 @@ typedef struct {
 } Struct;
 
 typedef struct {
-  TypeSpec    type;
+  CTType      ctype;
+  TypeSpec   *pType;
   Declarator *pDecl;
 } Typedef;
 
+typedef struct {
+  CTType      ctype;
+  TypeSpec    type;
+  LinkedList  typedefs;
+} TypedefList;
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
 Value *value_new( signed long iv, u_32 flags );
 void value_delete( Value *pValue );
+Value *value_clone( const Value *pSrc );
 
 Enumerator *enum_new( char *identifier, int id_len, Value *pValue );
 void enum_delete( Enumerator *pEnum );
+Enumerator *enum_clone( const Enumerator *pSrc );
 
 EnumSpecifier *enumspec_new( char *identifier, int id_len, LinkedList enumerators );
 void enumspec_update( EnumSpecifier *pEnumSpec, LinkedList enumerators );
 void enumspec_delete( EnumSpecifier *pEnumSpec );
+EnumSpecifier *enumspec_clone( const EnumSpecifier *pSrc );
 
 Declarator *decl_new( char *identifier, int id_len );
 void decl_delete( Declarator *pDecl );
+Declarator *decl_clone( const Declarator *pSrc );
 
 StructDeclaration *structdecl_new( TypeSpec type, LinkedList declarators );
 void structdecl_delete( StructDeclaration *pStructDecl );
+StructDeclaration *structdecl_clone( const StructDeclaration *pSrc );
 
 Struct *struct_new( char *identifier, int id_len, u_32 tflags, unsigned pack,
                     LinkedList declarations );
 void struct_delete( Struct *pStruct );
+Struct *struct_clone( const Struct *pSrc );
 
-Typedef *typedef_new( TypeSpec type, Declarator *pDecl );
+Typedef *typedef_new( TypeSpec *pType, Declarator *pDecl );
 void typedef_delete( Typedef *pTypedef );
+Typedef *typedef_clone( const Typedef *pSrc );
+
+TypedefList *typedef_list_new( TypeSpec type, LinkedList typedefs );
+void typedef_list_delete( TypedefList *pTypedefList );
+TypedefList *typedef_list_clone( const TypedefList *pSrc );
+
+TypedefList *get_typedef_list( Typedef *pTypedef );
 
 #endif

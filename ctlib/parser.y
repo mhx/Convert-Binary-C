@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/09/25 21:25:04 +0100 $
-* $Revision: 5 $
-* $Snapshot: /Convert-Binary-C/0.03 $
+* $Date: 2002/11/25 11:48:05 +0000 $
+* $Revision: 8 $
+* $Snapshot: /Convert-Binary-C/0.04 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -91,6 +91,7 @@ colleagues include: Bruce Blodgett, and Mark Langley.
 
 #include "ctdebug.h"
 #include "ctparse.h"
+#include "fileinfo.h"
 #include "parser.h"
 
 #include "util/list.h"
@@ -123,49 +124,50 @@ colleagues include: Bruce Blodgett, and Mark Langley.
 #define PSTATE                  ((ParserState *) pState)
 
 #if CTYPE_DEBUGGING
-#define EX_NODE( node )         ex_object( "Node",           PSTATE->nodeList,            node  )
-#define EX_DECL( decl )         ex_object( "Declarator",     PSTATE->declaratorList,      decl  )
-#define EX_ARRAY( array )       ex_object( "Array",          PSTATE->arrayList,           array )
-#define EX_STRUCT_DECL( decl )  ex_object( "StructDecl",     PSTATE->structDeclList,      decl  )
-#define EX_STRDECL_LIST( list ) ex_object( "StructDeclList", PSTATE->structDeclListsList, list  )
+#define EX_OBJECT( id, list, obj ) ex_object( id, list, obj )
 #else
-#define EX_NODE( node )         ex_object( PSTATE->nodeList,            node  )
-#define EX_DECL( decl )         ex_object( PSTATE->declaratorList,      decl  )
-#define EX_ARRAY( array )       ex_object( PSTATE->arrayList,           array )
-#define EX_STRUCT_DECL( decl )  ex_object( PSTATE->structDeclList,      decl  )
-#define EX_STRDECL_LIST( list ) ex_object( PSTATE->structDeclListsList, list  )
+#define EX_OBJECT( id, list, obj ) ex_object( list, obj )
 #endif
 
+#define EX_NODE( node )         EX_OBJECT( "Node",           PSTATE->nodeList,            node  )
+#define EX_DECL( decl )         EX_OBJECT( "Declarator",     PSTATE->declaratorList,      decl  )
+#define EX_ARRAY( array )       EX_OBJECT( "Array",          PSTATE->arrayList,           array )
+#define EX_STRUCT_DECL( decl )  EX_OBJECT( "StructDecl",     PSTATE->structDeclList,      decl  )
+#define EX_STRDECL_LIST( list ) EX_OBJECT( "StructDeclList", PSTATE->structDeclListsList, list  )
+
 #define STORE_IN_HASH( table, key, obj )                                       \
+        do {                                                                   \
           if( key.node == NULL )                                               \
             HT_store( PSTATE->pCPI->table, key.str, key.len, key.hash, obj );  \
           else                                                                 \
-            HT_storenode( PSTATE->pCPI->table, EX_NODE( key.node ), obj )
+            HT_storenode( PSTATE->pCPI->table, EX_NODE( key.node ), obj );     \
+        } while(0)
 
 #define DELETE_NODE( key )                                                     \
+        do {                                                                   \
           if( key.node != NULL )                                               \
-            HN_delete( EX_NODE( key.node ) )
+            HN_delete( EX_NODE( key.node ) );                                  \
+        } while(0)
 
-#define POSTFIX_DECL( decl, postfix )                                  \
-	  if( postfix ) {                                              \
-            EX_ARRAY( postfix );                                       \
-	    if( decl->pointer_flag )                                   \
-	      LL_destroy( postfix, (LLDestroyFunc) value_delete );     \
-	    else                                                       \
-	      LL_delete( LL_splice( decl->array, 0, 0, postfix ) );    \
-	  }
+#define POSTFIX_DECL( decl, postfix )                                          \
+        do {                                                                   \
+	  if( postfix ) {                                                      \
+            EX_ARRAY( postfix );                                               \
+	    if( decl->pointer_flag )                                           \
+	      LL_destroy( postfix, (LLDestroyFunc) value_delete );             \
+	    else                                                               \
+	      LL_delete( LL_splice( decl->array, 0, 0, postfix ) );            \
+	  }                                                                    \
+        } while(0)
 
-#define MAKE_TYPEDEF( type, decl )                                                        \
-	  if( type.tflags & T_TYPEDEF ) {                                                 \
-            Typedef *pTypedef;                                                            \
-            if( (type.tflags & ANY_TYPE_NAME) == 0 )                                      \
-              type.tflags |= T_INT;                                                       \
-	    pTypedef = typedef_new( type, EX_DECL( decl ) );                              \
-	    LL_push( PSTATE->pCPI->typedefs, pTypedef );                                  \
-	    HT_store( PSTATE->pCPI->htTypedefs, decl->identifier, 0, 0, pTypedef );       \
-	  }                                                                               \
-	  else                                                                            \
-	    decl_delete( EX_DECL( decl ) )
+#define MAKE_TYPEDEF( list, decl )                                                \
+        do {                                                                      \
+	  Typedef *pTypedef = typedef_new( &(list->type), EX_DECL( decl ) );      \
+	  CT_DEBUG( PARSER, ("making new typedef => %s (list 0x%08X)",            \
+                             decl->identifier, list) );                           \
+	  LL_push( list->typedefs, pTypedef );                                    \
+	  HT_store( PSTATE->pCPI->htTypedefs, decl->identifier, 0, 0, pTypedef ); \
+        } while(0)
 
 #define UNDEF_VAL( x ) do { x.iv = 0; x.flags = V_IS_UNDEF; } while(0)
 
@@ -177,6 +179,12 @@ colleagues include: Bruce Blodgett, and Mark Langley.
             result.iv    = val1.iv   op val2.iv;      \
             result.flags = val1.flags | val2.flags;   \
           } while(0)
+
+#define LLC_OR( t1, t2 )                              \
+        (                                             \
+          ((t1) & T_LONG) && ((t2) & T_LONG)          \
+          ? (t1) | (t2) | T_LONGLONG : (t1) | (t2)    \
+        )
 
 
 /*===== TYPEDEFS =============================================================*/
@@ -349,6 +357,7 @@ int moo(const int identifier1 (T identifier2 (int identifier3)));
   Declarator        *pDecl;
   AbstractDeclarator absDecl;
   StructDeclaration *pStructDecl;
+  TypedefList       *pTypedefList;
   LinkedList         list;
   Enumerator        *pEnum;
   TypeSpec           tspec;
@@ -389,95 +398,96 @@ int moo(const int identifier1 (T identifier2 (int identifier3)));
 %token AND_ASSIGN  XOR_ASSIGN   OR_ASSIGN   /*   &=      ^=      |=      */
 
 /* ANSI Grammar suggestions */
-%token <identifier> IDENTIFIER
-%token <value>      STRING_LITERAL
-%token <value>      CONSTANT
+%token <identifier>  IDENTIFIER
+%token <value>       STRING_LITERAL
+%token <value>       CONSTANT
 
 /* New Lexical element, whereas ANSI suggested non-terminal */
 
-%token <tspec>      TYPE_NAME
+%token <tspec>       TYPE_NAME
                        /* Lexer will tell the difference between this and
         an  identifier!   An  identifier  that is CURRENTLY in scope as a
         typedef name is provided to the parser as a TYPE_NAME.*/
 
-%type <idOrType>    identifier_or_typedef_name
+%type <idOrType>     identifier_or_typedef_name
 
-%type <oper>        unary_operator
+%type <oper>         unary_operator
 
-%type <pEnum>       enumerator
+%type <pEnum>        enumerator
 
-%type <absDecl>     abstract_declarator
-                    unary_abstract_declarator
-                    postfix_abstract_declarator
+%type <absDecl>      abstract_declarator
+                     unary_abstract_declarator
+                     postfix_abstract_declarator
 
-%type <tspec>       declaration_specifier
-                    sue_declaration_specifier
-                    typedef_declaration_specifier
-                    declaring_list
-                    default_declaring_list
-                    elaborated_type_name
-                    sue_type_specifier
-                    typedef_type_specifier
-                    aggregate_name
-                    enum_name
-                    type_specifier
+%type <pTypedefList> declaring_list
+                     default_declaring_list
 
-%type <pStructDecl> member_declaration
-                    member_default_declaring_list
-                    member_declaring_list
+%type <tspec>        declaration_specifier
+                     sue_declaration_specifier
+                     typedef_declaration_specifier
+                     elaborated_type_name
+                     sue_type_specifier
+                     typedef_type_specifier
+                     aggregate_name
+                     enum_name
+                     type_specifier
 
-%type <pDecl>       identifier_declarator
-                    declarator
-                    member_identifier_declarator
-                    member_declarator
-                    parameter_typedef_declarator
-                    typedef_declarator
-                    paren_typedef_declarator
-                    clean_typedef_declarator
-                    clean_postfix_typedef_declarator
-                    paren_postfix_typedef_declarator
-                    simple_paren_typedef_declarator
-                    unary_identifier_declarator
-                    paren_identifier_declarator
-                    postfix_identifier_declarator
+%type <pStructDecl>  member_declaration
+                     member_default_declaring_list
+                     member_declaring_list
 
-%type <list>        enumerator_list
-                    postfixing_abstract_declarator
-                    array_abstract_declarator
-                    member_declaration_list
+%type <pDecl>        identifier_declarator
+                     declarator
+                     member_identifier_declarator
+                     member_declarator
+                     parameter_typedef_declarator
+                     typedef_declarator
+                     paren_typedef_declarator
+                     clean_typedef_declarator
+                     clean_postfix_typedef_declarator
+                     paren_postfix_typedef_declarator
+                     simple_paren_typedef_declarator
+                     unary_identifier_declarator
+                     paren_identifier_declarator
+                     postfix_identifier_declarator
 
-%type <uval>        basic_declaration_specifier
-                    declaration_qualifier_list
-                    basic_type_specifier
-                    storage_class
-                    basic_type_name
-                    declaration_qualifier
-                    aggregate_key
+%type <list>         enumerator_list
+                     postfixing_abstract_declarator
+                     array_abstract_declarator
+                     member_declaration_list
 
-%type <value>       string_literal_list
-                    primary_expression
-                    postfix_expression
-                    unary_expression
-                    cast_expression
-                    multiplicative_expression
-                    additive_expression
-                    shift_expression
-                    relational_expression
-                    equality_expression
-                    AND_expression
-                    exclusive_OR_expression
-                    inclusive_OR_expression
-                    logical_AND_expression
-                    logical_OR_expression
-                    conditional_expression
-                    assignment_expression
-                    comma_expression
-                    constant_expression
-                    type_name
+%type <uval>         basic_declaration_specifier
+                     declaration_qualifier_list
+                     basic_type_specifier
+                     storage_class
+                     basic_type_name
+                     declaration_qualifier
+                     aggregate_key
+
+%type <value>        string_literal_list
+                     primary_expression
+                     postfix_expression
+                     unary_expression
+                     cast_expression
+                     multiplicative_expression
+                     additive_expression
+                     shift_expression
+                     relational_expression
+                     equality_expression
+                     AND_expression
+                     exclusive_OR_expression
+                     inclusive_OR_expression
+                     logical_AND_expression
+                     logical_OR_expression
+                     conditional_expression
+                     assignment_expression
+                     comma_expression
+                     constant_expression
+                     type_name
 
 %type <ival>
-                    bit_field_size
-                    bit_field_size_opt
+                     bit_field_size
+                     bit_field_size_opt
 
 
 
@@ -747,39 +757,67 @@ declaration
 default_declaring_list  /* Can't redeclare typedef names */
 	: declaration_qualifier_list identifier_declarator initializer_opt
 	  {
-	    $$.tflags = $1;
-	    $$.ptr    = NULL;
-	    MAKE_TYPEDEF( $$, $2 );
+	    if( $1 & T_TYPEDEF ) {
+	      TypeSpec ts;
+	      ts.tflags = $1;
+	      ts.ptr    = NULL;
+              if( (ts.tflags & ANY_TYPE_NAME) == 0 )
+                ts.tflags |= T_INT;
+	      $$ = typedef_list_new( ts, LL_new() );
+	      LL_push( PSTATE->pCPI->typedef_lists, $$ );
+	      MAKE_TYPEDEF( $$, $2 );
+	    }
+	    else {
+	      $$ = NULL;
+	      decl_delete( EX_DECL( $2 ) );
+	    }
 	  }
 	| type_qualifier_list identifier_declarator initializer_opt
 	  {
-	    $$.tflags = 0;
-	    $$.ptr    = NULL;
+	    $$ = NULL;
 	    decl_delete( EX_DECL( $2 ) );
 	  }
 	| default_declaring_list ',' identifier_declarator initializer_opt
 	  {
 	    $$ = $1;
-	    MAKE_TYPEDEF( $$, $3 );
+	    if( $$ != NULL )
+	      MAKE_TYPEDEF( $$, $3 );
+	    else
+	      decl_delete( EX_DECL( $3 ) );
 	  }
 	;
 
 declaring_list
 	: declaration_specifier declarator initializer_opt
 	  {
-	    $$ = $1;
-	    MAKE_TYPEDEF( $$, $2 );
+	    if( $1.tflags & T_TYPEDEF ) {
+              if( ($1.tflags & ANY_TYPE_NAME) == 0 )
+                $1.tflags |= T_INT;
+              else if( $1.tflags & T_ENUM )
+                ((EnumSpecifier *) $1.ptr)->tflags |= T_HASTYPEDEF;
+              else if( $1.tflags & (T_STRUCT | T_UNION) )
+                ((Struct *) $1.ptr)->tflags |= T_HASTYPEDEF;
+	      $$ = typedef_list_new( $1, LL_new() );
+	      LL_push( PSTATE->pCPI->typedef_lists, $$ );
+	      MAKE_TYPEDEF( $$, $2 );
+	    }
+	    else {
+	      $$ = NULL;
+	      decl_delete( EX_DECL( $2 ) );
+	    }
 	  }
 	| type_specifier declarator initializer_opt
 	  {
-	    $$.tflags = 0;
-	    $$.ptr    = NULL;
+	    $$ = NULL;
 	    decl_delete( EX_DECL( $2 ) );
 	  }
 	| declaring_list ',' declarator initializer_opt
 	  {
 	    $$ = $1;
-	    MAKE_TYPEDEF( $$, $3 );
+	    if( $$ != NULL )
+	      MAKE_TYPEDEF( $$, $3 );
+	    else
+	      decl_delete( EX_DECL( $3 ) );
 	  }
 	;
 
@@ -830,17 +868,17 @@ type_qualifier
 	;
 
 basic_declaration_specifier      /* Storage Class+Arithmetic or void */
-	: declaration_qualifier_list basic_type_name        { $$ = $1 | $2; }
-	| basic_type_specifier  storage_class               { $$ = $1 | $2; }
-	| basic_declaration_specifier declaration_qualifier { $$ = $1 | $2; }
-	| basic_declaration_specifier basic_type_name       { $$ = $1 | $2; }
+	: declaration_qualifier_list basic_type_name        { $$ = LLC_OR( $1, $2 ); }
+	| basic_type_specifier  storage_class               { $$ = LLC_OR( $1, $2 ); }
+	| basic_declaration_specifier declaration_qualifier { $$ = LLC_OR( $1, $2 ); }
+	| basic_declaration_specifier basic_type_name       { $$ = LLC_OR( $1, $2 ); }
 	;
 
 basic_type_specifier             /* Arithmetic or void */
-	: basic_type_name                                   { $$ = $1;      }
-	| type_qualifier_list  basic_type_name              { $$ = $2;      }
-	| basic_type_specifier type_qualifier               { $$ = $1;      }
-	| basic_type_specifier basic_type_name              { $$ = $1 | $2; }
+	: basic_type_name                                   { $$ = $1;               }
+	| type_qualifier_list  basic_type_name              { $$ = $2;               }
+	| basic_type_specifier type_qualifier               { $$ = $1;               }
+	| basic_type_specifier basic_type_name              { $$ = LLC_OR( $1, $2 ); }
 	;
 
 sue_declaration_specifier        /* Storage Class + struct/union/enum */
@@ -980,8 +1018,8 @@ member_declaration_list
 	    $$ = LL_new();
 	    LL_push( $$, EX_STRUCT_DECL( $1 ) );
 	    LL_unshift( PSTATE->structDeclListsList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting struct declaration list (0x%08X) (size=%d)",
-	                       $$, LL_size(PSTATE->structDeclListsList)) );
+	    CT_DEBUG( PARSER, ("unshifting struct declaration list (0x%08X) (count=%d)",
+	                       $$, LL_count(PSTATE->structDeclListsList)) );
 	  }
 	| member_declaration_list member_declaration
 	  {
@@ -1003,8 +1041,8 @@ member_default_declaring_list     /* doesn't redeclare typedef*/
 	    if( $2 )
 	      LL_push( $$->declarators, EX_DECL( $2 ) );
 	    LL_unshift( PSTATE->structDeclList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting struct declaration (0x%08X) (size=%d)",
-	                       $$, LL_size(PSTATE->structDeclList)) );
+	    CT_DEBUG( PARSER, ("unshifting struct declaration (0x%08X) (count=%d)",
+	                       $$, LL_count(PSTATE->structDeclList)) );
 	  }
 	| member_default_declaring_list ',' member_identifier_declarator
 	  {
@@ -1023,8 +1061,8 @@ member_declaring_list
 	    if( $2 )
 	      LL_push( $$->declarators, EX_DECL( $2 ) );
 	    LL_unshift( PSTATE->structDeclList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting struct declaration (0x%08X) (size=%d)",
-	                       $$, LL_size(PSTATE->structDeclList)) );
+	    CT_DEBUG( PARSER, ("unshifting struct declaration (0x%08X) (count=%d)",
+	                       $$, LL_count(PSTATE->structDeclList)) );
 	  }
 	| member_declaring_list ',' member_declarator
 	  {
@@ -1400,8 +1438,8 @@ parameter_typedef_declarator
 	  {
 	    $$ = decl_new( ((Typedef *) $1.ptr)->pDecl->identifier, 0 );
 	    LL_unshift( PSTATE->declaratorList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (size=%d)",
-	                       $$->identifier, $$, LL_size(PSTATE->declaratorList)) );
+	    CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
+	                       $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
 	  }
 	| TYPE_NAME postfixing_abstract_declarator
 	  {
@@ -1409,8 +1447,8 @@ parameter_typedef_declarator
 	    if( $2 )
 	      LL_delete( LL_splice( $$->array, 0, 0, EX_ARRAY( $2 ) ) );
 	    LL_unshift( PSTATE->declaratorList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (size=%d)",
-	                       $$->identifier, $$, LL_size(PSTATE->declaratorList)) );
+	    CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
+	                       $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
 	  }
 	| clean_typedef_declarator { $$ = $1; }
 	;
@@ -1487,8 +1525,8 @@ simple_paren_typedef_declarator
 	  {
 	    $$ = decl_new( ((Typedef *) $1.ptr)->pDecl->identifier, 0 );
 	    LL_unshift( PSTATE->declaratorList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (size=%d)",
-	                       $$->identifier, $$, LL_size(PSTATE->declaratorList)) );
+	    CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
+	                       $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
 	  }
 	| '(' simple_paren_typedef_declarator ')' { $$ = $2; }
 	;
@@ -1532,8 +1570,8 @@ paren_identifier_declarator
 	    $$ = decl_new( $1->key, $1->keylen );
 	    HN_delete( EX_NODE( $1 ) );
 	    LL_unshift( PSTATE->declaratorList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (size=%d)",
-	                       $$->identifier, $$, LL_size(PSTATE->declaratorList)) );
+	    CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
+	                       $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
 	  }
 	| '(' paren_identifier_declarator ')' { $$ = $2; }
 	;
@@ -1584,8 +1622,8 @@ array_abstract_declarator
 	  {
 	    $$ = LL_new();
 	    LL_unshift( PSTATE->arrayList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting array (0x%08X) (size=%d)",
-	                       $$, LL_size(PSTATE->arrayList)) );
+	    CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
+	                       $$, LL_count(PSTATE->arrayList)) );
 	    LL_push( $$, value_new( $2.iv, $2.flags ) );
 	    CT_DEBUG( PARSER, ("array dimension => %d", $2) );
 	  }
@@ -1593,8 +1631,8 @@ array_abstract_declarator
 	  {
 	    $$ = LL_new();
 	    LL_unshift( PSTATE->arrayList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting array (0x%08X) (size=%d)",
-	                       $$, LL_size(PSTATE->arrayList)) );
+	    CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
+	                       $$, LL_count(PSTATE->arrayList)) );
 	    LL_push( $$, value_new( 0, 0 ) );
 	    CT_DEBUG( PARSER, ("array dimension => *") );
 	  }
@@ -1606,8 +1644,8 @@ array_abstract_declarator
 	    else {
               $$ = LL_new();
 	      LL_unshift( PSTATE->arrayList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting array (0x%08X) (size=%d)",
-	                         $$, LL_size(PSTATE->arrayList)) );
+	      CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
+	                         $$, LL_count(PSTATE->arrayList)) );
 	    }
 	    LL_push( $$, value_new( $3.iv, $3.flags ) );
 	    CT_DEBUG( PARSER, ("array dimension => %d", $3) );
@@ -1620,8 +1658,8 @@ array_abstract_declarator
 	    else {
               $$ = LL_new();
 	      LL_unshift( PSTATE->arrayList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting array (0x%08X) (size=%d)",
-	                         $$, LL_size(PSTATE->arrayList)) );
+	      CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
+	                         $$, LL_count(PSTATE->arrayList)) );
 	    }
 	    LL_push( $$, value_new( 0, 0 ) );
 	    CT_DEBUG( PARSER, ("array dimension => *" ) );
@@ -1716,14 +1754,22 @@ static int c_lex( void *pYYLVAL, ParserState *pState )
         break;
 
       case CONTEXT:
-        CT_DEBUG( CLEXER, ("new context: file '%s', line %ld",
-                           pLexer->ctok->name, pLexer->ctok->line) );
+        {
+          int len = strlen( pLexer->ctok->name );
 
-        if( pState->filename )
-          Free( pState->filename );
+          CT_DEBUG( CLEXER, ("new context: file '%s', line %ld",
+                             pLexer->ctok->name, pLexer->ctok->line) );
 
-        pState->filename = (char *) Alloc( strlen( pLexer->ctok->name ) + 1 );
-        strcpy( pState->filename, pLexer->ctok->name );
+          if( ! HT_exists( pState->pCPI->htFiles, pLexer->ctok->name, len, 0 ) )
+	    HT_store( pState->pCPI->htFiles, pLexer->ctok->name, len, 0, 
+                      fileinfo_new( pLexer->input ) );
+
+          if( pState->filename )
+            Free( pState->filename );
+
+          pState->filename = (char *) Alloc( len + 1 );
+          strcpy( pState->filename, pLexer->ctok->name );
+        }
         break;
 
       case NUMBER:
@@ -1989,8 +2035,9 @@ static int check_type( void *pYYLVAL, ParserState *pState, char *s )
   plval->identifier = HN_new( s, len, hash );
 
   LL_unshift( pState->nodeList, plval->identifier );
-  CT_DEBUG( CLEXER, ("unshifting identifier \"%s\" (0x%08X) (size=%d)",
-                     plval->identifier->key, plval->identifier, LL_size(pState->nodeList)) );
+  CT_DEBUG( CLEXER, ("unshifting identifier \"%s\" (0x%08X) (count=%d)",
+                     plval->identifier->key, plval->identifier,
+                     LL_count(pState->nodeList)) );
 
   return IDENTIFIER;
 }

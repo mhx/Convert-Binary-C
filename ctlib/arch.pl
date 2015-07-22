@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/06/20 17:46:42 +0100 $
-# $Revision: 2 $
-# $Snapshot: /Convert-Binary-C/0.03 $
+# $Date: 2002/11/25 16:12:14 +0000 $
+# $Revision: 4 $
+# $Snapshot: /Convert-Binary-C/0.04 $
 # $Source: /ctlib/arch.pl $
 #
 ################################################################################
@@ -28,6 +28,10 @@ use Config;
 open OUT, ">".shift or die $!;
 
 %cfg = %Config;
+
+$use{lc $_} = exists $ENV{"CBC_USE$_"} ? $ENV{"CBC_USE$_"} : 1
+  for qw( 64BIT LONGLONG LONGDOUBLE );
+
 
 # <HACK> required to support perl < 5.6.0
 
@@ -51,6 +55,12 @@ unless( exists $cfg{i8type} ) {
 
 # </HACK>
 
+# make the i_8 explicitly signed
+# (i8type was plain 'char' on an IPAQ system where 'char' was unsigned)
+if( $cfg{i8type} eq 'char' ) {
+  $cfg{i8type} = 'signed char';
+}
+
 sub is_big_endian
 {
   my $byteorder = $cfg{byteorder}
@@ -73,21 +83,21 @@ config <<'ENDCFG';
 #ifndef _ARCH_H
 #define _ARCH_H
 
-/* 8-bit integer data types */
-typedef ${i8type} i_8;
-typedef ${u8type} u_8;
-
-/* 16-bit integer data types */
-typedef ${i16type} i_16;
-typedef ${u16type} u_16;
-
-/* 32-bit integer data types */
-typedef ${i32type} i_32;
-typedef ${u32type} u_32;
-
 ENDCFG
 
-if( $cfg{d_quad} eq 'define' ) {
+if( $use{longdouble} && $cfg{d_longdbl} eq 'define' ) {
+config <<'ENDCFG';
+#define HAVE_LONG_DOUBLE
+ENDCFG
+}
+
+if( $use{longlong} && $cfg{d_longlong} eq 'define' ) {
+config <<'ENDCFG';
+#define HAVE_LONG_LONG
+ENDCFG
+}
+
+if( $use{'64bit'} && $cfg{d_quad} eq 'define' ) {
 config <<'ENDCFG';
 #define NATIVE_64_BIT_INTEGER
 
@@ -97,19 +107,49 @@ typedef ${u64type} u_64;
 
 ENDCFG
 }
+elsif( $use{'64bit'} && $cfg{d_longlong} eq 'define' and $cfg{longlongsize} == 8 ) {
+config <<'ENDCFG';
+#define NATIVE_64_BIT_INTEGER
+
+/* 64-bit integer data types */
+typedef signed long long i_64;
+typedef unsigned long long u_64;
+
+ENDCFG
+}
 else {
 config <<'ENDCFG';
 /* no native 64-bit support */
 typedef struct {
   ${u32type} h;
   ${u32type} l;
-} i_64, u_64;
+} u_64;
+
+typedef struct {
+  ${i32type} h;
+  ${u32type} l;
+} i_64;
 
 ENDCFG
 }
 
 config <<'ENDCFG' if is_big_endian;
 #define NATIVE_BIG_ENDIAN
+
+ENDCFG
+
+config <<'ENDCFG';
+/* 32-bit integer data types */
+typedef ${i32type} i_32;
+typedef ${u32type} u_32;
+
+/* 16-bit integer data types */
+typedef ${i16type} i_16;
+typedef ${u16type} u_16;
+
+/* 8-bit integer data types */
+typedef ${i8type} i_8;
+typedef ${u8type} u_8;
 
 ENDCFG
 

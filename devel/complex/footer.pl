@@ -5,18 +5,18 @@ sub reccmp
 {
   my($ident, $ref, $val, $sparse) = @_;
 
-  unless( ref $ref ) {
-    if( $ref == $val ) { $succ++ }
+  my $id = ref $ref;
+
+  unless( $id ) {
+    if( $ref eq $val ) { $succ++ }
     else {
       $fail++;
       print "# value mismatch for '$ident' (expected $ref, got $val)\n";
     }
-    return $ref == $val;
+    return $ref eq $val;
   }
 
-  my $id = substr $ref, 0, 1;
-
-  if( $id eq 'A' ) {
+  if( $id eq 'ARRAY' ) {
     if( $sparse or @$ref == @$val ) {
       $succ++;
       reccmp( $ident."[$_]", $ref->[$_], $val->[$_], $sparse ) for 0..$#$ref;
@@ -27,7 +27,7 @@ sub reccmp
             scalar @$ref, ", got ", scalar @$val, ")\n";
     }
   }
-  elsif( $id eq 'H' ) {
+  elsif( $id eq 'HASH' ) {
     if( $sparse or @{[keys %$ref]} == @{[keys %$val]} ) {
       $succ++;
       for( keys %$ref ) {
@@ -51,10 +51,12 @@ sub reccmp
 
 sub chkpack
 {
-  my($packref, $init) = @_;
+  my($packref, $init, $off) = @_;
+
+  $off ||= 0;
 
   for( my $i = 0; $i < length $$packref; ++$i ) {
-    my $o = ord substr $data, $i, 1;
+    my $o = ord substr $data, $off+$i, 1;
     my $p = ord substr $$packref, $i, 1;
 
     unless( $p == $o or $p == 0 or (defined $init and $p == $init) ) {
@@ -70,17 +72,45 @@ sub sparsecopy
 {
   my $ref = shift;
 
-  return $ref unless ref $ref;
+  my $id = ref $ref or return $ref;
 
-  my $id = substr $ref, 0, 1;
-
-  if( $id eq 'A' ) {
+  if( $id eq 'ARRAY' ) {
     return [ map { sparsecopy( $ref->[$_] ) } 0 .. ($#$ref/2) ];
   }
-  elsif( $id eq 'H' ) {
+  elsif( $id eq 'HASH' ) {
     my $i = 0;
     return { map { ++$i%2 ? ($_ => sparsecopy( $ref->{$_} )) : () } sort keys %$ref };
   }
+}
+
+sub reccheck
+{
+  my($cont, $meth, $id) = @_;
+
+  my $r = ref $cont or return (0, 0);
+
+  my($ok, $rcok) = (0, 0);
+  my($o, $ro);
+
+  if( $r eq 'ARRAY' ) {
+    for my $ix ( 0 .. $#$cont ) {
+      ($o,$ro) = $meth->( "$id\[$ix\]", $cont->[$ix] );
+      $ok += $o; $rcok += $ro;
+      ($o,$ro) = reccheck( $cont->[$ix], $meth, "$id\[$ix\]" );
+      $ok += $o; $rcok += $ro;
+    }
+  }
+  elsif( $r eq 'HASH' ) {
+    for my $mem ( keys %$cont ) {
+      my $new = defined $id ? "$id.$mem" : $mem;
+      ($o,$ro) = $meth->( $new, $cont->{$mem} );
+      $ok += $o; $rcok += $ro;
+      ($o,$ro) = reccheck( $cont->{$mem}, $meth, $new );
+      $ok += $o; $rcok += $ro;
+    }
+  }
+
+  ($ok, $rcok);
 }
 
 sub checkrc
@@ -107,6 +137,9 @@ my $p = new Convert::Binary::C ByteOrder   => 'LittleEndian',
 $p->parse( $types );
 
 my $first = 1;
+
+my $debug = Convert::Binary::C::feature( 'debug' );
+my $reason = $debug ? '' : 'skip: no debugging';
 
 for my $align ( 4, sort keys %reference ) {
   if( $first ) { $first = 0 }
@@ -138,8 +171,8 @@ for my $align ( 4, sort keys %reference ) {
 
     # check reference count
     $succ = $fail = 0;
-    checkrc( Convert::Binary::C::__DUMP__( $cont ) );
-    ok( $fail == 0 && $succ > 0 );
+    $debug and checkrc( Convert::Binary::C::__DUMP__( $cont ) );
+    skip( $reason, $fail == 0 && $succ > 0 );
   }
 
   # test if the pack method works correctly
@@ -156,8 +189,8 @@ for my $align ( 4, sort keys %reference ) {
 
     # check reference count
     $succ = $fail = 0;
-    checkrc( Convert::Binary::C::__DUMP__( $packed ) );
-    ok( $fail == 0 && $succ > 0 );
+    $debug and checkrc( Convert::Binary::C::__DUMP__( $packed ) );
+    skip( $reason, $fail == 0 && $succ > 0 );
   }
 
   # test if pack also works for sparse data
@@ -188,23 +221,45 @@ for my $align ( 4, sort keys %reference ) {
 
     # check reference count
     $succ = $fail = 0;
-    checkrc( Convert::Binary::C::__DUMP__( $packed ) );
-    ok( $fail == 0 && $succ > 0 );
+    $debug and checkrc( Convert::Binary::C::__DUMP__( $packed ) );
+    skip( $reason, $fail == 0 && $succ > 0 );
   }
 
   # test if the member() and offsetof() methods work correctly
+  # also check sizeof for compound members
 
   for my $id ( keys %$members ) {
     $fail = 0;
+    my @m = @{$members->{$id}};
+    my($rm, $off, $size);
+
     for( 0 .. $sizeof->{$id}-1 ) {
       my $m = $p->member( $id, $_ );
-      my $r = $members->{$id}[$_];
-      $r = "$members->{$id}[$_-$r]+$r" if $r =~ /^\d+$/;
+      my $r;
+
+      if( not defined $rm or $off == $size ) {
+        $rm = shift @m;
+        $off = 0;
+        $size = @m && $m[0] =~ /^\d+$/ ? shift @m : 1;
+        $r = $rm;
+        if( $rm !~ /\+/ ) {
+          my $s = $p->sizeof( "$id.$rm" );
+          unless( $s == $size ) {
+            print "# sizeof mismatch for type '$_' (expected $size, got $s)\n";
+            $fail++;
+          }
+        }
+      }
+      else {
+        $r = "$rm+$off";
+      }
+      $off++;
+
       unless( $m eq $r ) {
         print "# member mismatch for type '$_' (expected $r, got $m)\n";
         $fail++;
       }
-      if( $r !~ /\+\d+$/ ) {
+      if( $r !~ /\+/ ) {
         my $o = $p->offsetof( $id, $r );
         unless( defined $o and $o == $_ ) {
           print "# offsetof( '$id', '$r' ) == $o, expected $_\n";
@@ -214,4 +269,76 @@ for my $align ( 4, sort keys %reference ) {
     }
     ok( $fail == 0 );
   }
+
+  # test if the unpack method works for compound members
+
+  for( keys %$content ) {
+    my($ok, $rcok) = reccheck( $content->{$_}, \&unpackcheck, $_ );
+    ok( $ok ); skip( $reason, $rcok );
+  }
+
+  # test if the pack method works for compound members
+
+  for( keys %$content ) {
+    my($ok, $rcok) = reccheck( $content->{$_}, \&packcheck, $_ );
+    ok( $ok ); skip( $reason, $rcok );
+  }
 }
+
+sub unpackcheck
+{
+  my($id, $ref) = @_;
+  my($type, $member) = split /\./, $id, 2;
+
+  my $off  = defined $member ? $p->offsetof( $type, $member ) : 0;
+  my $size = $p->sizeof( $id );
+  my $d    = substr($data, $off, $size);
+
+  my $cont = $p->unpack( $id, $d );
+  $succ = $fail = 0;
+  reccmp( $id, $ref, $cont, 0 );
+  my $ok = $fail == 0 && $succ > 0;
+
+  $ok or print "# check failed for unpack('$id')\n";
+
+  $succ = $fail = 0;
+  $debug and checkrc( Convert::Binary::C::__DUMP__( $cont ) );
+  my $rcok = $fail == 0 && $succ > 0;
+
+  $rcok or $reason or print "# refcount check failed for unpack('$id')\n";
+
+  ($ok, $rcok);
+}
+
+sub packcheck
+{
+  my($id, $ref) = @_;
+  my($type, $member) = split /\./, $id, 2;
+
+  my $off  = defined $member ? $p->offsetof( $type, $member ) : 0;
+  my $size = $p->sizeof( $id );
+  my $d    = substr($data, $off, $size);
+
+  my $packed = $p->pack( $id, $ref );
+  my $ok = 1;
+
+  $size == length $packed
+    or $ok = 0, print "# size check failed for pack('$id')\n";
+  chkpack( \$packed, 0, $off )
+    or $ok = 0, print "# chkpack check failed for pack('$id')\n";
+
+  my $cont = $p->unpack( $id, $packed );
+  $succ = $fail = 0;
+  reccmp( $id, $ref, $cont, 0 );
+  $fail == 0 && $succ > 0
+    or $ok = 0, print "# check failed for pack('$id')\n";
+
+  $succ = $fail = 0;
+  $debug and checkrc( Convert::Binary::C::__DUMP__( $cont ) );
+  my $rcok = $fail == 0 && $succ > 0;
+
+  $rcok or $reason or print "# refcount check failed for unpack('$id')\n";
+
+  ($ok, $rcok);
+}
+

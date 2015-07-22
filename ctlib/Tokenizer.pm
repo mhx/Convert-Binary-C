@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/08/31 09:11:32 +0100 $
-# $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.03 $
+# $Date: 2002/10/12 15:59:27 +0100 $
+# $Revision: 5 $
+# $Snapshot: /Convert-Binary-C/0.04 $
 # $Source: /ctlib/Tokenizer.pm $
 #
 ################################################################################
@@ -27,21 +27,19 @@ package Tokenizer;
 use strict;
 use vars '$VERSION';
 
-$VERSION = '0.01';
+$VERSION = sprintf '%.2f', 0.01*('$Revision: 5 $' =~ /(\d+)/)[0];
 
 sub new
 {
   my $class = shift;
-  my $self = {
+  bless {
     tokstr => 'tokstr',
     ulabel => 'unknown',
     endtok => "'\\0'",
     tokfnc => sub { "return $_[0];\n" },
     tokens => {},
     @_
-  };
-  bless $self, $class;
-  return $self;
+  }, $class;
 }
 
 sub addtokens
@@ -60,13 +58,13 @@ sub makeswitch
 
 sub __makeit__
 {
-  my($self, $level, $pre_flag, %t) = @_;
+  my($self, $level, $pre_flag, %t, %tok) = @_;
   my $indent = '    'x$level;
 
-  return '' unless %t;
+  %t or return '';
 
   if( keys(%t) == 1 ) {
-    my $token = (keys %t)[0];
+    my($token) = keys %t;
 
     if( $level > length $token ) {
       my $rvs = sprintf "%-50s/* %-10s */\n", $indent."{", $token;
@@ -87,25 +85,20 @@ sub __makeit__
     return $rvs.$code.$indent."}\n\n".$indent."goto $self->{ulabel};\n";
   }
 
-  my %tok = ();
-
-  for( sort keys %t ) {
+  for( keys %t ) {
     my $c = substr $_, $level, 1;
     $tok{$c ? "'$c'" : $self->{endtok}}{$_} = $t{$_};
   }
 
   my $rvs = $indent."switch( $self->{tokstr}\[$level] )\n".$indent."{\n";
-
   my $nlflag = 0;
 
   for( sort keys %tok ) {
-    my %seen = ();
+    my %seen;
     my @pre = grep { !$seen{$_}++ } values %{$tok{$_}};
     my $clear_pre_flag = 0;
 
-    if( $nlflag ) {
-      $rvs .= "\n";
-    }
+    $nlflag and $rvs .= "\n";
 
     if( $pre_flag == 0 && @pre == 1 && $pre[0] ) {
       $rvs .= "#if defined $pre[0]\n";

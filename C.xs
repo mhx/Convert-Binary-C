@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/09/25 21:16:58 +0100 $
-* $Revision: 14 $
-* $Snapshot: /Convert-Binary-C/0.03 $
+* $Date: 2002/11/27 19:33:11 +0000 $
+* $Revision: 30 $
+* $Snapshot: /Convert-Binary-C/0.04 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -21,18 +21,19 @@
 * This program is free software; you can redistribute it and/or
 * modify it under the same terms as Perl itself.
 *
+********************************************************************************
+*
+*         "All you have to do is to decide what you are going to do
+*          with the time that is given to you."     -- Gandalf
+*
 *******************************************************************************/
+
 
 /*===== GLOBAL INCLUDES ======================================================*/
 
-#include "EXTERN.h"
-
-#if !( PERL_REVISION == 5 && PERL_VERSION >= 6 )
-#define _XOPEN_SOURCE
-#endif
-
-#include "perl.h"
-#include "XSUB.h"
+#include <EXTERN.h>
+#include <perl.h>
+#include <XSUB.h>
 
 
 /*===== LOCAL INCLUDES =======================================================*/
@@ -41,9 +42,11 @@
 #include "util/list.h"
 #include "util/hash.h"
 #include "arch.h"
+#include "byteorder.h"
 #include "ctdebug.h"
 #include "ctparse.h"
 #include "cpperr.h"
+#include "fileinfo.h"
 
 
 /*===== DEFINES ==============================================================*/
@@ -74,15 +77,16 @@
 /*---------------*/
 
 #ifndef DEFAULT_PTR_SIZE
-#define DEFAULT_PTR_SIZE    sizeof( void * )
+#define DEFAULT_PTR_SIZE    CTLIB_POINTER_SIZE
 #elif   DEFAULT_PTR_SIZE != 1 && \
         DEFAULT_PTR_SIZE != 2 && \
-        DEFAULT_PTR_SIZE != 4
+        DEFAULT_PTR_SIZE != 4 && \
+        DEFAULT_PTR_SIZE != 8
 #error "DEFAULT_PTR_SIZE is invalid!"
 #endif
 
 #ifndef DEFAULT_ENUM_SIZE
-#define DEFAULT_ENUM_SIZE   sizeof( int )
+#define DEFAULT_ENUM_SIZE    sizeof( int )
 #elif   DEFAULT_ENUM_SIZE != 0 && \
         DEFAULT_ENUM_SIZE != 1 && \
         DEFAULT_ENUM_SIZE != 2 && \
@@ -91,49 +95,73 @@
 #endif
 
 #ifndef DEFAULT_INT_SIZE
-#define DEFAULT_INT_SIZE    sizeof( int )
+#define DEFAULT_INT_SIZE    CTLIB_int_SIZE
 #elif   DEFAULT_INT_SIZE != 1 && \
         DEFAULT_INT_SIZE != 2 && \
-        DEFAULT_INT_SIZE != 4
+        DEFAULT_INT_SIZE != 4 && \
+        DEFAULT_INT_SIZE != 8
 #error "DEFAULT_INT_SIZE is invalid!"
 #endif
 
 #ifndef DEFAULT_SHORT_SIZE
-#define DEFAULT_SHORT_SIZE  sizeof( short )
+#define DEFAULT_SHORT_SIZE    CTLIB_short_SIZE
 #elif   DEFAULT_SHORT_SIZE != 1 && \
         DEFAULT_SHORT_SIZE != 2 && \
-        DEFAULT_SHORT_SIZE != 4
+        DEFAULT_SHORT_SIZE != 4 && \
+        DEFAULT_SHORT_SIZE != 8
 #error "DEFAULT_SHORT_SIZE is invalid!"
 #endif
 
 #ifndef DEFAULT_LONG_SIZE
-#define DEFAULT_LONG_SIZE   sizeof( long )
+#define DEFAULT_LONG_SIZE    CTLIB_long_SIZE
 #elif   DEFAULT_LONG_SIZE != 1 && \
         DEFAULT_LONG_SIZE != 2 && \
-        DEFAULT_LONG_SIZE != 4
+        DEFAULT_LONG_SIZE != 4 && \
+        DEFAULT_LONG_SIZE != 8
 #error "DEFAULT_LONG_SIZE is invalid!"
 #endif
 
+#ifndef DEFAULT_LONG_LONG_SIZE
+#define DEFAULT_LONG_LONG_SIZE    CTLIB_long_long_SIZE
+#elif   DEFAULT_LONG_LONG_SIZE != 1 && \
+        DEFAULT_LONG_LONG_SIZE != 2 && \
+        DEFAULT_LONG_LONG_SIZE != 4 && \
+        DEFAULT_LONG_LONG_SIZE != 8
+#error "DEFAULT_LONG_LONG_SIZE is invalid!"
+#endif
+
 #ifndef DEFAULT_FLOAT_SIZE
-#define DEFAULT_FLOAT_SIZE   sizeof( float )
+#define DEFAULT_FLOAT_SIZE    CTLIB_float_SIZE
 #elif   DEFAULT_FLOAT_SIZE != 1 && \
         DEFAULT_FLOAT_SIZE != 2 && \
         DEFAULT_FLOAT_SIZE != 4 && \
-        DEFAULT_FLOAT_SIZE != 8
+        DEFAULT_FLOAT_SIZE != 8 && \
+        DEFAULT_FLOAT_SIZE != 12
 #error "DEFAULT_FLOAT_SIZE is invalid!"
 #endif
 
 #ifndef DEFAULT_DOUBLE_SIZE
-#define DEFAULT_DOUBLE_SIZE   sizeof( double )
+#define DEFAULT_DOUBLE_SIZE    CTLIB_double_SIZE
 #elif   DEFAULT_DOUBLE_SIZE != 1 && \
         DEFAULT_DOUBLE_SIZE != 2 && \
         DEFAULT_DOUBLE_SIZE != 4 && \
-        DEFAULT_DOUBLE_SIZE != 8
+        DEFAULT_DOUBLE_SIZE != 8 && \
+        DEFAULT_DOUBLE_SIZE != 12
 #error "DEFAULT_DOUBLE_SIZE is invalid!"
 #endif
 
+#ifndef DEFAULT_LONG_DOUBLE_SIZE
+#define DEFAULT_LONG_DOUBLE_SIZE    CTLIB_long_double_SIZE
+#elif   DEFAULT_LONG_DOUBLE_SIZE != 1 && \
+        DEFAULT_LONG_DOUBLE_SIZE != 2 && \
+        DEFAULT_LONG_DOUBLE_SIZE != 4 && \
+        DEFAULT_LONG_DOUBLE_SIZE != 8 && \
+        DEFAULT_LONG_DOUBLE_SIZE != 12
+#error "DEFAULT_LONG_DOUBLE_SIZE is invalid!"
+#endif
+
 #ifndef DEFAULT_ALIGNMENT
-#define DEFAULT_ALIGNMENT   1
+#define DEFAULT_ALIGNMENT    1
 #elif   DEFAULT_ALIGNMENT != 1 && \
         DEFAULT_ALIGNMENT != 2 && \
         DEFAULT_ALIGNMENT != 4 && \
@@ -145,6 +173,14 @@
 #define DEFAULT_ENUMTYPE    ET_INTEGER
 #endif
 
+#ifndef DEFAULT_BYTEORDER
+#ifdef NATIVE_BIG_ENDIAN
+#define DEFAULT_BYTEORDER   BO_BIG_ENDIAN
+#else
+#define DEFAULT_BYTEORDER   BO_LITTLE_ENDIAN
+#endif
+#endif
+
 /*-----------------------------*/
 /* some stuff for older perl's */
 /*-----------------------------*/
@@ -154,12 +190,6 @@
 #if !( PERL_REVISION == 5 && PERL_VERSION >= 6 )
 
 typedef double NV;
-
-#ifndef newSVuv
-#define newSVuv( x ) ((UV) (x)) >= (1 << 31)  \
-                     ? newSVnv( ((NV) (x)) )  \
-                     : newSViv( ((IV) (x)) )
-#endif
 
 #ifndef SvPV_nolen
 char *SvPV_nolen( SV *sv )
@@ -197,182 +227,67 @@ void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 #define CAST_IV_TO_PTRSIZE
 #endif
 
-/*----------------------------------------------------------*/
-/* reading/writing integers in big/little endian byte order */
-/* depending on the native byte order of the system         */
-/*----------------------------------------------------------*/
-
-#ifdef NATIVE_BIG_ENDIAN
-
-/*--------------------*/
-/* big endian systems */
-/*--------------------*/
-
-#ifndef DEFAULT_BYTEORDER
-#define DEFAULT_BYTEORDER   BO_BIG_ENDIAN
-#endif
-
-#define GET_LE_WORD( ptr )                                                     \
-          ( ( (U16) *( (U8 *) ((ptr)+0) ) <<  0)                               \
-          | ( (U16) *( (U8 *) ((ptr)+1) ) <<  8)                               \
-          )
-
-#define GET_LE_LONG( ptr )                                                     \
-          ( ( (U32) *( (U8 *) ((ptr)+0) ) <<  0)                               \
-          | ( (U32) *( (U8 *) ((ptr)+1) ) <<  8)                               \
-          | ( (U32) *( (U8 *) ((ptr)+2) ) << 16)                               \
-          | ( (U32) *( (U8 *) ((ptr)+3) ) << 24)                               \
-          )
-
-#define GET_BE_WORD( ptr )  ( *( (U16 *) (ptr) ) )
-
-#define GET_BE_LONG( ptr )  ( *( (U32 *) (ptr) ) )
-
-#define SET_LE_WORD( ptr, value )                                              \
-        do {                                                                   \
-          register U16 v = value;                                              \
-          *((U8 *) ((ptr)+0)) = (U8) (v >>  0) & 0xFF;                         \
-          *((U8 *) ((ptr)+1)) = (U8) (v >>  8) & 0xFF;                         \
-        } while(0)
-
-#define SET_LE_LONG( ptr, value )                                              \
-        do {                                                                   \
-          register U32 v = value;                                              \
-          *((U8 *) ((ptr)+0)) = (U8) (v >>  0) & 0xFF;                         \
-          *((U8 *) ((ptr)+1)) = (U8) (v >>  8) & 0xFF;                         \
-          *((U8 *) ((ptr)+2)) = (U8) (v >> 16) & 0xFF;                         \
-          *((U8 *) ((ptr)+3)) = (U8) (v >> 24) & 0xFF;                         \
-        } while(0)
-
-#define SET_BE_WORD( ptr, value ) \
-          *( (U16 *) (ptr) ) = (U16) value
-
-#define SET_BE_LONG( ptr, value ) \
-          *( (U32 *) (ptr) ) = (U32) value
-
-#else /* ! NATIVE_BIG_ENDIAN */
-
-/*-----------------------*/
-/* little endian systems */
-/*-----------------------*/
-
-#ifndef DEFAULT_BYTEORDER
-#define DEFAULT_BYTEORDER   BO_LITTLE_ENDIAN
-#endif
-
-#define GET_BE_WORD( ptr )                                                     \
-          ( ( (U16) *( (U8 *) ((ptr)+0) ) <<  8)                               \
-          | ( (U16) *( (U8 *) ((ptr)+1) ) <<  0)                               \
-          )
-
-#define GET_BE_LONG( ptr )                                                     \
-          ( ( (U32) *( (U8 *) ((ptr)+0) ) << 24)                               \
-          | ( (U32) *( (U8 *) ((ptr)+1) ) << 16)                               \
-          | ( (U32) *( (U8 *) ((ptr)+2) ) <<  8)                               \
-          | ( (U32) *( (U8 *) ((ptr)+3) ) <<  0)                               \
-          )
-
-#define GET_LE_WORD( ptr )  ( *( (U16 *) (ptr) ) )
-
-#define GET_LE_LONG( ptr )  ( *( (U32 *) (ptr) ) )
-
-#define SET_BE_WORD( ptr, value )                                              \
-        do {                                                                   \
-          register U16 v = (U16) value;                                        \
-          *((U8 *) ((ptr)+0)) = (U8) (v >>  8) & 0xFF;                         \
-          *((U8 *) ((ptr)+1)) = (U8) (v >>  0) & 0xFF;                         \
-        } while(0)
-
-#define SET_BE_LONG( ptr, value )                                              \
-        do {                                                                   \
-          register U32 v = (U32) value;                                        \
-          *((U8 *) ((ptr)+0)) = (U8) (v >> 24) & 0xFF;                         \
-          *((U8 *) ((ptr)+1)) = (U8) (v >> 16) & 0xFF;                         \
-          *((U8 *) ((ptr)+2)) = (U8) (v >>  8) & 0xFF;                         \
-          *((U8 *) ((ptr)+3)) = (U8) (v >>  0) & 0xFF;                         \
-        } while(0)
-
-#define SET_LE_WORD( ptr, value ) \
-          *( (U16 *) (ptr) ) = (U16) value
-
-#define SET_LE_LONG( ptr, value ) \
-          *( (U32 *) (ptr) ) = (U32) value
-
-#endif /* NATIVE_BIG_ENDIAN */
-
-/*---------------------------------------------------------*/
-/* macros used by pack/unpack routines for getting/setting */
-/* different types of data in a byte buffer                */
-/*---------------------------------------------------------*/
-
-#define GET_WORD( byteorder, ptr ) \
-          ( (byteorder) == BO_BIG_ENDIAN ? GET_BE_WORD(ptr) : GET_LE_WORD(ptr) )
-
-#define SET_WORD( byteorder, ptr, value )                                      \
-          do {                                                                 \
-            if( (byteorder) == BO_BIG_ENDIAN )                                 \
-              SET_BE_WORD( ptr, value );                                       \
-            else                                                               \
-              SET_LE_WORD( ptr, value );                                       \
-          } while(0)
-
-#define GET_LONG( byteorder, ptr ) \
-          ( (byteorder) == BO_BIG_ENDIAN ? GET_BE_LONG(ptr) : GET_LE_LONG(ptr) )
-
-#define SET_LONG( byteorder, ptr, value )                                      \
-          do {                                                                 \
-            if( (byteorder) == BO_BIG_ENDIAN )                                 \
-              SET_BE_LONG( ptr, value );                                       \
-            else                                                               \
-              SET_LE_LONG( ptr, value );                                       \
-          } while(0)
-
-#define GET_SIZE( dest, class, size, sign )                                    \
-          do {                                                                 \
-            switch( size ) {                                                   \
-              case 1: dest = *((sign ## 8 *)(class)->bufptr); break;           \
-              case 2: dest = (sign ## 16)                                      \
-                             GET_WORD( (class)->byteOrder,                     \
-                                       (class)->bufptr ); break;               \
-              case 4: dest = (sign ## 32)                                      \
-                             GET_LONG( (class)->byteOrder,                     \
-                                       (class)->bufptr ); break;               \
-            }                                                                  \
-          } while(0)
-
-#define SET_SIZE( src, class, size )                                           \
-          do {                                                                 \
-            switch( size ) {                                                   \
-              case 1: *((class)->bufptr) = (U8) src;      break;               \
-              case 2: SET_WORD( (class)->byteOrder,                            \
-                                (class)->bufptr, src );   break;               \
-              case 4: SET_LONG( (class)->byteOrder,                            \
-                                (class)->bufptr, src );   break;               \
-            }                                                                  \
-          } while(0)
-
 /*-------------------------------------------*/
 /* floats and doubles can only be accessed   */
 /* in native format (at least at the moment) */
 /*-------------------------------------------*/
 
-#define GET_DOUBLE( dest, class, size ) \
-          dest = (size) == sizeof(double) ? *((double *)(class)->bufptr) : 0.0
+#ifdef CAN_UNALIGNED_ACCESS
 
-#define SET_DOUBLE( src, class, size )                                         \
+#define GET_FPVAL( type, dest, class, size )                                   \
           do {                                                                 \
-            if( (size) == sizeof(double) )                                     \
-              *((double *)(class)->bufptr) = src;                              \
+            if( (size) == sizeof(type) )                                       \
+              dest = *((type *)(class)->bufptr);                               \
+            else {                                                             \
+              WARN(("Cannot unpack non-native floating point values"));        \
+              dest = 0.0;                                                      \
+            }                                                                  \
           } while(0)
 
-#define GET_FLOAT( dest, class, size ) \
-          dest = (size) == sizeof(float) ? *((float *)(class)->bufptr) : 0.0
-
-#define SET_FLOAT( src, class, size )                                          \
+#define SET_FPVAL( type, src, class, size )                                    \
           do {                                                                 \
-            if( (size) == sizeof(float) )                                      \
-              *((float *)(class)->bufptr) = (float) src;                       \
+            if( (size) == sizeof(type) )                                       \
+              *((type *)(class)->bufptr) = src;                                \
+            else                                                               \
+              WARN(("Cannot pack non-native floating point values"));          \
           } while(0)
+
+#else
+
+#define GET_FPVAL( type, dest, class, size )                                   \
+          do {                                                                 \
+            if( (size) == sizeof(type) ) {                                     \
+              register void *p = (void *)(class)->bufptr;                      \
+              if( ((unsigned long) p) % sizeof(type) ) {                       \
+                type fpval;                                                    \
+                Copy( p, &fpval, 1, type );                                    \
+                dest = (NV) fpval;                                             \
+              }                                                                \
+              else                                                             \
+                dest = (NV) *((type *) p);                                     \
+            }                                                                  \
+            else {                                                             \
+              WARN(("Cannot unpack non-native floating point values"));        \
+              dest = 0.0;                                                      \
+            }                                                                  \
+          } while(0)
+
+#define SET_FPVAL( type, src, class, size )                                    \
+          do {                                                                 \
+            if( (size) == sizeof(type) ) {                                     \
+              register void *p = (void *)(class)->bufptr;                      \
+              if( ((unsigned long) p) % sizeof(type) ) {                       \
+                type fpval = (type) src;                                       \
+                Copy( &fpval, p, 1, type );                                    \
+              }                                                                \
+              else                                                             \
+                *((type *) p) = (type) src;                                    \
+            }                                                                  \
+            else                                                               \
+              WARN(("Cannot pack non-native floating point values"));          \
+          } while(0)
+
+#endif
 
 /*--------------------------------*/
 /* macros for buffer manipulation */
@@ -429,9 +344,9 @@ void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
                           warn args;                                           \
                       } while(0)
 
-#define NO_PARSE_DATA (   THIS->cpi.enums    == NULL \
-                       || THIS->cpi.structs  == NULL \
-                       || THIS->cpi.typedefs == NULL \
+#define NO_PARSE_DATA (   THIS->cpi.enums         == NULL                      \
+                       || THIS->cpi.structs       == NULL                      \
+                       || THIS->cpi.typedef_lists == NULL                      \
                       )
 
 #define CHECK_PARSE_DATA( method )                                             \
@@ -467,13 +382,13 @@ void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 
 #define CROAK_UNDEF_STRUCT( ptr )                                              \
 	  croak( "Got no definition for '%s %s'",                              \
-	         ptr->tflags & T_UNION ? "union" : "struct",                   \
-	         ptr->identifier )
+	         (ptr)->tflags & T_UNION ? "union" : "struct",                 \
+	         (ptr)->identifier )
 
 #define WARN_UNDEF_STRUCT( ptr )                                               \
 	  warn( "Got no definition for '%s %s'",                               \
-	        ptr->tflags & T_UNION ? "union" : "struct",                    \
-	        ptr->identifier )
+	        (ptr)->tflags & T_UNION ? "union" : "struct",                  \
+	        (ptr)->identifier )
 
 /*----------------------------*/
 /* checks if an SV is defined */
@@ -485,10 +400,10 @@ void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 /* other defines */
 /*---------------*/
 
-#define DEFAULT_HT_SIZE_ENUMERATORS  9U  /* 512 buckets */
-#define DEFAULT_HT_SIZE_ENUMS        7U  /* 128 buckets */
-#define DEFAULT_HT_SIZE_STRUCTS      8U  /* 256 buckets */
-#define DEFAULT_HT_SIZE_TYPEDEFS     8U  /* 256 buckets */
+#define T_ALREADY_DUMPED  T_USER_FLAG_1
+
+#define F_NEWLINE         0x00000001
+#define F_KEYWORD         0x00000002
 
 /*-----------------*/
 /* debugging stuff */
@@ -498,7 +413,7 @@ void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 
 #define DBG_CTXT_FMT "%s"
 
-#define DBG_CTXT_ARG (GIMME_V == G_VOID   ? ""   : \
+#define DBG_CTXT_ARG (GIMME_V == G_VOID   ? "0=" : \
                      (GIMME_V == G_SCALAR ? "$=" : \
                      (GIMME_V == G_ARRAY  ? "@=" : \
                                             "?="   \
@@ -549,31 +464,25 @@ typedef struct {
   Buffer        buf;
   CParseConfig  cfg;
   CParseInfo    cpi;
-  enum {
-    BO_BIG_ENDIAN, BO_LITTLE_ENDIAN
-  }             byteOrder;
+  ArchSpecs     as;
   enum {
     ET_INTEGER, ET_STRING, ET_BOTH
   }             enumType;
 } CBC;
 
 typedef struct {
-  enum {
-    TYP_ENUM,
-    TYP_STRUCT,
-    TYP_TYPEDEF
-  } type;
-  union {
-    EnumSpecifier *pEnum;
-    Struct        *pStruct;
-    Typedef       *pTypedef;
-  } spec;
-} TypePointer;
-
-typedef struct {
   const int   value;
   const char *string;
 } StringOption;
+
+typedef struct {
+  TypeSpec    type;
+  Declarator *pDecl;
+  unsigned    level;
+  unsigned    offset;
+  unsigned    size;
+  u_32        flags;
+} MemberInfo;
 
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
@@ -584,9 +493,9 @@ static void debug_printf( char *f, ... );
 static void debug_printf_ctlib( char *f, ... );
 static void SetDebugOptions( char *dbopts );
 static void SetDebugFile( char *dbfile );
-#endif
 
 static void DumpSV( SV *buf, int level, SV *sv );
+#endif
 
 static void fatal( char *f, ... );
 static void *ct_newstr( void );
@@ -595,10 +504,11 @@ static void ct_vscatf( void *p, char *f, va_list l );
 static void ct_warn( void *p );
 static void ct_fatal( void *p );
 
+static char *string_new( char *str );
 static char *string_new_fromSV( SV *sv );
 static void string_delete( char *sv );
 
-static void CroakGTI( ErrorGTI error, char *name, int warnOnly );
+static void CroakGTI( ErrorGTI error, const char *name, int warnOnly );
 
 static SV *GetPointer( CBC *THIS );
 static SV *GetStruct( CBC *THIS, Struct *pStruct );
@@ -616,6 +526,23 @@ static void SetTypedef( CBC *THIS, Typedef *pTypedef, SV *sv, char *name );
 static void SetType( CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
                      int dimension, SV *sv, char *name );
 
+static void GetBasicTypeSpecString( SV **sv, u_32 flags );
+
+static void AddIndent( SV *s, int level );
+
+static void CheckDefineType( SV *str, TypeSpec *pTS );
+
+static void AddTypeSpecStringRec( SV *str, SV *s, TypeSpec *pTS, int level, U32 *pFlags );
+static void AddEnumSpecStringRec( SV *str, SV *s, EnumSpecifier *pES, int level, U32 *pFlags );
+static void AddStructSpecStringRec( SV *str, SV *s, Struct *pStruct, int level, U32 *pFlags );
+
+static void AddTypedefListDeclString( SV *str, TypedefList *pTDL );
+static void AddTypedefListSpecString( SV *str, TypedefList *pTDL );
+static void AddEnumSpecString( SV *str, EnumSpecifier *pES );
+static void AddStructSpecString( SV *str, Struct *pStruct );
+
+static SV *GetParsedDefinitionsString( CParseInfo *pCPI );
+
 static SV *GetTypeSpec( TypeSpec *pTSpec );
 static SV *GetTypedefSpec( Typedef *pTypedef );
 
@@ -626,16 +553,18 @@ static SV *GetDeclarators( LinkedList declarators );
 static SV *GetStructDeclarations( LinkedList declarations );
 static SV *GetStructSpec( Struct *pStruct );
 
-static void GetStructMember( Struct *pStruct, int offset, SV *sv, int dotflag );
-static SV *GetOffsetOf( Struct *pStruct, const char *member );
-
-static int GetTypePointer( CBC *THIS, const char *name, TypePointer *pTYP );
+static void GetStructMemberString( Struct *pStruct, int offset, SV *sv,
+                                   int dotflag, SV **pType );
+static void GetStructMember( Struct *pStruct, const char *member, MemberInfo *pMI );
+static void *GetTypePointer( CBC *THIS, const char *name, const char **pEOS );
+static int GetMemberInfo( CBC *THIS, const char *name, MemberInfo *pMI );
 static int IsTypedefDefined( Typedef *pTypedef );
 
 static int CheckIntegerOption( const IV *options, int count, SV *sv,
                                IV *value, const char *name );
 static const StringOption *GetStringOption( const StringOption *options, int count,
                                             int value, SV *sv, const char *name );
+static LinkedList CloneStringList( LinkedList list );
 static void HandleStringList( char *option, LinkedList list, SV *sv, SV **rval );
 static int  HandleOption( CBC *THIS, SV *opt, SV *sv_val, SV **rval );
 static SV  *GetConfiguration( CBC *THIS );
@@ -677,6 +606,8 @@ static perl_mutex gs_parse_mutex;
 *     RETURNS:
 *
 *******************************************************************************/
+
+#ifdef CTYPE_DEBUGGING
 
 #define INDENT for(i=0;i<level;i++) sv_catpv(buf,"  ")
 
@@ -751,6 +682,8 @@ static void DumpSV( SV *buf, int level, SV *sv )
 }
 
 #undef INDENT
+
+#endif
 
 /*******************************************************************************
 *
@@ -842,6 +775,36 @@ static void ct_fatal( void *p )
 
 /*******************************************************************************
 *
+*   ROUTINE: string_new
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static char *string_new( char *str )
+{
+  char *cpy = NULL;
+
+  if( str != NULL ) {
+    int len = strlen( str ) + 1;
+    New( 0, cpy, len, char );
+    Copy( str, cpy, len, char );
+  }
+
+  return cpy;
+}
+
+/*******************************************************************************
+*
 *   ROUTINE: string_new_fromSV
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: May 2002
@@ -914,7 +877,7 @@ static void string_delete( char *str )
 *
 *******************************************************************************/
 
-static void CroakGTI( ErrorGTI error, char *name, int warnOnly )
+static void CroakGTI( ErrorGTI error, const char *name, int warnOnly )
 {
   char *errstr = NULL;
 
@@ -962,6 +925,125 @@ static void CroakGTI( ErrorGTI error, char *name, int warnOnly )
 
 /*******************************************************************************
 *
+*   ROUTINE: StoreIntSV
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void StoreIntSV( CBC *THIS, unsigned size, unsigned sign, SV *sv )
+{
+  IntValue iv;
+
+  iv.sign   = sign;
+
+  if( SvPOK( sv ) )
+    iv.string = SvPVX( sv );
+  else {
+    iv.string = NULL;
+
+    if( sign ) {
+      IV val = SvIV( sv );
+      CT_DEBUG( MAIN, ("SvIV( sv ) = %d", val) );
+#ifdef NATIVE_64_BIT_INTEGER
+      iv.value.s = val;
+#else
+      iv.value.s.h = 0;
+      iv.value.s.l = val;
+#endif
+    }
+    else {
+      UV val = SvUV( sv );
+      CT_DEBUG( MAIN, ("SvUV( sv ) = %u", val) );
+#ifdef NATIVE_64_BIT_INTEGER
+      iv.value.u = val;
+#else
+      iv.value.u.h = 0;
+      iv.value.u.l = val;
+#endif
+    }
+  }
+
+  store_integer( size, THIS->bufptr, &THIS->as, &iv );
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: FetchIntSV
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+#ifdef NATIVE_64_BIT_INTEGER
+#define __SIZE_LIMIT sizeof( IV )
+#else
+#define __SIZE_LIMIT sizeof( iv.value.u.l )
+#endif
+
+#ifdef newSVuv
+#define __TO_UV( x ) newSVuv( (UV) (x) )
+#else
+#define __TO_UV( x ) newSViv( (IV) (x) )
+#endif
+
+static SV *FetchIntSV( CBC *THIS, unsigned size, unsigned sign )
+{
+  IntValue iv;
+  char buffer[32];
+
+  /*
+   *  Whew, I guess that could be done better,
+   *  but at least it's working...
+   */
+
+#ifdef newSVuv
+
+  iv.string = size > __SIZE_LIMIT ? buffer : NULL;
+
+#else  /* older perls don't have newSVuv */
+
+  iv.string =   size  > __SIZE_LIMIT
+            || (size == __SIZE_LIMIT && !sign)
+            ? buffer : NULL;
+
+#endif
+
+  fetch_integer( size, sign, THIS->bufptr, &THIS->as, &iv );
+
+  if( iv.string )
+    return newSVpv( iv.string, 0 );
+
+#ifdef NATIVE_64_BIT_INTEGER
+  return sign ? newSViv( iv.value.s   ) : __TO_UV( iv.value.u   );
+#else
+  return sign ? newSViv( iv.value.s.l ) : __TO_UV( iv.value.u.l );
+#endif
+}
+
+#undef __SIZE_LIMIT
+#undef __TO_UV
+
+/*******************************************************************************
+*
 *   ROUTINE: SetPointer
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
@@ -985,11 +1067,8 @@ static void SetPointer( CBC *THIS, SV *sv )
 
   ALIGN_BUFFER( THIS, size );
 
-  if( DEFINED( sv ) && ! SvROK( sv ) ) {
-    UV ptrval = SvUV( sv );
-    CT_DEBUG( MAIN, ("SvUV( sv ) = %u", ptrval) );
-    SET_SIZE( ptrval, THIS, size );
-  }
+  if( DEFINED( sv ) && ! SvROK( sv ) )
+    StoreIntSV( THIS, size, 0, sv );
 
   INC_BUFFER( THIS, size );
 }
@@ -1097,6 +1176,8 @@ static void SetEnum( CBC *THIS, EnumSpecifier *pEnumSpec, SV *sv )
   ALIGN_BUFFER( THIS, size );
   
   if( DEFINED( sv ) && ! SvROK( sv ) ) {
+    IntValue iv;
+
     if( SvIOK( sv ) ) {
       value = SvIVX( sv );
     }
@@ -1122,7 +1203,16 @@ static void SetEnum( CBC *THIS, EnumSpecifier *pEnumSpec, SV *sv )
   
     CT_DEBUG( MAIN, ("value(sv) = %d", value) );
   
-    SET_SIZE( value, THIS, size );
+    iv.string = NULL;
+    iv.sign = value < 0;
+
+#ifdef NATIVE_64_BIT_INTEGER
+    iv.value.s = value;
+#else
+    iv.value.s.h = value < 0 ? -1 : 0;
+    iv.value.s.l = value;
+#endif
+    store_integer( size, THIS->bufptr, &THIS->as, &iv );
   }
 
   INC_BUFFER( THIS, size );
@@ -1153,7 +1243,7 @@ static void SetBasicType( CBC *THIS, u_32 flags, SV *sv )
             THIS, flags, sv) );
 
 #define LOAD_SIZE( type ) \
-        size = THIS->cfg.type ## _size ? THIS->cfg.type ## _size : sizeof(type)
+        size = THIS->cfg.type ## _size ? THIS->cfg.type ## _size : CTLIB_ ## type ## _SIZE
 
   if( flags & T_VOID )  /* XXX: do we want void ? */
     size = 1;
@@ -1163,11 +1253,14 @@ static void SetBasicType( CBC *THIS, u_32 flags, SV *sv )
         (THIS->cfg.flags & CHARS_ARE_UNSIGNED) )
       flags |= T_UNSIGNED;
   }
-  else if( flags & T_FLOAT )  LOAD_SIZE( float );
-  else if( flags & T_DOUBLE ) LOAD_SIZE( double );
-  else if( flags & T_SHORT )  LOAD_SIZE( short );
-  else if( flags & T_LONG )   LOAD_SIZE( long );
-  else                        LOAD_SIZE( int );
+  else if( (flags & (T_LONG|T_DOUBLE)) == (T_LONG|T_DOUBLE) )
+    LOAD_SIZE( long_double );
+  else if( flags & T_LONGLONG ) LOAD_SIZE( long_long );
+  else if( flags & T_FLOAT )    LOAD_SIZE( float );
+  else if( flags & T_DOUBLE )   LOAD_SIZE( double );
+  else if( flags & T_SHORT )    LOAD_SIZE( short );
+  else if( flags & T_LONG )     LOAD_SIZE( long );
+  else                          LOAD_SIZE( int );
 
 #undef LOAD_SIZE
 
@@ -1179,22 +1272,22 @@ static void SetBasicType( CBC *THIS, u_32 flags, SV *sv )
   
       CT_DEBUG( MAIN, ("SvNV( sv ) = %f", value) );
   
-      if( flags & T_DOUBLE )
-        SET_DOUBLE( value, THIS, size );
+      if( flags & T_DOUBLE ) {
+        if( (flags & T_LONG) == 0 )
+          SET_FPVAL( double, value, THIS, size );
+        else {
+#ifdef HAVE_LONG_DOUBLE
+          SET_FPVAL( long double, value, THIS, size );
+#else
+          WARN(("Cannot pack long doubles"));
+#endif
+        }
+      }
       else /* T_FLOAT */
-        SET_FLOAT( value, THIS, size );
+        SET_FPVAL( float, value, THIS, size );
     }
     else {
-      if( flags & T_UNSIGNED ) {
-        UV value = SvUV( sv );
-        CT_DEBUG( MAIN, ("SvUV( sv ) = %u", value) );
-        SET_SIZE( value, THIS, size );
-      }
-      else {
-        IV value = SvIV( sv );
-        CT_DEBUG( MAIN, ("SvIV( sv ) = %d", value) );
-        SET_SIZE( value, THIS, size );
-      }
+      StoreIntSV( THIS, size, (flags & T_UNSIGNED) == 0, sv );
     }
   }
 
@@ -1223,7 +1316,7 @@ static void SetTypedef( CBC *THIS, Typedef *pTypedef, SV *sv, char *name )
   CT_DEBUG( MAIN, (XSCLASS "::SetTypedef( THIS=0x%08X, pTypedef=0x%08X, "
                     "sv=0x%08X, name='%s' )", THIS, pTypedef, sv, name) );
 
-  SetType( THIS, &pTypedef->type, pTypedef->pDecl, 0, sv, name );
+  SetType( THIS, pTypedef->pType, pTypedef->pDecl, 0, sv, name );
 }
 
 /*******************************************************************************
@@ -1250,7 +1343,7 @@ static void SetType( CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
             "dimension=%d, sv=0x%08X, name='%s' )",
             THIS, pTS, pDecl, dimension, sv, name) );
 
-  if( dimension < LL_size( pDecl->array ) ) {
+  if( pDecl && dimension < LL_count( pDecl->array ) ) {
     SV *ary;
 
     if( sv && SvROK( sv ) && SvTYPE( ary = SvRV(sv) ) == SVt_PVAV ) {
@@ -1276,7 +1369,7 @@ static void SetType( CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
 
       ALIGN_BUFFER( THIS, align );
 
-      dim = LL_size( pDecl->array );
+      dim = LL_count( pDecl->array );
 
       while( dim-- > dimension )
         size *= ((Value *) LL_get( pDecl->array, dim ))->iv;
@@ -1285,12 +1378,12 @@ static void SetType( CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
     }
   }
   else {
-    if( pDecl->pointer_flag ) {
+    if( pDecl && pDecl->pointer_flag ) {
       if( sv && SvROK( sv ) )
         WARN(( "'%s' should be a scalar value", name ));
       SetPointer( THIS, sv );
     }
-    else if( pDecl->bitfield_size >= 0 ) {
+    else if( pDecl && pDecl->bitfield_size >= 0 ) {
       /* unsupported */
     }
     else if( pTS->tflags & T_TYPE ) {
@@ -1339,17 +1432,19 @@ static void SetType( CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
 
 static SV *GetPointer( CBC *THIS )
 {
-  UV ptrval;
+  SV *sv;
   int size = THIS->cfg.ptr_size ? THIS->cfg.ptr_size : sizeof( void * );
 
   CT_DEBUG( MAIN, (XSCLASS "::GetPointer( THIS=0x%08X )", THIS) );
 
   ALIGN_BUFFER( THIS, size );
   CHECK_BUFFER( THIS, size );
-  GET_SIZE( ptrval, THIS, size, U );
+
+  sv = FetchIntSV( THIS, size, 0 );
+
   INC_BUFFER( THIS, size );
 
-  return newSVuv( ptrval );
+  return sv;
 }
 
 /*******************************************************************************
@@ -1446,10 +1541,26 @@ static SV *GetEnum( CBC *THIS, EnumSpecifier *pEnumSpec )
   ALIGN_BUFFER( THIS, size );
   CHECK_BUFFER( THIS, size );
 
-  if( pEnumSpec->tflags & T_SIGNED ) /* TODO: handle signed/unsigned correctly */
-    GET_SIZE( value, THIS, size, I );
-  else
-    GET_SIZE( value, THIS, size, U );
+  if( pEnumSpec->tflags & T_SIGNED ) { /* TODO: handle signed/unsigned correctly */
+    IntValue iv;
+    iv.string = NULL;
+    fetch_integer( size, 1, THIS->bufptr, &THIS->as, &iv );
+#ifdef NATIVE_64_BIT_INTEGER
+    value = iv.value.s;
+#else
+    value = (i_32) iv.value.s.l;
+#endif
+  }
+  else {
+    IntValue iv;
+    iv.string = NULL;
+    fetch_integer( size, 0, THIS->bufptr, &THIS->as, &iv );
+#ifdef NATIVE_64_BIT_INTEGER
+    value = iv.value.u;
+#else
+    value = iv.value.u.l;
+#endif
+  }
 
   INC_BUFFER( THIS, size );
 
@@ -1521,7 +1632,7 @@ static SV *GetBasicType( CBC *THIS, u_32 flags )
             THIS->buf.pos, THIS->buf.length) );
 
 #define LOAD_SIZE( type ) \
-        size = THIS->cfg.type ## _size ? THIS->cfg.type ## _size : sizeof(type)
+        size = THIS->cfg.type ## _size ? THIS->cfg.type ## _size : CTLIB_ ## type ## _SIZE
 
   if( flags & T_VOID )  /* XXX: do we want void ? */
     size = 1;
@@ -1531,11 +1642,14 @@ static SV *GetBasicType( CBC *THIS, u_32 flags )
         (THIS->cfg.flags & CHARS_ARE_UNSIGNED) )
       flags |= T_UNSIGNED;
   }
-  else if( flags & T_FLOAT )  LOAD_SIZE( float );
-  else if( flags & T_DOUBLE ) LOAD_SIZE( double );
-  else if( flags & T_SHORT )  LOAD_SIZE( short );
-  else if( flags & T_LONG )   LOAD_SIZE( long );
-  else                        LOAD_SIZE( int );
+  else if( (flags & (T_LONG|T_DOUBLE)) == (T_LONG|T_DOUBLE) )
+    LOAD_SIZE( long_double );
+  else if( flags & T_LONGLONG ) LOAD_SIZE( long_long );
+  else if( flags & T_FLOAT )    LOAD_SIZE( float );
+  else if( flags & T_DOUBLE )   LOAD_SIZE( double );
+  else if( flags & T_SHORT )    LOAD_SIZE( short );
+  else if( flags & T_LONG )     LOAD_SIZE( long );
+  else                          LOAD_SIZE( int );
 
 #undef LOAD_SIZE
 
@@ -1544,21 +1658,26 @@ static SV *GetBasicType( CBC *THIS, u_32 flags )
 
   if( flags & (T_FLOAT | T_DOUBLE) ) {
     NV value;
-    if( flags & T_FLOAT )
-      GET_FLOAT( value, THIS, size );
+
+    if( flags & T_DOUBLE ) {
+      if( (flags & T_LONG) == 0 )
+        GET_FPVAL( double, value, THIS, size );
+      else {
+#ifdef HAVE_LONG_DOUBLE
+        GET_FPVAL( long double, value, THIS, size );
+#else
+        WARN(("Cannot unpack long doubles"));
+        value = 0.0;
+#endif
+      }
+    }
     else
-      GET_DOUBLE( value, THIS, size );
+      GET_FPVAL( float, value, THIS, size );
+
     sv = newSVnv( value );
   }
-  else if( flags & T_UNSIGNED ) {
-    UV value;
-    GET_SIZE( value, THIS, size, U );
-    sv = newSVuv( value );
-  }
   else {
-    IV value;
-    GET_SIZE( value, THIS, size, I );
-    sv = newSViv( value );
+    sv = FetchIntSV( THIS, size, (flags & T_UNSIGNED) == 0 );
   }
 
   INC_BUFFER( THIS, size );
@@ -1588,7 +1707,7 @@ static SV *GetTypedef( CBC *THIS, Typedef *pTypedef )
   CT_DEBUG( MAIN, (XSCLASS "::GetTypedef( THIS=0x%08X, pTypedef=0x%08X )",
             THIS, pTypedef) );
 
-  return GetType( THIS, &pTypedef->type, pTypedef->pDecl, 0 );
+  return GetType( THIS, pTypedef->pType, pTypedef->pDecl, 0 );
 }
 
 /*******************************************************************************
@@ -1614,19 +1733,21 @@ static SV *GetType( CBC *THIS, TypeSpec *pTS,
   CT_DEBUG( MAIN, (XSCLASS "::GetType( THIS=0x%08X, pTS=0x%08X, "
             "pDecl=0x%08X, dimension=%d )", THIS, pTS, pDecl, dimension) );
 
-  if( dimension < LL_size( pDecl->array ) ) {
+  if( pDecl && dimension < LL_count( pDecl->array ) ) {
     AV *a = newAV();
-    long s = ((Value *) LL_get( pDecl->array, dimension ))->iv;
+    long i, s = ((Value *) LL_get( pDecl->array, dimension ))->iv;
 
-    while( s-- > 0 )
-      av_push( a, GetType( THIS, pTS, pDecl, dimension+1 ) );
+    av_extend( a, s-1 );
+
+    for( i=0; i<s; ++i )
+      av_store( a, i, GetType( THIS, pTS, pDecl, dimension+1 ) );
 
     return newRV_noinc( (SV *) a );
   }
   else {
-    if( pDecl->pointer_flag )              return GetPointer( THIS );
-    if( pDecl->bitfield_size >= 0 )        return &PL_sv_undef;  /* unsupported */
-    if( pTS->tflags & T_TYPE )             return GetTypedef( THIS, pTS->ptr );
+    if( pDecl && pDecl->pointer_flag )       return GetPointer( THIS );
+    if( pDecl && pDecl->bitfield_size >= 0 ) return &PL_sv_undef;  /* unsupported */
+    if( pTS->tflags & T_TYPE )               return GetTypedef( THIS, pTS->ptr );
     if( pTS->tflags & (T_STRUCT|T_UNION) ) {
       Struct *pStruct = pTS->ptr;
       if( pStruct->declarations == NULL ) {
@@ -1639,6 +1760,694 @@ static SV *GetType( CBC *THIS, TypeSpec *pTS,
 
     return GetBasicType( THIS, pTS->tflags );
   }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: GetBasicTypeSpecString
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Sep 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void GetBasicTypeSpecString( SV **sv, u_32 flags )
+{
+  struct { u_32 flag; char *str; } *pSpec, spec[] = {
+    {T_SIGNED,   "signed"  },
+    {T_UNSIGNED, "unsigned"},
+    {T_SHORT,    "short"   },
+    {T_LONGLONG, "long"    },
+    {T_LONG,     "long"    },
+    {T_VOID,     "void"    },
+    {T_CHAR,     "char"    },
+    {T_INT ,     "int"     },
+    {T_FLOAT ,   "float"   },
+    {T_DOUBLE ,  "double"  },
+    {0,          NULL      }
+  };
+  int first = 1;
+
+  CT_DEBUG( MAIN, (XSCLASS "::GetBasicTypeSpecString( sv=0x%08X, flags=0x%08X )", sv, flags) );
+
+  for( pSpec = spec; pSpec->flag; ++pSpec ) {
+    if( pSpec->flag & flags ) {
+      if( *sv )
+        sv_catpvf( *sv, first ? "%s" : " %s", pSpec->str );
+      else
+        *sv = newSVpv( pSpec->str, 0 );
+
+      first = 0;
+    }
+  }
+}
+
+#define INDENT                     \
+        do {                       \
+          if( level > 0 )          \
+            AddIndent( s, level ); \
+        } while(0)
+
+/*******************************************************************************
+*
+*   ROUTINE: AddIndent
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void AddIndent( SV *s, int level )
+{
+#define MAXINDENT 16
+  static const char tab[MAXINDENT] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+
+  while( level > MAXINDENT ) {
+    sv_catpvn( s, tab, MAXINDENT );
+    level -= MAXINDENT;
+  }
+
+  sv_catpvn( s, tab, level );
+#undef MAXINDENT
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: CheckDefineType
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void CheckDefineType( SV *str, TypeSpec *pTS )
+{
+  u_32 flags = pTS->tflags;
+
+  CT_DEBUG( MAIN, (XSCLASS "::CheckDefineType( pTS=(tflags=0x%08X,ptr=%0x%08X) )",
+                   pTS->tflags, pTS->ptr) );
+
+  if( flags & T_TYPE ) {
+    Typedef *pTypedef= (Typedef *) pTS->ptr;
+
+    while( ! pTypedef->pDecl->pointer_flag
+          && pTypedef->pType->tflags & T_TYPE )
+      pTypedef = (Typedef *) pTypedef->pType->ptr;
+
+    if( pTypedef->pDecl->pointer_flag )
+      return;
+
+    pTS   = pTypedef->pType;
+    flags = pTS->tflags;
+  }
+
+  if( flags & T_ENUM ) {
+    EnumSpecifier *pES = (EnumSpecifier *) pTS->ptr;
+
+    if( pES && (pES->tflags & T_ALREADY_DUMPED) == 0 )
+      AddEnumSpecString( str, pES );
+  }
+  else if( flags & (T_STRUCT|T_UNION) ) {
+    Struct *pStruct = (Struct *) pTS->ptr;
+
+    if( pStruct && (pStruct->tflags & T_ALREADY_DUMPED) == 0 )
+      AddStructSpecString( str, pStruct );
+  }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: AddTypeSpecStringRec
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+#define CHECK_SET_KEYWORD                                  \
+        do {                                               \
+          if( pFlags && (*pFlags & F_KEYWORD) )            \
+            sv_catpv( s, " " );                            \
+          else                                             \
+            INDENT;                                        \
+          if( pFlags ) {                                   \
+            *pFlags &= ~F_NEWLINE;                         \
+            *pFlags |= F_KEYWORD;                          \
+          }                                                \
+        } while(0)
+
+static void AddTypeSpecStringRec( SV *str, SV *s, TypeSpec *pTS, int level, U32 *pFlags )
+{
+  u_32 flags = pTS->tflags;
+
+  CT_DEBUG( MAIN, (XSCLASS "::AddTypeSpecStringRec( pTS=(tflags=0x%08X,ptr=%0x%08X),"
+                           " level=%d, pFlags=0x%08X (0x%08X) )",
+                   pTS->tflags, pTS->ptr, level, pFlags, pFlags ? *pFlags : 0) );
+
+  if( flags & T_TYPE ) {
+    Typedef *pTypedef= (Typedef *) pTS->ptr;
+
+    if( pTypedef && pTypedef->pDecl->identifier[0] ) {
+      CHECK_SET_KEYWORD;
+      sv_catpv( s, pTypedef->pDecl->identifier );
+    }
+  }
+  else if( flags & T_ENUM ) {
+    EnumSpecifier *pES = (EnumSpecifier *) pTS->ptr;
+
+    if( pES ) {
+      if( pES->identifier[0] && (pES->tflags & T_ALREADY_DUMPED) ) {
+        CHECK_SET_KEYWORD;
+        sv_catpvf( s, "enum %s", pES->identifier );
+      }
+      else
+        AddEnumSpecStringRec( str, s, pES, level, pFlags );
+    }
+  }
+  else if( flags & (T_STRUCT|T_UNION) ) {
+    Struct *pStruct = (Struct *) pTS->ptr;
+
+    if( pStruct ) {
+      if( pStruct->identifier[0] && (pStruct->tflags & T_ALREADY_DUMPED) ) {
+        CHECK_SET_KEYWORD;
+        sv_catpvf( s, "%s %s", flags & T_UNION ? "union" : "struct", pStruct->identifier );
+      }
+      else
+        AddStructSpecStringRec( str, s, pStruct, level, pFlags );
+    }
+  }
+  else {
+    CHECK_SET_KEYWORD;
+    GetBasicTypeSpecString( &s, flags );
+  }
+}
+
+#undef CHECK_SET_KEYWORD
+
+/*******************************************************************************
+*
+*   ROUTINE: AddEnumSpecStringRec
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void AddEnumSpecStringRec( SV *str, SV *s, EnumSpecifier *pES, int level, U32 *pFlags )
+{
+  CT_DEBUG( MAIN, (XSCLASS "::AddEnumSpecStringRec( pES=(identifier=\"%s\"),"
+                           " level=%d, pFlags=0x%08X (0x%08X) )",
+                   pES->identifier, level, pFlags, pFlags ? *pFlags : 0) );
+
+  pES->tflags |= T_ALREADY_DUMPED;
+
+  if( pFlags && (*pFlags & F_KEYWORD) )
+    sv_catpv( s, " " );
+  else
+    INDENT;
+
+  if( pFlags )
+    *pFlags &= ~(F_NEWLINE|F_KEYWORD);
+
+  sv_catpv( s, "enum" );
+  if( pES->identifier[0] )
+    sv_catpvf( s, " %s", pES->identifier );
+
+  if( pES->enumerators ) {
+    Enumerator *pEnum;
+    int         first = 1;
+    Value       lastVal;
+
+    sv_catpv( s, "\n" );
+    INDENT;
+    sv_catpv( s, "{" );
+
+    LL_foreach( pEnum, pES->enumerators ) {
+      if( !first )
+        sv_catpv( s, "," );
+
+      sv_catpv( s, "\n" );
+      INDENT;
+
+      if(   ( first && pEnum->value.iv == 0)
+         || (!first && pEnum->value.iv == lastVal.iv + 1 )
+        )
+        sv_catpvf( s, "\t%s", pEnum->identifier );
+      else
+        sv_catpvf( s, "\t%s = %d", pEnum->identifier, pEnum->value.iv );
+
+      if( first )
+        first = 0;
+
+      lastVal = pEnum->value;
+    }
+
+    sv_catpv( s, "\n" );
+    INDENT;
+    sv_catpv( s, "}" );
+  }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: AddStructSpecStringRec
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void AddStructSpecStringRec( SV *str, SV *s, Struct *pStruct, int level, U32 *pFlags )
+{
+  CT_DEBUG( MAIN, (XSCLASS "::AddStructSpecStringRec( pStruct=(identifier=\"%s\", "
+                           "pack=%d, tflags=0x%08X), level=%d, pFlags=0x%08X (0x%08X) )",
+                   pStruct->identifier, pStruct->pack, pStruct->tflags, level,
+                   pFlags, pFlags ? *pFlags : 0) );
+
+  pStruct->tflags |= T_ALREADY_DUMPED;
+
+  if( pStruct->declarations && pStruct->pack ) {
+    if( pFlags && (*pFlags & F_NEWLINE) == 0 ) {
+      sv_catpv( s, "\n" );
+      *pFlags &= ~F_KEYWORD;
+    }
+    sv_catpvf( s, "#pragma pack( push, %d )\n", pStruct->pack );
+  }
+
+  if( pFlags && (*pFlags & F_KEYWORD) )
+    sv_catpv( s, " " );
+  else
+    INDENT;
+
+  if( pFlags )
+    *pFlags &= ~(F_NEWLINE|F_KEYWORD);
+
+  sv_catpv( s, pStruct->tflags & T_STRUCT ? "struct" : "union" );
+
+  if( pStruct->identifier[0] )
+    sv_catpvf( s, " %s", pStruct->identifier );
+
+  if( pStruct->declarations ) {
+    StructDeclaration *pStructDecl;
+
+    sv_catpv( s, "\n" );
+    INDENT;
+    sv_catpv( s, "{\n" );
+
+    LL_foreach( pStructDecl, pStruct->declarations ) {
+      Declarator *pDecl;
+      int first = 1, need_def = 0;
+      U32 flags = F_NEWLINE;
+
+      AddTypeSpecStringRec( str, s, &pStructDecl->type, level+1, &flags );
+
+      if( flags & F_NEWLINE )
+        AddIndent( s, level+1 );
+      else
+        sv_catpv( s, " " );
+
+      LL_foreach( pDecl, pStructDecl->declarators ) {
+        Value *pValue;
+
+        if( pDecl->pointer_flag == 0 )
+          need_def = 1;
+
+        if( first )
+          first = 0;
+        else
+          sv_catpv( s, ", " );
+
+        if( pDecl->bitfield_size >= 0 ) {
+          sv_catpvf( s, "%s:%d", pDecl->identifier[0] != '\0' ? pDecl->identifier : "",
+                                 pDecl->bitfield_size );
+        }
+        else {
+          sv_catpvf( s, "%s%s", pDecl->pointer_flag ? "*" : "",
+                                pDecl->identifier );
+
+          LL_foreach( pValue, pDecl->array )
+            sv_catpvf( s, "[%d]", pValue->iv );
+        }
+      }
+
+      sv_catpv( s, ";\n" );
+
+      if( need_def )
+        CheckDefineType( str, &pStructDecl->type );
+    }
+
+    INDENT;
+    sv_catpv( s, "}" );
+  }
+
+  if( pStruct->declarations && pStruct->pack ) {
+    sv_catpv( s, "\n#pragma pack( pop )\n" );
+    if( pFlags )
+      *pFlags |= F_NEWLINE;
+  }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: AddTypedefListDeclString
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void AddTypedefListDeclString( SV *str, TypedefList *pTDL )
+{
+  Typedef *pTypedef;
+  int first = 1;
+
+  CT_DEBUG( MAIN, (XSCLASS "::AddTypedefListDeclString( pTDL=0x%08X )", pTDL) );
+
+  LL_foreach( pTypedef, pTDL->typedefs ) {
+    Declarator *pDecl = pTypedef->pDecl;
+    Value *pValue;
+
+    if( first )
+      first = 0;
+    else
+      sv_catpv( str, ", " );
+
+    sv_catpvf( str, "%s%s", pDecl->pointer_flag ? "*" : "", pDecl->identifier );
+
+    LL_foreach( pValue, pDecl->array )
+      sv_catpvf( str, "[%d]", pValue->iv );
+  }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: AddTypedefListSpecString
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void AddTypedefListSpecString( SV *str, TypedefList *pTDL )
+{
+  SV *s = sv_2mortal( newSVpv( "typedef", 0 ) );
+  U32 flags = F_KEYWORD;
+
+  CT_DEBUG( MAIN, (XSCLASS "::AddTypedefListSpecString( pTDL=0x%08X )", pTDL) );
+
+  AddTypeSpecStringRec( str, s, &pTDL->type, 0, &flags );
+
+  if( (flags & F_NEWLINE) == 0 )
+    sv_catpv( s, " " );
+
+  AddTypedefListDeclString( s, pTDL );
+
+  sv_catpv( s, ";\n" );
+
+  sv_catsv( str, s );
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: AddEnumSpecString
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void AddEnumSpecString( SV *str, EnumSpecifier *pES )
+{
+  SV *s = sv_2mortal( newSVpvn( "", 0 ) );
+
+  CT_DEBUG( MAIN, (XSCLASS "::AddEnumSpecString( pES=0x%08X )", pES) );
+
+  AddEnumSpecStringRec( str, s, pES, 0, NULL );
+  sv_catpv( s, ";\n" );
+  sv_catsv( str, s );
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: AddStructSpecString
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void AddStructSpecString( SV *str, Struct *pStruct )
+{
+  SV *s = sv_2mortal( newSVpvn( "", 0 ) );
+
+  CT_DEBUG( MAIN, (XSCLASS "::AddStructSpecString( pStruct=0x%08X )", pStruct) );
+
+  AddStructSpecStringRec( str, s, pStruct, 0, NULL );
+  sv_catpv( s, ";\n" );
+  sv_catsv( str, s );
+}
+
+#undef INDENT
+
+/*******************************************************************************
+*
+*   ROUTINE: GetParsedDefinitionsString
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static SV *GetParsedDefinitionsString( CParseInfo *pCPI )
+{
+  TypedefList   *pTDL;
+  EnumSpecifier *pES;
+  Struct        *pStruct;
+  int            fTypedefPre = 0, fTypedef = 0, fEnum = 0,
+                 fStruct = 0, fUndefEnum = 0, fUndefStruct = 0;
+
+  SV *s = newSVpvn( "", 0 );
+
+  CT_DEBUG( MAIN, (XSCLASS "::GetParsedDefinitionsString( pCPI=0x%08X )", pCPI) );
+
+  /* typedef predeclarations */
+
+  LL_foreach( pTDL, pCPI->typedef_lists ) {
+    u_32 tflags = pTDL->type.tflags;
+  
+    if( (tflags & (T_ENUM|T_STRUCT|T_UNION|T_TYPE)) == 0 ) {
+      if( !fTypedefPre ) {
+        sv_catpv( s, "/* typedef predeclarations */\n\n" );
+        fTypedefPre = 1;
+      }
+      AddTypedefListSpecString( s, pTDL );
+    }
+    else {
+      char *what = NULL, *ident;
+ 
+      if( tflags & T_ENUM ) {
+        EnumSpecifier *pES = (EnumSpecifier *) pTDL->type.ptr;
+        if( pES && pES->identifier[0] != '\0' ) {
+          what  = "enum";
+          ident = pES->identifier;
+        }
+      }
+      else if( tflags & (T_STRUCT|T_UNION) ) {
+        Struct *pStruct = (Struct *) pTDL->type.ptr;
+        if( pStruct && pStruct->identifier[0] != '\0' ) {
+          what  = pStruct->tflags & T_STRUCT ? "struct" : "union";
+          ident = pStruct->identifier;
+        }
+      }
+
+      if( what != NULL ) {
+        if( !fTypedefPre ) {
+          sv_catpv( s, "/* typedef predeclarations */\n\n" );
+          fTypedefPre = 1;
+        }
+        sv_catpvf( s, "typedef %s %s ", what, ident );
+        AddTypedefListDeclString( s, pTDL );
+        sv_catpv( s, ";\n" );
+      }
+    }
+  }
+
+  /* typedefs */
+
+  LL_foreach( pTDL, pCPI->typedef_lists )
+    if( pTDL->type.ptr != NULL )
+      if(   (   (pTDL->type.tflags & T_ENUM)
+              && ((EnumSpecifier *) pTDL->type.ptr)->identifier[0] == '\0'
+            )
+         || (   (pTDL->type.tflags & (T_STRUCT|T_UNION))
+              && ((Struct *) pTDL->type.ptr)->identifier[0] == '\0'
+            )
+         || (pTDL->type.tflags & T_TYPE)
+        ) {
+        if( !fTypedef ) {
+          sv_catpv( s, "\n\n/* typedefs */\n\n" );
+          fTypedef = 1;
+        }
+        AddTypedefListSpecString( s, pTDL );
+        sv_catpv( s, "\n" );
+      }
+ 
+  /* defined enums */
+ 
+  LL_foreach( pES, pCPI->enums )
+    if(   pES->enumerators
+       && (pES->tflags & (T_ALREADY_DUMPED)) == 0
+      ) {
+      if( !fEnum ) {
+        sv_catpv( s, "\n/* defined enums */\n\n" );
+        fEnum = 1;
+      }
+      AddEnumSpecString( s, pES );
+      sv_catpv( s, "\n" );
+    }
+ 
+  /* defined structs and unions */
+ 
+  LL_foreach( pStruct, pCPI->structs )
+    if(   pStruct->declarations
+       && pStruct->identifier[0]
+       && (pStruct->tflags & (T_ALREADY_DUMPED)) == 0
+      ) {
+      if( !fStruct ) {
+        sv_catpv( s, "\n/* defined structs and unions */\n\n" );
+        fStruct = 1;
+      }
+      AddStructSpecString( s, pStruct );
+      sv_catpv( s, "\n" );
+    }
+ 
+  /* undefined enums */
+ 
+  LL_foreach( pES, pCPI->enums ) {
+    if(    pES->enumerators   == NULL
+       &&  pES->identifier[0] != '\0'
+       && (pES->tflags & (T_HASTYPEDEF|T_ALREADY_DUMPED)) == 0
+      ) {
+      if( !fUndefEnum ) {
+        sv_catpv( s, "\n/* undefined enums */\n\n" );
+        fUndefEnum = 1;
+      }
+      sv_catpvf( s, "enum %s;\n\n", pES->identifier );
+    }
+ 
+    pES->tflags &= ~T_ALREADY_DUMPED;
+  }
+ 
+  /* undefined structs and unions */
+ 
+  LL_foreach( pStruct, pCPI->structs ) {
+    if( (pStruct->tflags & T_ALREADY_DUMPED) == 0 ) {
+      if(   pStruct->declarations
+         || (   pStruct->identifier[0] != '\0'
+             && (pStruct->tflags & T_HASTYPEDEF) == 0
+            )
+        ) {
+        if( !fUndefStruct ) {
+          sv_catpv( s, "\n/* undefined/unnamed structs and unions */\n\n" );
+          fUndefStruct = 1;
+        }
+        AddStructSpecString( s, pStruct );
+        sv_catpv( s, "\n" );
+      }
+    }
+
+    pStruct->tflags &= ~T_ALREADY_DUMPED;
+  }
+
+  return s;
 }
 
 /*******************************************************************************
@@ -1701,30 +2510,9 @@ static SV *GetTypeSpec( TypeSpec *pTSpec )
   }
 
   {
-    struct { u_32 flag; char *str; } *pSpec, spec[] = {
-      {T_SIGNED,   "signed"  },
-      {T_UNSIGNED, "unsigned"},
-      {T_SHORT,    "short"   },
-      {T_LONG,     "long"    },
-      {T_VOID,     "void"    },
-      {T_CHAR,     "char"    },
-      {T_INT ,     "int"     },
-      {T_FLOAT ,   "float"   },
-      {T_DOUBLE ,  "double"  },
-      {0,          NULL      }
-    };
     SV *sv = NULL;
-    pSpec = spec;
 
-    while( pSpec->flag ) {
-      if( pSpec->flag & flags ) {
-        if( sv )
-          sv_catpvf( sv, " %s", pSpec->str );
-        else
-          sv = newSVpv( pSpec->str, 0 );
-      }
-      pSpec++;
-    }
+    GetBasicTypeSpecString( &sv, flags );
 
     return sv ? sv : NEW_SV_PV_CONST("<NULL>");
   }
@@ -1760,7 +2548,7 @@ static SV *GetTypedefSpec( Typedef *pTypedef )
     sv_catpvf( sv, "[%d]", pValue->iv );
 
   HV_STORE_CONST( hv, "declarator", sv );
-  HV_STORE_CONST( hv, "type", GetTypeSpec( &pTypedef->type ) );
+  HV_STORE_CONST( hv, "type", GetTypeSpec( pTypedef->pType ) );
 
   return newRV_noinc( (SV *) hv );
 }
@@ -1960,7 +2748,7 @@ static SV *GetStructSpec( Struct *pStruct )
 
 /*******************************************************************************
 *
-*   ROUTINE: GetStructMember
+*   ROUTINE: GetStructMemberString
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
 *   CHANGED BY:                                   ON:
@@ -1975,12 +2763,16 @@ static SV *GetStructSpec( Struct *pStruct )
 *
 *******************************************************************************/
 
-static void GetStructMember( Struct *pStruct, int offset, SV *sv, int dotflag )
+static void GetStructMemberString( Struct *pStruct, int offset, SV *sv,
+                                   int dotflag, SV **pType )
 {
-  StructDeclaration *pStructDecl;
+  StructDeclaration *pStructDecl = NULL;
   Declarator *pDecl = NULL;
   Value *pValue;
   int size, index;
+
+  if( pType )
+    *pType = &PL_sv_undef;
 
   if( pStruct->declarations == NULL ) {
     WARN_UNDEF_STRUCT( pStruct );
@@ -2030,28 +2822,38 @@ static void GetStructMember( Struct *pStruct, int offset, SV *sv, int dotflag )
       Typedef *pTypedef = (Typedef *) pStructDecl->type.ptr;
   
       while( ! pTypedef->pDecl->pointer_flag
-            && pTypedef->type.tflags & T_TYPE )
-        pTypedef = (Typedef *) pTypedef->type.ptr;
+            && pTypedef->pType->tflags & T_TYPE )
+        pTypedef = (Typedef *) pTypedef->pType->ptr;
   
       if( ! pTypedef->pDecl->pointer_flag
-         && pTypedef->type.tflags & (T_STRUCT|T_UNION) )
-        pStruct = (Struct *) pTypedef->type.ptr;
+         && pTypedef->pType->tflags & (T_STRUCT|T_UNION) )
+        pStruct = (Struct *) pTypedef->pType->ptr;
     }
     else if( pStructDecl->type.tflags & (T_STRUCT|T_UNION) )
       pStruct = (Struct *) pStructDecl->type.ptr;
   }
 
   if( pStruct )
-    GetStructMember( pStruct, offset, sv, 1 );
-  else if( offset > 0 )
-    sv_catpvf( sv, "+%d", offset );
+    GetStructMemberString( pStruct, offset, sv, 1, pType );
+  else {
+    if( offset > 0 )
+      sv_catpvf( sv, "+%d", offset );
+    if( pType ) {
+      if( pDecl != NULL && pStructDecl != NULL ) {
+        if( pDecl->pointer_flag )
+          *pType = newSVpv( "*", 0 );
+        else
+          *pType = GetTypeSpec( &pStructDecl->type );
+      }
+    }
+  }
 }
 
 /*******************************************************************************
 *
-*   ROUTINE: GetOffsetOf
+*   ROUTINE: GetStructMember
 *
-*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2002
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
 *   CHANGED BY:                                   ON:
 *
 ********************************************************************************
@@ -2072,7 +2874,7 @@ static void GetStructMember( Struct *pStruct, int offset, SV *sv, int dotflag )
             }                                              \
           } while(0)
 
-static SV *GetOffsetOf( Struct *pStruct, const char *member )
+static void GetStructMember( Struct *pStruct, const char *member, MemberInfo *pMI )
 {
   const char        *c, *ixstr;
   char              *e, *elem;
@@ -2159,7 +2961,7 @@ static SV *GetOffsetOf( Struct *pStruct, const char *member )
           goto error;
         }
 
-        if( level >= LL_size( pDecl->array ) ) {
+        if( level >= LL_count( pDecl->array ) ) {
           TRUNC_ELEM;
           (void) sprintf( err = errbuf,
                           "Cannot use '%s' as a %d-dimensional array",
@@ -2200,7 +3002,7 @@ static SV *GetOffsetOf( Struct *pStruct, const char *member )
                               c );
               goto error;
             }
-            else if( level < LL_size( pDecl->array ) ) {
+            else if( level < LL_count( pDecl->array ) ) {
               (void) strcpy( elem, c );
               TRUNC_ELEM;
               (void) sprintf( err = errbuf,
@@ -2212,12 +3014,12 @@ static SV *GetOffsetOf( Struct *pStruct, const char *member )
               Typedef *pTypedef = (Typedef *) pStructDecl->type.ptr;
         
               while( ! pTypedef->pDecl->pointer_flag
-                    && pTypedef->type.tflags & T_TYPE )
-                pTypedef = (Typedef *) pTypedef->type.ptr;
+                    && pTypedef->pType->tflags & T_TYPE )
+                pTypedef = (Typedef *) pTypedef->pType->ptr;
           
               if( ! pTypedef->pDecl->pointer_flag
-                 && pTypedef->type.tflags & (T_STRUCT|T_UNION) ) {
-                pStruct = (Struct *) pTypedef->type.ptr;
+                 && pTypedef->pType->tflags & (T_STRUCT|T_UNION) ) {
+                pStruct = (Struct *) pTypedef->pType->ptr;
               }
               else {
                 (void) strcpy( elem, c );
@@ -2243,7 +3045,7 @@ static SV *GetOffsetOf( Struct *pStruct, const char *member )
             break;
 
           case '[':
-            if( level == 0 && LL_size( pDecl->array ) == 0 ) {
+            if( level == 0 && LL_count( pDecl->array ) == 0 ) {
               TRUNC_ELEM;
               (void) sprintf( err = errbuf,
                               "Cannot use '%s' as an array",
@@ -2276,7 +3078,13 @@ static SV *GetOffsetOf( Struct *pStruct, const char *member )
   if( err != NULL )
     croak( "%s", err );
 
-  return newSVuv( offset );
+  if( pMI ) {
+    pMI->type   = pStructDecl->type;
+    pMI->pDecl  = pDecl;
+    pMI->level  = level;
+    pMI->offset = offset;
+    pMI->size   = 0;  /* cannot determine size here */
+  }
 }
 
 #undef TRUNC_ELEM
@@ -2298,92 +3106,255 @@ static SV *GetOffsetOf( Struct *pStruct, const char *member )
 *
 *******************************************************************************/
 
-static int GetTypePointer( CBC *THIS, const char *name, TypePointer *pTYP )
+static void *GetTypePointer( CBC *THIS, const char *name, const char **pEOS )
 {
-  const char *c = name;
+  const char *c   = name;
+  void       *ptr = NULL;
+  int         len = 0;
+  enum { S_UNKNOWN, S_STRUCT, S_UNION, S_ENUM } type = S_UNKNOWN;
 
-  if( pTYP == NULL )
+  while( *c && isSPACE( *c ) ) c++;
+
+  if( *c == '\0' )
+    return NULL;
+
+  switch( c[0] ) {
+    case 's':
+      if( c[1] == 't' &&
+          c[2] == 'r' &&
+          c[3] == 'u' &&
+          c[4] == 'c' &&
+          c[5] == 't' &&
+          isSPACE( c[6] ) )
+      {
+        type = S_STRUCT;
+        c += 6;
+      }
+      break;
+
+    case 'u':
+      if( c[1] == 'n' &&
+          c[2] == 'i' &&
+          c[3] == 'o' &&
+          c[4] == 'n' &&
+          isSPACE( c[5] ) )
+      {
+        type = S_UNION;
+        c += 5;
+      }
+      break;
+
+    case 'e':
+      if( c[1] == 'n' &&
+          c[2] == 'u' &&
+          c[3] == 'm' &&
+          isSPACE( c[4] ) )
+      {
+        type = S_ENUM;
+        c += 4;
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  while( *c && isSPACE( *c ) ) c++;
+
+  while( c[len] && ( c[len]=='_' || isALNUM(c[len]) ) ) len++;
+
+  if( len == 0 )
+    return NULL;
+
+  switch( type ) {
+    case S_STRUCT:
+    case S_UNION:
+      {
+        Struct *pStruct = HT_get( THIS->cpi.htStructs, c, len, 0 );
+        ptr = (void *) (pStruct && (pStruct->tflags & (type == S_STRUCT
+                       ? T_STRUCT : T_UNION)) ? pStruct : NULL);
+      }
+      break;
+
+    case S_ENUM:
+      ptr = HT_get( THIS->cpi.htEnums, c, len, 0 );
+      break;
+
+    default:
+      if( (ptr = HT_get( THIS->cpi.htTypedefs, c, len, 0 )) == NULL )
+        if( (ptr = HT_get( THIS->cpi.htStructs, c, len, 0 )) == NULL )
+          ptr = HT_get( THIS->cpi.htEnums, c, len, 0 );
+      break;
+  }
+
+  c += len;
+
+  while( *c && isSPACE( *c ) ) c++;
+
+  if( pEOS )
+    *pEOS = c;
+
+  return ptr;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: GetMemberInfo
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static int GetMemberInfo( CBC *THIS, const char *name, MemberInfo *pMI )
+{
+  const char *member;
+  void *ptr;
+
+  ptr = GetTypePointer( THIS, name, &member );
+
+  if( ptr == NULL )
     return 0;
 
-  while( *c && !isSPACE( *c ) ) c++;
+  if( pMI ) {
+    if( *member ) {
+      if( *member == '.' ) {
+        Struct *pStruct = NULL;
 
-  if( *c ) {
-    while( *c && isSPACE( *c ) ) c++;
+        switch( GET_CTYPE( ptr ) ) {
+          case TYP_TYPEDEF:
+            {
+              Typedef *pTypedef = (Typedef *) ptr;
+              ErrorGTI err;
 
-    if( ! *c )
-      return 0;
+              err = GetTypeInfo( &THIS->cfg, pTypedef->pType,
+                                 pTypedef->pDecl, NULL, NULL,
+                                 NULL, NULL );
 
-    if( name[0] == 's' &&
-        name[1] == 't' &&
-        name[2] == 'r' &&
-        name[3] == 'u' &&
-        name[4] == 'c' &&
-        name[5] == 't' &&
-        isSPACE( name[6] ) )
-    {
-      pTYP->type = TYP_STRUCT;
-      pTYP->spec.pStruct = HT_get( THIS->cpi.htStructs, c, 0, 0 );
+              if( err != GTI_NO_ERROR )
+                CroakGTI( err, name, 0 );
 
-      if( pTYP->spec.pStruct && (pTYP->spec.pStruct->tflags & T_STRUCT) )
-        return 1;
-      
-      pTYP->spec.pStruct = NULL;
-      return 0;
+              while( ! pTypedef->pDecl->pointer_flag
+                    && pTypedef->pType->tflags & T_TYPE )
+                pTypedef = (Typedef *) pTypedef->pType->ptr;
+
+              if( ! pTypedef->pDecl->pointer_flag
+                 && pTypedef->pType->tflags & (T_STRUCT|T_UNION) )
+                pStruct = (Struct *) pTypedef->pType->ptr;
+              else {
+                if( pTypedef->pDecl->pointer_flag )
+                  croak( "A pointer type does not have members" );
+                else if( pTypedef->pType->tflags & T_ENUM )
+                  croak( "An enum does not have members" );
+                else
+                  croak( "A basic type does not have members" );
+              }
+            }
+            break;
+
+          case TYP_STRUCT:
+            pStruct = (Struct *) ptr;
+            break;
+
+          case TYP_ENUM:
+            croak( "An enum does not have members" );
+            break;
+
+          default:
+            fatal("GetTypePointer returned an invalid type (%d) in "
+                  "GetMemberInfo( '%s' )", GET_CTYPE( ptr ), name);
+            break;
+        }
+
+        if( pStruct != NULL ) {
+          ErrorGTI err;
+
+          GetStructMember( pStruct, member+1, pMI );
+
+          err = GetTypeInfo( &THIS->cfg, &pMI->type, NULL,
+                             &pMI->size, NULL, NULL, &pMI->flags );
+
+          if( err != GTI_NO_ERROR ) {
+            CroakGTI( err, name, 0 );
+            return 0;
+          }
+
+          if( pMI->pDecl && pMI->pDecl->array ) {
+            Value   *pValue;
+            unsigned level = pMI->level;
+
+            LL_foreach( pValue, pMI->pDecl->array ) {
+              if( IS_UNSAFE_VAL( *pValue ) )
+                pMI->flags |= T_UNSAFE_VAL;
+              if( level > 0 )
+                level--;
+              else
+                pMI->size *= pValue->iv;
+            }
+          }
+
+          return 1;
+        }
+
+        return 0;
+      }
+      else {
+        croak( "Invalid character '%c' (0x%02X) in struct "
+               "member expression", *member, (int) *member );
+      }
     }
+    else {
+      pMI->flags = 0;
 
-    if( name[0] == 'u' &&
-        name[1] == 'n' &&
-        name[2] == 'i' &&
-        name[3] == 'o' &&
-        name[4] == 'n' &&
-        isSPACE( name[5] ) )
-    {
-      pTYP->type = TYP_STRUCT;
-      pTYP->spec.pStruct = HT_get( THIS->cpi.htStructs, c, 0, 0 );
+      switch( GET_CTYPE( ptr ) ) {
+        case TYP_TYPEDEF:
+          {
+            ErrorGTI err;
+            err = GetTypeInfo( &THIS->cfg, ((Typedef *) ptr)->pType,
+                               ((Typedef *) ptr)->pDecl, &pMI->size, NULL,
+                               NULL, &pMI->flags );
+            if( err != GTI_NO_ERROR )
+              CroakGTI( err, name, 0 );
+          }
+          pMI->type.tflags = T_TYPE;
+          break;
 
-      if( pTYP->spec.pStruct && (pTYP->spec.pStruct->tflags & T_UNION) )
-        return 1;
-      
-      pTYP->spec.pStruct = NULL;
-      return 0;
+        case TYP_STRUCT:
+          if( ((Struct *) ptr)->declarations == NULL )
+            CROAK_UNDEF_STRUCT( (Struct *) ptr );
+          pMI->size  = ((Struct *) ptr)->size;
+          pMI->flags = ((Struct *) ptr)->tflags & (T_HASBITFIELD | T_UNSAFE_VAL);
+          pMI->type.tflags = ((Struct *)ptr)->tflags;
+          break;
+
+        case TYP_ENUM:
+          pMI->size = THIS->cfg.enum_size ? THIS->cfg.enum_size
+                                          : ((EnumSpecifier *) ptr)->size;
+          pMI->type.tflags = T_ENUM;
+          break;
+
+        default:
+          fatal("GetTypePointer returned an invalid type (%d) in "
+                "GetMemberInfo( '%s' )", GET_CTYPE( ptr ), name);
+          break;
+      }
+
+      pMI->type.ptr = ptr;
+      pMI->pDecl    = NULL;
+      pMI->level    = 0;
+      pMI->offset   = 0;
     }
-
-    if( name[0] == 'e' &&
-        name[1] == 'n' &&
-        name[2] == 'u' &&
-        name[3] == 'm' &&
-        isSPACE( name[4] ) )
-    {
-      pTYP->type = TYP_ENUM;
-      pTYP->spec.pEnum = HT_get( THIS->cpi.htEnums, c, 0, 0 );
-      return pTYP->spec.pEnum != NULL;
-    }
-
-    return 0;
   }
 
-  pTYP->spec.pTypedef = HT_get( THIS->cpi.htTypedefs, name, 0, 0 );
-
-  if( pTYP->spec.pTypedef ) {
-    pTYP->type = TYP_TYPEDEF;
-    return 1;
-  }
-
-  pTYP->spec.pStruct = HT_get( THIS->cpi.htStructs, name, 0, 0 );
-
-  if( pTYP->spec.pStruct ) {
-    pTYP->type = TYP_STRUCT;
-    return 1;
-  }
-
-  pTYP->spec.pEnum = HT_get( THIS->cpi.htEnums, name, 0, 0 );
-
-  if( pTYP->spec.pEnum ) {
-    pTYP->type = TYP_ENUM;
-    return 1;
-  }
-
-  return 0;
+  return 1;
 }
 
 /*******************************************************************************
@@ -2408,17 +3379,17 @@ static int IsTypedefDefined( Typedef *pTypedef )
   if( pTypedef->pDecl->pointer_flag )
     return 1;
 
-  while( pTypedef->type.tflags & T_TYPE ) {
-    pTypedef = (Typedef *) pTypedef->type.ptr;
+  while( pTypedef->pType->tflags & T_TYPE ) {
+    pTypedef = (Typedef *) pTypedef->pType->ptr;
     if( pTypedef->pDecl->pointer_flag )
       return 1;
   }
 
-  if( pTypedef->type.tflags & (T_STRUCT|T_UNION) )
-    return ((Struct*)pTypedef->type.ptr)->declarations != NULL;
+  if( pTypedef->pType->tflags & (T_STRUCT|T_UNION) )
+    return ((Struct*)pTypedef->pType->ptr)->declarations != NULL;
 
-  if( pTypedef->type.tflags & T_ENUM )
-    return ((EnumSpecifier*)pTypedef->type.ptr)->enumerators != NULL;
+  if( pTypedef->pType->tflags & T_ENUM )
+    return ((EnumSpecifier*)pTypedef->pType->ptr)->enumerators != NULL;
 
   return 1;
 }
@@ -2601,8 +3572,8 @@ static int CheckIntegerOption( const IV *options, int count, SV *sv,
     SV *str = sv_2mortal( newSVpvn( "", 0 ) );
 
     for( n = 0; n < count; n++ )
-      sv_catpvf( str, "%d%s", *options++, n <  count-2 ? ", " :
-                                          n == count-2 ? " or " : "" );
+      sv_catpvf( str, "%d%s", (int) *options++, n <  count-2 ? ", " :
+                                                n == count-2 ? " or " : "" );
 
     croak( "%s must be %s, not %d", name, SvPV_nolen( str ), *value );
   }
@@ -2737,6 +3708,37 @@ static void HandleStringList( char *option, LinkedList list, SV *sv, SV **rval )
 
 /*******************************************************************************
 *
+*   ROUTINE: CloneStringList
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static LinkedList CloneStringList( LinkedList list )
+{
+  char *str;
+  LinkedList clone;
+
+  clone = LL_new();
+
+  LL_foreach( str, list )
+    LL_push( clone, string_new( str ) );
+
+  return clone;
+}
+
+
+/*******************************************************************************
+*
 *   ROUTINE: HandleOption
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
@@ -2763,22 +3765,16 @@ static const StringOption EnumTypeOption[] = {
   { ET_BOTH,    "Both"    }
 };
 
-static const StringOption HashSizeOption[] = {
-  { -2, "Tiny"   },
-  { -1, "Small"  },
-  {  0, "Normal" },
-  {  1, "Large"  },
-  {  2, "Huge"   }
-};
-
-static const IV PointerSizeOption[] = { 0, 1, 2, 4    };
-static const IV EnumSizeOption[]    = { 0, 1, 2, 4    };
-static const IV IntSizeOption[]     = { 0, 1, 2, 4    };
-static const IV ShortSizeOption[]   = { 0, 1, 2, 4    };
-static const IV LongSizeOption[]    = { 0, 1, 2, 4    };
-static const IV FloatSizeOption[]   = { 0, 1, 2, 4, 8 };
-static const IV DoubleSizeOption[]  = { 0, 1, 2, 4, 8 };
-static const IV AlignmentOption[]   = {    1, 2, 4, 8 };
+static const IV PointerSizeOption[]     = { 0, 1, 2, 4, 8     };
+static const IV EnumSizeOption[]        = { 0, 1, 2, 4        };
+static const IV IntSizeOption[]         = { 0, 1, 2, 4, 8     };
+static const IV ShortSizeOption[]       = { 0, 1, 2, 4, 8     };
+static const IV LongSizeOption[]        = { 0, 1, 2, 4, 8     };
+static const IV LongLongSizeOption[]    = { 0, 1, 2, 4, 8     };
+static const IV FloatSizeOption[]       = { 0, 1, 2, 4, 8, 12 };
+static const IV DoubleSizeOption[]      = { 0, 1, 2, 4, 8, 12 };
+static const IV LongDoubleSizeOption[]  = { 0, 1, 2, 4, 8, 12 };
+static const IV AlignmentOption[]       = {    1, 2, 4, 8     };
 
 #define START_OPTIONS                                                          \
           int changes = 0;                                                     \
@@ -2856,22 +3852,24 @@ static int HandleOption( CBC *THIS, SV *opt, SV *sv_val, SV **rval )
   STRLIST_OPTION( Define,  defines    )
   STRLIST_OPTION( Assert,  assertions )
 
-  IVAL_OPTION( PointerSize, ptr_size    )
-  IVAL_OPTION( EnumSize,    enum_size   )
-  IVAL_OPTION( IntSize,     int_size    )
-  IVAL_OPTION( ShortSize,   short_size  )
-  IVAL_OPTION( LongSize,    long_size   )
-  IVAL_OPTION( FloatSize,   float_size  )
-  IVAL_OPTION( DoubleSize,  double_size )
-  IVAL_OPTION( Alignment,   alignment   )
+  IVAL_OPTION( PointerSize,    ptr_size         )
+  IVAL_OPTION( EnumSize,       enum_size        )
+  IVAL_OPTION( IntSize,        int_size         )
+  IVAL_OPTION( ShortSize,      short_size       )
+  IVAL_OPTION( LongSize,       long_size        )
+  IVAL_OPTION( LongLongSize,   long_long_size   )
+  IVAL_OPTION( FloatSize,      float_size       )
+  IVAL_OPTION( DoubleSize,     double_size      )
+  IVAL_OPTION( LongDoubleSize, long_double_size )
+  IVAL_OPTION( Alignment,      alignment        )
 
   OPTION( ByteOrder ) {
     if( sv_val ) {
       const StringOption *pOpt = GET_STR_OPTION( ByteOrder, 0, sv_val );
-      UPDATE( byteOrder, pOpt->value );
+      UPDATE( as.bo, pOpt->value );
     }
     if( rval ) {
-      const StringOption *pOpt = GET_STR_OPTION( ByteOrder, THIS->byteOrder, NULL );
+      const StringOption *pOpt = GET_STR_OPTION( ByteOrder, THIS->as.bo, NULL );
       *rval = newSVpv( pOpt->string, 0 );
     }
   }
@@ -2883,25 +3881,6 @@ static int HandleOption( CBC *THIS, SV *opt, SV *sv_val, SV **rval )
     }
     if( rval ) {
       const StringOption *pOpt = GET_STR_OPTION( EnumType, THIS->enumType, NULL );
-      *rval = newSVpv( pOpt->string, 0 );
-    }
-  }
-
-  OPTION( HashSize ) {
-    if( sv_val ) {
-      const StringOption *pOpt = GET_STR_OPTION( HashSize, 0, sv_val );
-
-      if( THIS->cfg.htSizeEnums != DEFAULT_HT_SIZE_ENUMS + pOpt->value ) {
-        THIS->cfg.htSizeEnumerators = DEFAULT_HT_SIZE_ENUMERATORS + pOpt->value;
-        THIS->cfg.htSizeEnums       = DEFAULT_HT_SIZE_ENUMS       + pOpt->value;
-        THIS->cfg.htSizeStructs     = DEFAULT_HT_SIZE_STRUCTS     + pOpt->value;
-        THIS->cfg.htSizeTypedefs    = DEFAULT_HT_SIZE_TYPEDEFS    + pOpt->value;
-        changes = 1;
-      }
-    }
-    if( rval ) {
-      const StringOption *pOpt = GET_STR_OPTION( HashSize, THIS->cfg.htSizeEnums
-                                                 - DEFAULT_HT_SIZE_ENUMS, NULL );
       *rval = newSVpv( pOpt->string, 0 );
     }
   }
@@ -2971,18 +3950,19 @@ static SV *GetConfiguration( CBC *THIS )
   STRLIST_OPTION( Define,  defines    )
   STRLIST_OPTION( Assert,  assertions )
 
-  IVAL_OPTION( PointerSize, ptr_size    )
-  IVAL_OPTION( EnumSize,    enum_size   )
-  IVAL_OPTION( IntSize,     int_size    )
-  IVAL_OPTION( ShortSize,   short_size  )
-  IVAL_OPTION( LongSize,    long_size   )
-  IVAL_OPTION( FloatSize,   float_size  )
-  IVAL_OPTION( DoubleSize,  double_size )
-  IVAL_OPTION( Alignment,   alignment   )
+  IVAL_OPTION( PointerSize,    ptr_size         )
+  IVAL_OPTION( EnumSize,       enum_size        )
+  IVAL_OPTION( IntSize,        int_size         )
+  IVAL_OPTION( ShortSize,      short_size       )
+  IVAL_OPTION( LongSize,       long_size        )
+  IVAL_OPTION( LongLongSize,   long_long_size   )
+  IVAL_OPTION( FloatSize,      float_size       )
+  IVAL_OPTION( DoubleSize,     double_size      )
+  IVAL_OPTION( LongDoubleSize, long_double_size )
+  IVAL_OPTION( Alignment,      alignment        )
 
-  STRING_OPTION( ByteOrder, THIS->byteOrder )
-  STRING_OPTION( EnumType,  THIS->enumType  )
-  STRING_OPTION( HashSize,  THIS->cfg.htSizeEnums - DEFAULT_HT_SIZE_ENUMS );
+  STRING_OPTION( ByteOrder, THIS->as.bo    )
+  STRING_OPTION( EnumType,  THIS->enumType )
 
   return newRV_noinc( (SV *) hv );
 }
@@ -3066,13 +4046,11 @@ CBC::new( ... )
 		  RETVAL->cfg.int_size          = DEFAULT_INT_SIZE;
 		  RETVAL->cfg.short_size        = DEFAULT_SHORT_SIZE;
 		  RETVAL->cfg.long_size         = DEFAULT_LONG_SIZE;
+		  RETVAL->cfg.long_long_size    = DEFAULT_LONG_LONG_SIZE;
 		  RETVAL->cfg.float_size        = DEFAULT_FLOAT_SIZE;
 		  RETVAL->cfg.double_size       = DEFAULT_DOUBLE_SIZE;
+		  RETVAL->cfg.long_double_size  = DEFAULT_LONG_DOUBLE_SIZE;
 		  RETVAL->cfg.alignment         = DEFAULT_ALIGNMENT;
-		  RETVAL->cfg.htSizeEnumerators = DEFAULT_HT_SIZE_ENUMERATORS;
-		  RETVAL->cfg.htSizeEnums       = DEFAULT_HT_SIZE_ENUMS;
-		  RETVAL->cfg.htSizeStructs     = DEFAULT_HT_SIZE_STRUCTS;
-		  RETVAL->cfg.htSizeTypedefs    = DEFAULT_HT_SIZE_TYPEDEFS;
 		  RETVAL->cfg.flags             = HAS_VOID_KEYWORD
 #ifdef ANSIC99_EXTENSIONS
 	                                        | HAS_C99_KEYWORDS
@@ -3080,7 +4058,7 @@ CBC::new( ... )
 		                                | HAS_MACRO_VAARGS
 #endif
 		                                ;
-		  RETVAL->byteOrder             = DEFAULT_BYTEORDER;
+		  RETVAL->as.bo                 = DEFAULT_BYTEORDER;
 		  RETVAL->enumType              = DEFAULT_ENUMTYPE;
 
 		  InitParseInfo( &RETVAL->cpi );
@@ -3122,6 +4100,82 @@ CBC::DESTROY()
 
 ################################################################################
 #
+#   METHOD: clone
+#
+#   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+#   CHANGED BY:                                   ON:
+#
+################################################################################
+#
+# DESCRIPTION:
+#
+#   ARGUMENTS:
+#
+#     RETURNS:
+#
+################################################################################
+
+void
+CBC::clone()
+	PREINIT:
+		CBC  *clone;
+		char *class;
+
+	PPCODE:
+		CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::clone", DBG_CTXT_ARG) );
+
+		CHECK_VOID_CONTEXT( clone );
+
+		Newz( 0, clone, 1, CBC );
+		Copy( THIS, clone, 1, CBC );
+       
+       		clone->bufptr     = NULL;
+       		clone->buf.buffer = NULL;
+		clone->buf.length = 0;
+		clone->buf.pos    = 0;
+
+		clone->cfg.includes   = CloneStringList( THIS->cfg.includes );
+		clone->cfg.defines    = CloneStringList( THIS->cfg.defines );
+		clone->cfg.assertions = CloneStringList( THIS->cfg.assertions );
+
+		InitParseInfo( &clone->cpi );
+		CloneParseInfo( &clone->cpi, &THIS->cpi );
+
+		class = HvNAME( SvSTASH( SvRV( ST(0) ) ) );
+		ST(0) = sv_newmortal();
+		sv_setref_pv( ST(0), class, (void *) clone );
+
+		XSRETURN(1);
+
+################################################################################
+#
+#   METHOD: clean
+#
+#   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+#   CHANGED BY:                                   ON:
+#
+################################################################################
+#
+# DESCRIPTION:
+#
+#   ARGUMENTS:
+#
+#     RETURNS:
+#
+################################################################################
+
+void
+CBC::clean()
+	CODE:
+		CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::clean", DBG_CTXT_ARG) );
+
+		FreeParseInfo( &THIS->cpi );
+
+		if( GIMME_V != G_VOID )
+		  XSRETURN(1);
+
+################################################################################
+#
 #   METHOD: configure
 #
 #   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
@@ -3160,7 +4214,7 @@ CBC::configure( ... )
 		  if( changes )
 		    UpdateConfiguration( THIS );
 
-		  XSRETURN_EMPTY;
+		  XSRETURN(1);
 		}
 		else
 		  croak( "Invalid number of arguments to configure" );
@@ -3187,9 +4241,10 @@ CBC::configure( ... )
           SV *rval, *inval;                                                    \
                                                                                \
           CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::" #name, DBG_CTXT_ARG) );   \
-          hasRval = GIMME_V != G_VOID;                                         \
                                                                                \
-          if( !hasRval && items <= 1 ) {                                       \
+          hasRval = GIMME_V != G_VOID && items <= 1;                           \
+                                                                               \
+          if( GIMME_V == G_VOID && items <= 1 ) {                              \
             WARN_VOID_CONTEXT( name );                                         \
             XSRETURN_EMPTY;                                                    \
           }                                                                    \
@@ -3212,14 +4267,13 @@ CBC::configure( ... )
             inval = items == 2 ? ST(1) : NULL;                                 \
           }                                                                    \
                                                                                \
-          if( inval || hasRval )                                               \
+          if( inval != NULL || hasRval )                                       \
             HandleStringList( #name, THIS->cfg.config, inval,                  \
                                      hasRval ? &rval : NULL );                 \
                                                                                \
-          if( !hasRval )                                                       \
-            XSRETURN_EMPTY;                                                    \
+          if( hasRval )                                                        \
+            ST(0) = sv_2mortal( rval );                                        \
                                                                                \
-          XPUSHs( sv_2mortal( rval ) );                                        \
           XSRETURN( 1 );                                                       \
         }
 
@@ -3308,6 +4362,9 @@ CBC::parse( code )
 
 		UpdateParseInfo( &THIS->cpi, &THIS->cfg );
 
+		if( GIMME_V != G_VOID )
+		  XSRETURN(1);
+
 ################################################################################
 #
 #   METHOD: parse_file
@@ -3346,6 +4403,9 @@ CBC::parse_file( file )
 
 	        UpdateParseInfo( &THIS->cpi, &THIS->cfg );
 
+		if( GIMME_V != G_VOID )
+		  XSRETURN(1);
+
 ################################################################################
 #
 #   METHOD: def
@@ -3363,12 +4423,12 @@ CBC::parse_file( file )
 #
 ################################################################################
 
-int
+char *
 CBC::def( type )
 	char *type
 
 	PREINIT:
-		TypePointer tp;
+		void *ptr;
 
 	CODE:
 		CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::def( '%s' )", DBG_CTXT_ARG, type) );
@@ -3376,25 +4436,28 @@ CBC::def( type )
 		CHECK_PARSE_DATA( def );
 		CHECK_VOID_CONTEXT( def );
 
-		if( GetTypePointer( THIS, type, &tp ) == 0 )
+		if( (ptr = GetTypePointer( THIS, type, NULL )) == NULL )
 		  XSRETURN_UNDEF;
 
-		switch( tp.type ) {
+		switch( GET_CTYPE( ptr ) ) {
 		  case TYP_TYPEDEF:
-		    RETVAL = IsTypedefDefined( tp.spec.pTypedef ) ? 1 : 0;
+		    RETVAL = IsTypedefDefined( (Typedef *) ptr ) ? "typedef" : "";
 		    break;
 
 		  case TYP_STRUCT:
-		    RETVAL = tp.spec.pStruct->declarations ? 1 : 0;
+		    if( ((Struct *) ptr)->declarations )
+		      RETVAL = ((Struct *) ptr)->tflags & T_STRUCT ? "struct" : "union";
+		    else
+		      RETVAL = "";
 		    break;
 
 		  case TYP_ENUM:
-		    RETVAL = tp.spec.pEnum->enumerators ? 1 : 0;
+		    RETVAL = ((EnumSpecifier *) ptr)->enumerators ? "enum" : "";
 		    break;
 
 		  default:
 		    fatal("GetTypePointer returned an invalid type (%d) in "
-                          XSCLASS "::def( '%s' )", tp.type, type);
+                          XSCLASS "::def( '%s' )", GET_CTYPE( ptr ), type);
 		    break;
 		}
 
@@ -3425,10 +4488,8 @@ CBC::pack( type, data, string = NULL )
 	SV *string
 
 	PREINIT:
-		unsigned size;
 		char *buffer;
-		TypePointer tp;
-		u_32 flags = 0;
+		MemberInfo mi;
 
 	CODE:
 		CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::pack( '%s' )",
@@ -3444,52 +4505,26 @@ CBC::pack( type, data, string = NULL )
 		if( string != NULL && ! SvPOK( string ) )
 		  croak( "Type of arg 3 to pack must be string" );
 
-		if( GetTypePointer( THIS, type, &tp ) == 0 )
+		if( !GetMemberInfo( THIS, type, &mi ) )
 		  croak( "Cannot find '%s'", type );
 
-		switch( tp.type ) {
-		  case TYP_TYPEDEF:
-		    {
-		      ErrorGTI err;
-		      err = GetTypeInfo( &THIS->cfg, &tp.spec.pTypedef->type,
-                                         tp.spec.pTypedef->pDecl, &size, NULL,
-		                         NULL, &flags );
-		      if( err != GTI_NO_ERROR )
-		        CroakGTI( err, type, 0 );
-		    }
-		    break;
-		  case TYP_STRUCT:
-		    if( tp.spec.pStruct->declarations == NULL )
-		      CROAK_UNDEF_STRUCT( tp.spec.pStruct );
-		    size = tp.spec.pStruct->size;
-		    flags = tp.spec.pStruct->tflags & (T_HASBITFIELD | T_UNSAFE_VAL);
-		    break;
-		  case TYP_ENUM:
-		    size = THIS->cfg.enum_size ? THIS->cfg.enum_size : tp.spec.pEnum->size;
-		    break;
-		  default:
-		    fatal("GetTypePointer returned an invalid type (%d) in "
-                          XSCLASS "::pack( '%s' ), line", tp.type, type, __LINE__);
-		    break;
-		}
-
-		if( flags )
-		  WARN_FLAGS( pack, type, flags );
+		if( mi.flags )
+		  WARN_FLAGS( pack, type, mi.flags );
 
 		if( string == NULL ) {
-		  RETVAL = newSV( size );
+		  RETVAL = newSV( mi.size );
 		  SvPOK_only( RETVAL );
-		  SvCUR_set( RETVAL, size );
+		  SvCUR_set( RETVAL, mi.size );
 		  buffer = SvPVX( RETVAL );
-		  Zero( buffer, size, char );
+		  Zero( buffer, mi.size, char );
 		}
 		else {
 		  STRLEN len = SvCUR( string );
-		  STRLEN max = size > len ? size : len;
+		  STRLEN max = mi.size > len ? mi.size : len;
 
 		  if( GIMME_V == G_VOID ) {
 		    RETVAL = &PL_sv_undef;
-		    buffer = SvGROW( string, size+1 );
+		    buffer = SvGROW( string, mi.size+1 );
 		    SvCUR_set( string, max );
 		  }
                   else {
@@ -3500,31 +4535,17 @@ CBC::pack( type, data, string = NULL )
 		    Copy( SvPVX(string), buffer, len, char );
 		  }
 
-		  if( size > len )
-		    Zero( buffer+len, size-len, char );
+		  if( mi.size > len )
+		    Zero( buffer+len, mi.size-len, char );
 		}
 
 		THIS->bufptr     =
 		THIS->buf.buffer = buffer;
-		THIS->buf.length = size;
+		THIS->buf.length = mi.size;
 		THIS->buf.pos    = 0;
 		THIS->alignment  = THIS->cfg.alignment;
 
-		switch( tp.type ) {
-		  case TYP_TYPEDEF:
-		    SetTypedef( THIS, tp.spec.pTypedef, data, type );
-		    break;
-		  case TYP_STRUCT:
-		    SetStruct( THIS, tp.spec.pStruct, data );
-		    break;
-		  case TYP_ENUM:
-		    SetEnum( THIS, tp.spec.pEnum, data );
-		    break;
-		  default:
-		    fatal("GetTypePointer returned an invalid type (%d) in "
-                          XSCLASS "::pack( '%s' ), line %d", tp.type, type, __LINE__);
-		    break;
-		}
+		SetType( THIS, &mi.type, mi.pDecl, mi.level, data, type );
 
 	OUTPUT:
 		RETVAL
@@ -3553,8 +4574,7 @@ CBC::unpack( type, string )
 
 	PREINIT:
 		STRLEN len;
-		TypePointer tp;
-		u_32 flags = 0;
+		MemberInfo mi;
 
 	CODE:
 		CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::unpack( '%s' )",
@@ -3566,35 +4586,11 @@ CBC::unpack( type, string )
 		if( !SvPOK( string ) )
 		  croak( "Type of arg 2 to unpack must be string" );
 
-		if( GetTypePointer( THIS, type, &tp ) == 0 )
+		if( !GetMemberInfo( THIS, type, &mi ) )
 		  croak( "Cannot find '%s'", type );
 
-		switch( tp.type ) {
-		  case TYP_TYPEDEF:
-		    {
-		      ErrorGTI err;
-		      err = GetTypeInfo( &THIS->cfg, &tp.spec.pTypedef->type,
-                                         tp.spec.pTypedef->pDecl, NULL, NULL,
-		                         NULL, &flags );
-		      if( err != GTI_NO_ERROR )
-		        CroakGTI( err, type, 0 );
-		    }
-		    break;
-		  case TYP_STRUCT:
-		    if( tp.spec.pStruct->declarations == NULL )
-		      CROAK_UNDEF_STRUCT( tp.spec.pStruct );
-		    flags = tp.spec.pStruct->tflags & (T_HASBITFIELD | T_UNSAFE_VAL);
-		    break;
-		  case TYP_ENUM:
-		    break;
-		  default:
-		    fatal("GetTypePointer returned an invalid type (%d) in "
-                          XSCLASS "::pack( '%s' ), line", tp.type, type, __LINE__);
-		    break;
-		}
-
-		if( flags )
-		  WARN_FLAGS( unpack, type, flags );
+		if( mi.flags )
+		  WARN_FLAGS( unpack, type, mi.flags );
 
                 THIS->bufptr     =
 		THIS->buf.buffer = SvPV( string, len );
@@ -3605,21 +4601,7 @@ CBC::unpack( type, string )
 
 		THIS->dataTooShortFlag = 0;
 
-		switch( tp.type ) {
-		  case TYP_TYPEDEF:
-		    RETVAL = GetTypedef( THIS, tp.spec.pTypedef );
-		    break;
-		  case TYP_STRUCT:
-		    RETVAL = GetStruct( THIS, tp.spec.pStruct );
-		    break;
-		  case TYP_ENUM:
-		    RETVAL = GetEnum( THIS, tp.spec.pEnum );
-		    break;
-		  default:
-		    fatal("GetTypePointer returned an invalid type (%d) in "
-                          XSCLASS "::unpack( '%s' )", tp.type, type);
-		    break;
-		}
+		RETVAL = GetType( THIS, &mi.type, mi.pDecl, mi.level );
 
 		if( THIS->dataTooShortFlag )
 		  WARN(( "Data too short" ));
@@ -3649,9 +4631,7 @@ CBC::sizeof( type )
 	char *type
 
 	PREINIT:
-		unsigned size = 0;
-		TypePointer tp;
-		u_32 flags = 0;
+		MemberInfo mi;
 
 	CODE:
 		CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::sizeof( '%s' )",
@@ -3660,39 +4640,16 @@ CBC::sizeof( type )
 		CHECK_PARSE_DATA( sizeof );
 		CHECK_VOID_CONTEXT( sizeof );
 
-		if( GetTypePointer( THIS, type, &tp ) == 0 )
+		if( !GetMemberInfo( THIS, type, &mi ) )
 		  croak( "Cannot find '%s'", type );
 
-		switch( tp.type ) {
-		  case TYP_TYPEDEF:
-		    {
-		      ErrorGTI err;
-		      err = GetTypeInfo( &THIS->cfg, &tp.spec.pTypedef->type,
-                                         tp.spec.pTypedef->pDecl, &size, NULL,
-		                         NULL, &flags );
-		      if( err != GTI_NO_ERROR )
-		        CroakGTI( err, type, 0 );
-		    }
-		    break;
-		  case TYP_STRUCT:
-		    if( tp.spec.pStruct->declarations == NULL )
-		      CROAK_UNDEF_STRUCT( tp.spec.pStruct );
-		    size = tp.spec.pStruct->size;
-		    flags = tp.spec.pStruct->tflags & (T_HASBITFIELD | T_UNSAFE_VAL);
-		    break;
-		  case TYP_ENUM:
-		    size = THIS->cfg.enum_size ? THIS->cfg.enum_size : tp.spec.pEnum->size;
-		    break;
-		  default:
-		    fatal("GetTypePointer returned an invalid type (%d) in "
-                          XSCLASS "::sizeof( '%s' )", tp.type, type);
-		    break;
-		}
-
-		if( flags )
-		  WARN_FLAGS( sizeof, type, flags );
-
-		RETVAL = newSVuv( size );
+		if( mi.flags )
+		  WARN_FLAGS( sizeof, type, mi.flags );
+#ifdef newSVuv
+		RETVAL = newSVuv( mi.size );
+#else
+		RETVAL = newSViv( (IV) mi.size );
+#endif
 
 	OUTPUT:
 		RETVAL
@@ -3720,8 +4677,8 @@ CBC::offsetof( type, member )
 	char *member
 
 	PREINIT:
-		TypePointer tp;
 		Struct *pStruct = NULL;
+		MemberInfo mi;
 
 	CODE:
 		CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::offsetof( '%s', '%s' )",
@@ -3730,16 +4687,29 @@ CBC::offsetof( type, member )
 		CHECK_PARSE_DATA( offsetof );
 		CHECK_VOID_CONTEXT( offsetof );
 
-		if( GetTypePointer( THIS, type, &tp ) == 0 )
+		if( !GetMemberInfo( THIS, type, &mi ) )
 		  croak( "Cannot find '%s'", type );
 
-		switch( tp.type ) {
+		if( mi.pDecl != NULL ) {
+		  if( mi.pDecl->pointer_flag )
+		    croak( "Cannot use offsetof on a pointer type" );
+
+		  if(   mi.pDecl->array
+                     && ((int) mi.level) < LL_count( mi.pDecl->array ) )
+		    croak( "Cannot use offsetof on an array type" );
+		}
+
+		if( mi.type.ptr == NULL )
+		  fatal("GetMemberInfo returned NULL type pointer in "
+                        XSCLASS "::offsetof( '%s', '%s' )", type, member);
+
+		switch( GET_CTYPE( mi.type.ptr ) ) {
 		  case TYP_TYPEDEF:
 		    {
-		      Typedef *pTypedef = tp.spec.pTypedef;
+		      Typedef *pTypedef = (Typedef *) mi.type.ptr;
 		      ErrorGTI err;
 
-		      err = GetTypeInfo( &THIS->cfg, &pTypedef->type,
+		      err = GetTypeInfo( &THIS->cfg, pTypedef->pType,
                                          pTypedef->pDecl, NULL, NULL,
 		                         NULL, NULL );
 
@@ -3747,16 +4717,16 @@ CBC::offsetof( type, member )
 		        CroakGTI( err, type, 0 );
 
 		      while( ! pTypedef->pDecl->pointer_flag
-		            && pTypedef->type.tflags & T_TYPE )
-		        pTypedef = (Typedef *) pTypedef->type.ptr;
+		            && pTypedef->pType->tflags & T_TYPE )
+		        pTypedef = (Typedef *) pTypedef->pType->ptr;
 
 		      if( ! pTypedef->pDecl->pointer_flag
-		         && pTypedef->type.tflags & (T_STRUCT|T_UNION) )
-		        pStruct = (Struct *) pTypedef->type.ptr;
+		         && pTypedef->pType->tflags & (T_STRUCT|T_UNION) )
+		        pStruct = (Struct *) pTypedef->pType->ptr;
 		      else {
 		        if( pTypedef->pDecl->pointer_flag )
 		          croak( "Cannot use offsetof on a pointer type" );
-		        else if( pTypedef->type.tflags & T_ENUM )
+		        else if( pTypedef->pType->tflags & T_ENUM )
 		          croak( "Cannot use offsetof on an enum" );
 		        else
 		          croak( "Cannot use offsetof on a basic type" );
@@ -3765,7 +4735,7 @@ CBC::offsetof( type, member )
 		    break;
 
 		  case TYP_STRUCT:
-		    pStruct = tp.spec.pStruct;
+		    pStruct = (Struct *) mi.type.ptr;
 		    break;
 
 		  case TYP_ENUM:
@@ -3773,8 +4743,9 @@ CBC::offsetof( type, member )
 		    break;
 
 		  default:
-		    fatal("GetTypePointer returned an invalid type (%d) in "
-                          XSCLASS "::offsetof( '%s', '%s' )", tp.type, type, member);
+		    fatal("GetMemberInfo returned an invalid type (%d) in "
+                          XSCLASS "::offsetof( '%s', '%s' )",
+                          GET_CTYPE( mi.type.ptr ), type, member);
 		    break;
 		}
 
@@ -3784,7 +4755,12 @@ CBC::offsetof( type, member )
 		if( pStruct->declarations == NULL )
 		  CROAK_UNDEF_STRUCT( pStruct );
 
-		RETVAL = GetOffsetOf( pStruct, member );
+		GetStructMember( pStruct, member, &mi );
+#ifdef newSVuv
+		RETVAL = newSVuv( mi.offset );
+#else
+		RETVAL = newSViv( (IV) mi.offset );
+#endif
 
 	OUTPUT:
 		RETVAL
@@ -3806,32 +4782,46 @@ CBC::offsetof( type, member )
 #
 ################################################################################
 
-SV *
+void
 CBC::member( type, offset )
 	char *type
 	int offset
 
 	PREINIT:
-		TypePointer tp;
 		Struct *pStruct = NULL;
+		MemberInfo mi;
+		SV *member;
 
-	CODE:
+	PPCODE:
 		CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::member( '%s', %d )",
 		                 DBG_CTXT_ARG, type, offset) );
 
 		CHECK_PARSE_DATA( member );
 		CHECK_VOID_CONTEXT( member );
 
-		if( GetTypePointer( THIS, type, &tp ) == 0 )
+		if( !GetMemberInfo( THIS, type, &mi ) )
 		  croak( "Cannot find '%s'", type );
 
-		switch( tp.type ) {
+		if( mi.pDecl != NULL ) {
+		  if( mi.pDecl->pointer_flag )
+		    croak( "Cannot use member on a pointer type" );
+
+		  if(   mi.pDecl->array
+                     && ((int) mi.level) < LL_count( mi.pDecl->array ) )
+		    croak( "Cannot use member on an array type" );
+		}
+
+		if( mi.type.ptr == NULL )
+		  fatal("GetMemberInfo returned NULL type pointer in "
+                        XSCLASS "::member( '%s', '%d' )", type, offset);
+
+		switch( GET_CTYPE( mi.type.ptr ) ) {
 		  case TYP_TYPEDEF:
 		    {
-		      Typedef *pTypedef = tp.spec.pTypedef;
+		      Typedef *pTypedef = (Typedef *) mi.type.ptr;
 		      ErrorGTI err;
 
-		      err = GetTypeInfo( &THIS->cfg, &pTypedef->type,
+		      err = GetTypeInfo( &THIS->cfg, pTypedef->pType,
                                          pTypedef->pDecl, NULL, NULL,
 		                         NULL, NULL );
 
@@ -3839,16 +4829,16 @@ CBC::member( type, offset )
 		        CroakGTI( err, type, 0 );
 
 		      while( ! pTypedef->pDecl->pointer_flag
-		            && pTypedef->type.tflags & T_TYPE )
-		        pTypedef = (Typedef *) pTypedef->type.ptr;
+		            && pTypedef->pType->tflags & T_TYPE )
+		        pTypedef = (Typedef *) pTypedef->pType->ptr;
 		      
 		      if( ! pTypedef->pDecl->pointer_flag
-		         && pTypedef->type.tflags & (T_STRUCT|T_UNION) )
-		        pStruct = (Struct *) pTypedef->type.ptr;
+		         && pTypedef->pType->tflags & (T_STRUCT|T_UNION) )
+		        pStruct = (Struct *) pTypedef->pType->ptr;
 		      else {
 		        if( pTypedef->pDecl->pointer_flag )
 		          croak( "Cannot use member on a pointer type" );
-		        else if( pTypedef->type.tflags & T_ENUM )
+		        else if( pTypedef->pType->tflags & T_ENUM )
 		          croak( "Cannot use member on an enum" );
 		        else
 		          croak( "Cannot use member on a basic type" );
@@ -3857,7 +4847,7 @@ CBC::member( type, offset )
 		    break;
 
 		  case TYP_STRUCT:
-		    pStruct = tp.spec.pStruct;
+		    pStruct = (Struct *) mi.type.ptr;
 		    break;
 
 		  case TYP_ENUM:
@@ -3865,8 +4855,9 @@ CBC::member( type, offset )
 		    break;
 
 		  default:
-		    fatal("GetTypePointer returned an invalid type (%d) in "
-                          XSCLASS "::member( '%s', '%d' )", tp.type, type, offset);
+		    fatal("GetMemberInfo returned an invalid type (%d) in "
+                          XSCLASS "::member( '%s', '%d' )",
+                          GET_CTYPE( mi.type.ptr ), type, offset);
 		    break;
 		}
 
@@ -3880,11 +4871,20 @@ CBC::member( type, offset )
 		  croak( "Offset %d out of range (0 <= offset < %d)",
                          offset, pStruct->size );
 
-		RETVAL = newSVpv( "", 0 );
-		GetStructMember( pStruct, offset, RETVAL, 0 );
+		member = newSVpv( "", 0 );
 
-	OUTPUT:
-		RETVAL
+		if( GIMME_V == G_ARRAY ) {
+		  SV *type;
+		  GetStructMemberString( pStruct, offset, member, 0, &type );
+		  PUSHs( member );
+		  PUSHs( type );
+		  XSRETURN( 2 );
+		}
+		else {
+		  GetStructMemberString( pStruct, offset, member, 0, NULL );
+		  PUSHs( member );
+		  XSRETURN( 1 );
+		}
 
 ################################################################################
 #
@@ -3963,7 +4963,7 @@ CBC::enum( ... )
 		context = GIMME_V;
 
 		if( context == G_SCALAR && items != 2 )
-		  XSRETURN_IV( items > 1 ? items-1 : LL_size( THIS->cpi.enums ) );
+		  XSRETURN_IV( items > 1 ? items-1 : LL_count( THIS->cpi.enums ) );
 
 		if( items > 1 ) {
 		  int i;
@@ -3984,7 +4984,7 @@ CBC::enum( ... )
 		  XSRETURN( items-1 );
 		}
 		else {
-		  int size = LL_size( THIS->cpi.enums );
+		  int size = LL_count( THIS->cpi.enums );
 
 		  if( size <= 0 )
 		    XSRETURN_EMPTY;
@@ -4105,7 +5105,7 @@ CBC::union_names()
             if( items > 1 )                                                    \
               XSRETURN_IV( items-1 );                                          \
             else if( mask == 0 )                                               \
-              XSRETURN_IV( LL_size( THIS->cpi.structs ) );                     \
+              XSRETURN_IV( LL_count( THIS->cpi.structs ) );                    \
             else {                                                             \
               int count = 0;                                                   \
                                                                                \
@@ -4195,9 +5195,10 @@ CBC::union( ... )
 void
 CBC::typedef_names()
 	PREINIT:
-		Typedef *pTypedef;
-		int count = 0;
-		U32 context;
+		TypedefList *pTDL;
+		Typedef     *pTypedef;
+		int          count = 0;
+		U32          context;
 
 	PPCODE:
 		CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::typedef_names", DBG_CTXT_ARG) );
@@ -4207,12 +5208,13 @@ CBC::typedef_names()
 
 		context = GIMME_V;
 
-		LL_foreach( pTypedef, THIS->cpi.typedefs )
-		  if( IsTypedefDefined( pTypedef ) ) {
-		    if( context == G_ARRAY )
-		      XPUSHs( sv_2mortal( newSVpv( pTypedef->pDecl->identifier, 0 ) ) );
-		    ++count;
-		  }
+		LL_foreach( pTDL, THIS->cpi.typedef_lists )
+		  LL_foreach( pTypedef, pTDL->typedefs )
+		    if( IsTypedefDefined( pTypedef ) ) {
+		      if( context == G_ARRAY )
+		        XPUSHs( sv_2mortal( newSVpv( pTypedef->pDecl->identifier, 0 ) ) );
+		      ++count;
+		    }
 
 		if( context == G_ARRAY )
 		  XSRETURN( count );
@@ -4240,7 +5242,7 @@ void
 CBC::typedef( ... )
 	PREINIT:
 		Typedef *pTypedef;
-		U32 context;
+		U32      context;
 
 	PPCODE:
 		CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::typedef", DBG_CTXT_ARG) );
@@ -4251,7 +5253,7 @@ CBC::typedef( ... )
 		context = GIMME_V;
 
 		if( context == G_SCALAR && items != 2 )
-		  XSRETURN_IV( items > 1 ? items-1 : LL_size( THIS->cpi.typedefs ) );
+		  XSRETURN_IV( items > 1 ? items-1 : HT_count( THIS->cpi.htTypedefs ) );
 
 		if( items > 1 ) {
 		  int i;
@@ -4272,21 +5274,115 @@ CBC::typedef( ... )
 		  XSRETURN( items-1 );
 		}
 		else {
-		  int size = LL_size( THIS->cpi.typedefs );
+		  TypedefList *pTDL;
+		  int size = HT_count( THIS->cpi.htTypedefs );
 
 		  if( size <= 0 )
 		    XSRETURN_EMPTY;
 
 		  EXTEND( SP, size );
 
-		  LL_foreach( pTypedef, THIS->cpi.typedefs )
-		    PUSHs( sv_2mortal( GetTypedefSpec( pTypedef ) ) );
+		  LL_foreach( pTDL, THIS->cpi.typedef_lists )
+		    LL_foreach( pTypedef, pTDL->typedefs )
+		      PUSHs( sv_2mortal( GetTypedefSpec( pTypedef ) ) );
 
 		  XSRETURN( size );
 		}
 
 ################################################################################
+#
+#   METHOD: sourcify
+#
+#   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
+#   CHANGED BY:                                   ON:
+#
+################################################################################
+#
+# DESCRIPTION:
+#
+#   ARGUMENTS:
+#
+#     RETURNS:
+#
+################################################################################
 
+SV *
+CBC::sourcify()
+	CODE:
+		CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::sourcify", DBG_CTXT_ARG) );
+
+		CHECK_PARSE_DATA( sourcify );
+		CHECK_VOID_CONTEXT( sourcify );
+
+		WARN(( XSCLASS "::sourcify is still experimental" ));
+
+		RETVAL = GetParsedDefinitionsString( &THIS->cpi );
+
+	OUTPUT:
+		RETVAL
+
+
+################################################################################
+#
+#   METHOD: dependencies
+#
+#   WRITTEN BY: Marcus Holland-Moritz             ON: Sep 2002
+#   CHANGED BY:                                   ON:
+#
+################################################################################
+#
+# DESCRIPTION:
+#
+#   ARGUMENTS:
+#
+#     RETURNS:
+#
+################################################################################
+
+SV *
+CBC::dependencies()
+	PREINIT:
+		int       len;
+		char     *pKey;
+		FileInfo *pFI;
+		HV       *hv;
+
+	CODE:
+		CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::dependencies", DBG_CTXT_ARG) );
+
+		CHECK_PARSE_DATA( dependencies );
+		CHECK_VOID_CONTEXT( dependencies );
+
+		hv = newHV();
+
+		HT_reset( THIS->cpi.htFiles );
+
+		while( HT_next( THIS->cpi.htFiles, &pKey, &len, (void **) &pFI ) ) {
+		  SV *attr = &PL_sv_undef;
+
+		  if( pFI ) {
+		    HV *hattr = newHV();
+#ifdef newSVuv
+		    HV_STORE_CONST( hattr, "size",  newSVuv( pFI->size ) );
+#else
+		    HV_STORE_CONST( hattr, "size",  newSViv( (IV) pFI->size ) );
+#endif
+		    HV_STORE_CONST( hattr, "mtime", newSViv( pFI->modify_time ) );
+		    HV_STORE_CONST( hattr, "ctime", newSViv( pFI->change_time ) );
+
+		    attr = newRV_noinc( (SV *) hattr );
+		  }
+
+		  hv_store( hv, pKey, len, attr, 0 );
+		}
+
+		RETVAL = newRV_noinc( (SV *) hv );
+
+	OUTPUT:
+		RETVAL
+
+################################################################################
+#
 #   FUNCTION: import
 #
 #   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2002
@@ -4313,9 +5409,7 @@ import( ... )
 	CODE:
 		wflags = 0;
 
-		if( strNE( SvPV_nolen( ST(0) ), XSCLASS ) )
-		  croak( "The first argument to import must be the module name" );
-		else if( items % 2 == 0 )
+		if( items % 2 == 0 )
 		  croak( "You must pass an even number of module arguments" );
 		else {
 		  for( i = 1; i < items; i += 2 ) {
@@ -4409,6 +5503,8 @@ feature( feat )
 #
 ################################################################################
 
+#ifdef CTYPE_DEBUGGING
+
 SV *
 __DUMP__( val )
 	SV *val
@@ -4419,6 +5515,8 @@ __DUMP__( val )
 
 	OUTPUT:
 		RETVAL
+
+#endif
 
 
 ################################################################################

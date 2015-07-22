@@ -2,13 +2,38 @@
 What's to do?
 =============
 
-for future releases:
---------------------
+for 0.05:
+---------
 
-* add caching option
+* support flexible array members
 
-  - only parse if any of the parsed files are modified
-  - requires, of course, some sort of serializing
+
+for future releases (in no special order):
+------------------------------------------
+
+* add pragma tests
+
+* hash option names (instead of doing strcmp's all the time) (?)
+
+* perhaps bless (tie) long double SV's and store binary data (?)
+
+* sourcify only specific types (pass in a list of types) (?)
+
+* support for unsigned and 64-bit integer arithmetics
+
+* only use global type definitions / filter local definitions
+
+* implement cast operators
+
+* support constant address arithmetics
+
+  - this is mainly needed for the offsetof C macro and
+    similar stuff, eg
+
+      enum { OFFSET = offsetof( struct foo, bar ) };
+
+    doesn't work yet. But I guess such construct is rarely
+    used.
 
 * add an object representing a single type
 
@@ -32,20 +57,6 @@ for future releases:
 * make the preprocessor re-entrant
 
   - not high priority, since the locking is working fine, too
-
-* support for unsigned and 64-bit integers
-
-* implement cast operators
-
-* support constant address arithmetics
-
-  - this is mainly needed for the offsetof C macro and
-    similar stuff, eg
-
-      enum { OFFSET = offsetof( struct foo, bar ) };
-
-    doesn't work yet. But I guess such construct is rarely
-    used.
 
 * perhaps add bitfield support
 

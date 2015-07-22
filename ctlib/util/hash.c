@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/05/22 16:39:00 +0100 $
-* $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.03 $
+* $Date: 2002/11/27 10:59:55 +0000 $
+* $Revision: 11 $
+* $Snapshot: /Convert-Binary-C/0.04 $
 * $Source: /ctlib/util/hash.c $
 *
 ********************************************************************************
@@ -52,9 +52,10 @@ typedef struct {
 struct _HashTable {
   int               count;
   int               size;
+  unsigned long     flags;
   unsigned long     bmask;
   IterState         i;
-  HashNode          root[1];
+  HashNode         *root;
 };
 
 #ifdef DEBUG_HASH
@@ -74,9 +75,8 @@ static unsigned long gs_dbflags       = 0;
 
 #endif /* DEBUG_HASH */
 
-/* size of fixed part of hash table / hash node */
+/* size of fixed part of hash node */
 #define HN_SIZE_FIX offsetof( struct _HashNode, key )
-#define HT_SIZE_FIX offsetof( struct _HashTable, root )
 
 /* compare hash values / compute a minimum of two values */
 #define CMPHASH( a, b ) ((a) == (b) ? 0 : ((a) < (b) ? -1 : 1))
@@ -94,6 +94,30 @@ static unsigned long gs_dbflags       = 0;
 #define TERMINATOR_LENGTH 1
 #endif
 
+#define AUTOSIZE_DYADES    3
+#define AUTOGROW_DYADES    AUTOSIZE_DYADES
+#define AUTOSHRINK_DYADES  AUTOSIZE_DYADES
+
+/* macro for automatically growing the hash table */
+#define CHECK_AUTOGROW( table )                                        \
+        do {                                                           \
+          if( table->flags & HT_AUTOGROW )                             \
+            if( table->size < MAX_HASH_TABLE_SIZE &&                   \
+                table->count >> (table->size+AUTOGROW_DYADES) > 0 )    \
+              ht_grow( table, table->size+1 );                         \
+        } while(0)
+
+#define CHECK_AUTOSHRINK( table )                                      \
+        do {                                                           \
+          if( table->flags & HT_AUTOSHRINK )                           \
+            if( table->size > 1 &&                                     \
+                table->count >> (table->size-AUTOSHRINK_DYADES) == 0 ) \
+              ht_shrink( table, table->size-1 );                       \
+        } while(0)
+
+/* static function prototypes */
+static void ht_grow( HashTable table, int size );
+static void ht_shrink( HashTable table, int size );
 
 /************************************************************
 *
@@ -121,10 +145,38 @@ static unsigned long gs_dbflags       = 0;
  *
  *  \return A handle to the newly created hash table.
  *
- *  \see HT_delete() and HT_destroy()
+ *  \see HT_new_ex(), HT_delete() and HT_destroy()
  */
 
 HashTable HT_new( int size )
+{
+  return HT_new_ex( size, 0 );
+}
+
+/**
+ *  Extended Constructor
+ *
+ *  Using the HT_new_ex() function you create an empty hash
+ *  table and set its flags.
+ *
+ *  \param size		Hash table base size.
+ *
+ *  \param flags	Hash table flags. Currently you can
+ *                      use these flags only to specify the
+ *                      hash tables autosize behaviour. Use
+ *                      HT_AUTOGROW if you want the hash table
+ *                      to grow automatically, HT_AUTOSHRINK
+ *                      if you want the hash table to shrink
+ *                      automatically. If you want both, just
+ *                      do a binary OR combination of the
+ *                      flags or use HT_AUTOSIZE.
+ *
+ *  \return A handle to the newly created hash table.
+ *
+ *  \see HT_new()
+ */
+
+HashTable HT_new_ex( int size, unsigned long flags )
 {
   HashTable table;
   HashNode *pNode;
@@ -135,17 +187,22 @@ HashTable HT_new( int size )
   assert( size > 0 );
   assert( size <= MAX_HASH_TABLE_SIZE );
 
+  if( size <= 0 || size > MAX_HASH_TABLE_SIZE )
+    return NULL;
+
   buckets = 1<<size;
 
-  table = Alloc( HT_SIZE_FIX + buckets * sizeof( HashNode ) );
+  table = Alloc( sizeof( struct _HashTable ) );
 
+  table->root  = Alloc( buckets * sizeof( HashNode ) );
   table->count = 0;
   table->size  = size;
   table->bmask = (unsigned long) (buckets-1);
-  pNode        = &table->root[0];
+  table->flags = flags;
 
   DEBUG( MAIN, ("created new hash table @ 0x%08X with %d buckets\n", table, buckets) );
 
+  pNode = &table->root[0];
   while( buckets-- )
     *pNode++ = NULL;
 
@@ -155,7 +212,7 @@ HashTable HT_new( int size )
 /**
  *  Destructor
  *
- *  LL_delete() will free the resources occupied by a
+ *  HT_delete() will free the resources occupied by a
  *  hash table. The function will fail silently if the
  *  associated hash table is not empty.
  *  You can also delete a hash table that is not empty by
@@ -174,11 +231,70 @@ void HT_delete( HashTable table )
     return;
 
   AssertValidPtr( table );
+  AssertValidPtr( table->root );
+
   assert( table->count == 0 );
 
+  Free( table->root );
   Free( table );
 
   DEBUG( MAIN, ("deleted hash table @ 0x%08X\n", table) );
+}
+
+/**
+ *  Remove all entries from a hash table
+ *
+ *  HT_flush() will remove all entries from a hash table,
+ *  optionally calling a destructor function for each object
+ *  stored in it. It will not free the resources occupied
+ *  by the hash table itself, so the hash table handle will
+ *  still be valid.
+ *
+ *  \param table	Handle to an existing hash table.
+ *
+ *  \param destroy	Pointer to the destructor function
+ *			of the objects contained in the hash
+ *                      table.
+ *                      You can pass NULL if you don't want
+ *                      HT_destroy() to call object destructors.
+ *
+ *  \see HT_destroy()
+ */
+
+void HT_flush( HashTable table, HTDestroyFunc destroy )
+{
+  int buckets;
+  HashNode *pNode, node, old;
+
+  DEBUG( MAIN, ("HT_flush( 0x%08X, 0x%08X )\n", table, destroy) );
+
+  if( table == NULL || table->count == 0 )
+    return;
+
+  AssertValidPtr( table );
+  AssertValidPtr( table->root );
+
+  buckets = 1 << table->size;
+
+  pNode = &table->root[0];
+
+  while( buckets-- ) {
+    node = *pNode;
+    *pNode++ = NULL;
+
+    while( node ) {
+      if( destroy )
+        destroy( node->pObj );
+
+      old  = node;
+      node = node->next;
+      Free( old );
+    }
+  }
+
+  table->count = 0;
+
+  DEBUG( MAIN, ("flushed hash table @ 0x%08X\n", table) );
 }
 
 /**
@@ -211,6 +327,7 @@ void HT_destroy( HashTable table, HTDestroyFunc destroy )
     return;
 
   AssertValidPtr( table );
+  AssertValidPtr( table->root );
 
   buckets = 1 << table->size;
 
@@ -229,9 +346,227 @@ void HT_destroy( HashTable table, HTDestroyFunc destroy )
     }
   }
 
+  Free( table->root );
   Free( table );
 
   DEBUG( MAIN, ("destroyed hash table @ 0x%08X\n", table) );
+}
+
+/**
+ *  Cloning a hash table
+ *
+ *  Using the HT_clone() function to create an exact copy
+ *  of a hash table. If the objects stored in the table
+ *  need to be cloned as well, you can pass a pointer to
+ *  a function that clones each element.
+ *
+ *  \param table	Handle to an existing hash table.
+ *
+ *  \param func		Pointer to the cloning function of
+ *			the objects contained in the table.
+ *                      If you pass NULL, the original
+ *                      object is stored in the cloned table
+ *                      instead of a cloned object.
+ *
+ *  \return A handle to the cloned hash table.
+ *
+ *  \see HT_new()
+ */
+
+HashTable HT_clone( HashTable table, HTCloneFunc func )
+{
+  HashTable clone;
+  HashNode *pSrcNode, *pDstNode, node, *pNode, cnode;
+  int       buckets;
+
+  if( table == NULL )
+    return NULL;
+
+  clone = HT_new_ex( table->size, table->flags );
+
+  if( table->count > 0 ) {
+    buckets  = 1<<table->size;
+    pSrcNode = &table->root[0];
+    pDstNode = &clone->root[0];
+  
+    while( buckets-- > 0 ) {
+      node = *pSrcNode++;
+      pNode = pDstNode++;
+  
+      while( node ) {
+        cnode = Alloc( HN_SIZE_FIX + node->keylen + TERMINATOR_LENGTH );
+  
+        cnode->next   = *pNode;
+        cnode->pObj   = func ? func( node->pObj ) : node->pObj;
+        cnode->hash   = node->hash;
+        cnode->keylen = node->keylen;
+        memcpy( cnode->key, (void *) node->key, node->keylen );
+#ifndef NO_TERMINATED_KEYS
+        cnode->key[cnode->keylen] = '\0';
+#endif
+  
+        *pNode = cnode;
+  
+        pNode = &(*pNode)->next;
+        node = node->next;
+      }
+    }
+
+    clone->count = table->count;
+  }
+
+  return clone;
+}
+
+/**
+ *  Resize a hash table
+ *
+ *  HT_resize() will allow to resize (shrink or grow) an
+ *  existing hash table.
+ *
+ *  \param table	Handle to an existing hash table.
+ *
+ *  \param size		New size for the hash table.
+ *                      This argument is the same as the
+ *                      argument passed to HT_new().
+ *
+ *  \return Nonzero on success, zero if an invalid handle
+ *          was passed or if the table wasn't resized.
+ *
+ *  \see HT_new() and HT_size()
+ */
+
+int HT_resize( HashTable table, int size )
+{
+  DEBUG( MAIN, ("HT_resize( 0x%08X, %d )\n", table, size) );
+
+  assert( size > 0 );
+  assert( size <= MAX_HASH_TABLE_SIZE );
+
+  if( table == NULL || size <= 0 || size > MAX_HASH_TABLE_SIZE )
+    return 0;
+
+  AssertValidPtr( table );
+
+  if( size == table->size )
+    return 0;
+
+  if( size > table->size )
+    ht_grow( table, size );
+  else
+    ht_shrink( table, size );
+
+  return 1;
+}
+
+static void ht_grow( HashTable table, int size )
+{
+  HashNode *pNode, *pOld, *pNew;
+  int old_size, buckets;
+  unsigned long mask;
+
+  old_size = table->size;
+  buckets  = 1<<size;
+
+  /* grow hash table */
+  table->root  = ReAlloc( table->root, buckets * sizeof( HashNode ) );
+  table->size  = size;
+  table->bmask = (unsigned long) (buckets-1);
+
+  /* initialize new buckets */
+  pNode    = &table->root[1<<old_size];
+  buckets -= 1<<old_size;
+  while( buckets-- )
+    *pNode++ = NULL;
+
+  /* distribute hash elements */
+  mask    = ((1 << (size-old_size)) - 1) << old_size;
+  pNode   = &table->root[0];
+  buckets = 1<<old_size;
+
+  while( buckets-- ) {
+    DEBUG( MAIN, ("growing, buckets to go: %d\n", buckets+1) );
+
+    pOld = pNode++;
+
+    while( *pOld ) {
+      if( (*pOld)->hash & mask ) {
+        DEBUG( MAIN, ("pOld=0x%08X *pOld=0x%08X (key=[%s] len=%d hash=0x%08X)\n",
+                     pOld, *pOld, (*pOld)->key, (*pOld)->keylen, (*pOld)->hash) );
+
+        pNew = &table->root[(*pOld)->hash & table->bmask];
+        while( *pNew )
+          pNew = &(*pNew)->next;
+
+        *pNew = *pOld;
+        *pOld = (*pNew)->next;
+        (*pNew)->next = NULL;
+      }
+      else
+        pOld = &(*pOld)->next;
+    }
+  }
+
+  DEBUG( MAIN, ("hash table @ 0x%08X grown to %d buckets\n", table, 1<<size) );
+}
+
+static void ht_shrink( HashTable table, int size )
+{
+  HashNode *pNode, *pNew, old, node;
+  int old_size, buckets, cmp;
+
+  old_size     = table->size;
+  buckets      = 1<<size;
+  table->size  = size;
+  table->bmask = (unsigned long) (buckets-1);
+
+  /* distribute hash elements */
+  pNode    = &table->root[buckets];
+  buckets  = (1<<old_size) - buckets;
+
+  while( buckets-- ) {
+    DEBUG( MAIN, ("shrinking, buckets to go: %d\n", buckets+1) );
+
+    old = *pNode++;
+
+    while( old ) {
+      DEBUG( MAIN, ("old=0x%08X (key=[%s] len=%d hash=0x%08X)\n",
+                   old, old->key, old->keylen, old->hash) );
+      node = old;
+      old  = old->next;
+      pNew = &table->root[node->hash & table->bmask];
+
+      while( *pNew ) {
+        DEBUG( MAIN, ("pNew=0x%08X *pNew=0x%08X (key=[%s] len=%d hash=0x%08X)\n",
+                     pNew, *pNew, (*pNew)->key, (*pNew)->keylen, (*pNew)->hash) );
+
+        if(   (cmp = CMPHASH(node->hash, (*pNew)->hash)) == 0
+           && (cmp = memcmp(node->key, (*pNew)->key,
+                     MINIMUM(node->keylen, (*pNew)->keylen))) == 0
+          )
+          cmp = node->keylen - (*pNew)->keylen;
+
+        DEBUG( MAIN, ("cmp: %d\n", cmp) );
+
+        if( cmp < 0 ) {
+          DEBUG( MAIN, ("postition to insert new element found\n") );
+          break;
+        }
+
+        DEBUG( MAIN, ("advancing to next hash element\n") );
+        pNew = &(*pNew)->next;
+      }
+
+      node->next = *pNew;
+      *pNew      = node;
+    }
+  }
+
+  /* shrink hash table */
+  buckets     = 1<<size;
+  table->root = ReAlloc( table->root, buckets * sizeof( HashNode ) );
+
+  DEBUG( MAIN, ("hash table @ 0x%08X shrunk to %d buckets\n", table, buckets) );
 }
 
 #ifdef DEBUG_HASH
@@ -245,8 +580,8 @@ void HT_destroy( HashTable table, HTDestroyFunc destroy )
  *
  *  \param table	Handle to an existing hash table.
  *
- *  \note HT_dump() is not available if the code was compiled
- *        with the \c NDEBUG preprocessor flag.
+ *  \note HT_dump() is only available if the code was compiled
+ *        with the \c DEBUG_HASH preprocessor flag.
  */
 
 void HT_dump( const HashTable table )
@@ -286,6 +621,52 @@ void HT_dump( const HashTable table )
   gs_dbfunc( "----------------------------------------------------\n" );
 }
 #endif
+
+/**
+ *  Size of a hash table
+ *
+ *  HT_size() will return the size of the hash table.
+ *
+ *  \param table	Handle to an existing hash table.
+ *
+ *  \return The size of the table or -1 if an invalid handle
+ *          was passed. The value is the same as the argument
+ *          given to the HT_new() constructor.
+ *
+ *  \see HT_new()
+ */
+
+int HT_size( const HashTable table )
+{
+  if( table == NULL )
+    return -1;
+
+  AssertValidPtr( table );
+
+  return table->size;
+}
+
+/**
+ *  Current element count of a hash table
+ *
+ *  HT_count() will return the number of objects currently
+ *  stored in a hash table.
+ *
+ *  \param table	Handle to an existing hash table.
+ *
+ *  \return The number of elements stored in the hash table
+ *          or -1 if an invalid handle was passed.
+ */
+
+int HT_count( const HashTable table )
+{
+  if( table == NULL )
+    return -1;
+
+  AssertValidPtr( table );
+
+  return table->count;
+}
 
 /**
  *  Pre-create a hash node
@@ -403,6 +784,8 @@ int HT_storenode( const HashTable table, HashNode node, void *pObj )
   AssertValidPtr( table );
   AssertValidPtr( node );
 
+  CHECK_AUTOGROW( table );
+
   pNode = &table->root[node->hash & table->bmask];
 
   DEBUG( MAIN, ("key=[%s] len=%d hash=0x%08X bucket=%d/%d\n",
@@ -497,6 +880,8 @@ void *HT_fetchnode( const HashTable table, HashNode node )
   DEBUG( MAIN, ("successfully fetched node @ 0x%08X (%d nodes still in hash table)\n",
                 node, table->count) );
 
+  CHECK_AUTOSHRINK( table );
+
   return pObj;
 }
 
@@ -555,6 +940,8 @@ void *HT_rmnode( const HashTable table, HashNode node )
   DEBUG( MAIN, ("successfully removed node @ 0x%08X (%d nodes still in hash table)\n",
                 node, table->count) );
 
+  CHECK_AUTOSHRINK( table );
+
   return pObj;
 }
 
@@ -603,6 +990,8 @@ int HT_store( const HashTable table, const char *key, int keylen, HashSum hash, 
     else
       HASH_STR_LEN( hash, key, keylen );
   }
+
+  CHECK_AUTOGROW( table );
 
   pNode = &table->root[hash & table->bmask];
 
@@ -737,6 +1126,8 @@ void *HT_fetch( const HashTable table, const char *key, int keylen, HashSum hash
   table->count--;
 
   DEBUG( MAIN, ("successfully fetched [%s] (%d elements still in hash table)\n", key, table->count) );
+
+  CHECK_AUTOSHRINK( table );
 
   return pObj;
 }

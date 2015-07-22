@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/04/21 16:24:05 +0100 $
-* $Revision: 2 $
-* $Snapshot: /Convert-Binary-C/0.03 $
+* $Date: 2002/10/23 11:37:51 +0100 $
+* $Revision: 4 $
+* $Snapshot: /Convert-Binary-C/0.04 $
 * $Source: /ctlib/util/list.h $
 *
 ********************************************************************************
@@ -63,16 +63,22 @@ typedef struct _LinkedList * LinkedList;
 typedef void (* LLDestroyFunc)(void *);
 
 /**
+ *  Cloning Function Pointer
+ */
+typedef void * (* LLCloneFunc)(const void *);
+
+/**
  *  Comparison Function Pointer
  */
-typedef int  (* LLCompareFunc)(const void *, const void *);
+typedef int (* LLCompareFunc)(const void *, const void *);
 
 LinkedList   LL_new( void );
 void         LL_delete( LinkedList list );
 void         LL_flush( LinkedList list, LLDestroyFunc destroy );
 void         LL_destroy( LinkedList list, LLDestroyFunc destroy );
+LinkedList   LL_clone( LinkedList list, LLCloneFunc func );
 
-int          LL_size( const LinkedList list );
+int          LL_count( const LinkedList list );
 
 void         LL_push( const LinkedList list, void *pObj );
 void *       LL_pop( const LinkedList list );

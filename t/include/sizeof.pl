@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/09/25 21:32:24 +0100 $
-# $Revision: 2 $
-# $Snapshot: /Convert-Binary-C/0.03 $
+# $Date: 2002/11/23 17:00:36 +0000 $
+# $Revision: 3 $
+# $Snapshot: /Convert-Binary-C/0.04 $
 # $Source: /t/include/sizeof.pl $
 #
 ################################################################################
@@ -234,8 +234,8 @@
   'dirent'                     => 267,
   'dirent64'                   => 275,
   'div_t'                      =>   8,
-  'double_t'                   =>   8,
-  'drand48_data'               =>  20,
+  'double_t'                   =>  12,
+  'drand48_data'               =>  24,
   'error_t'                    =>   4,
   'exception'                  =>  32,
   'exitlistentry'              =>   8,
@@ -243,7 +243,7 @@
   'fd_mask'                    =>   4,
   'fd_set'                     => 128,
   'filter_t'                   =>   4,
-  'float_t'                    =>   8,
+  'float_t'                    =>  12,
   'flock'                      =>  16,
   'flock64'                    =>  24,
   'fpos64_t'                   =>  16,
@@ -264,7 +264,7 @@
   'hostent'                    =>  20,
   'hv'                         =>  12,
   'id_t'                       =>   4,
-  'imaxdiv_t'                  =>   8,
+  'imaxdiv_t'                  =>  16,
   'in6_addr'                   =>  16,
   'in6_pktinfo'                =>  20,
   'in_addr'                    =>   4,
@@ -278,14 +278,14 @@
   'int8_t'                     =>   1,
   'int_fast16_t'               =>   4,
   'int_fast32_t'               =>   4,
-  'int_fast64_t'               =>   4,
+  'int_fast64_t'               =>   8,
   'int_fast8_t'                =>   1,
   'int_least16_t'              =>   2,
   'int_least32_t'              =>   4,
-  'int_least64_t'              =>   4,
+  'int_least64_t'              =>   8,
   'int_least8_t'               =>   1,
   'interpreter'                =>   1,
-  'intmax_t'                   =>   4,
+  'intmax_t'                   =>   8,
   'intptr_t'                   =>   4,
   'io'                         =>  12,
   'iovec'                      =>   8,
@@ -304,7 +304,7 @@
   'line_t'                     =>   2,
   'linger'                     =>   8,
   'listop'                     =>  30,
-  'lldiv_t'                    =>   8,
+  'lldiv_t'                    =>  16,
   'loff_t'                     =>   8,
   'logop'                      =>  30,
   'loop'                       =>  42,
@@ -416,17 +416,17 @@
   'uint'                       =>   4,
   'uint16_t'                   =>   2,
   'uint32_t'                   =>   4,
-  'uint64_t'                   =>   4,
+  'uint64_t'                   =>   8,
   'uint8_t'                    =>   1,
   'uint_fast16_t'              =>   4,
   'uint_fast32_t'              =>   4,
-  'uint_fast64_t'              =>   4,
+  'uint_fast64_t'              =>   8,
   'uint_fast8_t'               =>   1,
   'uint_least16_t'             =>   2,
   'uint_least32_t'             =>   4,
-  'uint_least64_t'             =>   4,
+  'uint_least64_t'             =>   8,
   'uint_least8_t'              =>   1,
-  'uintmax_t'                  =>   4,
+  'uintmax_t'                  =>   8,
   'uintptr_t'                  =>   4,
   'ulong'                      =>   4,
   'unop'                       =>  26,
