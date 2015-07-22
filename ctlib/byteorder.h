@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/04/19 19:52:29 +0100 $
-* $Revision: 10 $
+* $Date: 2005/12/26 11:27:25 +0000 $
+* $Revision: 11 $
 * $Source: /ctlib/byteorder.h $
 *
 ********************************************************************************
@@ -38,12 +38,10 @@
 
 /*===== TYPEDEFS =============================================================*/
 
-typedef struct {
-  enum {
-    AS_BO_BIG_ENDIAN,
-    AS_BO_LITTLE_ENDIAN
-  } bo;
-} ArchSpecs;
+typedef enum {
+  AS_BO_BIG_ENDIAN,
+  AS_BO_LITTLE_ENDIAN
+} CByteOrder;
 
 typedef struct {
   union {
@@ -61,10 +59,10 @@ int string_is_integer(const char *pStr);
 
 #define fetch_integer CTlib_fetch_integer
 void fetch_integer(unsigned size, unsigned sign, unsigned bits, unsigned shift,
-                   const void *src, const ArchSpecs *pAS, IntValue *pIV);
+                   CByteOrder bo, const void *src, IntValue *pIV);
 
 #define store_integer CTlib_store_integer
 void store_integer(unsigned size, unsigned bits, unsigned shift,
-                   void *dest, const ArchSpecs *pAS, const IntValue *pIV);
+                   CByteOrder bo, void *dest, const IntValue *pIV);
 
 #endif

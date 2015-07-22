@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/10/25 19:27:57 +0100 $
-# $Revision: 75 $
+# $Date: 2005/12/02 12:20:06 +0000 $
+# $Revision: 76 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.62 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.63 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -1144,7 +1144,7 @@ as it can already handle C<AV> pointers. And this is what we get:
 
   $VAR1 = {
     'sv_any' => {
-      'xav_array' => '137122120',
+      'xav_array' => '137122056',
       'xav_fill' => '0',
       'xav_max' => '0',
       'xof_off' => '0',
@@ -1162,12 +1162,12 @@ as it can already handle C<AV> pointers. And this is what we get:
           'xhv_riter' => '-1',
           'xhv_eiter' => '0',
           'xhv_pmroot' => '0',
-          'xhv_name' => '136851000'
+          'xhv_name' => '136850936'
         },
         'sv_refcnt' => '2',
         'sv_flags' => '536870923'
       },
-      'xav_alloc' => '137122120',
+      'xav_alloc' => '137122056',
       'xav_arylen' => '0',
       'xav_flags' => '1'
     },
@@ -4763,7 +4763,7 @@ and redistribution details refer to F<ctlib/ucpp/README>.
 
 Portions copyright (c) 1989, 1990 James A. Roskind.
 
-The include files located in F<t/include/include>, which are used
+The include files located in F<tests/include/include>, which are used
 in some of the test scripts are (c) 1991-1999, 2000, 2001 Free Software
 Foundation, Inc. They are neither required to create the binary nor
 linked to the source code of this module in any other way.

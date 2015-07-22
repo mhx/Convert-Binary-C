@@ -2,10 +2,10 @@ use Data::Dumper;
 use Convert::Binary::C;
 use strict;
 
-my $c = new Convert::Binary::C Include => ['../../t/include/perlinc',
-                                           '../../t/include/include'];
+my $c = new Convert::Binary::C Include => ['../../tests/include/perlinc',
+                                           '../../tests/include/include'];
 
-$c->parse_file( '../../t/include/include.c' );
+$c->parse_file( '../../tests/include/include.c' );
 
 my $defs = $c->sourcify;
 

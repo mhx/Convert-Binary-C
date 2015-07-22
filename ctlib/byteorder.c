@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/05/16 10:37:20 +0100 $
-* $Revision: 18 $
+* $Date: 2005/12/26 11:27:24 +0000 $
+* $Revision: 19 $
 * $Source: /ctlib/byteorder.c $
 *
 ********************************************************************************
@@ -1113,7 +1113,7 @@ int string_is_integer(const char *pStr)
 #endif
 
 void fetch_integer(unsigned size, unsigned sign, unsigned bits, unsigned shift,
-                   const void *src, const ArchSpecs *pAS, IntValue *pIV)
+                   CByteOrder bo, const void *src, IntValue *pIV)
 {
   register const u_8 *ptr = (const u_8 *) src;
   IntValue iv = *pIV;
@@ -1125,14 +1125,14 @@ void fetch_integer(unsigned size, unsigned sign, unsigned bits, unsigned shift,
       break;
 
     case 2:
-      if (pAS->bo == AS_BO_BIG_ENDIAN)
+      if (bo == AS_BO_BIG_ENDIAN)
         FETCH(BE, WORD);
       else
         FETCH(LE, WORD);
       break;
 
     case 4:
-      if (pAS->bo == AS_BO_BIG_ENDIAN)
+      if (bo == AS_BO_BIG_ENDIAN)
         FETCH(BE, LONG);
       else
         FETCH(LE, LONG);
@@ -1140,12 +1140,12 @@ void fetch_integer(unsigned size, unsigned sign, unsigned bits, unsigned shift,
 
     case 8:
 #if ARCH_NATIVE_64_BIT_INTEGER
-      if (pAS->bo == AS_BO_BIG_ENDIAN)
+      if (bo == AS_BO_BIG_ENDIAN)
         FETCH(BE, LONGLONG);
       else
         FETCH(LE, LONGLONG);
 #else
-      if (pAS->bo == AS_BO_BIG_ENDIAN)
+      if (bo == AS_BO_BIG_ENDIAN)
       {
         GET_BE_LONG(ptr,   iv.value.u.h, u);
         GET_BE_LONG(ptr+4, iv.value.u.l, u);
@@ -1214,7 +1214,7 @@ void fetch_integer(unsigned size, unsigned sign, unsigned bits, unsigned shift,
 #endif
 
 void store_integer(unsigned size, unsigned bits, unsigned shift,
-                   void *dest, const ArchSpecs *pAS, const IntValue *pIV)
+                   CByteOrder bo, void *dest, const IntValue *pIV)
 {
   register u_8 *ptr = (u_8 *) dest;
   IntValue iv = *pIV;
@@ -1228,7 +1228,7 @@ void store_integer(unsigned size, unsigned bits, unsigned shift,
 
     orig.string = NULL;
 
-    fetch_integer(size, 0, 0, 0, dest, pAS, &orig);
+    fetch_integer(size, 0, 0, 0, bo, dest, &orig);
 
     if (shift > 0)
       shift_integer(&iv.value.u, shift, SHIFT_LEFT);
@@ -1245,14 +1245,14 @@ void store_integer(unsigned size, unsigned bits, unsigned shift,
       break;
 
     case 2:
-      if (pAS->bo == AS_BO_BIG_ENDIAN)
+      if (bo == AS_BO_BIG_ENDIAN)
         STORE(BE, WORD);
       else
         STORE(LE, WORD);
       break;
 
     case 4:
-      if (pAS->bo == AS_BO_BIG_ENDIAN)
+      if (bo == AS_BO_BIG_ENDIAN)
         STORE(BE, LONG);
       else
         STORE(LE, LONG);
@@ -1260,12 +1260,12 @@ void store_integer(unsigned size, unsigned bits, unsigned shift,
 
     case 8:
 #if ARCH_NATIVE_64_BIT_INTEGER
-      if (pAS->bo == AS_BO_BIG_ENDIAN)
+      if (bo == AS_BO_BIG_ENDIAN)
         STORE(BE, LONGLONG);
       else
         STORE(LE, LONGLONG);
 #else
-      if (pAS->bo == AS_BO_BIG_ENDIAN)
+      if (bo == AS_BO_BIG_ENDIAN)
       {
         SET_BE_LONG(ptr,   iv.value.u.h);
         SET_BE_LONG(ptr+4, iv.value.u.l);

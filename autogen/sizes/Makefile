@@ -4,10 +4,10 @@ CHECKOUT  = checkout_file
 CECHO     = $(PERL) -e'use Term::ANSIColor; print color(shift); print @ARGV, color("reset"), "\n"'
 BLUE      = $(CECHO) "blue"
 
-CFLAGS    = -fshort-enums -std=c99 -I../../t/include/perlinc -I../../t/include/include
+CFLAGS    = -fshort-enums -std=c99 -I../../tests/include/perlinc -I../../tests/include/include
 
-SIZEOF    = ../../t/include/sizeof.pl
-OFFSETOF  = ../../t/include/offsetof.pl
+SIZEOF    = ../../tests/include/sizeof.pl
+OFFSETOF  = ../../tests/include/offsetof.pl
 
 all :: install clean
 

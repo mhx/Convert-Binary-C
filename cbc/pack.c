@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/10/19 16:31:14 +0100 $
-* $Revision: 34 $
+* $Date: 2005/12/26 11:27:24 +0000 $
+* $Revision: 35 $
 * $Source: /cbc/pack.c $
 *
 ********************************************************************************
@@ -202,7 +202,7 @@ static FPType get_fp_type(u_32 flags)
           int _i;                                                              \
           u_8 *_p = (u_8 *) pPACKBUF;                                          \
           _u.f = (ftype) SvNV(sv);                                             \
-          if (THIS->as.bo == CBC_NATIVE_BYTEORDER)                             \
+          if (THIS->byteOrder == CBC_NATIVE_BYTEORDER)                         \
           {                                                                    \
             for (_i = 0; _i < (int)sizeof(ftype); _i++)                        \
               *_p++ = _u.c[_i];                                                \
@@ -258,7 +258,7 @@ static void store_float_sv(pPACKARGS, unsigned size, u_32 flags, SV *sv)
 
 #else /* ! CBC_HAVE_IEEE_FP */
 
-  if (THIS->as.bo != CBC_NATIVE_BYTEORDER)
+  if (THIS->byteOrder != CBC_NATIVE_BYTEORDER)
     goto non_native;
 
   switch (type)
@@ -312,7 +312,7 @@ finish:
           } _u;                                                                \
           int _i;                                                              \
           u_8 *_p = (u_8 *) pPACKBUF;                                          \
-          if (THIS->as.bo == CBC_NATIVE_BYTEORDER)                             \
+          if (THIS->byteOrder == CBC_NATIVE_BYTEORDER)                         \
           {                                                                    \
             for (_i = 0; _i < (int)sizeof(ftype); _i++)                        \
               _u.c[_i] = *_p++;                                                \
@@ -371,7 +371,7 @@ static SV *fetch_float_sv(pPACKARGS, unsigned size, u_32 flags)
 
 #else /* ! CBC_HAVE_IEEE_FP */
 
-  if (THIS->as.bo != CBC_NATIVE_BYTEORDER)
+  if (THIS->byteOrder != CBC_NATIVE_BYTEORDER)
     goto non_native;
 
   switch (type)
@@ -452,7 +452,7 @@ static void store_int_sv(pPACKARGS, unsigned size, unsigned sign, const Bitfield
   }
 
   store_integer(size, pBI ? pBI->bits : 0, pBI ? pBI->pos : 0,
-                pPACKBUF, &THIS->as, &iv);
+                THIS->byteOrder, pPACKBUF, &iv);
 }
 
 /*******************************************************************************
@@ -507,7 +507,7 @@ static SV *fetch_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldI
 #endif
 
   fetch_integer(size, sign, pBI ? pBI->bits : 0, pBI ? pBI->pos : 0,
-                pPACKBUF, &THIS->as, &iv);
+                THIS->byteOrder, pPACKBUF, &iv);
 
   if (iv.string)
     return newSVpv(iv.string, 0);
@@ -814,7 +814,7 @@ static void pack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldI
 #endif
 
     store_integer(size, pBI ? pBI->bits : 0, pBI ? pBI->pos : 0,
-                  pPACKBUF, &THIS->as, &iv);
+                  THIS->byteOrder, pPACKBUF, &iv);
   }
 }
 
@@ -1336,7 +1336,7 @@ static SV *unpack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const Bitfield
 
   iv.string = NULL;
   fetch_integer(size, pEnumSpec->tflags & T_SIGNED, pBI ? pBI->bits : 0,
-                pBI ? pBI->pos : 0, pPACKBUF, &THIS->as, &iv);
+                pBI ? pBI->pos : 0, THIS->byteOrder, pPACKBUF, &iv);
 
   if (pEnumSpec->tflags & T_SIGNED) /* TODO: handle (un)/signed correctly */
   {

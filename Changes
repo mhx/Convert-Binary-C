@@ -1,4 +1,14 @@
 -------------------------
+Version 0.63 (2005-12-29)
+-------------------------
+
+* fix a problem with the test suite when run in a directory
+  that contains whitespace characters
+
+* (hopefully) fix the no_index problem in the META.yml by
+  replacing "dir" with "directory"
+
+-------------------------
 Version 0.62 (2005-12-01)
 -------------------------
 

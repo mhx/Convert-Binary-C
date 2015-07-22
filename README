@@ -212,7 +212,7 @@ and redistribution details refer to 'ctlib/ucpp/README'.
 
 Portions copyright (c) 1989, 1990 James A. Roskind.
 
-The include files located in 't/include/include', which are used in
+The include files located in 'tests/include/include', which are used in
 some of the test scripts are (c) 1991-1999, 2000, 2001 Free Software
 Foundation, Inc. They are neither required to create the binary nor
 linked to the source code of this module in any other way.

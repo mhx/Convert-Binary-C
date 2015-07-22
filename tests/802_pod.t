@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/10/25 17:42:36 +0100 $
-# $Revision: 5 $
+# $Date: 2005/12/26 23:07:55 +0000 $
+# $Revision: 6 $
 # $Source: /tests/802_pod.t $
 #
 ################################################################################
@@ -40,18 +40,19 @@ eval {
   import Test::Pod tests => scalar @pods;
 };
 $TP = $@ eq '';
-unless( $TP ) {
+unless ($TP) {
+  print "# $@";
   require Test;
   import Test;
-  plan( tests => scalar @pods );
+  plan(tests => scalar @pods);
 }
 
-for my $pod ( @pods ) {
+for my $pod (@pods) {
   print "# checking $pod\n";
-  if( $TP ) {
-    pod_file_ok( $pod );
+  if($TP) {
+    pod_file_ok($pod);
   }
   else {
-    skip( "skip: testing pod requires Test::Pod", 0 );
+    skip("skip: testing pod requires Test::Pod", 0);
   }
 }

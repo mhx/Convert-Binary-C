@@ -25,6 +25,7 @@ my @tests = @ARGV ? @ARGV : find_tests();
 die "*** Can't find any test files\n" unless @tests;
 
 my $lib = File::Spec->catfile(getcwd, 'support');
+$lib = qq["$lib"] if $lib =~ /\s/;
 
 $Test::Harness::switches = "-I $lib -w";
 $ENV{PERL_DL_NONLAZY} = 1;

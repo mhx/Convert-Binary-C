@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/05/23 10:31:57 +0100 $
-# $Revision: 19 $
+# $Date: 2005/12/02 12:20:06 +0000 $
+# $Revision: 20 $
 # $Source: /tests/901_memory.t $
 #
 ################################################################################
@@ -20,14 +20,14 @@ use Convert::Binary::C;
 $^W = 1;
 
 BEGIN {
-  @files = grep /[1-4]\d{2}_[a-z]+\.t$/i, <t/*.t>;
+  @files = grep /[1-4]\d{2}_[a-z]+\.t$/i, <tests/*.t>;
   plan tests => 1 + 9*@files
 }
 
 $debug = Convert::Binary::C::feature( 'debug' );
 ok( defined $debug );
 
-$dbfile = 't/debug.out';
+$dbfile = 'tests/debug.out';
 $cmd  = "$^X -w " . join( ' ', map qq["-I$_"], @INC );
 @args = ( debug => "m", debugfile => $dbfile );
 

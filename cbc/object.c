@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/05/29 09:23:02 +0100 $
-* $Revision: 9 $
+* $Date: 2005/12/26 11:27:24 +0000 $
+* $Revision: 10 $
 * $Source: /cbc/object.c $
 *
 ********************************************************************************
@@ -92,7 +92,7 @@ CBC *cbc_new(pTHX)
   if (hv_store(THIS->hv, "", 0, sv, 0) == NULL)
     fatal("Couldn't store THIS into object.");
   
-  THIS->as.bo                         = CBC_DEFAULT_BYTEORDER;
+  THIS->byteOrder                     = CBC_DEFAULT_BYTEORDER;
   THIS->enumType                      = CBC_DEFAULT_ENUMTYPE;
   THIS->ixhash                        = NULL;
 

@@ -6,7 +6,7 @@ BLUE      = $(CECHO) "blue"
 
 CC        = gcc
 
-COMPLEX   = ../../t/603_complex.t
+COMPLEX   = ../../tests/603_complex.t
 
 all :: test harness install clean
 

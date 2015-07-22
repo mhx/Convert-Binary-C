@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/10/19 16:30:50 +0100 $
-* $Revision: 12 $
+* $Date: 2005/12/26 11:27:24 +0000 $
+* $Revision: 13 $
 * $Source: /cbc/option.c $
 *
 ********************************************************************************
@@ -856,11 +856,11 @@ int handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval)
       if (sv_val)
       {
         const StringOption *pOpt = GET_STR_OPTION(ByteOrder, 0, sv_val);
-        UPDATE(as.bo, pOpt->value);
+        UPDATE(byteOrder, pOpt->value);
       }
       if (rval)
       {
-        const StringOption *pOpt = GET_STR_OPTION(ByteOrder, THIS->as.bo, NULL);
+        const StringOption *pOpt = GET_STR_OPTION(ByteOrder, THIS->byteOrder, NULL);
         *rval = newSVpv(CONST_CHAR(pOpt->string), 0);
       }
     ENDOPT
@@ -971,8 +971,8 @@ SV *get_configuration(pTHX_ CBC *THIS)
   keyword_map(aTHX_ &THIS->cfg.keyword_map, NULL, &sv);
   HV_STORE_CONST(hv, "KeywordMap", sv);
 
-  STRING_OPTION(ByteOrder, THIS->as.bo   )
-  STRING_OPTION(EnumType,  THIS->enumType)
+  STRING_OPTION(ByteOrder, THIS->byteOrder)
+  STRING_OPTION(EnumType,  THIS->enumType )
 
   bitfields_option(aTHX_ &THIS->cfg.layout.bflayouter, NULL, &sv);
   HV_STORE_CONST(hv, "Bitfields", sv);
@@ -1091,7 +1091,7 @@ void post_configure_update(pTHX_ CBC *THIS)
   BLPropValue val = { BLPVT_STR, { 0 } };
   enum BLError error;
 
-  switch (THIS->as.bo)
+  switch (THIS->byteOrder)
   {
     case AS_BO_BIG_ENDIAN:
       val.v.v_str = BLPV_BIG_ENDIAN;

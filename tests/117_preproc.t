@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/10/25 17:42:35 +0100 $
-# $Revision: 10 $
+# $Date: 2005/12/26 11:28:06 +0000 $
+# $Revision: 11 $
 # $Source: /tests/117_preproc.t $
 #
 ################################################################################
@@ -14,20 +14,14 @@
 #
 ################################################################################
 
-use Test;
+use Test::More tests => 17;
 use Convert::Binary::C @ARGV;
-
-$^W = 1;
-
-BEGIN {
-  plan tests => 17;
-}
 
 eval {
   $c = new Convert::Binary::C Define  => ['b=a'],
                               Include => ['tests/include/files', 'include/files'];
 };
-ok($@,'',"failed to create Convert::Binary::C::Cached object");
+is($@, '', "create Convert::Binary::C::Cached object");
 
 #--------------------
 # check of ucpp bugs
@@ -39,7 +33,7 @@ eval {
 b x;
 END
 };
-ok($@,'',"failed to parse code");
+is($@, '', "parse code");
 
 # eval {
 #   $c->parse( <<'END' );
@@ -47,7 +41,7 @@ ok($@,'',"failed to parse code");
 # typedef int foo;
 # END
 # };
-# ok($@,'',"failed to parse code");
+# is($@, '', "failed to parse code");
 
 
 #----------------------------
@@ -61,8 +55,8 @@ typedef int xxx;
 END
   $c->sizeof('xxx');
 };
-ok($@,'',"failed to parse code with #ident correctly");
-ok($s, $c->sizeof('int'));
+is($@, '', "parse code with #ident correctly");
+is($s, $c->sizeof('int'));
 
 #----------------
 # various checks
@@ -76,8 +70,8 @@ eval {
 END
 };
 
-ok($@, qr/unterminated #if construction/);
-ok($@, qr/included from \[buffer\]:1/);
+like($@, qr/unterminated #if construction/);
+like($@, qr/included from \[buffer\]:1/);
 
 $c->clean->CharSize(1)->Warnings(1);
 
@@ -90,15 +84,15 @@ END
   $c->sizeof('array');
 };
 
-ok($@, '');
-ok($s, 42);
-ok(scalar @warn, 5);
-ok($warn[0], qr/^\[buffer\], line 1: \(warning\) trigraph \?\?= encountered/);
-ok($warn[1], qr/trigraph\.h, line 1: \(warning\) trigraph \?\?= encountered/);
-ok($warn[1], qr/included from \[buffer\]:1/);
-ok($warn[2], qr/trigraph\.h, line 3: \(warning\) trigraph \?\?\( encountered/);
-ok($warn[2], qr/included from \[buffer\]:1/);
-ok($warn[3], qr/trigraph\.h, line 3: \(warning\) trigraph \?\?\) encountered/);
-ok($warn[3], qr/included from \[buffer\]:1/);
-ok($warn[4], qr/^\[buffer\]: \(warning\) 4 trigraph\(s\) encountered/);
+is($@, '');
+is($s, 42);
+is(scalar @warn, 5);
+like($warn[0], qr/^\[buffer\], line 1: \(warning\) trigraph \?\?= encountered/);
+like($warn[1], qr/trigraph\.h, line 1: \(warning\) trigraph \?\?= encountered/);
+like($warn[1], qr/included from \[buffer\]:1/);
+like($warn[2], qr/trigraph\.h, line 3: \(warning\) trigraph \?\?\( encountered/);
+like($warn[2], qr/included from \[buffer\]:1/);
+like($warn[3], qr/trigraph\.h, line 3: \(warning\) trigraph \?\?\) encountered/);
+like($warn[3], qr/included from \[buffer\]:1/);
+like($warn[4], qr/^\[buffer\]: \(warning\) 4 trigraph\(s\) encountered/);
 

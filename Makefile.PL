@@ -3,8 +3,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/12/01 18:05:26 +0000 $
-# $Revision: 81 $
+# $Date: 2005/12/26 11:28:35 +0000 $
+# $Revision: 82 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -337,7 +337,7 @@ sub configure
     $config->{'LICENSE'} = 'perl';
     $config->{'EXTRA_META'} = <<'META';
 no_index:
-    dir:
+    directory:
         - support
 META
   }
