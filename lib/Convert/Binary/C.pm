@@ -10,16 +10,16 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/12/13 12:14:54 +0000 $
-# $Revision: 23 $
-# $Snapshot: /Convert-Binary-C/0.06 $
+# $Date: 2003/01/07 21:23:36 +0000 $
+# $Revision: 33 $
+# $Snapshot: /Convert-Binary-C/0.07 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
 # 
-# Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-# This program is free software; you can redistribute it and/or
-# modify it under the same terms as Perl itself.
+# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the same terms as Perl itself.
 # 
 ################################################################################
 
@@ -32,8 +32,8 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = sprintf '%.2f', 0.01*('$Revision: 23 $' =~ /(\d+)/)[0];
-$XS_VERSION =  do { my @r = '$Snapshot: /Convert-Binary-C/0.06 $'
+$VERSION    = sprintf '%.2f', 0.01*('$Revision: 33 $' =~ /(\d+)/)[0];
+$XS_VERSION =  do { my @r = '$Snapshot: /Convert-Binary-C/0.07 $'
                             =~ /(\d+\.\d+(?:_\d+)?)/;
                     @r ? $r[0] : '9.99' },
 
@@ -459,7 +459,7 @@ The output would look something like this:
 
 =head2 Preprocessor configuration
 
-Convert::Binary::C uses Thomas Pornin's I<ucpp> as an internal
+Convert::Binary::C uses Thomas Pornin's C<ucpp> as an internal
 C preprocessor. It is compliant to ISO-C99, so you don't have
 to worry about using even weird preprocessor constructs in
 your code.
@@ -478,7 +478,7 @@ defined by the compiler.
 
 On some operating systems, the system includes require the
 preprocessor to predefine a certain set of assertions.
-Assertions are supported by I<ucpp>, and you can define them
+Assertions are supported by C<ucpp>, and you can define them
 either in the source code using C<#assert> or as a property
 of the Convert::Binary::C object using C<Assert>:
 
@@ -546,6 +546,16 @@ The C<pack> pragma as it is currently implemented only affects
 the I<maximum> struct member alignment. There are compilers
 that also allow to specify the I<minimum> struct member
 alignment. This is not supported by Convert::Binary::C.
+
+=head2 Automatic configuration using C<ccconfig>
+
+As there are over 20 different configuration options, setting
+all of them correctly can be a lengthy and tedious task.
+
+The L<C<ccconfig>|ccconfig> script, which is bundled with this
+module, aims at automatically determining the correct compiler
+configuration by testing the compiler executable. It works for
+both, native and cross compilers.
 
 =head1 METHODS
 
@@ -633,6 +643,7 @@ This will print something like this:
     'LongLongSize' => 8,
     'Alignment' => 1,
     'LongDoubleSize' => 12,
+    'KeywordMap' => {},
     'HasCPPComments' => 1,
     'Include' => [
       '/usr/include'
@@ -739,7 +750,7 @@ integer. If set to zero, the size of a long long integer
 on the host system, or 8, will be used. This is also the
 default.
 
-=item C<FloatSize> =E<gt> 0 | 1 | 2 | 4 | 8 | 12
+=item C<FloatSize> =E<gt> 0 | 1 | 2 | 4 | 8 | 12 | 16
 
 Set the number of bytes that are occupied by a single
 precision floating point value.
@@ -748,7 +759,7 @@ host system will be used. This is also the default.
 Values can only be packed and unpacked if the size
 matches the native size of a C<float>.
 
-=item C<DoubleSize> =E<gt> 0 | 1 | 2 | 4 | 8 | 12
+=item C<DoubleSize> =E<gt> 0 | 1 | 2 | 4 | 8 | 12 | 16
 
 Set the number of bytes that are occupied by a double
 precision floating point value.
@@ -757,7 +768,7 @@ host system will be used. This is also the default.
 Values can only be packed and unpacked if the size
 matches the native size of a C<double>.
 
-=item C<LongDoubleSize> =E<gt> 0 | 1 | 2 | 4 | 8 | 12
+=item C<LongDoubleSize> =E<gt> 0 | 1 | 2 | 4 | 8 | 12 | 16
 
 Set the number of bytes that are occupied by a double
 precision floating point value.
@@ -773,13 +784,13 @@ in most cases 2 or 4. If you set it to zero, the size of a
 pointer on the host system will be used. This is also the
 default.
 
-=item C<EnumSize> =E<gt> 0 | 1 | 2 | 4
+=item C<EnumSize> =E<gt> -1 | 0 | 1 | 2 | 4 | 8
 
 Set the number of bytes that are occupied by an enumeration type.
 On most systems, this is equal to the size of an integer,
 which is also the default. However, for some compilers, the
 size of an enumeration type depends on the size occupied by the
-largest enumerator. So the size may vary between 1 and 4. If you
+largest enumerator. So the size may vary between 1 and 8. If you
 have
 
   enum foo {
@@ -796,9 +807,21 @@ as an unsigned one-byte value. However,
 will occupy two bytes, because the -100 forces the type to
 be signed, and 200 doesn't fit into a signed one-byte value.
 Therefore, the type used is a signed two-byte value.
-If this is the behaviour you need, set the EnumSize to zero.
+If this is the behaviour you need, set the EnumSize to C<0>.
 
-=item C<Alignment> =E<gt> 1 | 2 | 4 | 8
+Some compilers try to follow this strategy, but don't care
+whether the enumeration has signed values or not. They always
+declare an enum as signed. On such a compiler, given
+
+  enum one { ONE = -100, TWO = 100 };
+  enum two { ONE =  100, TWO = 200 };
+
+enum C<one> will occupy only one byte, while enum C<two>
+will occupy two bytes, even though it could be represented
+by a unsigned one-byte value. If this is the behaviour of
+your compiler, set EnumSize to C<-1>.
+
+=item C<Alignment> =E<gt> 1 | 2 | 4 | 8 | 16
 
 Set the struct member alignment. This option controls where
 padding bytes are inserted between struct members. It globally
@@ -807,6 +830,121 @@ be overridden from within the source code with the
 common C<pack> pragma as explained in L<"Supported pragma directives">.
 The default alignment is 1, which means no padding bytes are
 inserted.
+
+The C<Alignment> option is similar to the C<-Zp[n]> option
+of the Intel compiler. It globally specifies the maximum
+boundary to which struct members are aligned. Consider the
+following structure and the sizes
+of C<char>, C<short>, C<long> and C<double> being 1, 2, 4
+and 8, respectively.
+
+  struct align {
+    char   a;
+    short  b, c;
+    long   d;
+    double e;
+  };
+
+With an alignment of 1 (the default), the struct members would
+be packed tightly:
+
+  0   1   2   3   4   5   6   7   8   9  10  11  12
+  +---+---+---+---+---+---+---+---+---+---+---+---+
+  | a |   b   |   c   |       d       |             ...
+  +---+---+---+---+---+---+---+---+---+---+---+---+
+  
+     12  13  14  15  16  17
+      +---+---+---+---+---+
+  ...     e               |
+      +---+---+---+---+---+
+
+With an alignment of 2, the struct members larger than one byte
+would be aligned to 2-byte boundaries, which results in a single
+padding byte between C<a> and C<b>.
+
+  0   1   2   3   4   5   6   7   8   9  10  11  12
+  +---+---+---+---+---+---+---+---+---+---+---+---+
+  | a | * |   b   |   c   |       d       |         ...
+  +---+---+---+---+---+---+---+---+---+---+---+---+
+  
+     12  13  14  15  16  17  18
+      +---+---+---+---+---+---+
+  ...         e               |
+      +---+---+---+---+---+---+
+
+With an alignment of 4, the struct members of size 2 would be
+aligned to 2-byte boundaries and larger struct members would
+be aligned to 4-byte boundaries:
+
+  0   1   2   3   4   5   6   7   8   9  10  11  12
+  +---+---+---+---+---+---+---+---+---+---+---+---+
+  | a | * |   b   |   c   | * | * |       d       | ...
+  +---+---+---+---+---+---+---+---+---+---+---+---+
+  
+     12  13  14  15  16  17  18  19  20
+      +---+---+---+---+---+---+---+---+
+  ... |               e               |
+      +---+---+---+---+---+---+---+---+
+
+This layout of the struct members allows the compiler to generate
+optimized code because aligned members can be accessed more easily
+by the underlying architecture.
+
+Finally, setting the alignment to 8 will align C<double>s to
+8-byte boundaries:
+
+  0   1   2   3   4   5   6   7   8   9  10  11  12
+  +---+---+---+---+---+---+---+---+---+---+---+---+
+  | a | * |   b   |   c   | * | * |       d       | ...
+  +---+---+---+---+---+---+---+---+---+---+---+---+
+  
+     12  13  14  15  16  17  18  19  20  21  22  23  24
+      +---+---+---+---+---+---+---+---+---+---+---+---+
+  ... | * | * | * | * |               e               |
+      +---+---+---+---+---+---+---+---+---+---+---+---+
+
+Further increasing the alignment does not alter the layout of
+our structure, as only members larger that 8 bytes would be
+affected.
+
+The alignment of a structure depends on its largest member and
+on the setting of the C<Alignment> option. With C<Alignment> set
+to 2, a structure holding a C<long> would be aligned to a 2-byte
+boundary, while a structure containing only C<char>s would have
+no alignment restrictions.
+
+Here's another example. Assuming 8-byte alignment, the following
+two structs will both have a size of 16 bytes:
+
+  struct one {
+    char   c;
+    double d;
+  };
+  
+  struct two {
+    double d;
+    char   c;
+  };
+
+This is clear for C<struct one>, because the member C<d> has to
+be aligned to an 8-byte boundary, and thus 7 padding bytes are
+inserted after C<c>. But for C<struct two>, the padding bytes
+are inserted I<at the end> of the structure, which doesn't make
+much sense immediately. However, it makes perfect sense if you
+think about an array of C<struct two>. Each C<double> has to be
+aligned to an 8-byte boundary, an thus each array element would
+have to occupy 16 bytes. With that in mind, it would be strange
+if a C<struct two> variable would have a different size. And it
+would make the widely used construct
+
+  struct two array[] = { {1.0, 0}, {2.0, 1} };
+  int elements = sizeof(array) / sizeof(struct two);
+
+impossible.
+
+The alignment behaviour described here seems to be common for all
+compilers. However, not all compilers have an option to configure
+their default alignment.
 
 =item C<ByteOrder> =E<gt> 'BigEndian' | 'LittleEndian'
 
@@ -954,6 +1092,69 @@ The parser allows you to disable the following keywords:
   void
   volatile
 
+=item C<KeywordMap> =E<gt> { KEYWORD =E<gt> TOKEN, ... }
+
+This option allows you to add new keywords to the parser.
+These new keywords can either be mapped to existing tokens
+or simply ignored. For example, recent versions of the GNU
+compiler recognize the keywords C<__signed__> and C<__extension__>.
+The first one obviously is a synonym for C<signed>, while
+the second one is only a marker for a language extension.
+
+Using the preprocessor, you could of course do the following:
+
+  $c->Define( qw( __signed__=signed __extension__= ) );
+
+However, the preprocessor symbols could be undefined or
+redefined in the code, and
+
+  #ifdef __signed__
+  # undef __signed__
+  #endif
+  
+  typedef __extension__ __signed__ long long s_quad;
+
+would generate a parse error, because C<__signed__> is an
+unexpected identifier.
+
+Instead of utilizing the preprocessor, you'll have to create
+mappings for the new keywords directly in the parser
+using C<KeywordMap>. In the above example, you want to
+map C<__signed__> to the builtin C keyword C<signed> and
+ignore C<__extension__>. This could be done with the following
+code:
+
+  $c->KeywordMap( {
+                    __signed__    => 'signed',
+                    __extension__ => undef,
+                  } );
+
+You can specify any valid identifier as hash key, and either
+a valid C keyword or C<undef> as hash value.  
+Having configured the object that way, you could parse even
+
+  #ifdef __signed__
+  # undef __signed__
+  #endif
+  
+  typedef __extension__ __signed__ long long s_quad;
+
+without problems.
+
+Note that C<KeywordMap> and C<DisabledKeywords> perfectly work
+together. You could, for example, disable the C<signed> keyword,
+but still have C<__signed__> mapped to the original C<signed> token:
+
+  $c->configure( DisabledKeywords => [ 'signed' ],
+                 KeywordMap       => { __signed__  => 'signed' } );
+
+This would allow you to define
+
+  typedef __signed__ long signed;
+
+which would normally be a syntax error because C<signed> cannot
+be used as an identifier.
+
 =item C<UnsignedChars> =E<gt> 0 | 1
 
 Use this boolean option if you want characters
@@ -986,7 +1187,7 @@ With C++ comments, the above will be interpreted as
   one = 4
   two = 2;
 
-which will obviously create a parse error, but without
+which will obviously be a syntax error, but without
 C++ comments, it will be interpreted as
 
   one = 4 / 4;
@@ -1241,6 +1442,7 @@ Perl arrays.
 
   use Convert::Binary::C;
   use Data::Dumper;
+  use Data::Hexdumper;
   
   $c = Convert::Binary::C->new( ByteOrder => 'BigEndian',
                                 LongSize  => 4,
@@ -1264,11 +1466,11 @@ Elements not defined in the Perl data structure will be
 set to zero in the packed byte string. On success, the
 packed byte string is returned.
 
-  print unpack('H*', $binary), "\n";
+  print hexdump( data => $binary );
 
 The above code would print:
 
-  0102000000002a
+    0x0000 : 01 02 00 00 00 00 2A                            : ......*
 
 You could also use L<C<unpack>|/"unpack"> and dump the data structure.
 
@@ -1298,15 +1500,15 @@ to the type name, just as you would access the member in
 C:
 
   $array = $c->pack( 'test.ary', [1, 2, 3] );
-  print unpack('H*', $array), "\n";
+  print hexdump( data => $array );
   
   $value = $c->pack( 'test.uni.word[1]', 2 );
-  print unpack('H*', $value), "\n";
+  print hexdump( data => $value );
 
 This would give you:
 
-  010203
-  0002
+    0x0000 : 01 02 03                                        : ...
+    0x0000 : 00 02                                           : ..
 
 Call L<C<pack>|/"pack"> with the optional STRING argument if you want
 to use an existing binary string to insert the data.
@@ -1351,15 +1553,19 @@ be an exact copy of that string.
   $too_long  = pack "C*", (1 .. 20);
   
   $c->pack( 'test', { uni => { quad => 0x4711 } }, $too_short );
-  print "too_short: ", unpack('H*', $too_short), "\n";
+  print "too_short:\n", hexdump( data => $too_short );
   
   $copy = $c->pack( 'test', { uni => { quad => 0x4711 } }, $too_long );
-  print "copy     : ", unpack('H*', $copy), "\n";
+  print "\ncopy:\n", hexdump( data => $copy );
 
 This would print:
 
-  too_short: 01020300004711
-  copy     : 0102030000471108090a0b0c0d0e0f1011121314
+  too_short:
+    0x0000 : 01 02 03 00 00 47 11                            : .....G.
+  
+  copy:
+    0x0000 : 01 02 03 00 00 47 11 08 09 0A 0B 0C 0D 0E 0F 10 : .....G..........
+    0x0010 : 11 12 13 14                                     : ....
 
 =back
 
@@ -1556,8 +1762,7 @@ This will print:
     'enumerators' => {
       'INSIDE' => 0
     },
-    'sign' => 0,
-    'size' => 1
+    'sign' => 0
   };
 
 Have a look at the L<C<enum>|/"enum"> method for details on how to
@@ -1572,6 +1777,75 @@ as the first argument:
 This will print:
 
   ('day+2', 'long')
+
+While the behaviour for C<struct>s is quite obvious, the behaviour
+for C<union>s is rather tricky. As an single offset usually references
+more than one member of a union, there are certain rules that the
+algorithm uses for determining the I<best> member.
+
+=over 2
+
+=item *
+
+The first non-compound member that is referenced without an offset
+has the highest priority.
+
+=item *
+
+If no member is referenced without an offset, the first non-compound
+member that is referenced with an offset will be returned.
+
+=item *
+
+Otherwise the first padding region that is encountered will be taken.
+
+=back
+
+As an example, given 4-byte-alignment and the union
+
+  union choice {
+    struct {
+      char  color[2];
+      long  size;
+      char  taste;
+    }       apple;
+    char    grape[3];
+    struct {
+      long  weight;
+      short price[3];
+    }       melon;
+  };
+
+the L<C<member>|/"member"> method would return the following:
+
+  Offset   Member               Type
+  --------------------------------------
+     0     apple.color[0]       'char'
+     1     apple.color[1]       'char'
+     2     grape[2]             'char'
+     3     melon.weight+3       'long'
+     4     apple.size           'long'
+     5     apple.size+1         'long'
+     6     melon.price[1]       'short'
+     7     apple.size+3         'long'
+     8     apple.taste          'char'
+     9     melon.price[2]+1     'short'
+    10     apple+10             undef
+    11     apple+11             undef
+
+It's like having a stack of all the union members and looking through
+the stack for the shiniest piece you can see. The beginning of a member
+(denoted by uppercase letters) is always shinier than the rest of a
+member, while padding regions (denoted by dashes) aren't shiny at all.
+
+  Offset   0   1   2   3   4   5   6   7   8   9  10  11
+  -------------------------------------------------------
+  apple   (C) (C)  -   -  (S) (s)  s  (s) (T)  -  (-) (-)
+  grape    G   G  (G)
+  melon    W   w   w  (w)  P   p  (P)  p   P  (p)  -   -
+
+If you look through that stack from top to bottom, you'll end up at
+the parenthesized members.
 
 =back
 
@@ -1909,8 +2183,7 @@ to this:
         'SOCK_DGRAM' => 2
       },
       'identifier' => '__socket_type',
-      'sign' => 0,
-      'size' => 1
+      'sign' => 0
     }
   );
 
@@ -1929,14 +2202,7 @@ all enumerators of the enumeration.
 =item C<sign>
 
 is a boolean indicating if the enumeration is
-signed.
-
-=item C<size>
-
-is the size in bytes needed to store any enumerator of
-that enumeration. This does B<not> need to be the size
-that is actually occupied by an enumerator. Only if C<EnumSize> is
-configured to C<0>, these are identical.
+signed (i.e. has negative values).
 
 =back
 
@@ -2567,7 +2833,11 @@ module name and giving invaluable feedback.
 =item *
 
 Thomas Pornin E<lt>pornin@bolet.orgE<gt> for his
-excellent I<ucpp> preprocessor library.
+excellent C<ucpp> preprocessor library.
+
+=item *
+
+Marc Rosenthal for his suggestions and support.
 
 =item *
 
@@ -2594,13 +2864,25 @@ send a mail to E<lt>mhx@cpan.orgE<gt>.
 If you're interested in what I currently plan to improve
 (or fix), have a look at the F<TODO> file.
 
+=head1 POSTCARDS
+
+If you're using my module and like it, you can show your appreciation
+by sending me a postcard from where you live. I won't urge you to do it,
+it's completely up to you. To me, this is just a very nice way of
+receiving feedback about my work. Please send your postcard to:
+
+  Marcus Holland-Moritz
+  Kuppinger Weg 28
+  71116 Gaertringen
+  GERMANY
+
 =head1 COPYRIGHT
 
-Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-This program is free software; you can redistribute it and/or
-modify it under the same terms as Perl itself.
+Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
 
-The I<ucpp> library is (c) Thomas Pornin 1999, 2000. For licence
+The C<ucpp> library is (c) 1998-2002 Thomas Pornin. For licence
 and redistribution details refer to F<ctlib/ucpp/README>.
 
 Portions copyright (c) 1989, 1990 James A. Roskind.
@@ -2612,7 +2894,6 @@ to the source code of this module in any other way.
 
 =head1 SEE ALSO
 
-L<perl>, L<perldata>, L<perlop>, L<perlvar> and L<Data::Dumper>.
+L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar> and L<Data::Dumper>.
 
 =cut
-

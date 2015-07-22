@@ -11,16 +11,16 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/12/07 17:17:28 +0000 $
-* $Revision: 10 $
-* $Snapshot: /Convert-Binary-C/0.06 $
+* $Date: 2003/01/06 02:40:49 +0000 $
+* $Revision: 18 $
+* $Snapshot: /Convert-Binary-C/0.07 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-* This program is free software; you can redistribute it and/or
-* modify it under the same terms as Perl itself.
+* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* This program is free software; you can redistribute it and/or modify
+* it under the same terms as Perl itself.
 *
 * Portions Copyright (c) 1989, 1990 James A. Roskind.
 * Also see the original copyright notice below.
@@ -93,6 +93,7 @@ colleagues include: Bruce Blodgett, and Mark Langley.
 #include "ctparse.h"
 #include "fileinfo.h"
 #include "parser.h"
+#include "pragma.h"
 
 #include "util/list.h"
 #include "util/memalloc.h"
@@ -411,6 +412,9 @@ int moo(const int identifier1 (T identifier2 (int identifier3)));
 /* keywords new in ANSI-C99 */
 %token INLINE_TOK       RESTRICT_TOK
 
+/* special tokens */
+%token SKIP_TOK
+
 /* Multi-Character operators */
 %token  PTR_OP                     /*    ->                              */
 %token  INC_OP DEC_OP              /*    ++      --                      */
@@ -454,6 +458,8 @@ int moo(const int identifier1 (T identifier2 (int identifier3)));
                      sue_declaration_specifier
                      typedef_declaration_specifier
                      elaborated_type_name
+                     su_type_specifier
+                     sut_type_specifier
                      sue_type_specifier
                      typedef_type_specifier
                      aggregate_name
@@ -463,6 +469,7 @@ int moo(const int identifier1 (T identifier2 (int identifier3)));
 %type <pStructDecl>  member_declaration
                      member_default_declaring_list
                      member_declaring_list
+                     unnamed_su_declaration
 
 %type <pDecl>        identifier_declarator
                      declarator
@@ -946,6 +953,15 @@ sue_type_specifier               /* struct/union/enum */
 	| sue_type_specifier type_qualifier                 { $$ = $1; } /* type qualifiers     */
 	;
 
+su_type_specifier                /* struct/union */
+	: aggregate_name                                    { $$ = $1; }
+	| type_qualifier_list aggregate_name                { $$ = $2; } /* we don't care about */
+	| sue_type_specifier type_qualifier                 { $$ = $1; } /* type qualifiers     */
+	;
+
+sut_type_specifier               /* struct/union/typedef */
+	: su_type_specifier                                 { $$ = $1; }
+	| typedef_type_specifier                            { $$ = $1; }
 
 typedef_declaration_specifier       /* Storage Class + typedef types */
 	: typedef_type_specifier storage_class
@@ -1098,6 +1114,21 @@ member_declaration_list
 member_declaration
 	: member_declaring_list ';'         { $$ = $1; }
 	| member_default_declaring_list ';' { $$ = $1; }
+	| unnamed_su_declaration ';'        { $$ = $1; }
+	;
+
+unnamed_su_declaration
+	: sut_type_specifier
+	  {
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = structdecl_new( $1, NULL );
+	      LL_unshift( PSTATE->structDeclList, $$ );
+	      CT_DEBUG( PARSER, ("unshifting unnamed struct declaration (0x%08X)", $$) );
+	    }
+	  }
 	;
 
 member_default_declaring_list     /* doesn't redeclare typedef*/
@@ -1961,19 +1992,32 @@ static int c_lex( void *pYYLVAL, ParserState *pState )
   CT_DEBUG( CLEXER, ("parser.y::c_lex()") );
 
   while( (rval = lex( pLexer )) < CPPERR_EOF ) {
-    if( rval )
+    if( rval ) {
+      CT_DEBUG( CLEXER, ("lex() returned %d", rval) );
       continue;
+    }
 
     token = pLexer->ctok->type;
 
     switch( token ) {
       case NONE:
+        CT_DEBUG( CLEXER, ("token-type => NONE") );
+        break;
+
       case COMMENT:
+        CT_DEBUG( CLEXER, ("token-type => COMMENT => [%s]", pLexer->ctok->name) );
+        break;
+
       case NEWLINE:
+        CT_DEBUG( CLEXER, ("token-type => NEWLINE") );
+        break;
+
       case BUNCH:
+        CT_DEBUG( CLEXER, ("token-type => BUNCH => [%s]", pLexer->ctok->name) );
         break;
 
       case CONTEXT:
+        CT_DEBUG( CLEXER, ("token-type => CONTEXT => [%s]", pLexer->ctok->name) );
         {
           int len = strlen( pLexer->ctok->name );
 
@@ -1993,24 +2037,28 @@ static int c_lex( void *pYYLVAL, ParserState *pState )
         break;
 
       case NUMBER:
+        CT_DEBUG( CLEXER, ("token-type => NUMBER => [%s]", pLexer->ctok->name) );
         plval->value.iv = strtol( pLexer->ctok->name, NULL, 0 );
         plval->value.flags = 0;
         CT_DEBUG( CLEXER, ("constant: %s -> %d", pLexer->ctok->name, plval->value.iv) );
         return CONSTANT;
 
       case STRING:
+        CT_DEBUG( CLEXER, ("token-type => STRING => [%s]", pLexer->ctok->name) );
         plval->value.iv = string_size( pLexer->ctok->name );
         plval->value.flags = 0;
         CT_DEBUG( CLEXER, ("string literal: %s -> %d", pLexer->ctok->name, plval->value.iv) );
         return STRING_LITERAL;
 
       case CHAR:
+        CT_DEBUG( CLEXER, ("token-type => CHAR => [%s]", pLexer->ctok->name) );
         plval->value.iv = get_char_value( pLexer->ctok->name );
         plval->value.flags = 0;
         CT_DEBUG( CLEXER, ("constant: %s -> %d", pLexer->ctok->name, plval->value.iv) );
         return CONSTANT;
 
       case PRAGMA:
+        CT_DEBUG( CLEXER, ("token-type => PRAGMA") );
         CT_DEBUG( CLEXER, ("line %ld: <#pragma>", pLexer->line) );
 
         pState->pragma.str = pLexer->ctok->name;
@@ -2021,16 +2069,29 @@ static int c_lex( void *pYYLVAL, ParserState *pState )
         break;
 
       case NAME:
+        CT_DEBUG( CLEXER, ("token-type => NAME => [%s]", pLexer->ctok->name) );
         {
           char *tokstr = pLexer->ctok->name;
+          const CKeywordToken *ckt;
 
 #include "t_parser.c"
 
           unknown:
-            return check_type( pYYLVAL, pState, tokstr );
+
+          if( (ckt = HT_get( pState->pCPC->keyword_map, tokstr, 0, 0 )) != NULL ) {
+            if( ckt->token == SKIP_TOK ) {
+              CT_DEBUG( CLEXER, ("skipping token '%s' in line %ld", tokstr, pLexer->line) );
+              break;
+            }
+
+            return ckt->token;
+          }
+
+          return check_type( pYYLVAL, pState, tokstr );
         }
 
       default:
+        CT_DEBUG( CLEXER, ("token-type => %d", token) );
         if( (rval = tokentab[token]) != 0 ) {
           return rval;
         }
@@ -2272,14 +2333,61 @@ static int check_type( void *pYYLVAL, ParserState *pState, char *s )
 
 /*******************************************************************************
 *
-*   ROUTINE: c_parser_create
+*   ROUTINE: get_c_keyword_token
 *
-*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Dec 2002
 *   CHANGED BY:                                   ON:
 *
 ********************************************************************************
 *
-* DESCRIPTION: C lexer.
+* DESCRIPTION: Create a new C parser.
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+const CKeywordToken *get_c_keyword_token( const char *name )
+{
+#include "t_ckeytok.c"
+unknown:
+  return NULL;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: get_skip_token
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Dec 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Create a new C parser.
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+const CKeywordToken *get_skip_token( void )
+{
+  static const CKeywordToken ckt = { SKIP_TOK, NULL };
+  return &ckt;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: c_parser_new
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Dec 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Create a new C parser.
 *
 *   ARGUMENTS:
 *
@@ -2288,7 +2396,7 @@ static int check_type( void *pYYLVAL, ParserState *pState, char *s )
 *******************************************************************************/
 
 ParserState *c_parser_new( const CParseConfig *pCPC, CParseInfo *pCPI,
-                              struct lexer_state *pLexer )
+                           struct lexer_state *pLexer )
 {
   ParserState *pState;
 
@@ -2323,10 +2431,44 @@ ParserState *c_parser_new( const CParseConfig *pCPC, CParseInfo *pCPI,
   return pState;
 }
 
+/*******************************************************************************
+*
+*   ROUTINE: c_parser_run
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Dec 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Run the C parser.
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
 int c_parser_run( ParserState *pState )
 {
   return c_parse( (void *) pState );
 }
+
+/*******************************************************************************
+*
+*   ROUTINE: c_parser_delete
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Dec 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Delete a C parser object.
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
 
 void c_parser_delete( ParserState *pState )
 {

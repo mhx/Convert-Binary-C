@@ -2,16 +2,16 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/12/11 13:56:40 +0000 $
-# $Revision: 10 $
-# $Snapshot: /Convert-Binary-C/0.06 $
+# $Date: 2003/01/09 07:49:27 +0000 $
+# $Revision: 16 $
+# $Snapshot: /Convert-Binary-C/0.07 $
 # $Source: /t/101_config.t $
 #
 ################################################################################
 # 
-# Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-# This program is free software; you can redistribute it and/or
-# modify it under the same terms as Perl itself.
+# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the same terms as Perl itself.
 # 
 ################################################################################
 
@@ -23,12 +23,18 @@ use constant FAIL    => 0;
 
 $^W = 1;
 
-BEGIN {
-  $C99 = Convert::Binary::C::feature( 'c99' );
-  plan tests => $C99 ? 1599 : 1483
-}
+BEGIN { plan tests => 1706 }
 
-ok( defined $C99 );
+{
+  local $SIG{__WARN__} = sub{}; # deprecated #
+  $C99 = Convert::Binary::C::feature( 'c99' );
+}
+$debug = Convert::Binary::C::feature( 'debug' );
+
+ok( defined $C99 and defined $debug );
+
+$RC99 = $C99   ? '' : 'skip: not built with C99 feature';
+$RDBG = $debug ? '' : 'skip: no debugging';
 
 # passing references as options is not legal, so this is
 # always checked for non-list options
@@ -42,6 +48,7 @@ $thisfile = quotemeta "at $0";
 
 sub check_config
 {
+  my $reason = shift;
   my $option = shift;
   my @warn;
   my $value;
@@ -54,7 +61,7 @@ sub check_config
     my $reference = $config->{out} || $config->{in};
 
     eval { $p = new Convert::Binary::C };
-    ok($@, '', "failed to create Convert::Binary::C object");
+    skip($reason, $@, '', "failed to create Convert::Binary::C object");
 
     print "# \$p->configure( $option => $config->{in} )\n";
     eval { $p->configure( $option => $config->{in} ) };
@@ -63,9 +70,9 @@ sub check_config
       $err =~ s/^/#   /g;
       print "# failed due to:\n$err";
     }
-    ok( ($@ eq '' ? SUCCEED : FAIL), $config->{result},
-        "$option => $config->{in}" );
-    ok( $@, qr/$option must be.*not.*$thisfile/ ) if $config->{result} == FAIL;
+    skip( $reason, ($@ eq '' ? SUCCEED : FAIL), $config->{result},
+          "$option => $config->{in}" );
+    skip( $reason, $@, qr/$option must be.*not.*$thisfile/ ) if $config->{result} == FAIL;
 
     print "# \$p->$option( $config->{in} )\n";
     eval { $p->$option( $config->{in} ) };
@@ -74,44 +81,45 @@ sub check_config
       $err =~ s/^/#   /g;
       print "# failed due to:\n$err";
     }
-    ok( ($@ eq '' ? SUCCEED : FAIL), $config->{result},
-        "$option => $config->{in}" );
-    ok( $@, qr/$option must be.*not.*$thisfile/ ) if $config->{result} == FAIL;
+    skip( $reason, ($@ eq '' ? SUCCEED : FAIL), $config->{result},
+          "$option => $config->{in}" );
+    skip( $reason, $@, qr/$option must be.*not.*$thisfile/ ) if $config->{result} == FAIL;
 
     if( $config->{result} == SUCCEED ) {
       print "# \$value = \$p->configure( $option )\n";
       eval { $value = $p->configure( $option ) };
-      ok( $@, '', "cannot get value for '$option' via configure" );
-      ok( $value, $reference, "invalid value for '$option' via configure" );
+      skip( $reason, $@, '', "cannot get value for '$option' via configure" );
+      skip( $reason, $value, $reference, "invalid value for '$option' via configure" );
 
       print "# \$value = \$p->$option\n";
       eval { $value = $p->$option() };
-      ok( $@, '', "cannot get value for '$option' via $option" );
-      ok( $value, $reference, "invalid value for '$option' via $option" );
+      skip( $reason, $@, '', "cannot get value for '$option' via $option" );
+      skip( $reason, $value, $reference, "invalid value for '$option' via $option" );
     }
 
-    ok( scalar @warn, 0, "warnings issued for option '$option'" );
+    skip( $reason, scalar @warn, 0, "warnings issued for option '$option'" );
   }
 
   @warn = ();
   print "# \$p->configure( $option )\n";
   eval { $p->configure( $option ) };
-  ok( $@, '', "failed to call configure in void context" );
+  skip( $reason, $@, '', "failed to call configure in void context" );
   if( @warn ) { print "# issued warnings:\n", map "#   $_", @warn }
-  ok( scalar @warn, 1, "invalid number of warnings issued" );
-  ok( $warn[0], qr/Useless use of configure in void context.*$thisfile/ );
+  skip( $reason, scalar @warn, 1, "invalid number of warnings issued" );
+  skip( $reason, $warn[0], qr/Useless use of configure in void context.*$thisfile/ );
 
   @warn = ();
   print "# \$p->$option\n";
   eval { $p->$option() };
-  ok( $@, '', "failed to call $option in void context" );
+  skip( $reason, $@, '', "failed to call $option in void context" );
   if( @warn ) { print "# issued warnings:\n", map "#   $_", @warn }
-  ok( scalar @warn, 1, "invalid number of warnings issued" );
-  ok( $warn[0], qr/Useless use of $option in void context.*$thisfile/ );
+  skip( $reason, scalar @warn, 1, "invalid number of warnings issued" );
+  skip( $reason, $warn[0], qr/Useless use of $option in void context.*$thisfile/ );
 }
 
 sub check_config_bool
 {
+  my $reason = shift;
   my $option = shift;
 
   my @tests = (
@@ -122,7 +130,7 @@ sub check_config_bool
      @refs
   );
 
-  check_config( $option, @tests );
+  check_config( $reason, $option, @tests );
 }
 
 sub check_option_strlist
@@ -217,16 +225,63 @@ sub check_option_strlist_args {
 sub compare_config
 {
   my($cfg1, $cfg2) = @_;
-  ok( scalar keys %$cfg1, scalar keys %$cfg2, "differing options count" );
-  for( keys %$cfg1 ) {
-    if( ref $cfg1->{$_} ) {
-      ok( "@{$cfg1->{$_}}", "@{$cfg2->{$_}}", "option '$_' has different values" );
+  my $fail = 0;
+  scalar keys %$cfg1 == scalar keys %$cfg2 or $fail++;
+  for my $key ( keys %$cfg1 ) {
+    if( ref $cfg1->{$key} eq 'ARRAY' ) {
+      "@{$cfg1->{$key}}" eq "@{$cfg2->{$key}}" or $fail++;
+    }
+    elsif( ref $cfg1->{$key} eq 'HASH' ) {
+      "@{[sort keys %{$cfg1->{$key}}]}" eq "@{[sort keys %{$cfg1->{$key}}]}" or $fail++;
+      for( sort keys %{$cfg1->{$key}} ) {
+        if( defined( $cfg1->{$key}{$_} ) != defined( $cfg2->{$key}{$_} ) ) {
+          $fail++;
+        }
+        if( defined( $cfg1->{$key}{$_} ) and defined( $cfg2->{$key}{$_} )
+            and $cfg1->{$key}{$_} ne $cfg2->{$key}{$_} ) {
+          $fail++;
+        }
+      }
     }
     else {
-      ok( $cfg1->{$_}, $cfg2->{$_}, "option '$_' has different values" );
+      $cfg1->{$key} eq $cfg2->{$key} or $fail++;
     }
   }
+  return $fail == 0;
 }
+
+sub checkrc
+{
+  my $rc = shift;
+  my $fail = 0;
+  my $succ = 0;
+  while( $rc =~ /REFCNT\s*=\s*(\d+)/g ) {
+    if( $1 == 1 ) { $succ++ }
+    else {
+      print "# REFCNT = $1, should be 1\n";
+      $fail++;
+    }
+  }
+  return $succ > 0 && $fail == 0;
+}
+
+@tests = (
+  { in => -2,  result => FAIL    },
+  { in => -1,  result => SUCCEED },
+  { in =>  0,  result => SUCCEED },
+  { in =>  1,  result => SUCCEED },
+  { in =>  2,  result => SUCCEED },
+  { in =>  3,  result => FAIL    },
+  { in =>  4,  result => SUCCEED },
+  { in =>  5,  result => FAIL    },
+  { in =>  6,  result => FAIL    },
+  { in =>  7,  result => FAIL    },
+  { in =>  8,  result => SUCCEED },
+  { in =>  9,  result => FAIL    },
+  @refs
+);
+
+check_config( '', 'EnumSize', @tests );
 
 @tests = (
   { in => -1,  result => FAIL    },
@@ -243,28 +298,11 @@ sub compare_config
   @refs
 );
 
-check_config( $_, @tests ) for qw( PointerSize
-                                   IntSize
-                                   ShortSize
-                                   LongSize
-                                   LongLongSize );
-
-@tests = (
-  { in => -1,  result => FAIL    },
-  { in =>  0,  result => SUCCEED },
-  { in =>  1,  result => SUCCEED },
-  { in =>  2,  result => SUCCEED },
-  { in =>  3,  result => FAIL    },
-  { in =>  4,  result => SUCCEED },
-  { in =>  5,  result => FAIL    },
-  { in =>  6,  result => FAIL    },
-  { in =>  7,  result => FAIL    },
-  { in =>  8,  result => FAIL    },
-  { in =>  9,  result => FAIL    },
-  @refs
-);
-
-check_config( $_, @tests ) for qw( EnumSize );
+check_config( '', $_, @tests ) for qw( PointerSize
+                                       IntSize
+                                       ShortSize
+                                       LongSize
+                                       LongLongSize );
 
 @tests = (
   { in => -1, result => FAIL    },
@@ -282,12 +320,16 @@ check_config( $_, @tests ) for qw( EnumSize );
   { in => 11, result => FAIL    },
   { in => 12, result => SUCCEED },
   { in => 13, result => FAIL    },
+  { in => 14, result => FAIL    },
+  { in => 15, result => FAIL    },
+  { in => 16, result => SUCCEED },
+  { in => 17, result => FAIL    },
   @refs
 );
 
-check_config( $_, @tests ) for qw( FloatSize
-                                   DoubleSize
-                                   LongDoubleSize );
+check_config( '', $_, @tests ) for qw( FloatSize
+                                       DoubleSize
+                                       LongDoubleSize );
                                    
 @tests = (
   { in => -1, result => FAIL    },
@@ -301,19 +343,27 @@ check_config( $_, @tests ) for qw( FloatSize
   { in =>  7, result => FAIL    },
   { in =>  8, result => SUCCEED },
   { in =>  9, result => FAIL    },
+  { in => 10, result => FAIL    },
+  { in => 11, result => FAIL    },
+  { in => 12, result => FAIL    },
+  { in => 13, result => FAIL    },
+  { in => 14, result => FAIL    },
+  { in => 15, result => FAIL    },
+  { in => 16, result => SUCCEED },
+  { in => 17, result => FAIL    },
   @refs
 );
 
-check_config( $_, @tests ) for qw( Alignment );
+check_config( '', $_, @tests ) for qw( Alignment );
 
-check_config( 'ByteOrder',
+check_config( '', 'ByteOrder',
   { in => 'BigEndian',    result => SUCCEED },
   { in => 'LittleEndian', result => SUCCEED },
   { in => 'NoEndian',     result => FAIL    },
   @refs
 );
 
-check_config( 'EnumType',
+check_config( '', 'EnumType',
   { in => 'Integer', result => SUCCEED },
   { in => 'String',  result => SUCCEED },
   { in => 'Both',    result => SUCCEED },
@@ -321,13 +371,11 @@ check_config( 'EnumType',
   @refs
 );
 
-check_config_bool( $_ ) for qw( UnsignedChars
-                                Warnings );
+check_config_bool( '', $_ ) for qw( UnsignedChars
+                                    Warnings );
 
-if( $C99 ) {
-  check_config_bool( $_ ) for qw( HasCPPComments
-                                  HasMacroVAARGS );
-}
+check_config_bool( $RC99, $_ ) for qw( HasCPPComments
+                                       HasMacroVAARGS );
 
 check_option_strlist( $_ ) for qw( Include
                                    Define
@@ -362,6 +410,55 @@ eval {
 ok( $@, qr/Cannot disable unknown keyword 'while'.*$thisfile/ );
 $kw = $p->DisabledKeywords;
 ok( "@$kw", "auto enum", 'DisabledKeywords did not preserve configuration' );
+
+#===================================================================
+# check KeywordMap option
+#===================================================================
+
+eval {
+  $p = new Convert::Binary::C;
+  $p->configure( KeywordMap => 5 );
+};
+ok( $@, qr/KeywordMap wants a hash reference.*$thisfile/ );
+
+eval {
+  $p = new Convert::Binary::C;
+  $p->configure( KeywordMap => [ __xxx__ => 'foo' ] );
+};
+ok( $@, qr/KeywordMap wants a hash reference.*$thisfile/ );
+
+eval {
+  $p = new Convert::Binary::C;
+  $p->KeywordMap( { '' => 'int' } );
+};
+ok( $@, qr/Cannot use empty string as a keyword.*$thisfile/ );
+
+eval {
+  $p = new Convert::Binary::C;
+  $p->KeywordMap( { '1_d' => 'int' } );
+};
+ok( $@, qr/Cannot use '1_d' as a keyword.*$thisfile/ );
+
+eval {
+  $p = new Convert::Binary::C;
+  $p->KeywordMap( { '_d' => [] } );
+};
+ok( $@, qr/Cannot use a reference as a keyword.*$thisfile/ );
+
+eval {
+  $p = new Convert::Binary::C;
+  $p->KeywordMap( { '_d' => 'foo' } );
+};
+ok( $@, qr/Cannot use 'foo' as a keyword.*$thisfile/ );
+
+eval {
+  $p = new Convert::Binary::C;
+  $p->KeywordMap( {'__const' => 'const', '__restrict' => undef} );
+  $p->KeywordMap( {'__volatile' => 'volatile', '__foo' => 'foo'} );
+};
+ok( $@, qr/Cannot use 'foo' as a keyword.*$thisfile/ );
+$kw = $p->KeywordMap;
+ok( "@{[sort keys %$kw]}", "__const __restrict", 'KeywordMap did not preserve configuration' );
 
 #===================================================================
 # check invalid configuration
@@ -408,6 +505,7 @@ ok( $@, qr/Invalid method some_method called.*$thisfile/ );
 #===================================================================
 
 %config = (
+  'KeywordMap' => {},
   'DisabledKeywords' => [],
   'UnsignedChars' => 0,
   'ShortSize' => 2,
@@ -438,13 +536,14 @@ eval {
 };
 ok( $@, '', "failed to retrieve configuration" );
 
-compare_config( \%config, $cfg );
+ok( compare_config( \%config, $cfg ) );
 
 #===================================================================
 # check option chaining
 #===================================================================
 
 %newcfg = (
+  'KeywordMap' => {'__signed__' => 'signed', '__restrict' => undef},
   'DisabledKeywords' => ['const', 'register'],
   'UnsignedChars' => 1,
   'ShortSize' => 4,
@@ -482,7 +581,8 @@ eval {
   $p->FloatSize( 8 )->Include( qw( /usr/include /include ) )->DisabledKeywords( [qw( const register )] )
     ->Alignment( 2 )->Define( qw( BAR=456 ) )->configure( ByteOrder => 'BigEndian' );
 
-  $p->configure( PointerSize => 2 )->Warnings( 1 );
+  $p->configure( PointerSize => 2 )->Warnings( 1 )
+    ->KeywordMap( {'__signed__' => 'signed', '__restrict' => undef} );
 
   $cfg = $p->configure;
 };
@@ -491,5 +591,8 @@ ok( $@, '', "failed to configure object" );
 if( @warn ) { print "# issued warnings:\n", map "#   $_", @warn }
 ok( scalar @warn, 0, "invalid number of warnings issued" );
 
-compare_config( \%newcfg, $cfg );
+ok( compare_config( \%newcfg, $cfg ) );
 
+$debug and $result = checkrc( Convert::Binary::C::__DUMP__( $cfg ) );
+skip( $RDBG, $result );
+ 

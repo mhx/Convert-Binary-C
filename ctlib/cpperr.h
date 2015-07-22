@@ -10,21 +10,21 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/04/15 22:26:46 +0100 $
-* $Revision: 1 $
-* $Snapshot: /Convert-Binary-C/0.06 $
+* $Date: 2003/01/01 11:29:54 +0000 $
+* $Revision: 3 $
+* $Snapshot: /Convert-Binary-C/0.07 $
 * $Source: /ctlib/cpperr.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-* This program is free software; you can redistribute it and/or
-* modify it under the same terms as Perl itself.
+* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* This program is free software; you can redistribute it and/or modify
+* it under the same terms as Perl itself.
 *
 *******************************************************************************/
 
-#ifndef _CPPERR_H
-#define _CPPERR_H
+#ifndef _CTLIB_CPPERR_H
+#define _CTLIB_CPPERR_H
 
 /*===== GLOBAL INCLUDES ======================================================*/
 

@@ -1,5 +1,5 @@
 /*
- * (c) Thomas Pornin 1999, 2000
+ * (c) Thomas Pornin 1999 - 2002
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,8 +30,9 @@
 #ifndef UCPP__UCPPI__
 #define UCPP__UCPPI__
 
-#include "cpp.h"
 #include "tune.h"
+#include "cpp.h"
+#include "nhash.h"
 
 /*
  * A macro represented in a compact form; simple tokens are represented
@@ -81,7 +82,11 @@ int space_char(int);
  * from assert.c
  */
 struct assert {
+	hash_item_header head;    /* first field */
+#if 0
+/* obsolete */
 	char *name;	/* this must be the first field */
+#endif
 	size_t nbval;
 	struct token_fifo *val;
 };
@@ -102,7 +107,11 @@ void wipe_assertions(void);
  * from macro.c
  */
 struct macro {
+	hash_item_header head;     /* first field */
+#if 0
+/* obsolete */
 	char *name;	/* this must be the first field */
+#endif
 	int narg;
 	char **arg;
 	int nest;

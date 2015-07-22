@@ -1,6 +1,6 @@
 /*
  * Memory manipulation routines
- * (c) Thomas Pornin 1998, 1999, 2000
+ * (c) Thomas Pornin 1998 - 2002
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -243,7 +243,7 @@ static void *true_incmem(void *x, size_t old_size, size_t new_size)
 static long find_free_block(void)
 {
 	unsigned int n;
-	long i;
+	size_t i;
 
 	for (i = 0, n = current_ptr; i < meml; i ++) {
 		if (mem[n].block == 0) {
@@ -289,8 +289,9 @@ void freemem_debug(void *x, char *file, int line)
 	void *y = (unsigned char *)x - ALIGNSHIFT;
 	long i = *(long *)y;
 
-	if (i < 0 || i >= meml || mem[i].block != y) {
-		fprintf(stderr, "ouch: freeing free people\n");
+	if (i < 0 || (size_t)i >= meml || mem[i].block != y) {
+		fprintf(stderr, "ouch: freeing free people (from %s:%d)\n",
+			file, line);
 		die();
 	}
 	mem[i].block = 0;

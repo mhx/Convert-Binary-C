@@ -2,16 +2,16 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/11/24 14:34:22 +0000 $
-# $Revision: 7 $
-# $Snapshot: /Convert-Binary-C/0.06 $
+# $Date: 2003/01/09 07:49:27 +0000 $
+# $Revision: 10 $
+# $Snapshot: /Convert-Binary-C/0.07 $
 # $Source: /t/102_misc.t $
 #
 ################################################################################
 # 
-# Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-# This program is free software; you can redistribute it and/or
-# modify it under the same terms as Perl itself.
+# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the same terms as Perl itself.
 # 
 ################################################################################
 
@@ -20,9 +20,11 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN {
+BEGIN { plan tests => 108 }
+
+{
+  local $SIG{__WARN__} = sub{}; # deprecated #
   $C99 = Convert::Binary::C::feature( 'c99' );
-  plan tests => 108
 }
 
 ok( defined $C99 );
@@ -171,7 +173,7 @@ if( $C99 ) {
     $q->parse( $c99_code );
   };
   ok($warn,qr/invalid macro argument/);
-  ok($@,qr/parse error/);
+  ok($@,qr/(parse|syntax) error/);
 
   eval { $p->parse( $c99_code ) };
   ok($@,'');
@@ -179,7 +181,7 @@ if( $C99 ) {
 else {
   eval { $q->parse( $c99_code ) };
   ok($warn,qr/invalid macro argument/);
-  ok($@,qr/parse error/);
+  ok($@,qr/(parse|syntax) error/);
 
   eval { $p->parse( $c_code ) };
   ok($@,'');

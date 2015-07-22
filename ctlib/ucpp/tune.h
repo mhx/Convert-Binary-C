@@ -1,5 +1,5 @@
 /*
- * (c) Thomas Pornin 1999, 2000
+ * (c) Thomas Pornin 1999 - 2002
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,8 +36,11 @@
 
 /* ====================================================================== */
 /*
- * Define LOW_MEM for low memory machines. It seems to improve performance
- * on larger systems, so this is on by default.
+ * The LOW_MEM macro triggers the use of macro storage which uses less
+ * memory. It actually also improves performance on large, modern machines
+ * (due to less cache pressure). This option implies no limitation (except
+ * on the number of arguments a macro may, which is then limited to 32766)
+ * so it is on by default. Non-LOW_MEM code is considered as deprecated.
  */
 #define LOW_MEM
 
@@ -66,11 +69,6 @@
  * (as defined below).
  * You can disable one or both of these bufferings by defining the macros
  * NO_LIBC_BUF and NO_UCPP_BUF.
- *
- * Performance may vary, depending on the target architecture. On a
- * Linux/Alpha workstation, use both bufferings (which means, disable none
- * of them) for maximum performance. On a Minix-86 machine, disabling
- * ucpp buffering saves some memory and does not seem to impact performance.
  */
 /* #define NO_LIBC_BUF */
 /* #define NO_UCPP_BUF */
@@ -91,6 +89,18 @@
  * on those extremely large files.
  */
 /* #define UCPP_MMAP */
+
+/*
+ * Performance issues:
+ * -- On memory-starved systems, such as Minix-i86, do not use ucpp
+ * buffering; keep only libc buffering.
+ * -- If you do not use libc buffering, activate the UCPP_MMAP option.
+ * Note that the UCPP_MMAP option is ignored if ucpp buffering is not
+ * activated.
+ *
+ * On an Athlon 1200 running FreeBSD 4.7, the best performances are
+ * achieved when libc buffering is activated and/or UCPP_MMAP is on.
+ */
 
 /* ====================================================================== */
 /*
@@ -129,6 +139,31 @@
  */
 /* #define NO_PRAGMA_IN_DIRECTIVE */
 
+/*
+ * The C99 standard mandates that the operator `##' must yield a single,
+ * valid token, lest undefined behaviour befall upon thy head. Hence,
+ * for instance, `+ ## +=' is forbidden, because `++=' is not a valid
+ * token (although it is a valid list of two tokens, `++' and `=').
+ * However, ucpp only emits a warning for such sin, and unmerges the
+ * tokens (thus emitting `+' then `+=' for that example). When ucpp
+ * produces text output, those two tokens will be separated by a space
+ * character so that the basic rule of text output is preserved: when
+ * parsed again, text output yields the exact same stream of tokens.
+ * That extra space is virtual: it does not count as a true whitespace
+ * token for stringization.
+ *
+ * However, it might be desirable, for some uses other than preprocessing
+ * C source code, not to emit that extra space at all. To make ucpp behave
+ * that way, define the DSHARP_TOKEN_MERGE macro. Please note that this
+ * can trigger spurious token merging. For instance, with that macro
+ * activated, `+ ## +=' will be output as `++=' which, if preprocessed
+ * again, will read as `++' followed by `='.
+ *
+ * All this is irrelevant to lexer mode; and trying to merge incompatible
+ * tokens is a shooting offence, anyway.
+ */
+/* #define DSHARP_TOKEN_MERGE */
+
 /* ====================================================================== */
 /*
  * Define INMACRO_FLAG to include two flags to the structure lexer_state,
@@ -150,32 +185,88 @@
 
 /* ====================================================================== */
 /*
- * For the evaluation of #if expression. If NATIVE_UINTMAX is defined,
- * the evaluation is done with NATIVE_UINTMAX as unsigned type, and
- * NATIVE_INTMAX as signed type. If NATIVE_UINTMAX is not defined but
- * SIMUL_UINTMAX is defined, evaluation is performed with a big integer
- * type, whom size is twice the size of unsigned long. If neither is
- * defined, ucpp will use uintmax_t and intmax_t if available, unsigned
- * long and long otherwise.
- * See the README file for details.
+ * Arithmetic code for evaluation of #if expressions. Evaluation
+ * uses either a native machine type, or an emulated two's complement
+ * type. Division by 0 and overflow on division are considered as errors
+ * and reported as such. If ARITHMETIC_CHECKS is defined, all other
+ * operations that imply undefined or implementation-defined behaviour
+ * are reported as warnings but otherwise performed nonetheless.
+ *
+ * For native type evaluation, the following macros should be defined:
+ *   NATIVE_SIGNED           the native signed type
+ *   NATIVE_UNSIGNED         the native corresponding unsigned type
+ *   NATIVE_UNSIGNED_BITS    the native unsigned type width, in bits
+ *   NATIVE_SIGNED_MIN       the native signed type minimum value
+ *   NATIVE_SIGNED_MAX       the native signed type maximum value
+ *
+ * The code in the arith.c file performs some tricky detection
+ * operations on the native type representation and possible existence
+ * of a trap representation. These operations assume a C99-compliant
+ * compiler; on a C90-only compiler, the operations are valid but may
+ * yield incorrect results. You may force those settings with some
+ * more macros: see the comments in arith.c (look for "ARCH_DEFINED").
+ * Remember that this is mostly a non-issue, unless you are building
+ * ucpp with a pre-C99 cross-compiler and either the host or target
+ * architecture uses a non-two's complement representation of signed
+ * integers. Such a combination is pretty rare nowadays, so the best
+ * you can do is forgetting completely this paragraph and live in peace.
+ *
+ *
+ * If you do not have a handy native type (for instance, you compile ucpp
+ * with a C90 compiler which lacks the "long long" type, or you compile
+ * ucpp for a cross-compiler which should support an evaluation integer
+ * type of a size that is not available on the host machine), you may use
+ * a simulated type. The type uses two's complement representation and
+ * may have any width from 2 bits to twice the underlying native type
+ * width, inclusive (odd widths are allowed). To use an emulated type,
+ * make sure that NATIVE_SIGNED is not defined, and define the following
+ * macros:
+ *   SIMUL_ARITH_SUBTYPE     the native underlying type to use
+ *   SIMUL_SUBTYPE_BITS      the native underlying type width
+ *   SIMUL_NUMBITS           the emulated type width
+ *
+ * Undefined and implementation-defined behaviours are warned upon, if
+ * ARITHMETIC_CHECKS is defined. Results are truncated to the type
+ * width; shift count for the << and >> operators is reduced modulo the
+ * emulatd type width; right shifting of a signed negative value performs
+ * sign extension (the result is left-padded with bits set to 1).
  */
+
 /*
- * uncomment these two lines if you want evaluation with a "long long" type
+ * For native type evaluation with a 64-bit "long long" type.
  */
-#define NATIVE_UINTMAX	unsigned long long
-#define NATIVE_INTMAX	long long
+#define NATIVE_SIGNED           long long
+#define NATIVE_UNSIGNED         unsigned long long
+#define NATIVE_UNSIGNED_BITS    64
+#define NATIVE_SIGNED_MIN       (-9223372036854775807LL - 1)
+#define NATIVE_SIGNED_MAX       9223372036854775807LL
+
 /*
- * uncomment the following if you want evaluation with an emulated type
- * built with two "unsigned long".
-#define SIMUL_UINTMAX
+ * For emulation of a 64-bit type using a native 32-bit "unsigned long"
+ * type.
+#undef NATIVE_SIGNED
+#define SIMUL_ARITH_SUBTYPE     unsigned long
+#define SIMUL_SUBTYPE_BITS      32
+#define SIMUL_NUMBITS           64
  */
+
 /*
- * to force signedness of wide character constants, define WCHAR_SIGNEDNESS
- * to 0 for unsigned, 1 for signed.
+ * Comment out the following line if you want to deactivate arithmetic
+ * checks (warnings upon undefined and implementation-defined
+ * behaviour). Arithmetic checks slow down a bit arithmetic operations,
+ * especially multiplications, but this should not be an issue with
+ * typical C source code.
+ */
+#define ARITHMETIC_CHECKS
+
+/* ====================================================================== */
+/*
+ * To force signedness of wide character constants, define WCHAR_SIGNEDNESS
+ * to 0 for unsigned, 1 for signed. By default, wide character constants
+ * are signed if the native `char' type is signed, and unsigned otherwise.
 #define WCHAR_SIGNEDNESS	0
  */
 
-/* ====================================================================== */
 /*
  * Standard assertions. They should include one cpu() assertion, one machine()
  * assertion (identical to cpu()), and one or more system() assertions.
@@ -185,8 +276,8 @@
  * for Sparc/Solaris: cpu(sparc), machine(sparc), system(unix), system(solaris)
  *
  * These are only suggestions. On Solaris, machine() should be defined
- * for i386 or sparc. For cross-compilation, define assertions related
- * to the target architecture.
+ * for i386 or sparc (standard system header use such an assertion). For
+ * cross-compilation, define assertions related to the target architecture.
  *
  * If you want no standard assertion, define STD_ASSERT to 0.
  */
@@ -220,7 +311,8 @@
 /* ====================================================================== */
 /*
  * Define this to use sigsetjmp()/siglongjmp() instead of setjmp()/longjmp().
- * This is non-ANSI, but recommended on AIX systems.
+ * This is non-ANSI, but it improves performance on some POSIX system.
+ * On typical C source code, such improvement is completely negligeable.
  */
 /* #define POSIX_JMP */
 
@@ -229,14 +321,14 @@
  * Maximum value (plus one) of a character handled by the lexer; 128 is
  * alright for ASCII native source code, but 256 is needed for EBCDIC.
  * 256 is safe in both cases; you will have big problems if you set
- * this value to INT_MAX or above. On Minix-86 or Msdos (small memory
+ * this value to INT_MAX or above. On Minix-i86 or Msdos (small memory
  * model), define MAX_CHAR_VAL to 128.
  *
  * Set MAX_CHAR_VAL to a power of two to increase lexing speed. Beware
  * that lexer.c defines a static array of size MSTATE * MAX_CHAR_VAL
  * values of type int (MSTATE is defined in lexer.c and is about 40).
  */
-#define MAX_CHAR_VAL	256
+#define MAX_CHAR_VAL	128
 
 /*
  * If you want some extra character to be considered as whitespace,
@@ -286,6 +378,12 @@
 #undef UCPP_MMAP
 #endif
 
+#if defined(UCPP_MMAP) || defined(POSIX_JMP)
+#ifndef _POSIX_SOURCE
+#define _POSIX_SOURCE	1
+#endif
+#endif
+
 /*
  * C90 does not know about the "inline" keyword, but C99 does know,
  * and some C90 compilers know it as an extension. This part detects
@@ -294,7 +392,7 @@
 
 #ifndef INLINE
 
-#if __STDC__ && __STDC_VERSION >= 199901L
+#if __STDC__ && __STDC_VERSION__ >= 199901L
 /* this is a C99 compiler, keep inline unchanged */
 #elif defined(__GNUC__)
 /* this is GNU gcc; modify inline. The semantics is not identical to C99

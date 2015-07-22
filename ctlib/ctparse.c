@@ -10,16 +10,16 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/12/11 13:51:44 +0000 $
-* $Revision: 12 $
-* $Snapshot: /Convert-Binary-C/0.06 $
+* $Date: 2003/01/07 20:54:39 +0000 $
+* $Revision: 20 $
+* $Snapshot: /Convert-Binary-C/0.07 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-* This program is free software; you can redistribute it and/or
-* modify it under the same terms as Perl itself.
+* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* This program is free software; you can redistribute it and/or modify
+* it under the same terms as Perl itself.
 *
 *******************************************************************************/
 
@@ -37,12 +37,13 @@
 #include "ctdebug.h"
 #include "fileinfo.h"
 #include "parser.h"
-#include "ucpp/cpp.h"
+
 #include "util/memalloc.h"
 
-/* for report_leaks() */
+#include "ucpp/cpp.h"
+
 #ifdef MEM_DEBUG
-#include "ucpp/mem.h"
+#include "ucpp/mem.h" /* for report_leaks() */
 #endif
 
 
@@ -117,32 +118,80 @@ static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct )
               LL_count(pStructDecl->declarators), pStructDecl->type.tflags,
               pStructDecl->type.ptr) );
 
-    LL_foreach( pDecl, pStructDecl->declarators ) {
+    pStructDecl->offset = pStruct->tflags & T_STRUCT ? -1 : 0;
+    pStructDecl->size   = 0;
 
-      CT_DEBUG( CTLIB, ("current declarator [%s]",
-                pDecl->identifier[0] ? pDecl->identifier : "<no-identifier>") );
+    if( pStructDecl->declarators ) {
 
-      GetTypeInfo( pCPC, &pStructDecl->type, pDecl, &size, &align, NULL, &flags );
-      CT_DEBUG( CTLIB, ("declarator size=%d, align=%d, flags=0x%08X", size, align, flags) );
+      LL_foreach( pDecl, pStructDecl->declarators ) {
+        CT_DEBUG( CTLIB, ("current declarator [%s]",
+                  pDecl->identifier[0] ? pDecl->identifier : "<no-identifier>") );
 
-      if( (flags & T_HASBITFIELD) || pDecl->bitfield_size >= 0 ) {
-        CT_DEBUG( CTLIB, ("found bitfield '%s' in '%s %s'",
-                  pDecl->identifier[0] ? pDecl->identifier : "<no-identifier>",
-                  pStruct->tflags & T_STRUCT ? "struct" : "union",
-                  pStruct->identifier[0] ? pStruct->identifier : "<no-identifier>") );
+        GetTypeInfo( pCPC, &pStructDecl->type, pDecl, &size, &align, NULL, &flags );
+        CT_DEBUG( CTLIB, ("declarator size=%d, align=%d, flags=0x%08X", size, align, flags) );
 
+        if( (flags & T_HASBITFIELD) || pDecl->bitfield_size >= 0 ) {
+          CT_DEBUG( CTLIB, ("found bitfield '%s' in '%s %s'",
+                    pDecl->identifier[0] ? pDecl->identifier : "<no-identifier>",
+                    pStruct->tflags & T_STRUCT ? "struct" : "union",
+                    pStruct->identifier[0] ? pStruct->identifier : "<no-identifier>") );
+
+          pStruct->tflags |= T_HASBITFIELD;
+        }
+
+        if( flags & T_UNSAFE_VAL ) {
+          CT_DEBUG( CTLIB, ("unsafe values in '%s %s'",
+                    pStruct->tflags & T_STRUCT ? "struct" : "union",
+                    pStruct->identifier[0] ? pStruct->identifier : "<no-identifier>") );
+
+          pStruct->tflags |= T_UNSAFE_VAL;
+        }
+
+        pDecl->size = size;
+
+        if( align > alignment )
+          align = alignment;
+
+        if( align > pStruct->align )
+          pStruct->align = align;
+
+        if( pStruct->tflags & T_STRUCT ) {
+          unsigned mod = pStruct->size % align;
+
+          if( mod )
+            pStruct->size += align - mod;
+
+          if( pStructDecl->offset < 0 )
+            pStructDecl->offset = pStruct->size;
+
+          pDecl->offset = pStruct->size;
+          pStruct->size += size;
+        }
+        else /* T_UNION */ {
+          pDecl->offset = 0;
+
+          if( size > pStruct->size )
+            pStruct->size = size;
+        }
+      }
+
+    }
+    else /* unnamed struct/union */ {
+
+      CT_DEBUG( CTLIB, ("current declaration is an unnamed struct/union") );
+
+      GetTypeInfo( pCPC, &pStructDecl->type, NULL, &size, &align, NULL, &flags );
+      CT_DEBUG( CTLIB, ("unnamed struct/union: size=%d, align=%d, flags=0x%08X", size, align, flags) );
+
+      if( flags & T_HASBITFIELD ) {
+        CT_DEBUG( CTLIB, ("found bitfield in unnamed struct/union") );
         pStruct->tflags |= T_HASBITFIELD;
       }
 
       if( flags & T_UNSAFE_VAL ) {
-        CT_DEBUG( CTLIB, ("unsafe values in '%s %s'",
-                  pStruct->tflags & T_STRUCT ? "struct" : "union",
-                  pStruct->identifier[0] ? pStruct->identifier : "<no-identifier>") );
-
+        CT_DEBUG( CTLIB, ("unsafe values in unnamed struct/union") );
         pStruct->tflags |= T_UNSAFE_VAL;
       }
-
-      pDecl->size = size;
 
       if( align > alignment )
         align = alignment;
@@ -151,19 +200,27 @@ static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct )
         pStruct->align = align;
 
       if( pStruct->tflags & T_STRUCT ) {
-        if( pStruct->size % align )
-          pStruct->size += align - pStruct->size % align;
+        unsigned mod = pStruct->size % align;
 
-        pDecl->offset = pStruct->size;
+        if( mod )
+          pStruct->size += align - mod;
+
+        if( pStructDecl->offset < 0 )
+          pStructDecl->offset = pStruct->size;
+
         pStruct->size += size;
       }
       else /* T_UNION */ {
-        pDecl->offset = 0;
-
         if( size > pStruct->size )
           pStruct->size = size;
       }
     }
+
+    if( pStructDecl->offset < 0 )
+      pStructDecl->offset = pStruct->size;
+
+    pStructDecl->size = pStruct->size - pStructDecl->offset;
+
   }
 
   if( pStruct->size % pStruct->align )
@@ -387,24 +444,27 @@ int ParseBuffer( const char *filename, const Buffer *pBuf,
   /* Parse the input */
   /*-----------------*/
 
-  CT_DEBUG( CTLIB, ("entering parser") );
-
-  rval = c_parser_run( pState );
-
-  CT_DEBUG( CTLIB, ( "c_parse() returned %d", rval ) );
+  if( pCPC->flags & DISABLE_PARSER ) {
+    CT_DEBUG( CTLIB, ("parser is disabled, running only preprocessor") );
+    rval = 0;
+  }
+  else {
+    CT_DEBUG( CTLIB, ("entering parser") );
+    rval = c_parser_run( pState );
+    CT_DEBUG( CTLIB, ("c_parse() returned %d", rval) );
+  }
 
   /*-------------------------------*/
   /* Finish parsing (cleanup ucpp) */
   /*-------------------------------*/
 
-  if( rval )
+  if( rval || (pCPC->flags & DISABLE_PARSER) )
     while( lex( &lexer ) < CPPERR_EOF );
 
   free_lexer_state( &lexer );
   wipeout();
 
 #ifdef MEM_DEBUG
-  fprintf( stderr, "ucpp memory leaks [%s]\n", filename ? filename : BUFFER_NAME );
   report_leaks();
 #endif
 
@@ -597,7 +657,6 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
   EnumSpecifier *pES;
   Struct        *pStruct;
   TypedefList   *pTDL;
-  char          *pKey;
 
   CT_DEBUG( CTLIB, ("ctparse::CloneParseInfo()") );
 
@@ -688,9 +747,11 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
 
         if( ptr )
           pStructDecl->type.ptr = ptr;
-        else
+        else {
           fprintf( stderr, "FATAL: pointer 0x%08X not found!\n",
                            pStructDecl->type.ptr );
+          abort();
+        }
       }
     }
   }
@@ -707,9 +768,11 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
 
       if( ptr )
         pTDL->type.ptr = ptr;
-      else
+      else {
         fprintf( stderr, "FATAL: pointer 0x%08X not found!\n",
                          pTDL->type.ptr );
+        abort();
+      }
     }
   }
 
@@ -786,10 +849,10 @@ ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl
   }
   else if( flags & T_ENUM ) {
     CT_DEBUG( CTLIB, ("T_ENUM flag set") );
-    if( pCPC->enum_size || tptr ) {
-      size = pCPC->enum_size
-           ? pCPC->enum_size
-           : ((EnumSpecifier *) tptr)->size;
+    if( pCPC->enum_size > 0 || tptr ) {
+      size = pCPC->enum_size > 0
+           ? (unsigned) pCPC->enum_size
+           : ((EnumSpecifier *) tptr)->sizes[-pCPC->enum_size];
     }
     else {
       CT_DEBUG( CTLIB, ("neither enum_size (%d) nor enum pointer (0x%08X) in GetTypeInfo",

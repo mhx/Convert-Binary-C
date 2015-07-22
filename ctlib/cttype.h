@@ -1,6 +1,6 @@
 /*******************************************************************************
 *
-* HEADER: ctype.h
+* HEADER: cttype.h
 *
 ********************************************************************************
 *
@@ -10,21 +10,21 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/10/26 19:17:12 +0100 $
-* $Revision: 5 $
-* $Snapshot: /Convert-Binary-C/0.06 $
-* $Source: /ctlib/ctype.h $
+* $Date: 2003/01/07 20:54:40 +0000 $
+* $Revision: 10 $
+* $Snapshot: /Convert-Binary-C/0.07 $
+* $Source: /ctlib/cttype.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-* This program is free software; you can redistribute it and/or
-* modify it under the same terms as Perl itself.
+* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* This program is free software; you can redistribute it and/or modify
+* it under the same terms as Perl itself.
 *
 *******************************************************************************/
 
-#ifndef _TYPE_H
-#define _TYPE_H
+#ifndef _CTLIB_CTTYPE_H
+#define _CTLIB_CTTYPE_H
 
 /*===== GLOBAL INCLUDES ======================================================*/
 
@@ -108,6 +108,12 @@ typedef enum {
   TYP_TYPEDEF_LIST
 } CTType;
 
+enum {
+  ES_UNSIGNED_SIZE,
+  ES_SIGNED_SIZE,
+  ES_NUM_ENUM_SIZES
+};
+
 typedef struct {
   signed long iv;
   u_32        flags;
@@ -126,7 +132,7 @@ typedef struct {
 typedef struct {
   CTType      ctype;
   u_32        tflags;
-  int         size;
+  unsigned    sizes[ES_NUM_ENUM_SIZES];
   LinkedList  enumerators;
   char        identifier[1];
 } EnumSpecifier;
@@ -147,6 +153,7 @@ typedef struct {
 typedef struct {
   TypeSpec    type;
   LinkedList  declarators;
+  int         offset, size;
 } StructDeclaration;
 
 typedef struct {

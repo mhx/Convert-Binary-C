@@ -1,5 +1,5 @@
 /*
- * (c) Thomas Pornin 1998, 1999, 2000
+ * (c) Thomas Pornin 1998 - 2002
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

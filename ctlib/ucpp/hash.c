@@ -31,16 +31,28 @@
 #include <string.h>
 #include "hash.h"
 #include "mem.h"
+#include "tune.h"
 
 /*
  * hash_string() is a sample hash function for strings
  */
 int hash_string(char *s)
 {
+#ifdef FAST_HASH
+	unsigned h = 0, g;
+
+	while (*s) {
+		h = (h << 4) + *(unsigned char *)(s ++);
+		if ((g = h & 0xF000U) != 0) h ^= (g >> 12);
+		h &= ~g;
+	}
+	return (h ^ (h >> 9)) & 127U;
+#else
 	unsigned char h = 0;
 
 	for (; *s; s ++) h ^= (unsigned char)(*s);
 	return ((int)h);
+#endif
 }
 
 /*
@@ -132,7 +144,10 @@ void *putHT(struct HT *ht, void *data)
 	int h;
 	struct hash_item *d;
 
-	h = ((*(ht->hash))(data)) % ht->nb_lists;
+	h = ((*(ht->hash))(data));
+#ifndef FAST_HASH
+	h %= ht->nb_lists;
+#endif
 	if ((d = get_entry(ht->lists[h], data, ht->cmpdata)))
 		return d->data;
 	ht->lists[h] = add_entry(ht->lists[h], data);
@@ -149,7 +164,10 @@ void *forceputHT(struct HT *ht, void *data)
 {
 	int h;
 
-	h = ((*(ht->hash))(data)) % ht->nb_lists;
+	h = ((*(ht->hash))(data));
+#ifndef FAST_HASH
+	h %= ht->nb_lists;
+#endif
 	ht->lists[h] = add_entry(ht->lists[h], data);
 	return 0;
 }
@@ -164,7 +182,10 @@ void *getHT(struct HT *ht, void *data)
 	int h;
 	struct hash_item *t;
 
-	h = ((*(ht->hash))(data)) % ht->nb_lists;
+	h = ((*(ht->hash))(data));
+#ifndef FAST_HASH
+	h %= ht->nb_lists;
+#endif
 	if ((t = get_entry(ht->lists[h], data, ht->cmpdata)) == 0)
 		return 0;
 	return (t->data);
@@ -180,35 +201,12 @@ int delHT(struct HT *ht, void *data)
 {
 	int h;
 
-	h = ((*(ht->hash))(data)) % ht->nb_lists;
+	h = ((*(ht->hash))(data));
+#ifndef FAST_HASH
+	h %= ht->nb_lists;
+#endif
 	ht->lists[h] = del_entry(ht->lists[h], data, ht->cmpdata, ht->deldata);
 	return 1;
-}
-
-/*
- * This function duplicates a given hash table; the data is not copied
- */
-struct HT *copyHT(struct HT *ht)
-{
-	struct HT *nht = newHT(ht->nb_lists, ht->cmpdata, ht->hash,
-		ht->deldata);
-	struct hash_item *t;
-	int i, j;
-
-	for (i = 0; i < nht->nb_lists; i ++) {
-		j = 0;
-		t = ht->lists[i];
-		while (t) {
-			t = t->next;
-			j ++;
-		}
-		if (j != 0) {
-			nht->lists[i] = getmem(j * sizeof(struct hash_item));
-			mmv(nht->lists[i], ht->lists[i],
-				j * sizeof(struct hash_item));
-		}
-	}
-	return nht;
 }
 
 /*
@@ -274,7 +272,10 @@ void tweakHT(struct HT *ht, void **buffer, void *data)
 	int h;
 	struct hash_item *d, *e;
 
-	h = ((*(ht->hash))(data)) % ht->nb_lists;
+	h = ((*(ht->hash))(data));
+#ifndef FAST_HASH
+	h %= ht->nb_lists;
+#endif
 	for (d = ht->lists[h]; d != buffer[h]; d = d->next);
 	d = add_entry(buffer[h], data);
 	if (buffer[h] == ht->lists[h]) {
@@ -313,7 +314,11 @@ int hash_struct(void *m)
 {
 	char *n = *(char **)m;
 
+#ifdef FAST_HASH
+	return hash_string(n);
+#else
 	return hash_string(n) & 127;
+#endif
 }
 
 int cmp_struct(void *m1, void *m2)

@@ -1,5 +1,5 @@
 /*
- * (c) Thomas Pornin 1999, 2000
+ * (c) Thomas Pornin 1999 - 2002
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  *
  */
 
+#include "tune.h"
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
@@ -34,15 +35,15 @@
 #include <time.h>
 #include "ucppi.h"
 #include "mem.h"
-#include "hash.h"
-#include "tune.h"
+#include "nhash.h"
 
 /*
  * Assertion support. Each assertion is indexed by its predicate, and
  * the list of 'questions' which yield a true answer.
  */
 
-static struct HT *assertions;
+static HTT assertions;
+static int assertions_init_done = 0;
 
 static struct assert *new_assertion(void)
 {
@@ -54,7 +55,7 @@ static struct assert *new_assertion(void)
 
 static void del_token_fifo(struct token_fifo *tf)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < tf->nt; i ++)
 		if (S_TOKEN(tf->t[i].type)) freemem(tf->t[i].name);
@@ -66,7 +67,10 @@ static void del_assertion(void *va)
 	struct assert *a = va;
 	size_t i;
 
+#if 0
+/* obsolete */
 	if (a->name) freemem(a->name);
+#endif
 	for (i = 0; i < a->nbval; i ++) del_token_fifo(a->val + i);
 	if (a->nbval) freemem(a->val);
 	freemem(a);
@@ -93,7 +97,7 @@ static void print_assert(void *va)
 	size_t i;
 
 	for (i = 0; i < a->nbval; i ++) {
-		fprintf(emit_output, "#assert %s(", a->name);
+		fprintf(emit_output, "#assert %s(", HASH_ITEM_NAME(a));
 		print_token_fifo(a->val + i);
 		fprintf(emit_output, ")\n");
 	}
@@ -131,6 +135,7 @@ int handle_assert(struct lexer_state *ls)
 	struct token t;
 	struct token_fifo *atl = 0;
 	struct assert *a;
+	char *aname;
 	int ret = -1;
 	long l = ls->line;
 	int nnp;
@@ -140,9 +145,9 @@ int handle_assert(struct lexer_state *ls)
 		if (ls->ctok->type == NEWLINE) break;
 		if (ttMWS(ls->ctok->type)) continue;
 		if (ls->ctok->type == NAME) {
-			if (!(a = getHT(assertions, &(ls->ctok->name)))) {
+			if (!(a = HTT_get(&assertions, ls->ctok->name))) {
 				a = new_assertion();
-				a->name = sdup(ls->ctok->name);
+				aname = sdup(ls->ctok->name);
 				ina = 1;
 			}
 			goto handle_assert_next;
@@ -191,8 +196,7 @@ handle_assert_next3:
 		freemem(atl->t);
 	if (atl->nt == 0) {
 		error(l, "void assertion in #assert");
-		freemem(atl);
-		return ret;
+		goto handle_assert_error;
 	}
 	for (i = 0; i < a->nbval && cmp_token_list(atl, a->val + i); i ++);
 	if (i != a->nbval) {
@@ -203,9 +207,12 @@ handle_assert_next3:
 
 	/* This is a new assertion. Let's keep it. */
 	aol(a->val, a->nbval, *atl, TOKEN_LIST_MEMG);
-	if (ina) putHT(assertions, a);
+	if (ina) {
+		HTT_put(&assertions, a, aname);
+		freemem(aname);
+	}
 	if (emit_assertions) {
-		fprintf(emit_output, "#assert %s(", a->name);
+		fprintf(emit_output, "#assert %s(", HASH_ITEM_NAME(a));
 		print_token_fifo(atl);
 		fputs(")\n", emit_output);
 	}
@@ -220,14 +227,14 @@ handle_assert_error:
 		freemem(atl);
 	}
 	if (ina) {
-		freemem(a->name);
+		freemem(aname);
 		freemem(a);
 	}
 	return ret;
 handle_assert_warp_ign:
 	while (!next_token(ls) && ls->ctok->type != NEWLINE);
 	if (ina) {
-		freemem(a->name);
+		freemem(aname);
 		freemem(a);
 	}
 	return ret;
@@ -252,7 +259,7 @@ int handle_unassert(struct lexer_state *ls)
 		if (ls->ctok->type == NEWLINE) break;
 		if (ttMWS(ls->ctok->type)) continue;
 		if (ls->ctok->type == NAME) {
-			if (!(a = getHT(assertions, &(ls->ctok->name)))) {
+			if (!(a = HTT_get(&assertions, ls->ctok->name))) {
 				ret = 0;
 				goto handle_unassert_warp;
 			}
@@ -273,8 +280,9 @@ handle_unassert_next:
 		}
 		goto handle_unassert_next2;
 	}
-	if (emit_assertions) fprintf(emit_output, "#unassert %s\n", a->name);
-	delHT(assertions, a);
+	if (emit_assertions)
+		fprintf(emit_output, "#unassert %s\n", HASH_ITEM_NAME(a));
+	HTT_del(&assertions, HASH_ITEM_NAME(a));
 	return 0;
 
 handle_unassert_next2:
@@ -313,7 +321,8 @@ handle_unassert_next3:
 				* sizeof(struct token_fifo));
 		if ((-- a->nbval) == 0) freemem(a->val);
 		if (emit_assertions) {
-			fprintf(emit_output, "#unassert %s(", a->name);
+			fprintf(emit_output, "#unassert %s(",
+				HASH_ITEM_NAME(a));
 			print_token_fifo(&atl);
 			fputs(")\n", emit_output);
 		}
@@ -384,8 +393,8 @@ int destroy_assertion(char *aval)
  */
 void wipe_assertions(void)
 {
-	if (assertions) killHT(assertions);
-	assertions = 0;
+	if (assertions_init_done) HTT_kill(&assertions);
+	assertions_init_done = 0;
 }
 
 /*
@@ -394,7 +403,8 @@ void wipe_assertions(void)
 void init_assertions(void)
 {
 	wipe_assertions();
-	assertions = newHT(128, cmp_struct, hash_struct, del_assertion);
+	HTT_init(&assertions, del_assertion);
+	assertions_init_done = 1;
 }
 
 /*
@@ -402,7 +412,7 @@ void init_assertions(void)
  */
 struct assert *get_assertion(char *name)
 {
-	return getHT(assertions, &name);
+	return HTT_get(&assertions, name);
 }
 
 /*
@@ -410,5 +420,5 @@ struct assert *get_assertion(char *name)
  */
 void print_assertions(void)
 {
-	scanHT(assertions, print_assert);
+	HTT_scan(&assertions, print_assert);
 }

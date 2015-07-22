@@ -47,7 +47,6 @@ void *putHT(struct HT *, void *);
 void *forceputHT(struct HT *, void *);
 void *getHT(struct HT *, void *);
 int delHT(struct HT *, void *);
-struct HT *copyHT(struct HT *);
 void killHT(struct HT *);
 void saveHT(struct HT *, void **);
 void restoreHT(struct HT *, void **);

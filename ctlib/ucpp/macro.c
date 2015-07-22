@@ -1,5 +1,5 @@
 /*
- * (c) Thomas Pornin 1999, 2000
+ * (c) Thomas Pornin 1999 - 2002
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,28 +27,36 @@
  *
  */
 
+#include "tune.h"
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
 #include <limits.h>
 #include "ucppi.h"
 #include "mem.h"
-#include "hash.h"
-#include "tune.h"
+#include "nhash.h"
 
 /*
  * we store macros in a hash table, and retrieve them using their name
  * as identifier.
  */
+#if 0
+/* obsolete */
 static struct HT *macros = 0;
+#endif
+static HTT macros;
+static int macros_init_done = 0;
 
 static void del_macro(void *m)
 {
 	struct macro *n = m;
-	int i;
+	size_t i;
 
+#if 0
+/* obsolete */
 	if (n->name) freemem(n->name);
-	for (i = 0; i < n->narg; i ++) freemem(n->arg[i]);
+#endif
+	for (i = 0; (int)i < n->narg; i ++) freemem(n->arg[i]);
 	if (n->narg > 0) freemem(n->arg);
 #ifdef LOW_MEM
 	if (n->cval.length) freemem(n->cval.t);
@@ -67,7 +75,10 @@ static inline struct macro *new_macro(void)
 {
 	struct macro *m = getmem(sizeof(struct macro));
 
+#if 0
+/* obsolete */
 	m->name = 0;
+#endif
 	m->narg = -1;
 	m->nest = 0;
 #ifdef LOW_MEM
@@ -120,21 +131,29 @@ static void add_special_macros(void)
 {
 	struct macro *m;
 
+	HTT_put(&macros, new_macro(), "__LINE__");
+	HTT_put(&macros, new_macro(), "__FILE__");
+	HTT_put(&macros, new_macro(), "__DATE__");
+	HTT_put(&macros, new_macro(), "__TIME__");
+	HTT_put(&macros, new_macro(), "__STDC__");
+#if 0
+/* obsolete */
 	m = new_macro(); m->name = sdup("__LINE__"); putHT(macros, m);
 	m = new_macro(); m->name = sdup("__FILE__"); putHT(macros, m);
 	m = new_macro(); m->name = sdup("__DATE__"); putHT(macros, m);
 	m = new_macro(); m->name = sdup("__TIME__"); putHT(macros, m);
 	m = new_macro(); m->name = sdup("__STDC__"); putHT(macros, m);
 	m = new_macro(); m->name = sdup("_Pragma"); m->narg = 1;
+#endif
+	m = new_macro(); m->narg = 1;
 	m->arg = getmem(sizeof(char *)); m->arg[0] = sdup("foo");
-	putHT(macros, m);
+	HTT_put(&macros, m, "_Pragma");
 	if (c99_compliant) {
 #ifndef LOW_MEM
 		struct token t;
 #endif
 
 		m = new_macro();
-		m->name = sdup("__STDC_VERSION__");
 #ifdef LOW_MEM
 		m->cval.t = getmem(9);
 		m->cval.t[0] = NUMBER;
@@ -146,7 +165,7 @@ static void add_special_macros(void)
 		t.name = sdup("199901L");
 		aol(m->val.t, m->val.nt, t, TOKEN_LIST_MEMG);
 #endif
-		putHT(macros, m);
+		HTT_put(&macros, m, "__STDC_VERSION__");
 	}
 	if (c99_hosted) {
 #ifndef LOW_MEM
@@ -154,7 +173,6 @@ static void add_special_macros(void)
 #endif
 
 		m = new_macro();
-		m->name = sdup("__STDC_HOSTED__");
 #ifdef LOW_MEM
 		m->cval.t = getmem(3);
 		m->cval.t[0] = NUMBER;
@@ -166,9 +184,20 @@ static void add_special_macros(void)
 		t.name = sdup("1");
 		aol(m->val.t, m->val.nt, t, TOKEN_LIST_MEMG);
 #endif
-		putHT(macros, m);
+		HTT_put(&macros, m, "__STDC_HOSTED__");
 	}
 }
+
+#ifdef LOW_MEM
+/*
+ * We store macro arguments as a single-byte token MACROARG, followed
+ * by the argument number as a one or two-byte value. If the argument
+ * number is between 0 and 127 (inclusive), it is stored as such in
+ * a single byte. Otherwise, it is supposed to be a 14-bit number, with
+ * the 7 upper bits stored in the first byte (with the high bit set to 1)
+ * and the 7 lower bits in the second byte.
+ */
+#endif
 
 /*
  * print the content of a macro, in #define form
@@ -176,18 +205,19 @@ static void add_special_macros(void)
 static void print_macro(void *vm)
 {
 	struct macro *m = vm;
-	int x = check_special_macro(m->name);
-	int i;
+	char *mname = HASH_ITEM_NAME(m);
+	int x = check_special_macro(mname);
+	size_t i;
 
 	if (x != MAC_NONE) {
 		fprintf(emit_output, "/* #define %s */ /* special */\n",
-			m->name);
+			mname);
 		return;
 	}
-	fprintf(emit_output, "#define %s", m->name);
+	fprintf(emit_output, "#define %s", mname);
 	if (m->narg >= 0) {
 		fprintf(emit_output, "(");
-		for (i = 0; i < m->narg; i ++) {
+		for (i = 0; i < (size_t)(m->narg); i ++) {
 			fprintf(emit_output, i ? ", %s" : "%s", m->arg[i]);
 		}
 		if (m->vaarg) {
@@ -205,11 +235,14 @@ static void print_macro(void *vm)
 		int tt = m->cval.t[i ++];
 
 		if (tt == MACROARG) {
-			if (m->cval.t[i] == m->narg)
+			unsigned anum = m->cval.t[i];
+
+			if (anum >= 128) anum = ((anum & 127U) << 8)
+				| m->cval.t[++ i];
+			if (anum == (unsigned)m->narg)
 				fputs("__VA_ARGS__", emit_output);
 			else
-				fputs(m->arg[(size_t)(m->cval.t[i])],
-					emit_output);
+				fputs(m->arg[anum], emit_output);
 			i ++;
 		}
 		else if (S_TOKEN(tt)) {
@@ -344,7 +377,7 @@ int handle_define(struct lexer_state *ls)
 	 * Since it is easy to avoid this error (with a #undef directive),
 	 * we choose to enforce the rule and emit an error.
 	 */
-	if ((n = getHT(macros, &mname)) != 0) {
+	if ((n = HTT_get(&macros, mname)) != 0) {
 		/* redefinition of a macro: we must check that we define
 		   it identical */
 		redef = 1;
@@ -356,8 +389,11 @@ int handle_define(struct lexer_state *ls)
 	}
 	if (!redef) {
 		m = new_macro();
+#if 0
+/* obsolete */
 		m->name = mname;
 		mname = 0;
+#endif
 		m->narg = -1;
 #ifdef LOW_MEM
 #define mval	mv
@@ -417,10 +453,10 @@ int handle_define(struct lexer_state *ls)
 							"macro than the ISO "
 							"limit (127)");
 #ifdef LOW_MEM
-					if (narg == 254) {
+					if (narg == 32767) {
 						error(l, "too many arguments "
 							"in macro definition "
-							"(max 253)");
+							"(max 32766)");
 						goto warp_error;
 					}
 #endif
@@ -524,7 +560,7 @@ int handle_define(struct lexer_state *ls)
 		if (!redef) {
 			/* we ensure that each macro token has a correct
 			   line number */
-			if (t.type != MACROARG) t.line = l;
+			if (t.type != MACROARG) t.line = 1;
 			aol(mval.t, mval.nt, t, TOKEN_LIST_MEMG);
 		} else {
 #ifdef LOW_MEM
@@ -536,17 +572,25 @@ int handle_define(struct lexer_state *ls)
 #else
 				if (t.type != NONE) goto redef_error;
 #endif
-			} else if (t.type != n->cval.t[n->cval.rp]
-				|| (t.type == MACROARG
-				    && t.line != n->cval.t[n->cval.rp + 1])
-				|| (S_TOKEN(t.type) && strcmp(ls->ctok->name,
-				   (char *)(n->cval.t + n->cval.rp + 1)))) {
+			} else if (t.type != n->cval.t[n->cval.rp]) {
+				goto redef_error;
+			} else if (t.type == MACROARG) {
+				unsigned anum = n->cval.t[n->cval.rp + 1];
+
+				if (anum >= 128U) anum = ((anum & 127U) << 8)
+					| m->cval.t[n->cval.rp + 2];
+				if (anum != (unsigned)t.line) goto redef_error;
+			} else if (S_TOKEN(t.type) && strcmp(ls->ctok->name,
+				   (char *)(n->cval.t + n->cval.rp + 1))) {
 				goto redef_error;
 			}
 			tt = n->cval.t[n->cval.rp ++];
 			if (S_TOKEN(tt)) n->cval.rp += 1
 				+ strlen((char *)(n->cval.t + n->cval.rp));
-			else if (tt == MACROARG) n->cval.rp ++;
+			else if (tt == MACROARG) {
+				if (n->cval.t[++ n->cval.rp] >= 128)
+					n->cval.rp ++;
+			}
 #else
 			if (nt >= n->val.nt) {
 #ifdef SEMPER_FIDELIS
@@ -621,7 +665,10 @@ define_end:
 			l ++;
 			if (S_TOKEN(mval.t[i].type))
 				l += 1 + strlen(mval.t[i].name);
-			else if (mval.t[i].type == MACROARG) l ++;
+			else if (mval.t[i].type == MACROARG) {
+				l ++;
+				if (mval.t[i].line >= 128) l ++;
+			}
 		}
 		m->cval.length = l;
 		if (l) m->cval.t = getmem(l);
@@ -634,20 +681,29 @@ define_end:
 				l += x;
 				freemem(mval.t[i].name);
 			}
-			else if (mval.t[i].type == MACROARG)
-				m->cval.t[l ++] = mval.t[i].line;
+			else if (mval.t[i].type == MACROARG) {
+				unsigned anum = mval.t[i].line;
+
+				if (anum >= 128) {
+					m->cval.t[l ++] = 128 | (anum >> 8);
+					m->cval.t[l ++] = anum & 0xFF;
+				} else {
+					m->cval.t[l ++] = anum;
+				}
+			}
 		}
 		if (mval.nt) freemem(mval.t);
 	}
 #endif
-	putHT(macros, m);
+	HTT_put(&macros, m, mname);
+	freemem(mname);
 	if (emit_defines) print_macro(m);
 	return 0;
 
 redef_error:
 	while (ls->ctok->type != NEWLINE && !next_token(ls));
 redef_error_2:
-	error(l, "macro '%s' redefined unidentically", n->name);
+	error(l, "macro '%s' redefined unidentically", HASH_ITEM_NAME(n));
 	return 1;
 warp_error:
 	while (ls->ctok->type != NEWLINE && !next_token(ls));
@@ -690,7 +746,7 @@ static int collect_arguments(struct lexer_state *ls, struct token_fifo *tfi,
 	long begin_line = ls->line;
 
 #define unravel(ls)	(read_from_fifo = 0, !((tfi && tfi->art < tfi->nt \
-	&& (read_from_fifo = 1) && (ct = tfi->t + (tfi->art ++))) \
+	&& (read_from_fifo = 1) != 0 && (ct = tfi->t + (tfi->art ++))) \
 	|| ((!tfi || penury) && !next_token(ls) && (ct = (ls)->ctok))))
 
 	/*
@@ -766,7 +822,7 @@ static int collect_arguments(struct lexer_state *ls, struct token_fifo *tfi,
 		t.type = ct->type;
 		if (!read_from_fifo) t.line = ls->line; else t.line = ct->line;
 		/*
-		 * Stringification applies only on macro arguments;
+		 * Stringification applies only to macro arguments;
 		 * so we handle here OPT_NONE.
 		 * OPT_NONE is kept, but does not count as whitespace,
 		 * and merges with other whitespace to give a fully
@@ -821,10 +877,7 @@ harvested:
  * concatenation.
  *
  * Law enforcement: if the whole string does not produce a valid
- * token, report an error. This also applies if only the beginning
- * of the string gives a statement. For instance, '( ## )' will
- * produce an error, since '()' is not a valid C token. Other
- * preprocessors would ignore the ## operator in such instance.
+ * single token, an error (non-zero result) is returned.
  */
 struct lexer_state dsharp_lexer;
 
@@ -1000,6 +1053,7 @@ char compile_time[12], compile_date[24];
 int substitute_macro(struct lexer_state *ls, struct macro *m,
 	struct token_fifo *tfi, int penury, int reject_nested, long l)
 {
+	char *mname = HASH_ITEM_NAME(m);
 	struct token_fifo *atl, etl;
 	struct token t, *ct;
 	int i, save_nest = m->nest;
@@ -1013,7 +1067,7 @@ int substitute_macro(struct lexer_state *ls, struct macro *m,
 	if (m->nest > reject_nested) {
 		t.type = NAME;
 		t.line = ls->line;
-		t.name = m->name;
+		t.name = mname;
 		print_token(ls, &t, 0);
 		return 0;
 	}
@@ -1026,7 +1080,7 @@ int substitute_macro(struct lexer_state *ls, struct macro *m,
 	/*
 	 * Check if the macro is a special one.
 	 */
-	if ((i = check_special_macro(m->name)) >= MAC_SPECIAL) {
+	if ((i = check_special_macro(mname)) >= MAC_SPECIAL) {
 		/* we have a special macro */
 		switch (i) {
 			char buf[30], *bbuf, *cfn;
@@ -1092,7 +1146,7 @@ int substitute_macro(struct lexer_state *ls, struct macro *m,
 				/* do not replace _Pragma() unless toplevel */
 				t.type = NAME;
 				t.line = ls->line;
-				t.name = m->name;
+				t.name = mname;
 				print_token(ls, &t, 0);
 				return 0;
 			}
@@ -1134,7 +1188,7 @@ collect_args:
 		no_argument_next:
 			t.type = NAME;
 			t.line = l;
-			t.name = m->name;
+			t.name = mname;
 			print_token_nailed(ls, &t, l);
 			if (wr) {
 				t.type = NONE;
@@ -1256,7 +1310,7 @@ collect_args:
 
 #define ZAP_LINE(t)	do { \
 		if ((t).type == NAME) { \
-			struct macro *zlm = getHT(macros, &((t).name)); \
+			struct macro *zlm = HTT_get(&macros, (t).name); \
 			if (zlm && zlm->nest > reject_nested) \
 				(t).line = -1 - (t).line; \
 		} \
@@ -1285,7 +1339,11 @@ collect_args:
 		ct->line = 1;
 		t.type = ct->type = m->cval.t[m->cval.rp ++];
 		if (ct->type == MACROARG) {
-			ct->line = m->cval.t[m->cval.rp ++];
+			unsigned anum = m->cval.t[m->cval.rp ++];
+
+			if (anum >= 128U) anum = ((anum & 127U) << 8)
+				| (unsigned)m->cval.t[m->cval.rp ++];
+			ct->line = anum;
 		} else if (S_TOKEN(ct->type)) {
 			t.name = ct->name = (char *)(m->cval.t + m->cval.rp);
 			m->cval.rp += 1 + strlen(ct->name);
@@ -1317,9 +1375,8 @@ collect_args:
 			t.type = NONE;
 			t.name = " ";
 		} else
-#else
-		t.name = ct->name;
 #endif
+		t.name = ct->name;
 		if ((next < m->val.nt && (m->val.t[z = next].type == DSHARP
 			|| m->val.t[z = next].type == DIG_DSHARP))
 			|| ((next + 1) < m->val.nt
@@ -1331,15 +1388,20 @@ collect_args:
 		} else ntwds = 0;
 #endif
 		if (ct->type == MACROARG) {
+#ifdef DSHARP_TOKEN_MERGE
+			int need_opt_space = 1;
+#endif
 			z = ct->line;	/* the argument number is there */
 			if (ltwds && atl[z].nt != 0 && etl.nt) {
 				if (concat_token(etl.t + (-- etl.nt),
 					atl[z].t)) {
-					error(ls->line, "operator '##' "
+					warning(ls->line, "operator '##' "
 						"produced the invalid token "
 						"'%s%s'",
 						token_name(etl.t + etl.nt),
 						token_name(atl[z].t));
+#if 0
+/* obsolete */
 #ifdef LOW_MEM
 					m->cval.rp = save_art;
 #else
@@ -1347,25 +1409,39 @@ collect_args:
 #endif
 					etl.nt ++;
 					goto exit_error_2;
-				}
-				if (etl.nt == 0) freemem(etl.t);
-				else if (!ttWHI(etl.t[etl.nt - 1].type)) {
-					t.type = OPT_NONE;
+#endif
+					etl.nt ++;
+					atl[z].art = 0;
+#ifdef DSHARP_TOKEN_MERGE
+					need_opt_space = 0;
+#endif
+				} else {
+					if (etl.nt == 0) freemem(etl.t);
+					else if (!ttWHI(etl.t[etl.nt - 1]
+						.type)) {
+						t.type = OPT_NONE;
+						t.line = ls->line;
+						aol(etl.t, etl.nt, t,
+							TOKEN_LIST_MEMG);
+					}
+					t.type = dsharp_lexer.ctok->type;
 					t.line = ls->line;
+					if (S_TOKEN(t.type)) {
+						t.name = sdup(dsharp_lexer
+							.ctok->name);
+						throw_away(ls->gf, t.name);
+					}
+					ZAP_LINE(t);
 					aol(etl.t, etl.nt, t, TOKEN_LIST_MEMG);
+					atl[z].art = 1;
 				}
-				t.type = dsharp_lexer.ctok->type;
-				t.line = ls->line;
-				if (S_TOKEN(t.type)) {
-					t.name = sdup(dsharp_lexer.ctok->name);
-					throw_away(ls->gf, t.name);
-				}
-				ZAP_LINE(t);
-				aol(etl.t, etl.nt, t, TOKEN_LIST_MEMG);
-				atl[z].art = 1;
 			} else atl[z].art = 0;
-			if (atl[z].art < atl[z].nt && (!etl.nt
-				|| !ttWHI(etl.t[etl.nt - 1].type))) {
+			if (
+#ifdef DSHARP_TOKEN_MERGE
+				need_opt_space &&
+#endif
+				atl[z].art < atl[z].nt && (!etl.nt
+					|| !ttWHI(etl.t[etl.nt - 1].type))) {
 				t.type = OPT_NONE;
 				t.line = ls->line;
 				aol(etl.t, etl.nt, t, TOKEN_LIST_MEMG);
@@ -1394,8 +1470,8 @@ collect_args:
 					cct = atl[z].t + (atl[z].art ++);
 					if (cct->type == NAME
 						&& cct->line >= 0
-						&& (nm = getHT(macros,
-						    &(cct->name)))
+						&& (nm = HTT_get(&macros,
+						    cct->name))
 						&& nm->nest <=
 						    (reject_nested + 1)) {
 						ret |= substitute_macro(ls,
@@ -1403,9 +1479,9 @@ collect_args:
 							reject_nested + 1, l);
 						continue;
 					}
+					t = *cct;
 					ZAP_LINE(t);
-					aol(etl.t, etl.nt, *cct,
-						TOKEN_LIST_MEMG);
+					aol(etl.t, etl.nt, t, TOKEN_LIST_MEMG);
 				}
 				ls->output_fifo = save_tf;
 				ls->flags = save_flags;
@@ -1433,7 +1509,7 @@ collect_args:
 		 * For the extremely brave reader who tries to understand
 		 * what is happening: ltwds is a flag meaning "last token
 		 * was double-sharp" and ntwds means "next token will be
-		 * double-shar". The tokens are from the macro definition,
+		 * double-sharp". The tokens are from the macro definition,
 		 * and scanned from left to right. Arguments that are
 		 * not implied into a #/## construction are macro-expanded
 		 * seperately, then included into the token stream.
@@ -1461,10 +1537,12 @@ collect_args:
 			continue;
 		} else if (ltwds && etl.nt != 0) {
 			if (concat_token(etl.t + (-- etl.nt), ct)) {
-				error(ls->line, "operator '##' produced "
+				warning(ls->line, "operator '##' produced "
 					"the invalid token '%s%s'",
 					token_name(etl.t + etl.nt),
 					token_name(ct));
+#if 0
+/* obsolete */
 #ifdef LOW_MEM
 				m->cval.rp = save_art;
 #else
@@ -1472,15 +1550,18 @@ collect_args:
 #endif
 				etl.nt ++;
 				goto exit_error_2;
+#endif
+				etl.nt ++;
+			} else {
+				if (etl.nt == 0) freemem(etl.t);
+				t.type = dsharp_lexer.ctok->type;
+				t.line = ls->line;
+				if (S_TOKEN(t.type)) {
+					t.name = sdup(dsharp_lexer.ctok->name);
+					throw_away(ls->gf, t.name);
+				}
+				ct = &t;
 			}
-			if (etl.nt == 0) freemem(etl.t);
-			t.type = dsharp_lexer.ctok->type;
-			t.line = ls->line;
-			if (S_TOKEN(t.type)) {
-				t.name = sdup(dsharp_lexer.ctok->name);
-				throw_away(ls->gf, t.name);
-			}
-			ct = &t;
 		}
 		ltwds = 0;
 #ifdef LOW_MEM
@@ -1490,6 +1571,8 @@ collect_args:
 			|| (ttMWS(m->cval.t[next])
 			&& (next + 1) < m->cval.length
 			&& m->cval.t[next + 1] == MACROARG))) {
+
+			unsigned anum;
 #else
 		if ((ct->type == SHARP || ct->type == DIG_SHARP)
 			&& next < m->val.nt
@@ -1510,9 +1593,11 @@ collect_args:
 #endif
 			t.type = STRING;
 #ifdef LOW_MEM
+			anum = m->cval.t[++ m->cval.rp];
+			if (anum >= 128U) anum = ((anum & 127U) << 8)
+				| (unsigned)m->cval.t[++ m->cval.rp];
+			t.name = stringify(atl + anum);
 			m->cval.rp ++;
-			t.name = stringify(atl +
-				(size_t)(m->cval.t[m->cval.rp ++]));
 #else
 			t.name = stringify(atl +
 				(size_t)(m->val.t[m->val.art ++].line));
@@ -1532,7 +1617,6 @@ collect_args:
 #else
 	m->val.art = save_art;
 #endif
-
 
 	/*
 	 * Now etl contains the expanded macro, to be parsed again for
@@ -1557,7 +1641,7 @@ collect_args:
 
 		ct = etl.t + (etl.art ++);
 		if (ct->type == NAME && ct->line >= 0
-			&& (nm = getHT(macros, &(ct->name)))) {
+			&& (nm = HTT_get(&macros, ct->name))) {
 			if (substitute_macro(ls, nm, &etl,
 				penury, reject_nested, l)) {
 				m->nest = save_nest;
@@ -1607,7 +1691,7 @@ exit_error:
  */
 void print_defines(void)
 {
-	scanHT(macros, print_macro);
+	HTT_scan(&macros, print_macro);
 }
 
 /*
@@ -1653,7 +1737,7 @@ int define_macro(struct lexer_state *ls, char *def)
 		if (!*c) {
 			error(-1, "void macro name");
 			ret = 1;
-		} else if ((m = getHT(macros, &c))
+		} else if ((m = HTT_get(&macros, c))
 #ifdef LOW_MEM
 			&& (m->cval.length != 3
 			|| m->cval.t[0] != NUMBER
@@ -1671,7 +1755,10 @@ int define_macro(struct lexer_state *ls, char *def)
 #endif
 
 			m = new_macro();
+#if 0
+/* obsolete */
 			m->name = sdup(c);
+#endif
 #ifdef LOW_MEM
 			m->cval.length = 3;
 			m->cval.t = getmem(3);
@@ -1683,7 +1770,7 @@ int define_macro(struct lexer_state *ls, char *def)
 			t.name = sdup("1");
 			aol(m->val.t, m->val.nt, t, TOKEN_LIST_MEMG);
 #endif
-			putHT(macros, m);
+			HTT_put(&macros, m, c);
 		}
 	}
 	freemem(c);
@@ -1705,11 +1792,11 @@ int undef_macro(struct lexer_state *ls, char *def)
 		error(-1, "void macro name");
 		return 1;
 	}
-	if (getHT(macros, &c)) {
+	if (HTT_get(&macros, c)) {
 		if (check_special_macro(c)) {
 			error(-1, "trying to undef special macro %s", c);
 			return 1;
-		} else delHT(macros, &c);
+		} else HTT_del(&macros, c);
 	}
 	return 0;
 }
@@ -1726,7 +1813,7 @@ int handle_ifdef(struct lexer_state *ls)
 		if (ls->ctok->type == NEWLINE) break;
 		if (ttMWS(ls->ctok->type)) continue;
 		if (ls->ctok->type == NAME) {
-			int x = (getHT(macros, &(ls->ctok->name)) != 0);
+			int x = (HTT_get(&macros, ls->ctok->name) != 0);
 			while (!next_token(ls) && ls->ctok->type != NEWLINE)
 				if (tgd && !ttWHI(ls->ctok->type)
 					&& (ls->flags & WARN_STANDARD)) {
@@ -1761,7 +1848,7 @@ int handle_undef(struct lexer_state *ls)
 		if (ls->ctok->type == NEWLINE) break;
 		if (ttMWS(ls->ctok->type)) continue;
 		if (ls->ctok->type == NAME) {
-			struct macro *m = getHT(macros, &(ls->ctok->name));
+			struct macro *m = HTT_get(&macros, ls->ctok->name);
 			int tgd = 1;
 
 			if (m != 0) {
@@ -1773,8 +1860,8 @@ int handle_undef(struct lexer_state *ls)
 				}
 				if (emit_defines)
 					fprintf(emit_output, "#undef %s\n",
-						m->name);
-				delHT(macros, &(ls->ctok->name));
+						ls->ctok->name);
+				HTT_del(&macros, ls->ctok->name);
 			}
 			while (!next_token(ls) && ls->ctok->type != NEWLINE)
 				if (tgd && !ttWHI(ls->ctok->type)
@@ -1806,7 +1893,7 @@ int handle_ifndef(struct lexer_state *ls)
 		if (ls->ctok->type == NEWLINE) break;
 		if (ttMWS(ls->ctok->type)) continue;
 		if (ls->ctok->type == NAME) {
-			int x = (getHT(macros, &(ls->ctok->name)) == 0);
+			int x = (HTT_get(&macros, ls->ctok->name) == 0);
 
 			while (!next_token(ls) && ls->ctok->type != NEWLINE)
 				if (tgd && !ttWHI(ls->ctok->type)
@@ -1840,8 +1927,8 @@ int handle_ifndef(struct lexer_state *ls)
  */
 void wipe_macros(void)
 {
-	if (macros) killHT(macros);
-	macros = 0;
+	if (macros_init_done) HTT_kill(&macros);
+	macros_init_done = 0;
 }
 
 /*
@@ -1850,7 +1937,12 @@ void wipe_macros(void)
 void init_macros(void)
 {
 	wipe_macros();
+	HTT_init(&macros, del_macro);
+	macros_init_done = 1;
+#if 0
+/* obsolete */
 	macros = newHT(128, cmp_struct, hash_struct, del_macro);
+#endif
 	if (!no_special_macros) add_special_macros();
 }
 
@@ -1859,5 +1951,5 @@ void init_macros(void)
  */
 struct macro *get_macro(char *name)
 {
-	return getHT(macros, &name);
+	return HTT_get(&macros, name);
 }

@@ -1,6 +1,6 @@
 /*******************************************************************************
 *
-* MODULE: ctype.c
+* MODULE: cttype.c
 *
 ********************************************************************************
 *
@@ -10,16 +10,16 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/10/23 11:43:45 +0100 $
-* $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.06 $
-* $Source: /ctlib/ctype.c $
+* $Date: 2003/01/07 20:54:40 +0000 $
+* $Revision: 9 $
+* $Snapshot: /Convert-Binary-C/0.07 $
+* $Source: /ctlib/cttype.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-* This program is free software; you can redistribute it and/or
-* modify it under the same terms as Perl itself.
+* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* This program is free software; you can redistribute it and/or modify
+* it under the same terms as Perl itself.
 *
 *******************************************************************************/
 
@@ -34,7 +34,7 @@
 
 /*===== LOCAL INCLUDES =======================================================*/
 
-#include "ctype.h"
+#include "cttype.h"
 #include "ctdebug.h"
 #include "util/memalloc.h"
 
@@ -335,22 +335,35 @@ void enumspec_update( EnumSpecifier *pEnumSpec, LinkedList enumerators )
   if( min < 0 ) {
     pEnumSpec->tflags |= T_SIGNED;
 
-    if( min >= -128 && max < 128 )
-      pEnumSpec->size = 1;
-    else if( min >= -32768 && max < 32768 )
-      pEnumSpec->size = 2;
-    else
-      pEnumSpec->size = 4;
+    if( min >= -128 && max < 128 ) {
+      pEnumSpec->sizes[ES_SIGNED_SIZE]   = 1U;
+      pEnumSpec->sizes[ES_UNSIGNED_SIZE] = 1U;
+    }
+    else if( min >= -32768 && max < 32768 ) {
+      pEnumSpec->sizes[ES_SIGNED_SIZE]   = 2U;
+      pEnumSpec->sizes[ES_UNSIGNED_SIZE] = 2U;
+    }
+    else {
+      pEnumSpec->sizes[ES_SIGNED_SIZE]   = 4U;
+      pEnumSpec->sizes[ES_UNSIGNED_SIZE] = 4U;
+    }
   }
   else {
     pEnumSpec->tflags |= T_UNSIGNED;
 
     if( max < 256 )
-      pEnumSpec->size = 1;
+      pEnumSpec->sizes[ES_UNSIGNED_SIZE] = 1U;
     else if( max < 65536 )
-      pEnumSpec->size = 2;
+      pEnumSpec->sizes[ES_UNSIGNED_SIZE] = 2U;
     else
-      pEnumSpec->size = 4;
+      pEnumSpec->sizes[ES_UNSIGNED_SIZE] = 4U;
+
+    if( max < 128 )
+      pEnumSpec->sizes[ES_SIGNED_SIZE] = 1U;
+    else if( max < 32768 )
+      pEnumSpec->sizes[ES_SIGNED_SIZE] = 2U;
+    else
+      pEnumSpec->sizes[ES_SIGNED_SIZE] = 4U;
   }
 }
 
@@ -519,8 +532,10 @@ StructDeclaration *structdecl_new( TypeSpec type, LinkedList declarators )
 {
   CONSTRUCT_OBJECT( StructDeclaration, pStructDecl );
 
-  pStructDecl->type = type;
+  pStructDecl->type        = type;
   pStructDecl->declarators = declarators;
+  pStructDecl->offset      = 0;
+  pStructDecl->size        = 0;
 
   CT_DEBUG( TYPE, ("type::structdecl_new( type=[tflags=0x%08X,ptr=0x%08X], declarators=%08X [count=%d] ) = 0x%08X",
                    type.tflags, type.ptr, declarators, LL_count( declarators ), pStructDecl) );

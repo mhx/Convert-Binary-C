@@ -10,28 +10,28 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/12/11 13:53:04 +0000 $
-* $Revision: 9 $
-* $Snapshot: /Convert-Binary-C/0.06 $
+* $Date: 2003/01/08 19:40:13 +0000 $
+* $Revision: 15 $
+* $Snapshot: /Convert-Binary-C/0.07 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-* This program is free software; you can redistribute it and/or
-* modify it under the same terms as Perl itself.
+* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* This program is free software; you can redistribute it and/or modify
+* it under the same terms as Perl itself.
 *
 *******************************************************************************/
 
-#ifndef _CTPARSE_H
-#define _CTPARSE_H
+#ifndef _CTLIB_CTPARSE_H
+#define _CTLIB_CTPARSE_H
 
 /*===== GLOBAL INCLUDES ======================================================*/
 
 /*===== LOCAL INCLUDES =======================================================*/
 
 #include "arch.h"
-#include "ctype.h"
+#include "cttype.h"
 #include "util/list.h"
 #include "util/hash.h"
 
@@ -61,8 +61,8 @@
 /*===== TYPEDEFS =============================================================*/
 
 typedef struct {
-  char *buffer;
-  long  pos, length;
+  char          *buffer;
+  unsigned long  pos, length;
 } Buffer;
 
 typedef struct {
@@ -71,7 +71,7 @@ typedef struct {
   unsigned short_size;
   unsigned long_size;
   unsigned long_long_size;
-  unsigned enum_size;
+  int      enum_size;
   unsigned ptr_size;
   unsigned float_size;
   unsigned double_size;
@@ -86,6 +86,8 @@ typedef struct {
 #define HAS_CPP_COMMENTS     0x00010000U
 #define HAS_MACRO_VAARGS     0x00020000U
 #endif
+
+#define DISABLE_PARSER       0x80000000U
 
   u_32     keywords;
 
@@ -112,6 +114,8 @@ typedef struct {
   LinkedList includes;
   LinkedList defines;
   LinkedList assertions;
+
+  HashTable  keyword_map;
 } CParseConfig;
 
 typedef struct {

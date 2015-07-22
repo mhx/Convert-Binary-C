@@ -11,14 +11,14 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/09/10 20:01:54 +0100 $
-# $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.06 $
+# $Date: 2003/01/07 22:14:11 +0000 $
+# $Revision: 5 $
+# $Snapshot: /Convert-Binary-C/0.07 $
 # $Source: /ctlib/util/tool/check_alloc.pl $
 #
 ################################################################################
 #
-# Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of either the Artistic License or the
@@ -45,7 +45,7 @@ my $count = 0;
 my $total = 0;
 
 LOOP: while( <> ) {
-  next unless /^(.*?):(A|F|V|B)=(?:(\d+)\@)?([[:xdigit:]]{8})$/;
+  next unless /^(.*?):(A|F|V|B)=(?:(\d+)\@)?([0-9a-fA-F]{8,})$/;
   if( $2 eq 'A' ) {
     if( exists $alloc{$4} ) {
       print "Previously allocated in $alloc{$4}[0]: 0x$4 in $1\n";

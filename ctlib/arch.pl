@@ -10,16 +10,16 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/11/25 16:12:14 +0000 $
-# $Revision: 4 $
-# $Snapshot: /Convert-Binary-C/0.06 $
+# $Date: 2003/01/08 06:58:06 +0000 $
+# $Revision: 8 $
+# $Snapshot: /Convert-Binary-C/0.07 $
 # $Source: /ctlib/arch.pl $
 #
 ################################################################################
 # 
-# Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-# This program is free software; you can redistribute it and/or
-# modify it under the same terms as Perl itself.
+# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the same terms as Perl itself.
 # 
 ################################################################################
 
@@ -27,11 +27,25 @@ use Config;
 
 open OUT, ">".shift or die $!;
 
-%cfg = %Config;
+%cfg = %Config;  # because we modify some values in %cfg
 
-$use{lc $_} = exists $ENV{"CBC_USE$_"} ? $ENV{"CBC_USE$_"} : 1
-  for qw( 64BIT LONGLONG LONGDOUBLE );
+%use = (
+  '64bit'      => 1,
+  'longlong'   => 1,
+  'longdouble' => 1,
+);
 
+if( $Config{osname} eq 'hpux' and $Config{cc} eq 'cc' and
+    $Config{osvers} =~ /(\d+)\.(\d+)/ and $1 < 11 ) {
+  # At least some versions of HP's cc compiler have a broken
+  # preprocessor/compiler implementation of 64-bit data types.
+  $use{'64bit'}    = 0;
+  $use{'longlong'} = 0;
+}
+
+for( qw( 64BIT LONGLONG LONGDOUBLE ) ) {
+  exists $ENV{"CBC_USE$_"} and $use{lc $_} = $ENV{"CBC_USE$_"};
+}
 
 # <HACK> required to support perl < 5.6.0
 
@@ -90,11 +104,17 @@ config <<'ENDCFG';
 #define HAVE_LONG_DOUBLE
 ENDCFG
 }
+elsif( $use{longdouble} == 0 ) {
+  print "DISABLED long double support\n";
+}
 
 if( $use{longlong} && $cfg{d_longlong} eq 'define' ) {
 config <<'ENDCFG';
 #define HAVE_LONG_LONG
 ENDCFG
+}
+elsif( $use{longlong} == 0 ) {
+  print "DISABLED long long support\n";
 }
 
 if( $use{'64bit'} && $cfg{d_quad} eq 'define' ) {
@@ -118,6 +138,9 @@ typedef unsigned long long u_64;
 ENDCFG
 }
 else {
+if( $use{'64bit'} == 0 ) {
+  print "DISABLED 64-bit support\n";
+}
 config <<'ENDCFG';
 /* no native 64-bit support */
 typedef struct {

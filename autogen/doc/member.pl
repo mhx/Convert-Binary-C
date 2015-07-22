@@ -70,3 +70,29 @@ for( @args ) {
   print $@ ? "\n$@" : " => $offset\n";
 }
 
+#-8<-
+
+$c->parse( <<'#-8<-' );
+union choice {
+  struct {
+    char  color[2];
+    long  size;
+    char  taste;
+  }       apple;
+  char    grape[3];
+  struct {
+    long  weight;
+    short price[3];
+  }       melon;
+};
+#-8<-
+
+print "#-8<-\n";
+print "Offset   Member               Type\n";
+print "--------------------------------------\n";
+for my $offset ( 0 .. $c->sizeof('choice') - 1 ) {
+  my($member, $type) = $c->member( 'choice', $offset );
+  printf " %3d     %-20s %s\n", $offset, $member,
+         defined $type ? "'$type'" : 'undef';
+}
+

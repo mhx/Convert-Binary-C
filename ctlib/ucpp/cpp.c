@@ -1,6 +1,6 @@
 /*
  * C and T preprocessor, and integrated lexer
- * (c) Thomas Pornin 1999, 2000
+ * (c) Thomas Pornin 1999 - 2002
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,16 +29,11 @@
  */
 
 #define VERS_MAJ	1
-#define VERS_MIN	2
+#define VERS_MIN	3
 /* uncomment the following if you cannot set it with a compiler flag */
 /* #define STAND_ALONE */
 
 #include "tune.h"
-#ifdef UCPP_MMAP
-#ifndef _POSIX_SOURCE
-#define _POSIX_SOURCE	1
-#endif
-#endif
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
@@ -48,7 +43,7 @@
 #include <time.h>
 #include "ucppi.h"
 #include "mem.h"
-#include "hash.h"
+#include "nhash.h"
 #ifdef UCPP_MMAP
 #include <unistd.h>
 #include <sys/types.h>
@@ -240,7 +235,11 @@ char *token_name(struct token *t)
  * -- remember in which directory, in the include path, the file was found.
  */
 struct found_file {
+	hash_item_header head;    /* first field */
+#if 0
+/* obsolete */
 	char *long_name;	/* first field */
+#endif
 	char *name;
 	char *protect;
 };
@@ -249,18 +248,31 @@ struct found_file {
  * For files from system include path.
  */
 struct found_file_sys {
+	hash_item_header head;    /* first field */
+#if 0
+/* obsolete */
 	char *name;
+#endif
 	struct found_file *rff;
 	int incdir;
 };
 
+#if 0
+/* obsolete */
 static struct HT *found_files = 0, *found_files_sys = 0;
+#endif
+static HTT found_files, found_files_sys;
+static int found_files_init_done = 0, found_files_sys_init_done = 0;
 
 static struct found_file *new_found_file(void)
 {
 	struct found_file *ff = getmem(sizeof(struct found_file));
 
+#if 0
+/* obsolete */
 	ff->name = ff->long_name = 0;
+#endif
+	ff->name = 0;
 	ff->protect = 0;
 	return ff;
 }
@@ -270,7 +282,10 @@ static void del_found_file(void *m)
 	struct found_file *ff = (struct found_file *)m;
 
 	if (ff->name) freemem(ff->name);
+#if 0
+/* obsolete */
 	if (ff->long_name) freemem(ff->long_name);
+#endif
 	if (ff->protect) freemem(ff->protect);
 	freemem(ff);
 }
@@ -279,7 +294,10 @@ static struct found_file_sys *new_found_file_sys(void)
 {
 	struct found_file_sys *ffs = getmem(sizeof(struct found_file_sys));
 
+#if 0
+/* obsolete */
 	ffs->name = 0;
+#endif
 	ffs->rff = 0;
 	ffs->incdir = -1;
 	return ffs;
@@ -289,7 +307,10 @@ static void del_found_file_sys(void *m)
 {
 	struct found_file_sys *ffs = (struct found_file_sys *)m;
 
+#if 0
+/* obsolete */
 	if (ffs->name) freemem(ffs->name);
+#endif
 	freemem(ffs);
 }
 
@@ -311,8 +332,12 @@ void set_init_filename(char *x, int real_file)
 		protect_detect.state = 1;
 		protect_detect.ff = new_found_file();
 		protect_detect.ff->name = sdup(x);
+#if 0
+/* obsolete */
 		protect_detect.ff->long_name = sdup(x);
 		putHT(found_files, protect_detect.ff);
+#endif
+		HTT_put(&found_files, protect_detect.ff, x);
 	} else {
 		protect_detect.state = 0;
 	}
@@ -320,11 +345,12 @@ void set_init_filename(char *x, int real_file)
 
 static void init_found_files(void)
 {
-	if (found_files) killHT(found_files);
-	found_files = newHT(128, cmp_struct, hash_struct, del_found_file);
-	if (found_files_sys) killHT(found_files_sys);
-	found_files_sys = newHT(128, cmp_struct, hash_struct,
-		del_found_file_sys);
+	if (found_files_init_done) HTT_kill(&found_files);
+	HTT_init(&found_files, del_found_file);
+	found_files_init_done = 1;
+	if (found_files_sys_init_done) HTT_kill(&found_files_sys);
+	HTT_init(&found_files_sys, del_found_file_sys);
+	found_files_sys_init_done = 1;
 }
 
 /*
@@ -712,11 +738,11 @@ static FILE *find_file(char *name, int localdir)
 #endif
 			mmv(s + i + 1, name, nl);
 			s[i + 1 + nl] = 0;
-			ff = getHT(found_files, &s);
-		} else ff = getHT(found_files, &name);
+			ff = HTT_get(&found_files, s);
+		} else ff = HTT_get(&found_files, name);
 	}
 	if (!ff) {
-		struct found_file_sys *ffs = getHT(found_files_sys, &name);
+		struct found_file_sys *ffs = HTT_get(&found_files_sys, name);
 
 		if (ffs) {
 			ff = ffs->rff;
@@ -754,7 +780,7 @@ static FILE *find_file(char *name, int localdir)
 		freemem(s);
 		s = 0;
 	}
-	for (i = 0; i < include_path_nb; i ++) {
+	for (i = 0; (size_t)i < include_path_nb; i ++) {
 		size_t ni = strlen(include_path[i]);
 
 		s = getmem(ni + nl + 2);
@@ -784,17 +810,20 @@ static FILE *find_file(char *name, int localdir)
 		}
 #endif
 		incdir = i;
-		if ((ff = getHT(found_files, &s)) != 0) {
+		if ((ff = HTT_get(&found_files, s)) != 0) {
 			/*
 			 * The file is known, but not as a system include
 			 * file under the name provided.
 			 */
 			struct found_file_sys *ffs = new_found_file_sys();
 
+#if 0
+/* obsolete */
 			ffs->name = sdup(name);
+#endif
 			ffs->rff = ff;
 			ffs->incdir = incdir;
-			putHT(found_files_sys, ffs);
+			HTT_put(&found_files_sys, ffs, name);
 			freemem(s);
 			s = 0;
 			if (nffa) {
@@ -839,9 +868,9 @@ found_file_cache:
 	}
 	protect_detect.ff = ff;
 #ifdef UCPP_MMAP
-	f = fopen_mmap_file(ff->long_name);
+	f = fopen_mmap_file(HASH_ITEM_NAME(ff));
 #else
-	f = fopen(ff->long_name, "r");
+	f = fopen(HASH_ITEM_NAME(ff), "r");
 #endif
 	if (!f) goto zero_out;
 	find_file_error = FF_KNOWN;
@@ -861,11 +890,14 @@ found_file:
 	}
 	nff = protect_detect.ff;
 	nff->name = sdup(name);
+#if 0
+/* obsolete */
 	nff->long_name = s ? s : sdup(name);
+#endif
 #ifdef AUDIT
 	if (
 #endif
-	putHT(found_files, nff)
+	HTT_put(&found_files, nff, s ? s : name)
 #ifdef AUDIT
 	) ouch("filename collided with a wraith")
 #endif
@@ -873,18 +905,22 @@ found_file:
 	if (!lf) {
 		struct found_file_sys *ffs = new_found_file_sys();
 
+#if 0
+/* obsolete */
 		ffs->name = sdup(name);
+#endif
 		ffs->rff = nff;
 		ffs->incdir = incdir;
-		putHT(found_files_sys, ffs);
+		HTT_put(&found_files_sys, ffs, name);
 	}
+	if (s) freemem(s);
 	s = 0;
 	find_file_error = FF_UNKNOWN;
 	ff = nff;
 
 found_file_2:
 	if (s) freemem(s);
-	current_long_filename = ff->long_name;
+	current_long_filename = HASH_ITEM_NAME(ff);
 #ifdef NO_LIBC_BUF
 	setbuf(f, 0);
 #endif
@@ -908,7 +944,7 @@ static FILE *find_file_next(char *name)
 	find_file_error = FF_ERROR;
 	protect_detect.state = -1;
 	protect_detect.macro = 0;
-	for (i = current_incdir + 1; i < include_path_nb; i ++) {
+	for (i = current_incdir + 1; (size_t)i < include_path_nb; i ++) {
 		char *s;
 		size_t ni = strlen(include_path[i]);
 
@@ -924,7 +960,7 @@ static FILE *find_file_next(char *name)
 			for (c = s; *c; c ++) if (*c == '/') *c = '\\';
 		}
 #endif
-		ff = getHT(found_files, &s);
+		ff = HTT_get(&found_files, s);
 		if (ff) {
 			/* file was found in the cache */
 			if (ff->protect) {
@@ -939,9 +975,9 @@ static FILE *find_file_next(char *name)
 			}
 			protect_detect.ff = ff;
 #ifdef UCPP_MMAP
-			f = fopen_mmap_file(ff->long_name);
+			f = fopen_mmap_file(HASH_ITEM_NAME(ff));
 #else
-			f = fopen(ff->long_name, "r");
+			f = fopen(HASH_ITEM_NAME(ff), "r");
 #endif
 			if (!f) {
 				/* file is referenced but yet unavailable. */
@@ -950,7 +986,7 @@ static FILE *find_file_next(char *name)
 			}
 			find_file_error = FF_KNOWN;
 			freemem(s);
-			s = ff->long_name;
+			s = HASH_ITEM_NAME(ff);
 		} else {
 #ifdef UCPP_MMAP
 			f = fopen_mmap_file(s);
@@ -963,16 +999,21 @@ static FILE *find_file_next(char *name)
 				}
 				ff = protect_detect.ff = new_found_file();
 				ff->name = sdup(s);
+#if 0
+/* obsolete */
 				ff->long_name = s;
+#endif
 #ifdef AUDIT
 				if (
 #endif
-				putHT(found_files, ff)
+				HTT_put(&found_files, ff, s)
 #ifdef AUDIT
 				) ouch("filename collided with a wraith")
 #endif
 				;
 				find_file_error = FF_UNKNOWN;
+				freemem(s);
+				s = HASH_ITEM_NAME(ff);
 			}
 		}
 		if (f) {
@@ -1343,9 +1384,9 @@ include_macro2:
 	}
 	freemem(tf.t);
 	ls->output_fifo = save_tf;
-	for (x = 0; x < tf2.nt && ttWHI(tf2.t[x].type); x ++);
+	for (x = 0; (size_t)x < tf2.nt && ttWHI(tf2.t[x].type); x ++);
 	for (y = tf2.nt - 1; y >= 0 && ttWHI(tf2.t[y].type); y --);
-	if (x >= tf2.nt) goto include_macro_err;
+	if ((size_t)x >= tf2.nt) goto include_macro_err;
 	if (tf2.t[x].type == STRING) {
 		if (y != x) goto include_macro_err;
 		if (tf2.t[x].name[0] == 'L') {
@@ -1514,7 +1555,7 @@ static int handle_line(struct lexer_state *ls, unsigned long flags)
 	}
 	ls->oline = ls->line = z;
 	if ((++ tf2.art) < tf2.nt) {
-		int i;
+		size_t i;
 
 		for (i = tf2.art; i < tf2.nt && ttMWS(tf2.t[i].type); i ++);
 		if (i < tf2.nt) {
@@ -2154,6 +2195,17 @@ int lex(struct lexer_state *ls)
  */
 int check_cpp_errors(struct lexer_state *ls)
 {
+	if (ls->flags & KEEP_OUTPUT) {
+		put_char(ls, '\n');
+	}
+	if (emit_dependencies) fputc('\n', emit_output);
+#ifndef NO_UCPP_BUF
+	if (!(ls->flags & LEXER)) {
+		flush_output(ls);
+	}
+#endif
+	if ((ls->flags & WARN_TRIGRAPHS) && ls->count_trigraphs)
+		warning(0, "%ld trigraphs encountered", ls->count_trigraphs);
 	return 0;
 }
 
@@ -2212,7 +2264,7 @@ void init_tables(int with_assertions)
 void init_include_path(char *incpath[])
 {
 	if (include_path_nb) {
-		int i;
+		size_t i;
 
 		for (i = 0; i < include_path_nb; i ++)
 			freemem(include_path[i]);
@@ -2269,10 +2321,10 @@ void wipeout()
 #ifdef PRAGMA_TOKENIZE
 	free_lexer_state(&tokenize_lexer);
 #endif
-	if (found_files) killHT(found_files);
-	if (found_files_sys) killHT(found_files_sys);
-	found_files = 0;
-	found_files_sys = 0;
+	if (found_files_init_done) HTT_kill(&found_files);
+	found_files_init_done = 0;
+	if (found_files_sys_init_done) HTT_kill(&found_files_sys);
+	found_files_sys_init_done = 0;
 	wipe_macros();
 	wipe_assertions();
 }
@@ -2537,6 +2589,8 @@ int main(int argc, char *argv[])
 	enter_file(&ls, ls.flags);
 	while ((r = cpp(&ls)) < CPPERR_EOF) fr = fr || (r > 0);
 	fr = fr || check_cpp_errors(&ls);
+#if 0
+/* obsolete */
 	if (ls.flags & KEEP_OUTPUT) {
 		/* while (ls.line > ls.oline) put_char(&ls, '\n'); */
 		put_char(&ls, '\n');
@@ -2549,6 +2603,7 @@ int main(int argc, char *argv[])
 #endif
 	if (ls.flags & WARN_TRIGRAPHS && ls.count_trigraphs)
 		warning(0, "%ld trigraphs encountered", ls.count_trigraphs);
+#endif
 	free_lexer_state(&ls);
 	wipeout();
 #ifdef MEM_DEBUG

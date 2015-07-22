@@ -24,9 +24,9 @@ my @hosts = (
   { ip => '192.233.54.148', prompt => $PROMPT },
   { ip => '192.233.54.149', prompt => $PROMPT },
 
-  { ip => '192.233.54.150', prompt => $PROMPT },
+  # { ip => '192.233.54.150', prompt => $PROMPT },  # no C compiler... ;-)
   { ip => '192.233.54.151', prompt => $PROMPT },
-  { ip => '192.233.54.152', prompt => $PROMPT },
+  # { ip => '192.233.54.152', prompt => $PROMPT },  # no response
   { ip => '192.233.54.153', prompt => $PROMPT },
   { ip => '192.233.54.154', prompt => $PROMPT },
   { ip => '192.233.54.155', prompt => $PROMPT },
@@ -36,16 +36,16 @@ my @hosts = (
 
   { ip => '192.233.54.160', prompt => $PROMPT },
   { ip => '192.233.54.161', prompt => $PROMPT },
-  { ip => '192.233.54.162', prompt => $PROMPT },  # problem
+  # { ip => '192.233.54.162', prompt => $PROMPT },  # no response
   { ip => '192.233.54.163', prompt => $PROMPT },
-  { ip => '192.233.54.164', prompt => $PROMPT },  # problem
+  { ip => '192.233.54.164', prompt => $PROMPT },
   { ip => '192.233.54.165', prompt => '/mgtnode> $/' },
   { ip => '192.233.54.166', prompt => $PROMPT },
   { ip => '192.233.54.167', prompt => $PROMPT },
   # { ip => '192.233.54.168', prompt => $PROMPT },  # only perl 5.5.2
   # { ip => '192.233.54.169', prompt => $PROMPT },  # only perl 5.5.2
 
-  { ip => '192.233.54.170', prompt => $PROMPT },
+  # { ip => '192.233.54.170', prompt => $PROMPT },  # HPPA-Linux, make test problems
   { ip => '192.233.54.172', prompt => $PROMPT },
   { ip => '192.233.54.174', prompt => $PROMPT },
 
@@ -56,8 +56,8 @@ my @hosts = (
   { ip => '192.233.54.206', prompt => $PROMPT },
   { ip => '192.233.54.207', prompt => $PROMPT },
 
-  { ip => '192.233.54.211', prompt => '/shark1.testdrive.compaq.com> $/' },
-  { ip => '192.233.54.212', prompt => '/mhx\@shark2:\~\$ $/' },
+  # { ip => '192.233.54.211', prompt => '/shark1.testdrive.compaq.com> $/' },
+  # { ip => '192.233.54.212', prompt => '/mhx\@shark2:\~\$ $/' },
   { ip => '192.233.54.214', prompt => '/shark4.testdrive.compaq.com> $/' },
 );
 
@@ -113,6 +113,7 @@ sub test_compile
 
   my @lines = run_script( $host, 1800, <<END );
 cd /tmp
+rm -rf $dir
 gzip -dc $HOMEDIR/$file | tar xvf -
 cd $dir
 uname -a
@@ -121,6 +122,16 @@ perl -V
 touch Makefile.PL
 perl Makefile.PL
 make
+make test
+perl -Mblib bin/ccconfig --nostatus
+perl -Mblib bin/ccconfig --nostatus --norun
+make realclean
+perl Makefile.PL enable-debug
+make
+make test
+make realclean
+perl Makefile.PL enable-debug
+CBC_USELONGLONG=0 CBC_USE64BIT=0 make
 make test
 make realclean
 cd ..

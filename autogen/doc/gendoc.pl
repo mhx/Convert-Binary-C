@@ -37,7 +37,7 @@ while( <> ) {
       next;
     }
     $files{$file}++;
-    @lines = `perl580 -w -I../../blib/lib -I../../blib/arch $exec`;
+    @lines = `$^X -w -I../../blib/lib -I../../blib/arch $exec`;
   }
   else { print $_; next }
 
@@ -85,7 +85,7 @@ print STDERR "\n";
 
 for( grep { !$files{$_} and /\.pl$/ } keys %files ) {
   print STDERR "$0: checking script '$_'\n";
-  if( system "perl580 -I../../blib/lib -I../../blib/arch $_ >/dev/null 2>&1" ) {
+  if( system "$^X -I../../blib/lib -I../../blib/arch $_ >/dev/null 2>&1" ) {
     print STDERR "$0: (WARNING) $_ died!\n";
     $warnings++;
   }

@@ -1,7 +1,7 @@
-ucpp-1.2 is a C preprocessor mostly compliant to ISO-C99.
+ucpp-1.3 is a C preprocessor compliant to ISO-C99.
 
 Author: Thomas Pornin <pornin@bolet.org>
-Main site: http://www.di.ens.fr/~pornin/ucpp/
+Main site: http://pornin.nerim.net/ucpp/
 
 
 
@@ -12,17 +12,17 @@ A C preprocessor is a part of a C compiler responsible for macro
 replacement, conditional compilation and inclusion of header files.
 It is often found as a stand-alone program on Unix systems.
 
-Ucpp is such a preprocessor; it is designed to be quick and light,
+ucpp is such a preprocessor; it is designed to be quick and light,
 but anyway fully compliant to the ISO standard 9899:1999, also known
-as C99. Ucpp can be compiled as a stand-alone program, or linked to
+as C99. ucpp can be compiled as a stand-alone program, or linked to
 some other code; in the latter case, ucpp will output tokens, one
 at a time, on demand, as an integrated lexer.
 
-Ucpp operates in two modes:
+ucpp operates in two modes:
 -- lexer mode: ucpp is linked to some other code and outputs a stream of
-tokens (each call to the lex() function will give one token)
+tokens (each call to the lex() function will yield one token)
 -- non-lexer mode: ucpp preprocesses text and outputs the resulting text
-on a file descriptor; if linked to some other code, the cpp() function
+to a file descriptor; if linked to some other code, the cpp() function
 must be called repeatedly, otherwise ucpp is a stand-alone binary.
 
 
@@ -40,12 +40,12 @@ INSTALLATION
   NO_LIBC_BUF
   NO_UCPP_BUF
      Two options used to disable the two bufferings inside ucpp. Define
-     both options for maximum memory saving but you will probably want
-     to keep libc buffering if you want decent performance. Define none
-     on large systems (modern 32 or 64-bit systems).
+     both options for maximum memory savings but you will probably want
+     to keep libc buffering for decent performance. Define none on large
+     systems (modern 32 or 64-bit systems).
   UCPP_MMAP
      With this option, if ucpp internal buffering is active, ucpp will
-     try to mmap() the input files. This might give a slight performance
+     try to mmap() the input files. This might yield a slight performance
      improvement, but will work only on a limited set of architectures.
   PRAGMA_TOKENIZE
      Make ucpp generate tokenized PRAGMA tokens on #pragma and _Pragma();
@@ -63,6 +63,13 @@ INSTALLATION
      Do not evaluate _Pragma() inside #if, #include, #include_next and #line
      directives; instead, emit an error (since the remaining _Pragma will
      surely imply a syntax error).
+  DSHARP_TOKEN_MERGE
+     When two tokens are to be merged with the `##' operator, but fail
+     because they do not merge into a single valid token, ucpp keeps those
+     two tokens separate by adding an extra space between them in text
+     output. With this option on, that extra space is not added, which means
+     that some tokens may merge partially if the text output is preprocessed
+     again. See tune.h for details.
   INMACRO_FLAG
      In lexer mode, set the inmacro flag to 1 if the current token comes
      from a macro replacement, 0 otherwise. macro_count maintains an
@@ -76,12 +83,19 @@ INSTALLATION
      Default predefined macros in stand-alone ucpp.
   STD_ASSERT
      Default assertions in stand-alone ucpp.
-  NATIVE_INTMAX
-  NATIVE_UINTMAX
-  SIMUL_UINTMAX
+  NATIVE_SIGNED
+  NATIVE_UNSIGNED
+  NATIVE_UNSIGNED_BITS
+  NATIVE_SIGNED_MIN
+  NATIVE_SIGNED_MAX
+  SIMUL_ARITH_SUBTYPE
+  SIMUL_SUBTYPE_BITS
+  SIMUL_NUMBITS
   WCHAR_SIGNEDNESS
      Those options define how #if expressions are evaluated; see the
-     cross-compilation section of this file for more info.
+     cross-compilation section of this file for more info, and the
+     comments in tune.h. Extra info is found in arith.h and arith.c,
+     at the possible expense of your mental health.
   DEFAULT_LEXER_FLAGS
   DEFAULT_CPP_FLAGS
      Default flags in respectively lexer and non-lexer modes.
@@ -90,7 +104,7 @@ INSTALLATION
      siglongjmp(); it is known to (very slightly) improve performance
      on AIX systems.
   MAX_CHAR_VAL
-     Ucpp will consider characters whose value is equal or above
+     ucpp will consider characters whose value is equal or above
      MAX_CHAR_VAL as outside the C source charset (so they will be
      treated just like '@', for instance). For ASCII systems, 128
      is fine. 256 is a safer value, but uses more (static) memory.
@@ -107,7 +121,7 @@ INSTALLATION
      true content; this is intended for reconstruction of the source
      line. Beware that some comments may have embedded newlines.
   COPY_LINE_LENGTH
-     Ucpp can maintain a copy of the current source line, up to that
+     ucpp can maintain a copy of the current source line, up to that
      length. Irrelevant to stand-alone version.
   *_MEMG
      Those settings modify ucpp behaviour, wrt memory allocations. With
@@ -126,6 +140,11 @@ INSTALLATION
      With this setting, ucpp will check for the return value of malloc()
      and exit with a diagnostic when out of memory. MEM_CHECK is implied
      by AUDIT.
+  -DMEM_DEBUG
+     Enable memory debug code. This will track memory leaks and several
+     occurrences of memory management errors; it will also slow down
+     things and increase memory consumption, so you probably do not
+     want to use this option.
   -DINLINE=foobar
      The ucpp code uses "inline" qualifier for some functions; by
      default, that qualifier is macro-replaced with nothing. Define
@@ -140,16 +159,17 @@ INSTALLATION
    gcc believes some variables might be used prior to their
    initialization; ignore those messages.
 
-5. Install wherever you want the binary and the man page ucpp.1.
+5. Install wherever you want the binary and the man page ucpp.1. I
+   have not provided an install sequence because I didn't bother.
 
-6. If you do not have the make utility, compile each file seperately
+6. If you do not have the make utility, compile each file separately
    and link them together. The exact details depend on your compiler.
    You must define the macro STAND_ALONE when compiling cpp.c (there
    is such a definition, commented out, in cpp.c, line 34).
 
-There is no "configure" script since:
+There is no "configure" script because:
 -- I do not like the very idea of a "configure" script.
--- Ucpp is written in ANSI-C and should be fairly portable.
+-- ucpp is written in ANSI-C and should be fairly portable.
 -- There is no such thing as "standard" settings for a C preprocessor.
    The predefined system macros, standard assertions,... must be tuned
    by the sysadmin.
@@ -161,16 +181,16 @@ Please note that you need an ISO-C90 (formerly ANSI) C compiler suite
 not C99 (or later), read the cross-compilation section in this README
 file.
 
-The C90 and C99 standards state that external linkage names might
-be considered equal or different based upon only their first 6
-characters; this rule might make ucpp not to compile on a conformant C
-implementation. I have yet to see such an implementation, however.
+The C90 and C99 standards state that external linkage names might be
+considered equal or different based upon only their first 6 characters;
+this rule might make ucpp not compile on a conformant C implementation.
+I have yet to see such an implementation, however.
 
 If you want to use ucpp as an integrated preprocessor and lexer, see the
 section REUSE. Compiling ucpp as a library is an exercise left to the
 reader.
 
-With the LOW_MEM code enabled, ucpp can run on a Minix-86 or Msdos
+With the LOW_MEM code enabled, ucpp can run on a Minix-i86 or Msdos
 16-bit small-memory-model machine. It will not be fully compliant
 on such an architecture to C99, since C99 states that at least one
 source code with 4095 simultaneously defined macros must be processed;
@@ -189,11 +209,11 @@ each source file. It is basically a BSD license, without the advertising
 subclause (which BSD dropped recently anyway) and with no reference to
 Berkeley (since the code is all mine, written from scratch). Informally,
 this means that you can reuse and redistribute the code as you want,
-provided that you states in the documentation (or any substantial part
-of the software) of redistributed code that I am the original author.
-(If you press a cdrom with 200 software packages, I do not insist on
-having my name on the cover of the cdrom -- just keep a Readme file
-somewhere on the cdrom, with the copyright notice included.)
+provided that you state in the documentation (or any substantial part of
+the software) of redistributed code that I am the original author. (If
+you press a cdrom with 200 software packages, I do not insist on having
+my name on the cover of the cdrom -- just keep a Readme file somewhere
+on the cdrom, with the copyright notice included.)
 
 As a courteous gesture, if you reuse my code, please drop me a mail.
 It raises my self-esteem.
@@ -351,6 +371,7 @@ HANDLE_TRIGRAPHS
 
 
 Afterwards:
+
 -- if you are in lexer mode, call lex(); each call will make the ctok
    field point to the next token. A non-zero return value is an error.
    lex() skips whitespace tokens. The memory used by the string value
@@ -364,7 +385,7 @@ Afterwards:
    ignore the error.
 
 -- otherwise, call cpp(); each call will analyze one or more tokens
-   (one token if it did not find a cpp directive, or a macro name).
+   (one token if it did find neither a cpp directive nor a macro name).
    A positive return value is an error.
 
 For both functions, if the return value is CPPERR_EOF (which is a
@@ -421,7 +442,7 @@ flavours:
 -- Traditional C, aka "K&R". This is the language first described by
 Brian Kernighan and Dennis Ritchie, and implemented in the first C
 compiler that was ever coded. There are actually several dialects of
-K&R, and all of them are considered as deprecated.
+K&R, and all of them are considered deprecated.
 
 -- ISO 9899:1990, aka C90, aka C89, aka ANSI-C. Formalized by ANSI
 in 1989 and adopted by ISO the next year, it is the C flavour many C
@@ -429,19 +450,19 @@ compilers understand. It is mostly backward compatible with K&R C, but
 with enhancements, clarifications and several new features.
 
 -- ISO 9899:1999, aka C99. This is an evolution on C90, almost fully
-backward compatible with C90 (exhibitting a code that makes a difference
-is a tricky exercise). C99 introduces many new and useful features,
-however, including in the preprocessor.
+backward compatible with C90. C99 introduces many new and useful
+features, however, including in the preprocessor.
 
 There was also a normative addendum in 1995, that added a few features
-to C90 (for instance, digraphs) that are also present in C99.
+to C90 (for instance, digraphs) that are also present in C99. It is
+sometimes refered to as "C95" or "AMD 1".
 
 
-Ucpp implements the C99 standard, but can be used in a stricter mode,
+ucpp implements the C99 standard, but can be used in a stricter mode,
 to enforce C90 compatibility (it will, however, still recognize some
 constructions that are not in plain C90).
 
-Ucpp also knows several extensions to C99:
+ucpp also knows about several extensions to C99:
 
 -- Assertions: this is an extension to the defined() operator, with
    its own namespace. Assertions seem to be used in several places,
@@ -460,8 +481,8 @@ Assertions and unicode are activated by specific flags; the #include_next
 support is always active.
 
 The ucpp code itself should be compatible with any ISO-C90 compiler.
-The cpp.c file is rather big (~ 53kB), it might confuse old 16-bit C
-compilers; the macro.c file is somewhat large also (~ 43kB).
+The cpp.c file is rather big (~ 64kB), it might confuse old 16-bit C
+compilers; the macro.c file is somewhat large also (~ 47kB).
 
 The evaluation of #if expressions is subject to some subtleties, see the
 section "cross-compilation".
@@ -473,18 +494,18 @@ strictly positive value that is strictly lower than MAX_CHAR_VAL. The
 strict positivity is already assured by the C standard, so you just need
 to adjust MAX_CHAR_VAL.
 
-Ucpp has been tested succesfully on ASCII/ISO-8859-1 and EBCDIC systems.
+ucpp has been tested succesfully on ASCII/ISO-8859-1 and EBCDIC systems.
 Beware that UTF-8 is NOT compatible with EBCDIC.
 
-Pragma handling: when used in non-lexer mode, ucpp tries to output
-a source text that, read again, will give the exact same stream of
+Pragma handling: when used in non-lexer mode, ucpp tries to output a
+source text that, when read again, will yield the exact same stream of
 tokens. This is not completely true with regards to line numbering in
 some tricky macro replacements, but it should work correctly otherwise,
 especially with pragma directives if the compile-time option PRAGMA_DUMP
 was set: #pragma are dumped, non-void _Pragma() are converted to the
 corresponding #pragma and dumped also.
 
-Ucpp does not macro-replace the contents of #pragma and _Pragma();
+ucpp does not macro-replace the contents of #pragma and _Pragma();
 If you want a macro-replaced pragma, use this:
 
 #define pragma_(x)	_Pragma(#x)
@@ -494,13 +515,13 @@ Anyway, pragmas do not nest (an _Pragma() cannot be evaluated if it is
 inside a #pragma or another _Pragma).
 
 
-I wrote ucpp according to what is found in "The Language C" from Brian
-Kernighan and Dennis Ritchie (2nd edition) and the C99 standard; but I
-could have misinterpreted some points. On some tricky points I got help
-from the helpful people from the comp.std.c newsgroup. For assertions
-and #include_next, I mimicked the behaviour of GNU cpp, as is stated
-in the GNU cpp info documentation. An open question is related to the
-following code:
+I wrote ucpp according to what is found in "The C Programming Language"
+from Brian Kernighan and Dennis Ritchie (2nd edition) and the C99
+standard; but I could have misinterpreted some points. On some tricky
+points I got help from the helpful people from the comp.std.c newsgroup.
+For assertions and #include_next, I mimicked the behaviour of GNU cpp,
+as is stated in the GNU cpp info documentation. An open question is
+related to the following code:
 
 #define undefined	!
 #define makeun(x)	un ## x
@@ -510,7 +531,7 @@ qux
 bar
 #endif
 
-Ucpp will replace 'defined foo' with 0 first (since foo is not defined),
+ucpp will replace 'defined foo' with 0 first (since foo is not defined),
 then it will replace the macro makeun, and the expression will become
 'un0', which is replaced by 0 since this is a remaining identifier. The
 expression evaluates to false, and 'bar' is emitted.
@@ -536,6 +557,39 @@ standard is given to me. The problem can only occur if one uses ## to
 make a 'defined' operator disappear from a #if expression (everybody
 agrees that the generation of a 'defined' operator triggers undefined
 behaviour).
+
+
+Another point about macro replacement has been discussed at length in
+several occasions. It is about the following code:
+
+#define CAT(a, b)    CAT_(a, b)
+#define CAT_(a, b)   a ## b
+#define AB(x, y)     CAT(x, y)
+CAT(A, B)(X, Y)
+
+ucpp will produce `CAT(X,Y)' as replacement for the last line, whereas
+some other preprocessors output `XY'. The answer to the question
+"which behaviour is correct" seems to be "this is not defined by the
+C standard". It is the answer that has been actually given by the C
+standardization committee in 1992, to the defect report #017, question
+23, which asked that very same question. Since the wording of the
+standard has not changed in these parts from the 1990 to the 1999
+version, the preprocessor behaviour on the above-stated code should
+still be considered as undefined.
+
+It seems, however, that there used to be a time (around 1988) when the
+committee members agreed upon a precise macro-replacement algorithm,
+which specified quite clearly the preprocessor behaviour in such
+situation. ucpp behaviour is occasionnaly claimed as "incorrect" with
+regards to that algorithm. Since that macro replacement algorithm has
+never been published, and the committee itself backed out from it in
+1992, I decided to disregard those feeble claims.
+
+It is possible, however, that at some point in the future I rewrite the
+ucpp macro replacement code, since that code is a bit messy and might be
+made to use less memory in some occasions. It is then possible that, in
+the aftermath of such a rewrite, the ucpp behaviour for the above stated
+code become tunable. Don't hold your breath, though.
 
 
 About _Pragma: the standard is not clear about when this operator is
@@ -594,50 +648,50 @@ is performed with operands of that size. In C99, the situation is
 equivalent, except that the types used are intmax_t and uintmax_t, as
 defined in <stdint.h>.
 
-Ucpp can use two expression evaluators: one uses native integer types
+ucpp can use two expression evaluators: one uses native integer types
 (one signed and one unsigned), the other evaluator emulates big integer
-numbers by representing them with two "unsigned long". By default, it
-will use the first evaluator, using (u)intmax_t as native types if the
-compiler is C99-compliant, or (unsigned) long otherwise. If you want
-another behaviour, modify the relevant section in tune.h. Here are
-examples of definitions:
+numbers by representing them with two values of some unsigned type. The
+emulated type handles signed values in two's complement representation,
+and can be any width ranging from 2 bits to twice the size of the
+underlying native unsigned type used. An odd width is allowed. When
+right shifting an emulated signed negative value, it is left-padded with
+bits set to 1 (this is sign extension).
 
-/* evaluate natively with type "long long" */
-#define NATIVE_UINTMAX	unsigned long long
-#define NATIVE_INTMAX	long long
-
-/* evaluate natively with type "long" (even if bigger is available) */
-#define MATIVE_UINTMAX	unsigned long
-#define MATIVE_INTMAX	long
-
-/* evaluate with bignum evaluation */
-#undef NATIVE_UINTMAX
-#define SIMUL_UINTMAX
-
-The bignum evaluation handles signed integers in two's complement
-representation, whether this is the native integer representation or
-not. The code makes the non-standard assumption that unsigned long are
-represented unpadded in memory, that is, unsigned long are made up of
-exactly sizeof(unsigned long) * CHAR_BIT bits. I have never heard of any
-architecture where this assumption would be false.
+When the ARITHMETIC_CHECKS macro is defined in tune.h, all occurrences
+of implementation-defined or undefined behaviour during arithmetic
+evaluation are reported as errors or warned upon. This includes all
+overflows and underflows on signed quantities, constants too large,
+and so on. Errors (which terminate immediately evaluation) are emitted
+for division by 0 (on / and % operators) and overflow (on / operator);
+otherwise, warnings are emitted and the faulty evaluation takes place.
+This prevents ucpp from crashing on typical x86 machines, while still
+allowing to use some extensions.
 
 
 
 FUTURE EVOLUTIONS
 -----------------
 
-Ucpp is quite complete now. There was a longstanding project of
+ucpp is quite complete now. There was a longstanding project of
 "traditional" preprocessing, but I dropped it because it would not
 map cleanly on the token-based ucpp structure. Maybe I will code a
 string-based preprocessor one day; it would certainly use some of the
-code from lexer.c, eval.c, mem.c and hash.c. However, making such a tool
-is almost irrelevant nowadays. If one wants to handle such project,
+code from lexer.c, eval.c, mem.c and nhash.c. However, making such a
+tool is almost irrelevant nowadays. If one wants to handle such project,
 using ucpp as code base, I would happily provide some help, if needed.
 
 
 
 CHANGES
 -------
+
+From 1.2 to 1.3:
+
+* brand new integer evaluation code, with precise evaluation and checks
+* new hash table implementation, with binary trees
+* relaxed attitude on failed `##' operators
+* bugfix on macro definition on command-line wrt nesting macros
+* support for up to 32766 macro arguments in LOW_MEM code
 
 From 1.1 to 1.2:
 
@@ -764,8 +818,9 @@ THANKS TO
 ---------
 
 Volker Barthelmann, Neil Booth, Stephen Davies, Stéphane Ecolivet,
-Marcus Holland-Moritz, Antoine Leca, Cyrille Lefevre, Dave Rivers, Loic
-Tortay and Laurent Wacrenier, for suggestions and beta-testing.
+Marc Espie, Marcus Holland-Moritz, Antoine Leca, Cyrille Lefevre,
+Dave Rivers, Loic Tortay and Laurent Wacrenier, for suggestions and
+beta-testing.
 
 Paul Eggert, Douglas A. Gwyn, Clive D.W. Feather, and the other guys from
 comp.std.c, for explanations about the standard.

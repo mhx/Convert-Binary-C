@@ -1,30 +1,30 @@
 /*******************************************************************************
 *
-* HEADER: ctype.h
+* HEADER: byteorder.h
 *
 ********************************************************************************
 *
-* DESCRIPTION: ANSI C data type objects
+* DESCRIPTION: Architecture independent integer conversion.
 *
 ********************************************************************************
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/11/23 17:08:13 +0000 $
-* $Revision: 1 $
-* $Snapshot: /Convert-Binary-C/0.06 $
+* $Date: 2003/01/01 11:29:56 +0000 $
+* $Revision: 3 $
+* $Snapshot: /Convert-Binary-C/0.07 $
 * $Source: /ctlib/byteorder.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-* This program is free software; you can redistribute it and/or
-* modify it under the same terms as Perl itself.
+* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* This program is free software; you can redistribute it and/or modify
+* it under the same terms as Perl itself.
 *
 *******************************************************************************/
 
-#ifndef _BYTEORDER_H
-#define _BYTEORDER_H
+#ifndef _CTLIB_BYTEORDER_H
+#define _CTLIB_BYTEORDER_H
 
 /*===== GLOBAL INCLUDES ======================================================*/
 

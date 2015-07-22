@@ -6,7 +6,20 @@ What's to do?
 for future releases (in no special order):
 ------------------------------------------
 
-* add pragma tests
+* support gcc's __attribute__, at least for struct packing
+
+* support (read: ignore ;) asm (and variations: asm volatile)
+
+* maybe add routine with checks after parsing. also, add file
+  information (file, line) for each struct (typedef?, enum?)
+
+* maybe add tests for all preprocessor warnings/errors?
+
+* maybe add a more complete preprocessor testsuite?
+
+* maybe add DollarsInIdentifiers, AtSignsInIdentifiers?
+
+* character arrays => strings?
 
 * support flexible array members
 

@@ -10,16 +10,16 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/11/23 17:08:10 +0000 $
-* $Revision: 1 $
-* $Snapshot: /Convert-Binary-C/0.06 $
+* $Date: 2003/01/01 11:29:56 +0000 $
+* $Revision: 3 $
+* $Snapshot: /Convert-Binary-C/0.07 $
 * $Source: /ctlib/byteorder.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-* This program is free software; you can redistribute it and/or
-* modify it under the same terms as Perl itself.
+* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* This program is free software; you can redistribute it and/or modify
+* it under the same terms as Perl itself.
 *
 *******************************************************************************/
 
@@ -771,7 +771,7 @@ void string2integer( IntValue *pInt )
         do {                                                                   \
           if( sign ) {                                                         \
             GET_ ## bo ## _ ## what ( ptr, pIV->value.s.l, i );                \
-            pIV->value.s.h = pIV->value.s.l < 0 ? -1 : 0;                      \
+            pIV->value.s.h = ((i_32) pIV->value.s.l) < 0 ? -1 : 0;             \
           }                                                                    \
           else {                                                               \
             GET_ ## bo ## _ ## what ( ptr, pIV->value.u.l, u );                \

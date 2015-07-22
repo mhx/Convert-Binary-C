@@ -10,16 +10,16 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/11/28 11:30:58 +0000 $
-# $Revision: 6 $
-# $Snapshot: /Convert-Binary-C/0.06 $
+# $Date: 2003/01/03 02:01:32 +0000 $
+# $Revision: 9 $
+# $Snapshot: /Convert-Binary-C/0.07 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
 # 
-# Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-# This program is free software; you can redistribute it and/or
-# modify it under the same terms as Perl itself.
+# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the same terms as Perl itself.
 # 
 ################################################################################
 
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = sprintf '%.2f', 0.01*('$Revision: 6 $' =~ /(\d+)/)[0];
+$VERSION = sprintf '%.2f', 0.01*('$Revision: 9 $' =~ /(\d+)/)[0];
 
 my %cache;
 
@@ -309,6 +309,8 @@ sub __reccmp
 {
   my($ref, $val) = @_;
 
+  !defined($ref) && !defined($val) and return 1;
+
   ref $ref or return $ref eq $val;
 
   if( ref $ref eq 'ARRAY' ) {
@@ -318,7 +320,7 @@ sub __reccmp
     }
   }
   elsif( ref $ref eq 'HASH' ) {
-    @{[keys %$ref]} == @{[keys %$val]} or return 0;
+    keys %$ref == keys %$val or return 0;
     for( keys %$ref ) {
       __reccmp( $ref->{$_}, $val->{$_} ) or return 0;
     }
@@ -416,13 +418,12 @@ Well, see L<LIMITATIONS> above... ;-)
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-This program is free software; you can redistribute it and/or
-modify it under the same terms as Perl itself.
+Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
 L<Convert::Binary::C>.
 
 =cut
-

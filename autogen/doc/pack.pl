@@ -1,6 +1,7 @@
 use Convert::Binary::C;
 use Data::Dumper;
-$Data::Dumper::Indent = 1; #-8<-
+use Data::Hexdumper;
+$Data::Dumper::Indent = 1; $^W = 0; #-8<-
 
 $c = Convert::Binary::C->new( ByteOrder => 'BigEndian',
                               LongSize  => 4,
@@ -21,7 +22,7 @@ $binary = $c->pack( 'test', { ary => [1, 2], uni => { quad => 42 } } );
 
 #----8<------------------------------3----------------------------------
 
-print unpack('H*', $binary), "\n";
+print hexdump( data => $binary );
 
 print "#-8<-\n";
 
@@ -35,10 +36,10 @@ print "#-8<-\n";
 #----8<------------------------------5----------------------------------
 
 $array = $c->pack( 'test.ary', [1, 2, 3] );
-print unpack('H*', $array), "\n";
+print hexdump( data => $array );
 
 $value = $c->pack( 'test.uni.word[1]', 2 );
-print unpack('H*', $value), "\n";
+print hexdump( data => $value );
 
 print "#-8<-\n";
 
@@ -62,8 +63,8 @@ $too_short = pack "C*", (1 .. 4);
 $too_long  = pack "C*", (1 .. 20);
 
 $c->pack( 'test', { uni => { quad => 0x4711 } }, $too_short );
-print "too_short: ", unpack('H*', $too_short), "\n";
+print "too_short:\n", hexdump( data => $too_short );
 
 $copy = $c->pack( 'test', { uni => { quad => 0x4711 } }, $too_long );
-print "copy     : ", unpack('H*', $copy), "\n";
+print "\ncopy:\n", hexdump( data => $copy );
 

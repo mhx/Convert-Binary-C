@@ -2,16 +2,16 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/12/11 13:58:02 +0000 $
-# $Revision: 9 $
-# $Snapshot: /Convert-Binary-C/0.06 $
+# $Date: 2003/01/07 22:21:55 +0000 $
+# $Revision: 13 $
+# $Snapshot: /Convert-Binary-C/0.07 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
 # 
-# Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-# This program is free software; you can redistribute it and/or
-# modify it under the same terms as Perl itself.
+# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the same terms as Perl itself.
 # 
 ################################################################################
 
@@ -21,7 +21,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 2202 }
+BEGIN { plan tests => 2238 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -70,6 +70,10 @@ eval_test(q{
                                                            # (1) syntax error for assertion in #if
                                                            # (1) file ... not_here.h ... not found
                                                            # (2) (warning) ... trailing garbage in #ifdef
+                                                           # (1) unmatched #endif
+                                                           # (1) rogue #else
+                                                           # (1) rogue #elif
+                                                           # (1) unknown cpp directive '#foobar'
 
   $p->def( 'xxx' );                                        # (1) Useless use of def in void context
   $p->dependencies;                                        # (1) Useless use of dependencies in void context
@@ -83,7 +87,7 @@ eval_test(q{
   $p->ByteOrder( ['Boo'] );                                # (E) ByteOrder must be a string value, not a reference
   $p->ByteOrder( 'Boo' );                                  # (E) ByteOrder must be 'BigEndian' or 'LittleEndian', not 'Boo'
   $p->FloatSize( [1] );                                    # (E) FloatSize must be an integer value, not a reference
-  $p->FloatSize( 13 );                                     # (E) FloatSize must be 0, 1, 2, 4, 8 or 12, not 13
+  $p->FloatSize( 13 );                                     # (E) FloatSize must be 0, 1, 2, 4, 8, 12 or 16, not 13
   $p->FloatSize( 1 );                                      # no warning
 
   $p->pack( 'xxx', 'yyy' );                                # (1) Useless use of pack in void context
@@ -110,6 +114,9 @@ eval_test(q{
   $x = $p->unpack( 's_unsafe', $data );                    # (1) Unsafe values used in unpack('s_unsafe')
                                                            # (1) Data too short
   $x = $p->unpack( 'nonnative', 'x' );                     # (1) Cannot unpack non-native floating point values
+
+  $x = $p->unpack( 'multiple', 'x'x100 );                  # (1) Member 'a' used more than once in struct multiple
+                                                           # (1) Member 'b' used more than once in union
 
   $p->sizeof( 'na' );                                      # (1) Useless use of sizeof in void context
   $x = $p->sizeof( 'na' );                                 # (E) Cannot find 'na'
@@ -378,6 +385,16 @@ union __hasbf {
   unsigned short nobf;
 };
 
+struct multiple {
+  long       a;
+  char       b;
+  short      a;
+  union {
+    int      c;
+    unsigned b;
+  };
+};
+
 enum e_unsafe {
   SAFE = 42,
   GOOD,
@@ -390,4 +407,12 @@ typedef int t_unsafe[(char)600];  /* cast makes it unsafe */
 struct s_unsafe {
   int foo[BAD];  /* uuuhhh!! */
 };
+
+#endif
+
+#else
+
+#elif 1
+
+#foobar
 

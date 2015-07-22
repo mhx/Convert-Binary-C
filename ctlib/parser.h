@@ -10,30 +10,27 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/12/07 17:17:28 +0000 $
-* $Revision: 3 $
-* $Snapshot: /Convert-Binary-C/0.06 $
+* $Date: 2003/01/01 11:29:56 +0000 $
+* $Revision: 7 $
+* $Snapshot: /Convert-Binary-C/0.07 $
 * $Source: /ctlib/parser.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-* This program is free software; you can redistribute it and/or
-* modify it under the same terms as Perl itself.
+* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* This program is free software; you can redistribute it and/or modify
+* it under the same terms as Perl itself.
 *
 *******************************************************************************/
 
-#ifndef _PARSER_H
-#define _PARSER_H
+#ifndef _CTLIB_PARSER_H
+#define _CTLIB_PARSER_H
 
 /*===== GLOBAL INCLUDES ======================================================*/
 
 /*===== LOCAL INCLUDES =======================================================*/
 
 #include "ctparse.h"
-#include "pragma.h"
-#include "util/list.h"
-#include "ucpp/cpp.h"
 
 
 /*===== DEFINES ==============================================================*/
@@ -42,7 +39,18 @@
 
 typedef struct _ParserState ParserState;
 
+typedef struct {
+  const int   token;
+  const char *name;
+} CKeywordToken;
+
+struct lexer_state;
+
+
 /*===== FUNCTION PROTOTYPES ==================================================*/
+
+const CKeywordToken *get_c_keyword_token( const char *name );
+const CKeywordToken *get_skip_token( void );
 
 ParserState *c_parser_new( const CParseConfig *pCPC, CParseInfo *pCPI,
                            struct lexer_state *pLexer );

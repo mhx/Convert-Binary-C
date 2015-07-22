@@ -141,3 +141,31 @@ Version 0.06
 
 * documentation fixes/updates
 
+------------
+Version 0.07
+------------
+
+* fixed packing/unpacking for #pragma pack
+
+* complete rewrite of member() algorithm
+
+* added 'KeywordMap' option to add keywords directly to the parser
+
+* added new behaviour for EnumSize => -1
+
+* extended ranges of some integer options
+
+* integrated new version of ucpp
+
+* added 'ccconfig' script
+
+* example scripts are now generated
+
+* added and improved tests
+
+* documentation updates
+
+* lots of other tiny tweaks
+
+* deprecated 'c99' feature, will be removed in 0.08
+

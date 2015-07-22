@@ -151,6 +151,7 @@ for my $align ( 4, sort keys %reference ) {
   my $content = $reference{$align}{content};
   my $sparse  = { map { ( $_ => sparsecopy( $content->{$_} ) ) } keys %$content };
   my $members = $members{$align};
+  my $sizeofs = $sizeofs{$align};
 
   # perform a basic size check first
 
@@ -226,45 +227,59 @@ for my $align ( 4, sort keys %reference ) {
   }
 
   # test if the member() and offsetof() methods work correctly
-  # also check sizeof for compound members
 
   for my $id ( keys %$members ) {
     $fail = 0;
-    my @m = @{$members->{$id}};
-    my($rm, $off, $size);
+    my $ref = $members->{$id};
 
     for( 0 .. $sizeof->{$id}-1 ) {
-      my $m = $p->member( $id, $_ );
-      my $r;
+      my($m,$t) = $p->member( $id, $_ );
+      my $m2 = $p->member( $id, $_ );
+      my $r = $ref->[$_];
 
-      if( not defined $rm or $off == $size ) {
-        $rm = shift @m;
-        $off = 0;
-        $size = @m && $m[0] =~ /^\d+$/ ? shift @m : 1;
-        $r = $rm;
-        if( $rm !~ /\+/ ) {
-          my $s = $p->sizeof( "$id.$rm" );
-          unless( $s == $size ) {
-            print "# sizeof mismatch for type '$_' (expected $size, got $s)\n";
-            $fail++;
-          }
-        }
-      }
-      else {
-        $r = "$rm+$off";
-      }
-      $off++;
+      $r =~ /^\d+$/o and $r = "$ref->[$_-$r]+$r";
 
-      unless( $m eq $r ) {
-        print "# member mismatch for type '$_' (expected $r, got $m)\n";
+      unless( $m eq $m2 ) {
+        print "# different members in scalar/list context for type '$id', ",
+              "offset $_ (scalar [$m2], list [$m])\n";
         $fail++;
       }
-      if( $r !~ /\+/ ) {
+      unless( $m eq $r ) {
+        print "# member mismatch for type '$id', offset $_ (expected $r, got $m)\n";
+        $fail++;
+      }
+      if( rindex($r, '+') < 0 ) {
+        unless( defined $t ) {
+          print "# undefined type for member without offset ($id, $_)\n";
+          $fail++;
+        }
         my $o = $p->offsetof( $id, $r );
         unless( defined $o and $o == $_ ) {
           print "# offsetof( '$id', '$r' ) == $o, expected $_\n";
           $fail++;
         }
+      }
+      elsif( my($base,$off) = $m =~ /([^+]+)\+(\d+)$/ ) {
+        my($m3,$t2) = $p->member( $id, $_-$off );
+        if( $m3 eq $base and $t2 ne $t ) {
+          print "# types did not match for $id.$m: $t != $t2";
+          $fail++;
+        }
+      }
+    }
+    ok( $fail == 0 );
+  }
+
+  # test if the sizeof() methods works for compound members
+
+  for my $id ( keys %$sizeofs ) {
+    $fail = 0;
+    my $ref = $sizeofs->{$id};
+
+    for my $size ( keys %$ref ) {
+      for my $member ( @{$ref->{$size}} ) {
+        my $s = $p->sizeof( "$id.$member" );
+        $size == $p->sizeof( "$id.$member" ) or $fail++;
       }
     }
     ok( $fail == 0 );

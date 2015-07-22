@@ -10,21 +10,21 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/05/22 16:38:46 +0100 $
-* $Revision: 2 $
-* $Snapshot: /Convert-Binary-C/0.06 $
+* $Date: 2003/01/01 11:29:54 +0000 $
+* $Revision: 4 $
+* $Snapshot: /Convert-Binary-C/0.07 $
 * $Source: /ctlib/ctdebug.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-* This program is free software; you can redistribute it and/or
-* modify it under the same terms as Perl itself.
+* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* This program is free software; you can redistribute it and/or modify
+* it under the same terms as Perl itself.
 *
 *******************************************************************************/
 
-#ifndef _CTDEBUG_H
-#define _CTDEBUG_H
+#ifndef _CTLIB_CTDEBUG_H
+#define _CTLIB_CTDEBUG_H
 
 /*===== GLOBAL INCLUDES ======================================================*/
 

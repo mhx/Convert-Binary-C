@@ -1,5 +1,5 @@
 /*
- * (c) Thomas Pornin 1999, 2000
+ * (c) Thomas Pornin 1999 - 2002
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -128,9 +128,9 @@ enum {
 	UMINUS		/* unary - */
 };
 
+#include "tune.h"
 #include <stdio.h>
 #include <setjmp.h>
-#include "tune.h"
 
 struct token {
 	int type;

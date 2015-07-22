@@ -2,16 +2,16 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/12/11 13:46:49 +0000 $
-# $Revision: 17 $
-# $Snapshot: /Convert-Binary-C/0.06 $
+# $Date: 2003/01/09 07:56:04 +0000 $
+# $Revision: 28 $
+# $Snapshot: /Convert-Binary-C/0.07 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
 # 
-# Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-# This program is free software; you can redistribute it and/or
-# modify it under the same terms as Perl itself.
+# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the same terms as Perl itself.
 # 
 ################################################################################
 
@@ -79,7 +79,7 @@ $BISON = $Config{bison} || 'bison';
   ctlib/cpperr
   ctlib/ctdebug
   ctlib/ctparse
-  ctlib/ctype
+  ctlib/cttype
   ctlib/fileinfo
   ctlib/parser
   ctlib/pragma
@@ -89,7 +89,7 @@ $BISON = $Config{bison} || 'bison';
   ctlib/ucpp/assert
   ctlib/ucpp/cpp
   ctlib/ucpp/eval
-  ctlib/ucpp/hash
+  ctlib/ucpp/nhash
   ctlib/ucpp/lexer
   ctlib/ucpp/macro
   ctlib/ucpp/mem
@@ -100,11 +100,7 @@ $BISON = $Config{bison} || 'bison';
 @REALCLEAN = qw(
   ctlib/parser.output
   ctlib/pragma.output
-  ctlib/t_config.c
-  ctlib/t_keywords.c
-  ctlib/t_parser.c
-  ctlib/t_pragma.c
-  ctlib/arch.h
+  t/debug.out
 );
 
 # add MEM_DEBUG to @DEFINE to check for ucpp memory leaks
@@ -113,6 +109,9 @@ $BISON = $Config{bison} || 'bison';
   ABORT_IF_NO_MEM
   UCPP_CONFIG
 );
+
+# On AIX systems, this should be defined for ucpp
+$^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
 
 # Supported features, and flags to set when (e)nabled or (d)isabled
 
@@ -136,37 +135,28 @@ $BISON = $Config{bison} || 'bison';
   ) : (),
 );
 
-# Supported optimizations, and routines to call
+# Automatically generated files
 
-%OPTIMIZE = (
-  'gcc'      => \&opt_gcc,
-  'debug'    => \&opt_debug,
-  $^O eq 'linux' ? (            # Intel's icc has to be installed
-    'diag'     => \&opt_diag,
-  ) : (),
+%EXAMPLES = (
+  map {
+    my $x=$_;
+    s/^bin/examples/;
+    s/PL$/pl/;
+    ($x => $_)
+  } glob "bin/*.PL"
 );
 
-# MakeMaker arguments
-
-@MAKER = (
-  'NAME'            => $MODULE,
-  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.06 $'
-                                    =~ /(\d+\.\d+(?:_\d+)?)/;
-                            @r ? $r[0] : '9.99' },
-  'ABSTRACT'        => 'Binary Data Conversion using C Types',
-  'AUTHOR'          => 'Marcus Holland-Moritz <mhx@cpan.org>',
-  'MYEXTLIB'        => 'libctype$(LIB_EXT)',
-  'INC'             => join( ' ', map { "-I$_" } @INC_PATH ),
-  'PL_FILES'        => {
-                         'ctlib/arch.pl'       => 'ctlib/arch.h',
-                         'ctlib/t_keywords.pl' => 'ctlib/t_keywords.c',
-                         'ctlib/t_parser.pl'   => 'ctlib/t_parser.c',
-                         'ctlib/t_pragma.pl'   => 'ctlib/t_pragma.c',
-                         'ctlib/t_config.pl'   => 'ctlib/t_config.c',
-                       },
-  'clean'           => { FILES => "\$(MYEXTLIB_OBJ)" },
-  'realclean'       => { FILES => "@REALCLEAN" },
+%GENERATE = (
+  %EXAMPLES,
+  'ctlib/arch.pl'       => 'ctlib/arch.h',
+  'ctlib/t_ckeytok.pl'  => 'ctlib/t_ckeytok.c',
+  'ctlib/t_keywords.pl' => 'ctlib/t_keywords.c',
+  'ctlib/t_parser.pl'   => 'ctlib/t_parser.c',
+  'ctlib/t_pragma.pl'   => 'ctlib/t_pragma.c',
+  'ctlib/t_config.pl'   => 'ctlib/t_config.c',
 );
+
+push @REALCLEAN, values %GENERATE;
 
 # Extract features/optimizations from the commandline arguments
 
@@ -177,73 +167,61 @@ $BISON = $Config{bison} || 'bison';
     $FEATURES{$2}{enabled} = $1 eq 'en';
     $myopt = 1;
   }
-  elsif( /^optimize=(\w+)$/ ) {
-    exists $OPTIMIZE{$1} or die "Invalid optimization '$1'. Use one of [ @{[keys %OPTIMIZE]} ].\n";
-    $optimize = $1;
-    $myopt = 1;
-  }
   elsif( /^help$/ ) {
     die <<ENDUSAGE;
 
-USAGE: perl Makefile.PL optimize=opt enable-feature disable-feature
+USAGE: perl Makefile.PL enable-feature disable-feature
 
   Available Features: @{[keys %FEATURES]}
-Optimization Options: @{[keys %OPTIMIZE]}
 
 ENDUSAGE
   }
   $myopt ? () : $_
 } @ARGV;
 
-# Configure and print information about features/optimizations
-
-for( keys %FEATURES ) {
-  my $f = $FEATURES{$_};
-  $f->{enabled} and print "Building with feature '$_'\n";
-  push @DEFINE, @{$f->{enabled} ? $f->{e_flags} : $f->{d_flags} };
+unless( $FEATURES{c99}{enabled} ) {
+  print STDERR <<ENDWARN
+!!!
+!!!  The 'C99' feature is deprecated and
+!!!  will be removed in the next release.
+!!!
+ENDWARN
 }
 
-if( defined $optimize ) {
-  print "Optimizing for '$optimize'\n";
-  $OPTIMIZE{$optimize}->( \@MAKER );
-}
-
-# On AIX systems, this should be defined for ucpp
-if( $^O eq 'aix' ) {
-  push @DEFINE, qw( POSIX_JMP );
-}
-
-push @MAKER, ('DEFINE' => join ' ', map( "-D$_", @DEFINE));
-
-WriteMakefile( @MAKER, 'depend' => { find_depend( @INC_PATH ) } );
+WriteMakefile(
+  'NAME'            => $MODULE,
+  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.07 $'
+                                    =~ /(\d+\.\d+(?:_\d+)?)/;
+                            @r ? $r[0] : '9.99' },
+  'ABSTRACT'        => 'Binary Data Conversion using C Types',
+  'AUTHOR'          => 'Marcus Holland-Moritz <mhx@cpan.org>',
+  'MYEXTLIB'        => 'libctype$(LIB_EXT)',
+  'INC'             => join( ' ', map { "-I$_" } @INC_PATH ),
+  'EXE_FILES'       => [
+                         'bin/ccconfig'
+                       ],
+  'PL_FILES'        => { %GENERATE },
+  'CONFIGURE'       => \&configure,
+  'clean'           => { FILES => "\$(MYEXTLIB_OBJ)" },
+  'realclean'       => { FILES => "@REALCLEAN" },
+);
 
 #############################################################################
 
-sub opt_diag { # Use ICC diagnostics
-  my $maker = shift;
-  push @$maker, (
-    macro => {
-      'CC'         => 'icc',
-      'LD'         => 'icc',
-      'CCCDLFLAGS' => '-Kpic',
-    },
-    'CCFLAGS'    => '-wd187 -wd193 -wd279 -wd171 -wd810 -w2 -D_SYS_SELECT_H',
-    'OPTIMIZE'   => '-g',
-  );
-}
+sub configure {
 
-sub opt_debug { # Debug-flag
-  my $maker = shift;
-  push @$maker, (
-    'OPTIMIZE'   => '-g',
-  );
-}
+  # Configure and print information about features
 
-sub opt_gcc { # Use GCC
-  my $maker = shift;
-  push @$maker, (
-    'OPTIMIZE'   => '-O3',
-  );
+  for( keys %FEATURES ) {
+    my $f = $FEATURES{$_};
+    $f->{enabled} and print "Building with feature '$_'.\n";
+    push @DEFINE, @{$f->{enabled} ? $f->{e_flags} : $f->{d_flags} };
+  }
+  
+  {
+    'DEFINE' => join(' ', map("-D$_", @DEFINE)),
+    'depend' => { find_depend( @INC_PATH ) },
+  }
 }
 
 sub MY::c_o {
@@ -290,6 +268,14 @@ sub MY::test {
   $::FEATURES{debug}{enabled} and
       $test =~ s!^test\s*:.*!$&$/\t\@\$(RM_F) t/debug.out!m;
   $test
+}
+
+sub MY::installbin {
+  package MY;
+  my $ibin = shift->SUPER::installbin(@_);
+  my @ex = values %::EXAMPLES;
+  $ibin =~ s!^pure_all\s*:+\s*!$&@ex !m;
+  $ibin
 }
 
 # The following routines will extract the include dependencies

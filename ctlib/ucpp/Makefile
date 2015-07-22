@@ -1,6 +1,6 @@
 # Makefile for ucpp
 #
-# (c) Thomas Pornin 1999, 2000
+# (c) Thomas Pornin 1999 - 2002
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -57,8 +57,10 @@
 
 # for gcc
 CC = gcc
-FLAGS = -g -Wall -ansi -pedantic -DAUDIT -DMEM_DEBUG
-#FLAGS = -O3 -Wall -ansi -pedantic -DMEM_CHECK
+FLAGS = -g -W -Wall -ansi -DAUDIT -DMEM_DEBUG
+#FLAGS = -O3 -mcpu=pentiumpro -fomit-frame-pointer -W -Wall -ansi -DMEM_CHECK
+#FLAGS = -O -pg -W -Wall -ansi -DMEM_CHECK
+#LDFLAGS = -pg
 
 # for the Compaq C compiler on Alpha/Linux
 #CC = ccc
@@ -77,7 +79,7 @@ LIBS =
 
 # ----- nothing should be changed below this line -----
 
-COBJ = mem.o hash.o cpp.o lexer.o assert.o macro.o eval.o
+COBJ = mem.o nhash.o cpp.o lexer.o assert.o macro.o eval.o
 CFLAGS = $(FLAGS) -DSTAND_ALONE
 
 all: ucpp
@@ -88,10 +90,10 @@ clean:
 ucpp: $(COBJ)
 	$(CC) $(LDFLAGS) -o ucpp $(COBJ) $(LIBS)
 
-cpp.o: cpp.h ucppi.h mem.h hash.h tune.h
-lexer.o: cpp.h ucppi.h mem.h tune.h
-assert.o: cpp.h ucppi.h mem.h hash.h tune.h
-macro.o: cpp.h ucppi.h mem.h hash.h tune.h
-hash.o: hash.h mem.h
+assert.o: tune.h ucppi.h cpp.h nhash.h mem.h
+cpp.o: tune.h ucppi.h cpp.h nhash.h mem.h
+eval.o: tune.h ucppi.h cpp.h nhash.h mem.h arith.c arith.h
+lexer.o: tune.h ucppi.h cpp.h nhash.h mem.h
+macro.o: tune.h ucppi.h cpp.h nhash.h mem.h
 mem.o: mem.h
-eval.o: cpp.h ucppi.h tune.h mem.h
+nhash.o: nhash.h mem.h

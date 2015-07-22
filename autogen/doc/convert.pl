@@ -3,8 +3,9 @@ use strict;
 use Pod::Tree::MyHTML;
 
 my %files = (
-  '../../lib/Convert/Binary/C.pm' => 'Convert-Binary-C.html',
+  '../../lib/Convert/Binary/C.pm'        => 'Convert-Binary-C.html',
   '../../lib/Convert/Binary/C/Cached.pm' => 'Convert-Binary-C-Cached.html',
+  '../../bin/ccconfig'                   => 'ccconfig.html',
 );
 
 for( keys %files ) {

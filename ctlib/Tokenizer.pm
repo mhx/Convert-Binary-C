@@ -10,16 +10,16 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/12/11 13:48:16 +0000 $
-# $Revision: 7 $
-# $Snapshot: /Convert-Binary-C/0.06 $
+# $Date: 2003/01/01 11:29:57 +0000 $
+# $Revision: 8 $
+# $Snapshot: /Convert-Binary-C/0.07 $
 # $Source: /ctlib/Tokenizer.pm $
 #
 ################################################################################
 # 
-# Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-# This program is free software; you can redistribute it and/or
-# modify it under the same terms as Perl itself.
+# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the same terms as Perl itself.
 # 
 ################################################################################
 
@@ -27,7 +27,7 @@ package Tokenizer;
 use strict;
 use vars '$VERSION';
 
-$VERSION = sprintf '%.2f', 0.01*('$Revision: 7 $' =~ /(\d+)/)[0];
+$VERSION = sprintf '%.2f', 0.01*('$Revision: 8 $' =~ /(\d+)/)[0];
 
 sub new
 {
@@ -273,6 +273,6 @@ Perhaps lack of functionality ;-)
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002, Marcus Holland-Moritz. All rights reserved.
-This module is free software; you can redistribute it and/or
-modify it under the same terms as Perl itself.
+Copyright (c) 2002-2003, Marcus Holland-Moritz. All rights reserved.
+This module is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.

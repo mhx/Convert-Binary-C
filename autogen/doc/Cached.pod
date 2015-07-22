@@ -1,0 +1,94 @@
+
+=head1 NAME
+
+Convert::Binary::C::Cached - Caching for Convert::Binary::C
+
+=head1 SYNOPSIS
+
+  use Convert::Binary::C::Cached;
+  
+  $c = new Convert::Binary::C::Cached
+               ByteOrder => 'BigEndian',
+               Alignment => 8,
+               Cache     => '/tmp/foo.cache';
+  
+  $c->configure( Include => ['/usr/include'],
+                 Define  => ['FOOBAR=12345'] );
+  
+  $c->parse_file( $file );
+  $c->Alignment( 2 );
+  
+  $p = $c->unpack( 'MyType', $data );
+  $s = $c->sizeof( 'BigType' );
+  $m = $c->member( 'AnotherType', 5 );
+
+=head1 DESCRIPTION
+
+Convert::Binary::C::Cached simply adds caching capability to
+Convert::Binary::C. You can use it in just the same way that
+you would use Convert::Binary::C. The interface is exactly
+the same, which is why the example above is just the same.
+
+To use the caching capability, you must pass the C<Cache> option
+to the constructor. If you don't pass it, you will receive
+an ordinary Convert::Binary::C object. The argument to
+the C<Cache> option is the file that is used for caching
+this object.
+
+The caching algorithm automatically detects when the cache
+file cannot be used and the original code has to be parsed.
+In that case, the cache file is updated. An update of the
+cache file can be triggered by one or more of the following
+factors:
+
+=over 2
+
+=item *
+
+The cache file doesn't exist, which is obvious.
+
+=item *
+
+The cache file is corrupt, i.e. cannot be parsed.
+
+=item *
+
+The object's configuration has changed.
+
+=item *
+
+The embedded code for a C<parse> method call has changed.
+
+=item *
+
+At least one of the files that the object depends on
+does not exist or has a different size or a different
+modification or change timestamp.
+
+=back
+
+=head1 LIMITATIONS
+
+You cannot call C<parse> or C<parse_file> more that once
+when using a Convert::Binary::C::Cached object. This isn't
+a big problem, as you usually don't call them multiple times.
+
+If a dependency file changes, but the change affects neither
+the size nor the timestamps of that file, the caching
+algorithm cannot detect that an update is required.
+
+=head1 BUGS
+
+Well, see L<LIMITATIONS> above... ;-)
+
+=head1 COPYRIGHT
+
+Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=head1 SEE ALSO
+
+L<Convert::Binary::C>.
+
+=cut

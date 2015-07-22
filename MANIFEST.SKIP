@@ -3,7 +3,9 @@
 ~$
 \.old(?:\..*)?$
 \.swp$
+\.orig$
 \.cache\.cm$
 ^blib
 ^ctlib/util/doc
 ^devel
+^autogen

@@ -2,16 +2,16 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/11/24 14:36:18 +0000 $
-# $Revision: 2 $
-# $Snapshot: /Convert-Binary-C/0.06 $
+# $Date: 2003/01/01 12:42:58 +0000 $
+# $Revision: 4 $
+# $Snapshot: /Convert-Binary-C/0.07 $
 # $Source: /t/801_speed.t $
 #
 ################################################################################
 # 
-# Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-# This program is free software; you can redistribute it and/or
-# modify it under the same terms as Perl itself.
+# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the same terms as Perl itself.
 # 
 ################################################################################
 
@@ -107,17 +107,15 @@ ok( -e $cache );
 
 # check cached object (this should be a lot faster)
 $start_time = mytime();
-$fail = 0;
-for( 1 .. $iterations ) {
-  eval {
+eval {
+  for( 1 .. $iterations ) {
     $c = new Convert::Binary::C::Cached Cache   => $cache,
                                         Include => ['t/include/include', 't/include/perlinc'];
     $c->parse_file( 't/include/include.c' );
-  };
-  $@ and $fail = 1 and last;
-}
+  }
+};
 
-ok( $fail, 0, "failed to perform cached speed test ($@)" );
+ok( $@, '', "failed to perform cached speed test ($@)" );
 
 $cached_time = mytime() - $start_time;
 $speedup = $cached_time < 0.001 ? 1000 : $elapsed_time / $cached_time;
@@ -125,8 +123,8 @@ $speedup = $cached_time < 0.001 ? 1000 : $elapsed_time / $cached_time;
 print "# cached: $iterations iterations in $cached_time seconds\n";
 print "# speedup is $speedup\n";
 
-# a speedup of 4 is acceptable
-ok( $speedup > 4 );
+# a speedup of 2 is acceptable
+ok( $speedup > 2 );
 
 -e $cache and unlink $cache;
 

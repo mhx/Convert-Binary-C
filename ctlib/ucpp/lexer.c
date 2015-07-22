@@ -1,5 +1,5 @@
 /*
- * (c) Thomas Pornin 1999, 2000
+ * (c) Thomas Pornin 1999 - 2002
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,11 +28,6 @@
  */
 
 #include "tune.h"
-#ifdef UCPP_MMAP
-#ifndef _POSIX_SOURCE
-#define _POSIX_SOURCE	1
-#endif
-#endif
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>

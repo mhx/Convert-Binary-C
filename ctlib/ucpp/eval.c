@@ -1,5 +1,5 @@
 /*
- * (c) Thomas Pornin 1999, 2000
+ * (c) Thomas Pornin 1999 - 2002
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,12 +27,12 @@
  *
  */
 
+#include "tune.h"
 #include <stdio.h>
 #include <string.h>
 #include <setjmp.h>
 #include <limits.h>
 #include "ucppi.h"
-#include "tune.h"
 #include "mem.h"
 
 JMP_BUF eval_exception;
@@ -45,488 +45,141 @@ static int emit_eval_warnings;
  */
 int *transient_characters = 0;
 
-#define OCTAL(x)	((x) >= '0' && (x) <= '7')
-#define DECIM(x)	((x) >= '0' && (x) <= '9')
-#define HEXAD(x)	(((x) >= '0' && (x) <= '9') \
-			|| (x) == 'a' || (x) == 'b' || (x) == 'c' \
-			|| (x) == 'd' || (x) == 'e' || (x) == 'f' \
-			|| (x) == 'A' || (x) == 'B' || (x) == 'C' \
-			|| (x) == 'D' || (x) == 'E' || (x) == 'F')
-#define OVAL(x)		((int)((x) - '0'))
-#define DVAL(x)		((int)((x) - '0'))
-#define HVAL(x)		(DECIM(x) ? DVAL(x) \
-			: (x) == 'a' || (x) == 'A' ? 10 \
-			: (x) == 'b' || (x) == 'B' ? 11 \
-			: (x) == 'c' || (x) == 'C' ? 12 \
-			: (x) == 'd' || (x) == 'D' ? 13 \
-			: (x) == 'e' || (x) == 'E' ? 14 : 15)
+#define OCTAL(x)       ((x) >= '0' && (x) <= '7')
+#define DECIM(x)       ((x) >= '0' && (x) <= '9')
+#define HEXAD(x)       (DECIM(x) \
+                       || (x) == 'a' || (x) == 'b' || (x) == 'c' \
+                       || (x) == 'd' || (x) == 'e' || (x) == 'f' \
+                       || (x) == 'A' || (x) == 'B' || (x) == 'C' \
+                       || (x) == 'D' || (x) == 'E' || (x) == 'F')
+#define OVAL(x)	       ((int)((x) - '0'))
+#define DVAL(x)	       ((int)((x) - '0'))
+#define HVAL(x)	       (DECIM(x) ? DVAL(x) \
+                       : (x) == 'a' || (x) == 'A' ? 10 \
+                       : (x) == 'b' || (x) == 'B' ? 11 \
+                       : (x) == 'c' || (x) == 'C' ? 12 \
+                       : (x) == 'd' || (x) == 'D' ? 13 \
+                       : (x) == 'e' || (x) == 'E' ? 14 : 15)
 
-#if !defined(NATIVE_UINTMAX) && !defined(SIMUL_UINTMAX)
-#  if __STDC__ && __STDC_VERSION__ >= 199901L
-#    include <stdint.h>
-#    define NATIVE_UINTMAX uintmax_t
-#    define NATIVE_INTMAX intmax_t
-#  else
-#    define NATIVE_UINTMAX unsigned long
-#    define NATIVE_INTMAX long
-#  endif
+#define ARITH_TYPENAME             big
+#define ARITH_FUNCTION_HEADER      static inline
+
+#define ARITH_ERROR(type)          z_error(type)
+static void z_error(int type);
+
+#ifdef ARITHMETIC_CHECKS
+#define ARITH_WARNING(type)        z_warn(type)
+static void z_warn(int type);
 #endif
 
-#ifdef ulong
-#  undef ulong
+#include "arith.c"
+
+static void z_error(int type)
+{
+	switch (type) {
+	case ARITH_EXCEP_SLASH_D:
+		error(eval_line, "division by 0");
+		break;
+	case ARITH_EXCEP_SLASH_O:
+		error(eval_line, "overflow on division");
+		break;
+	case ARITH_EXCEP_PCT_D:
+		error(eval_line, "division by 0 on modulus operator");
+		break;
+	case ARITH_EXCEP_CONST_O:
+		error(eval_line, "constant too large for destination type");
+		break;
+#ifdef AUDIT
+	default:
+		ouch("erroneous integer error: %d", type);
 #endif
+	}
+	throw(eval_exception);
+}
 
-#ifdef slong
-#  undef slong
+#ifdef ARITHMETIC_CHECKS
+static void z_warn(int type)
+{
+	switch (type) {
+	case ARITH_EXCEP_CONV_O:
+		warning(eval_line, "overflow on integer conversion");
+		break;
+	case ARITH_EXCEP_NEG_O:
+		warning(eval_line, "overflow on unary minus");
+		break;
+	case ARITH_EXCEP_NOT_T:
+		warning(eval_line,
+			"bitwise inversion yields trap representation");
+		break;
+	case ARITH_EXCEP_PLUS_O:
+		warning(eval_line, "overflow on addition");
+		break;
+	case ARITH_EXCEP_PLUS_U:
+		warning(eval_line, "underflow on addition");
+		break;
+	case ARITH_EXCEP_MINUS_O:
+		warning(eval_line, "overflow on subtraction");
+		break;
+	case ARITH_EXCEP_MINUS_U:
+		warning(eval_line, "underflow on subtraction");
+		break;
+	case ARITH_EXCEP_AND_T:
+		warning(eval_line,
+			"bitwise AND yields trap representation");
+		break;
+	case ARITH_EXCEP_XOR_T:
+		warning(eval_line,
+			"bitwise XOR yields trap representation");
+		break;
+	case ARITH_EXCEP_OR_T:
+		warning(eval_line,
+			"bitwise OR yields trap representation");
+		break;
+	case ARITH_EXCEP_LSH_W:
+		warning(eval_line, "left shift count greater than "
+			"or equal to type width");
+		break;
+	case ARITH_EXCEP_LSH_C:
+		warning(eval_line, "left shift count negative");
+		break;
+	case ARITH_EXCEP_LSH_O:
+		warning(eval_line, "overflow on left shift");
+		break;
+	case ARITH_EXCEP_RSH_W:
+		warning(eval_line, "right shift count greater than "
+			"or equal to type width");
+		break;
+	case ARITH_EXCEP_RSH_C:
+		warning(eval_line, "right shift count negative");
+		break;
+	case ARITH_EXCEP_RSH_N:
+		warning(eval_line, "right shift of negative value");
+		break;
+	case ARITH_EXCEP_STAR_O:
+		warning(eval_line, "overflow on multiplication");
+		break;
+	case ARITH_EXCEP_STAR_U:
+		warning(eval_line, "underflow on multiplication");
+		break;
+#ifdef AUDIT
+	default:
+		ouch("erroneous integer warning: %d", type);
 #endif
-
-#define ulong ucpp_ulong
-#define slong ucpp_slong
-
-#ifdef NATIVE_UINTMAX
-
-typedef NATIVE_UINTMAX ulong;
-typedef NATIVE_INTMAX slong;
-
-#define to_ulong(x)		((ulong)(x))
-#define to_slong(x)		((slong)(x))
-
-#define op_star_u(x, y)		((x) * (y))
-
-static inline ulong op_slash_u(ulong x, ulong y)
-{
-	if (y == 0) {
-		error(eval_line, "division by 0");
-		throw(eval_exception);
 	}
-	return x / y;
 }
-
-static inline ulong op_pct_u(ulong x, ulong y)
-{
-	if (y == 0) {
-		error(eval_line, "division by 0");
-		throw(eval_exception);
-	}
-	return x % y;
-}
-
-#define op_plus_u(x, y)		((x) + (y))
-#define op_minus_u(x, y)	((x) - (y))
-#define op_neg_u(x)		(-(x))
-#define op_lsh_u(x, y)		((x) << (y))
-#define op_rsh_u(x, y)		((x) >> (y))
-#define op_lt_u(x, y)		((x) < (y))
-#define op_leq_u(x, y)		((x) <= (y))
-#define op_gt_u(x, y)		((x) > (y))
-#define op_geq_u(x, y)		((x) >= (y))
-#define op_same_u(x, y)		((x) == (y))
-#define op_neq_u(x, y)		((x) != (y))
-#define op_and_u(x, y)		((x) & (y))
-#define op_circ_u(x, y)		((x) ^ (y))
-#define op_or_u(x, y)		((x) | (y))
-#define op_lval_u(x)		((x) != 0)
-#define op_lnot_u(x)		(!(x))
-#define op_not_u(x)		(~(x))
-#define op_uplus_u(x)		(x)
-#define op_uminus_u(x)		op_neg_u(x)
-
-#define op_star_s(x, y)		((x) * (y))
-
-static inline slong op_slash_s(slong x, slong y)
-{
-	if (y == 0) {
-		error(eval_line, "division by 0");
-		throw(eval_exception);
-	}
-	return x / y;
-}
-
-static inline slong op_pct_s(slong x, slong y)
-{
-	if (y == 0) {
-		error(eval_line, "division by 0");
-		throw(eval_exception);
-	}
-	return x % y;
-}
-
-#define op_plus_s(x, y)		((x) + (y))
-#define op_minus_s(x, y)	((x) - (y))
-#define op_neg_s(x)		(-(x))
-#define op_lsh_s(x, y)		((x) << (y))
-#define op_rsh_s(x, y)		((x) >> (y))
-#define op_lt_s(x, y)		((x) < (y))
-#define op_leq_s(x, y)		((x) <= (y))
-#define op_gt_s(x, y)		((x) > (y))
-#define op_geq_s(x, y)		((x) >= (y))
-#define op_same_s(x, y)		((x) == (y))
-#define op_neq_s(x, y)		((x) != (y))
-#define op_and_s(x, y)		((x) & (y))
-#define op_circ_s(x, y)		((x) ^ (y))
-#define op_or_s(x, y)		((x) | (y))
-#define op_lval_s(x)		((x) != 0)
-#define op_lnot_s(x)		(!(x))
-#define op_not_s(x)		(~(x))
-#define op_uplus_s(x)		(x)
-#define op_uminus_s(x)		op_neg_s(x)
-
-#define op_promo(x)		((ulong)x)
-#define back_ulong(x)		((unsigned long)x)
-
-#else
-
-/*
- * We suppose that the unsigned long is not padded in its memory
- * representation, and that it has an even binary length.
- *
- * We could explore the size of ULONG_MAX with some dichotomic
- * trick using a recursive #include, but this would be really ugly.
- */
-#define LONGSIZE	(CHAR_BIT * sizeof(unsigned long))
-#define HALFLONGSIZE	(LONGSIZE / 2)
-#define HUL_MASK	((1UL << HALFLONGSIZE) - 1)
-#define UL_MS(x)	(((x) >> HALFLONGSIZE) & HUL_MASK)
-#define UL_LS(x)	((x) & HUL_MASK)
-#define SIGNBIT(x)	((x) & (1UL << (LONGSIZE - 1)))
-
-typedef struct {
-	unsigned long msw, lsw;
-} ulong;
-
-#define slong	ulong
-
-static ulong to_ulong(unsigned long x)
-{
-	ulong y;
-
-	y.msw = 0;
-	y.lsw = x;
-	return y;
-}
-
-static slong to_slong(long x)
-{
-	slong y;
-
-	y.lsw = x;
-	y.msw = x >= 0 ? 0 : (unsigned long)(-1);
-	return y;
-}
-
-static ulong op_plus_u(ulong x, ulong y)
-{
-	ulong z;
-
-	z.lsw = x.lsw + y.lsw;
-	z.msw = x.msw + y.msw;
-	if (z.lsw < x.lsw) z.msw ++;
-	return z;
-}
-
-static ulong op_neg_u(ulong x)
-{
-	ulong z;
-
-	z.lsw = ~x.lsw;
-	z.msw = ~x.msw;
-	if (!(++ z.lsw)) z.msw ++;
-	return z;
-}
-
-#define op_minus_u(x, y)	op_plus_u(x, op_neg_u(y))
-
-static ulong op_lsh_u(ulong x, int s)
-{
-	ulong z;
-
-	s %= (2 * LONGSIZE);
-	if (s == 0) return x;
-	if (s >= LONGSIZE) {
-		z.lsw = 0;
-		z.msw = x.lsw;
-		return op_lsh_u(z, s - LONGSIZE);
-	}
-	z.lsw = (x.lsw << s);
-	z.msw = (x.msw << s) | (x.lsw >> (LONGSIZE - s));
-	return z;
-}
-
-static ulong op_rsh_u(ulong x, int s)
-{
-	ulong z;
-
-	s %= (2 * LONGSIZE);
-	if (s == 0) return x;
-	if (s >= LONGSIZE) {
-		z.msw = 0;
-		z.lsw = x.msw;
-		return op_rsh_u(z, s - LONGSIZE);
-	}
-	z.lsw = (x.lsw >> s) | (x.msw << (LONGSIZE - s));
-	z.msw = (x.msw >> s);
-	return z;
-}
-
-static int op_lt_u(ulong x, ulong y)
-{
-	if (x.msw < y.msw) return 1;
-	if (x.msw > y.msw) return 0;
-	if (x.lsw < y.lsw) return 1;
-	return 0;
-}
-
-static int op_leq_u(ulong x, ulong y)
-{
-	if (x.msw < y.msw) return 1;
-	if (x.msw > y.msw) return 0;
-	if (x.lsw <= y.lsw) return 1;
-	return 0;
-}
-
-#define op_gt_u(x, y)	op_lt_u(y, x)
-#define op_geq_u(x, y)	op_leq_u(y, x)
-
-static int op_same_u(ulong x, ulong y)
-{
-	return x.msw == y.msw && x.lsw == y.lsw;
-}
-
-#define op_neq_u(x, y)	(!op_same_u(x, y))
-
-static ulong op_and_u(ulong x, ulong y)
-{
-	ulong z;
-
-	z.lsw = x.lsw & y.lsw;
-	z.msw = x.msw & y.msw;
-	return z;
-}
-
-static ulong op_circ_u(ulong x, ulong y)
-{
-	ulong z;
-
-	z.lsw = x.lsw ^ y.lsw;
-	z.msw = x.msw ^ y.msw;
-	return z;
-}
-
-static ulong op_or_u(ulong x, ulong y)
-{
-	ulong z;
-
-	z.lsw = x.lsw | y.lsw;
-	z.msw = x.msw | y.msw;
-	return z;
-}
-
-#define op_lval_u(x)	op_neq_u(x, to_ulong(0))
-#define op_lnot_u(x)	(!op_lval_u(x))
-
-static ulong op_not_u(ulong x)
-{
-	ulong z;
-
-	z.lsw = ~x.lsw;
-	z.msw = ~x.msw;
-	return z;
-}
-
-#define op_uplus_u(x)	(x)
-#define op_uminus_u(x)	op_neg_u(x)
-
-static ulong umul(unsigned long x, unsigned long y)
-{
-	ulong z;
-	unsigned long t00, t01, t10, t11, c = 0, t;
-
-	t00 = UL_LS(x) * UL_LS(y);
-	t01 = UL_LS(x) * UL_MS(y);
-	t10 = UL_MS(x) * UL_LS(y);
-	t11 = UL_MS(x) * UL_MS(y);
-	t = z.lsw = t00;
-	if (t > (z.lsw += (UL_LS(t01) << HALFLONGSIZE))) c ++;
-	t = z.lsw;
-	if (t > (z.lsw += (UL_LS(t10) << HALFLONGSIZE))) c ++;
-	z.msw = t11 + UL_MS(t10) + UL_MS(t01) + c;
-	return z;
-}
-
-static ulong op_star_u(ulong x, ulong y)
-{
-	ulong z1, z2;
-
-	z1.lsw = z2.lsw = 0;
-	z1.msw = x.lsw * y.msw;
-	z2.msw = x.msw * y.lsw;
-	return op_plus_u(umul(x.lsw, y.lsw), op_plus_u(z1, z2));
-}
-
-static void udiv(ulong x, ulong y, ulong *q, ulong *r)
-{
-	int i, j;
-
-	*q = to_ulong(0);
-	for (i = 2 * LONGSIZE - 1; i >= 0; i --) {
-		if (i >= LONGSIZE && (y.msw & (1UL << (i - LONGSIZE)))) break;
-		if (i < LONGSIZE && (y.lsw & (1UL << i))) break;
-	}
-	if (i < 0) {
-		error(eval_line, "division by 0");
-		throw(eval_exception);
-	}
-	for (j = 2 * LONGSIZE - 1 - i; j >= 0; j --) {
-		ulong a = op_lsh_u(y, j);
-
-		if (op_leq_u(a, x)) {
-			x = op_minus_u(x, a);
-			if (j >= LONGSIZE)
-				q->msw |= (1UL << (j - LONGSIZE));
-			else
-				q->lsw |= (1UL << j);
-		}
-	}
-	*r = x;
-}
-
-static ulong op_slash_u(ulong x, ulong y)
-{
-	ulong q, r;
-
-	udiv(x, y, &q, &r);
-	return q;
-}
-
-static ulong op_pct_u(ulong x, ulong y)
-{
-	ulong q, r;
-
-	udiv(x, y, &q, &r);
-	return r;
-}
-
-
-static slong op_star_s(slong x, slong y)
-{
-	ulong a = x, b = y, c;
-	int xn = 0, yn = 0;
-
-	if (SIGNBIT(x.msw)) { a = op_neg_u(x); xn = 1; }
-	if (SIGNBIT(y.msw)) { b = op_neg_u(y); yn = 1; }
-	c = op_star_u(a, b);
-	/* Turbo C seems to miscompile the ?: operators when operands
-	   are ulong/slong structures */
-	if (xn ^ yn) return op_neg_u(c);
-	return c;
-}
-
-static void sdiv(slong x, slong y, slong *q, slong *r)
-{
-	ulong a = x, b = y, c, d;
-	int xn = 0, yn = 0;
-
-	if (SIGNBIT(x.msw)) { a = op_neg_u(x); xn = 1; }
-	if (SIGNBIT(y.msw)) { b = op_neg_u(y); yn = 1; }
-	udiv(a, b, &c, &d);
-	if (xn ^ yn) *q = op_neg_u(c); else *q = c;
-	if (xn ^ yn) *r = op_neg_u(d); else *r = d;
-}
-
-static slong op_slash_s(slong x, slong y)
-{
-	slong q, r;
-
-	sdiv(x, y, &q, &r);
-	return q;
-}
-
-static slong op_pct_s(slong x, slong y)
-{
-	slong q, r;
-
-	sdiv(x, y, &q, &r);
-	return r;
-}
-
-#define op_plus_s(x, y)		op_plus_u(x, y)
-#define op_minus_s(x, y)	op_minus_u(x, y)
-#define op_neg_s(x)		op_neg_u(x)
-#define op_lsh_s(x, y)		op_lsh_u(x, y)
-
-/*
- * What happens if x represents a negative value, is implementation
- * specified. We emit a warning, and extend the sign (which is what
- * most implementations do).
- */
-static slong op_rsh_s(slong x, int y)
-{
-	int xn = (SIGNBIT(x.msw) != 0);
-	ulong q = op_rsh_u(x, y);
-
-	if (xn && y > 0) {
-		if (emit_eval_warnings)
-			warning(eval_line, "right shift of a signed negative "
-				"value in #if");
-		q = op_or_u(q, op_lsh_u(op_not_u(to_ulong(0)),
-			2 * LONGSIZE - y));
-	}
-	return q;
-}
-
-static int op_lt_s(slong x, slong y)
-{
-	int xn = (SIGNBIT(x.msw) != 0);
-	int yn = (SIGNBIT(y.msw) != 0);
-
-	if (xn && !yn) return 1;
-	if (!xn && yn) return 0;
-	if (xn) return op_lt_u(op_neg_u(y), op_neg_u(x));
-	return op_lt_u(x, y);
-}
-
-static int op_leq_s(slong x, slong y)
-{
-	int xn = (SIGNBIT(x.msw) != 0);
-	int yn = (SIGNBIT(y.msw) != 0);
-
-	if (xn && !yn) return 1;
-	if (!xn && yn) return 0;
-	if (xn) return op_leq_u(op_neg_u(y), op_neg_u(x));
-	return op_leq_u(x, y);
-}
-
-#define op_gt_s(x, y)		op_lt_s(y, x)
-#define op_geq_s(x, y)		op_leq_s(y, x)
-#define op_same_s(x, y)		op_same_u(x, y)
-#define op_neq_s(x, y)		(!op_same_s(x, y))
-
-#define op_and_s(x, y)		op_and_u(x, y)
-#define op_circ_s(x, y)		op_circ_u(x, y)
-#define op_or_s(x, y)		op_or_u(x, y)
-
-#define op_lval_s(x)		op_neq_s(x, to_slong(0))
-#define op_lnot_s(x)		(!op_lval_s(x))
-#define op_not_s(x)		op_not_u(x)
-#define op_uplus_s(x)		(x)
-#define op_uminus_s(x)		op_neg_s(x)
-
-#define op_promo(x)		(x)
-#define back_ulong(x)		((x).lsw)
-
 #endif
 
 typedef struct {
 	int sign;
 	union {
-		ulong uv;
-		slong sv;
+		u_big uv;
+		s_big sv;
 	} u;
 } ppval;
 
 static int boolval(ppval x)
 {
-	return x.sign ? op_lval_s(x.u.sv) : op_lval_u(x.u.uv);
+	return x.sign ? big_s_lval(x.u.sv) : big_u_lval(x.u.uv);
 }
 
 #if !defined(WCHAR_SIGNEDNESS)
@@ -538,28 +191,31 @@ static int boolval(ppval x)
 #endif
 
 /*
- * Check the suffix, return 1 if it is signed, 0 otherwise.
- * u, l, ll, ul, lu, ull, llu, and variations with uppercase letters
- * are legal, no suffix either; other suffixes are not legal.
+ * Check the suffix, return 1 if it is signed, 0 otherwise. 1 is
+ * returned for a void suffix. Legal suffixes are:
+ * unsigned: u U ul uL Ul UL lu Lu lU LU ull uLL Ull ULL llu LLu llU LLU
+ * signed: l L ll LL
  */
 static int pp_suffix(char *d, char *refc)
 {
 	if (!*d) return 1;
 	if (*d == 'u' || *d == 'U') {
-		d ++;
-		if (!*d) return 0;
+		if (!*(++ d)) return 0;
 		if (*d == 'l' || *d == 'L') {
-			d ++;
-			if (*d == 'l' || *d == 'L') d ++;
-			if (!*d) return 0;
+			char *e = d + 1;
+
+			if (*e && *e != *d) goto suffix_error;
+			if (!*e || !*(e + 1)) return 0;
 			goto suffix_error;
 		}
 		goto suffix_error;
 	}
 	if (*d == 'l' || *d == 'L') {
-		d ++;
-		if (*d == 'l' || *d == 'L') d ++;
-		if (!*d) return 1;
+		if (!*(++ d)) return 1;
+		if (*d == *(d - 1)) {
+			d ++;
+			if (!*d) return 1;
+		}
 		if (*d == 'u' || *d == 'U') {
 			d ++;
 			if (!*d) return 0;
@@ -570,87 +226,6 @@ suffix_error:
 	error(eval_line, "invalid integer constant '%s'", refc);
 	throw(eval_exception);
 	return 666;
-}
-
-static ppval pp_decconst(char *c, int sign, char *refc)
-{
-	ppval q;
-
-	q.sign = sign;
-	if (q.sign) {
-		q.u.sv = to_slong(0);
-		for (; DECIM(*c); c ++) {
-			q.u.sv = op_star_s(q.u.sv, to_slong(10));
-			q.u.sv = op_plus_s(q.u.sv, to_slong(DVAL(*c)));
-		}
-		if (HEXAD(*c) || *c == 'x' || *c == 'X') goto const_error;
-	} else {
-		q.u.uv = to_ulong(0);
-		for (; DECIM(*c); c ++) {
-			q.u.uv = op_star_u(q.u.uv, to_ulong(10));
-			q.u.uv = op_plus_u(q.u.uv, to_ulong(DVAL(*c)));
-		}
-		if (HEXAD(*c) || *c == 'x' || *c == 'X') goto const_error;
-	}
-	return q;
-const_error:
-	error(eval_line, "invalid integer constant '%s'", refc);
-	throw(eval_exception);
-	return q;
-}
-
-static ppval pp_octconst(char *c, int sign, char *refc)
-{
-	ppval q;
-
-	q.sign = sign;
-	if (q.sign) {
-		q.u.sv = to_slong(0);
-		for (; OCTAL(*c); c ++) {
-			q.u.sv = op_star_s(q.u.sv, to_slong(8));
-			q.u.sv = op_plus_s(q.u.sv, to_slong(OVAL(*c)));
-		}
-		if (HEXAD(*c) || *c == 'x' || *c == 'X') goto const_error;
-	} else {
-		q.u.uv = to_ulong(0);
-		for (; OCTAL(*c); c ++) {
-			q.u.uv = op_star_u(q.u.uv, to_ulong(8));
-			q.u.uv = op_plus_u(q.u.uv, to_ulong(OVAL(*c)));
-		}
-		if (HEXAD(*c) || *c == 'x' || *c == 'X') goto const_error;
-	}
-	return q;
-const_error:
-	error(eval_line, "invalid integer constant '%s'", refc);
-	throw(eval_exception);
-	return q;
-}
-
-static ppval pp_hexconst(char *c, int sign, char *refc)
-{
-	ppval q;
-
-	q.sign = sign;
-	if (q.sign) {
-		q.u.sv = to_slong(0);
-		for (; HEXAD(*c); c ++) {
-			q.u.sv = op_star_s(q.u.sv, to_slong(16));
-			q.u.sv = op_plus_s(q.u.sv, to_slong(HVAL(*c)));
-		}
-		if (HEXAD(*c) || *c == 'x' || *c == 'X') goto const_error;
-	} else {
-		q.u.uv = to_ulong(0);
-		for (; HEXAD(*c); c ++) {
-			q.u.uv = op_star_u(q.u.uv, to_ulong(16));
-			q.u.uv = op_plus_u(q.u.uv, to_ulong(HVAL(*c)));
-		}
-		if (HEXAD(*c) || *c == 'x' || *c == 'X') goto const_error;
-	}
-	return q;
-const_error:
-	error(eval_line, "invalid integer constant '%s'", refc);
-	throw(eval_exception);
-	return q;
 }
 
 static unsigned long pp_char(char *c, char *refc)
@@ -727,34 +302,58 @@ static ppval pp_strtoconst(char *refc)
 {
 	ppval q;
 	char *c = refc, *d;
-	int sign = 1;
+	u_big ru;
+	s_big rs;
+	int sp, dec;
 
 	if (*c == '\'' || *c == 'L') {
 		q.sign = (*c == 'L') ? WCHAR_SIGNEDNESS : 1;
-		if (*c == 'L') c ++;
+		if (*c == 'L' && *(++ c) != '\'') {
+			error(eval_line,
+				"invalid wide character constant: %s", refc);
+			throw(eval_exception);
+		}
 		if (q.sign) {
-			q.u.sv = to_slong(pp_char(c, refc));
+			q.u.sv = big_s_fromlong(pp_char(c, refc));
 		} else {
-			q.u.uv = to_ulong(pp_char(c, refc));
+			q.u.uv = big_u_fromulong(pp_char(c, refc));
 		}
 		return q;
 	}
-	for (d = c; *d; d ++) {
-		if (!HEXAD(*d) && *d != 'x' && *d != 'X') {
-			sign = pp_suffix(d, refc);
-			break;
-		}
-	}
 	if (*c == '0') {
+		/* octal or hexadecimal */
+		dec = 0;
 		c ++;
 		if (*c == 'x' || *c == 'X') {
-			/* hexadecimal constant */
 			c ++;
-			return pp_hexconst(c, sign, refc);
+			d = big_u_hexconst(c, &ru, &rs, &sp);
+		} else {
+			d = big_u_octconst(c, &ru, &rs, &sp);
 		}
-		return pp_octconst(c, sign, refc);
+	} else {
+		dec = 1;
+		d = big_u_decconst(c, &ru, &rs, &sp);
 	}
-	return pp_decconst(c, sign, refc);
+	q.sign = pp_suffix(d, refc);
+	if (q.sign) {
+		if (!sp) {
+			if (dec) {
+				error(eval_line, "constant too large "
+					"for destination type");
+				throw(eval_exception);
+			} else {
+				warning(eval_line, "constant is so large "
+					"that it is unsigned");
+			}
+			q.u.uv = ru;
+			q.sign = 0;
+		} else {
+			q.u.sv = rs;
+		}
+	} else {
+		q.u.uv = ru;
+	}
+	return q;
 }
 
 /*
@@ -765,8 +364,8 @@ unsigned long strtoconst(char *c)
 {
 	ppval q = pp_strtoconst(c);
 
-	if (q.sign) q.u.uv = op_promo(q.u.sv);
-	return back_ulong(q.u.uv);
+	if (q.sign) q.u.uv = big_s_to_u(q.u.sv);
+	return big_u_toulong(q.u.uv);
 }
 
 #define OP_UN(x)	((x) == LNOT || (x) == NOT || (x) == UPLUS \
@@ -776,35 +375,37 @@ static ppval eval_opun(int op, ppval v)
 {
 	if (op == LNOT) {
 		v.sign = 1;
-		v.u.sv = to_slong(op_lnot_s(v.u.sv));
+		v.u.sv = big_s_fromint(big_s_lnot(v.u.sv));
 		return v;
 	}
 	if (v.sign) {
 		switch (op) {
-		case NOT: v.u.sv = op_not_s(v.u.sv); break;
-		case UPLUS: v.u.sv = op_uplus_s(v.u.sv); break;
-		case UMINUS: v.u.sv = op_uminus_s(v.u.sv); break;
+		case NOT: v.u.sv = big_s_not(v.u.sv); break;
+		case UPLUS: break;
+		case UMINUS: v.u.sv = big_s_neg(v.u.sv); break;
 		}
 	} else {
 		switch (op) {
-		case NOT: v.u.uv = op_not_u(v.u.uv); break;
-		case UPLUS: v.u.uv = op_uplus_u(v.u.uv); break;
-		case UMINUS: v.u.uv = op_uminus_u(v.u.uv); break;
+		case NOT: v.u.uv = big_u_not(v.u.uv); break;
+		case UPLUS: break;
+		case UMINUS: v.u.uv = big_u_neg(v.u.uv); break;
 		}
 	}
 	return v;
 }
 
-#define OP_BIN(x)	((x) == STAR || (x) == SLASH || (x) == PCT \
-			|| (x) == PLUS || (x) == MINUS || (x) == LSH \
-			|| (x) == RSH || (x) == LT || (x) == LEQ \
-			|| (x) == GT || (x) == GEQ || (x) == SAME \
-			|| (x) == NEQ || (x) == AND || (x) == CIRC \
-			|| (x) == OR || (x) == LAND || (x) == LOR \
-			|| (x) == COMMA)
+#define OP_BIN(x)      ((x) == STAR || (x) == SLASH || (x) == PCT \
+                       || (x) == PLUS || (x) == MINUS || (x) == LSH \
+                       || (x) == RSH || (x) == LT || (x) == LEQ \
+                       || (x) == GT || (x) == GEQ || (x) == SAME \
+                       || (x) == NEQ || (x) == AND || (x) == CIRC \
+                       || (x) == OR || (x) == LAND || (x) == LOR \
+                       || (x) == COMMA)
+
 static ppval eval_opbin(int op, ppval v1, ppval v2)
 {
 	ppval r;
+	int iv2 = 0;
 
 	switch (op) {
 	case STAR:	case SLASH:	case PCT:
@@ -813,10 +414,10 @@ static ppval eval_opbin(int op, ppval v1, ppval v2)
 		/* promote operands, adjust signedness of result */
 		if (!v1.sign || !v2.sign) {
 			if (v1.sign) {
-				v1.u.uv = op_promo(v1.u.sv);
+				v1.u.uv = big_s_to_u(v1.u.sv);
 				v1.sign = 0;
 			} else if (v2.sign) {
-				v2.u.uv = op_promo(v2.u.sv);
+				v2.u.uv = big_s_to_u(v2.u.sv);
 				v2.sign = 0;
 			}
 			r.sign = 0;
@@ -829,10 +430,10 @@ static ppval eval_opbin(int op, ppval v1, ppval v2)
 		/* promote operands */
 		if (!v1.sign || !v2.sign) {
 			if (v1.sign) {
-				v1.u.uv = op_promo(v1.u.sv);
+				v1.u.uv = big_s_to_u(v1.u.sv);
 				v1.sign = 0;
 			} else if (v2.sign) {
-				v2.u.uv = op_promo(v2.u.sv);
+				v2.u.uv = big_s_to_u(v2.u.sv);
 				v2.sign = 0;
 			}
 		}
@@ -844,13 +445,13 @@ static ppval eval_opbin(int op, ppval v1, ppval v2)
 		break;
 	case LSH:
 	case RSH:
-		/* result is as signed as left operand; promote right
-		   operand to unsigned (this is not required by the
-		   standard) */
+		/* result is as signed as left operand; convert right
+		   operand to int */
 		r.sign = v1.sign;
 		if (v2.sign) {
-			v2.u.uv = op_promo(v2.u.sv);
-			v2.sign = 0;
+			iv2 = big_s_toint(v2.u.sv);
+		} else {
+			iv2 = big_u_toint(v2.u.uv);
 		}
 		break;
 	case COMMA:
@@ -865,20 +466,20 @@ static ppval eval_opbin(int op, ppval v1, ppval v2)
 #endif
 	}
 
-#define SBINOP(x)	if (r.sign) r.u.sv = op_ ## x ## _s(v1.u.sv, v2.u.sv); \
-			else r.u.uv = op_ ## x ## _u(v1.u.uv, v2.u.uv);
+#define SBINOP(x)	if (r.sign) r.u.sv = big_s_ ## x (v1.u.sv, v2.u.sv); \
+			else r.u.uv = big_u_ ## x (v1.u.uv, v2.u.uv);
 
-#define NSSBINOP(x)	if (v1.sign) r.u.sv = to_slong(op_ ## x ## _s(v1.u.sv, \
-			v2.u.sv)); else r.u.sv = to_slong(op_ ## x ## _u \
-			(v1.u.uv, v2.u.uv));
+#define NSSBINOP(x)	if (v1.sign) r.u.sv = big_s_fromint(big_s_ ## x \
+			(v1.u.sv, v2.u.sv)); else r.u.sv = big_s_fromint( \
+			big_u_ ## x (v1.u.uv, v2.u.uv));
 
-#define LBINOP(x)	if (v1.sign) r.u.sv = to_slong(op_lval_s(v1.u.sv) x \
-			op_lval_s(v2.u.sv)); else r.u.sv = \
-			to_slong(op_lval_u(v1.u.uv) x op_lval_u(v2.u.uv));
+#define LBINOP(x)	if (v1.sign) r.u.sv = big_s_fromint( \
+			big_s_lval(v1.u.sv) x big_s_lval(v2.u.sv)); \
+			else r.u.sv = big_s_fromint( \
+			big_u_lval(v1.u.uv) x big_u_lval(v2.u.uv));
 
-#define ABINOP(x)	if (r.sign) r.u.sv = op_ ## x ## _s(v1.u.sv, \
-			back_ulong(v2.u.uv)); else r.u.uv = \
-			op_ ## x ## _u(v1.u.uv, back_ulong(v2.u.uv));
+#define ABINOP(x)	if (r.sign) r.u.sv = big_s_ ## x (v1.u.sv, iv2); \
+			else r.u.uv = big_u_ ## x (v1.u.uv, iv2);
 
 	switch (op) {
 	case STAR: SBINOP(star); break;
@@ -895,7 +496,7 @@ static ppval eval_opbin(int op, ppval v1, ppval v2)
 	case SAME: NSSBINOP(same); break;
 	case NEQ: NSSBINOP(neq); break;
 	case AND: SBINOP(and); break;
-	case CIRC: SBINOP(circ); break;
+	case CIRC: SBINOP(xor); break;
 	case OR: SBINOP(or); break;
 	case LAND: LBINOP(&&); break;
 	case LOR: LBINOP(||); break;
@@ -1009,9 +610,9 @@ eval_loop:
 				if (do_eval) {
 					top.sign = 1;
 					if (ct->type == LOR)
-						top.u.sv = to_slong(1);
+						top.u.sv = big_s_fromint(1);
 					if (ct->type == LAND)
-						top.u.sv = to_slong(0);
+						top.u.sv = big_s_fromint(0);
 				}
 			} else {
 				tr = eval_shrd(tf, bp, do_eval);

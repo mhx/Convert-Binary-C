@@ -3,9 +3,10 @@ CONTENTS
 1. DESCRIPTION
 2. INSTALLATION
 3. DOCUMENTATION
-4. COMPATIBILITY
-5. FEATURES
-6. COPYRIGHT
+4. CONFIGURATION
+5. COMPATIBILITY
+6. FEATURES
+7. COPYRIGHT
 
 
 --------------
@@ -76,17 +77,44 @@ want some working example scripts. You can find them in the
 
   examples
 
-subdirectory. These scripts normally require Convert::Binary::C to
-be installed on your system. If you want to test the examples prior
-to installing Convert::Binary::C, you can start the examples like
-this after building the module:
+subdirectory after you've built the module. These scripts normally
+require Convert::Binary::C to be installed on your system. If you
+want to test the examples prior to installing Convert::Binary::C,
+you can start the examples like this after building the module:
 
   perl -Mblib examples/script.pl
 
 Otherwise just run the example scripts like any other Perl script.
 
 ----------------
-4. COMPATIBILITY
+4. CONFIGURATION
+----------------
+
+Configuring a Convert::Binary::C object correctly can be quite
+painful if you don't know every little detail about your compiler.
+
+However, if you're lucky, you can use the 'ccconfig' tool that
+comes with this package. It was written to automatically retrieve
+the complete compiler configuration. This may not work always,
+or retrieve the complete configuration, but it should at least
+give you some point to start from.
+
+Just run
+
+  ccconfig -c compiler
+
+with 'compiler' being the name of your compiler executable.
+
+You can see the documentation for 'ccconfig' using the perldoc
+command:
+
+  perldoc ccconfig
+
+As the tool is very experimental, any feedback on 'ccconfig'
+is really appreciated!
+
+----------------
+5. COMPATIBILITY
 ----------------
 
 The module should build on most of the platforms that Perl runs on.
@@ -112,7 +140,7 @@ Multithreaded perl binaries are explicitly supported, as the module
 is intended to be thread-safe.
 
 -----------
-5. FEATURES
+6. FEATURES
 -----------
 
 You can enable or disable certain features at compile time by adding
@@ -143,14 +171,14 @@ enabled and ANSI-C99 features disabled, you would say:
 This will still allow you to pass other 'standard' arguments to Makefile.PL.
 
 ------------
-6. COPYRIGHT
+7. COPYRIGHT
 ------------
 
-Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
-This program is free software; you can redistribute it and/or
-modify it under the same terms as Perl itself.
+Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
 
-The ucpp library is (c) Thomas Pornin 1999, 2000. For licence
+The ucpp library is (c) 1998-2002 Thomas Pornin. For licence
 and redistribution details refer to 'ctlib/ucpp/README'.
 
 Portions copyright (c) 1989, 1990 James A. Roskind.
