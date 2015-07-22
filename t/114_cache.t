@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/11/25 12:38:48 +0000 $
-# $Revision: 5 $
-# $Snapshot: /Convert-Binary-C/0.04 $
+# $Date: 2002/11/28 11:34:14 +0000 $
+# $Revision: 6 $
+# $Snapshot: /Convert-Binary-C/0.05 $
 # $Source: /t/114_cache.t $
 #
 ################################################################################
@@ -22,7 +22,7 @@ use Convert::Binary::C::Cached;
 $^W = 1;
 
 BEGIN {
-  plan tests => 61;
+  plan tests => 64;
 }
 
 eval { require Data::Dumper }; $Data_Dumper = $@;
@@ -66,6 +66,12 @@ $cache = 't/cache.cbc';
 -e $cache and unlink $cache || die $!;
 
 eval {
+  $c = new Convert::Binary::C::Cached Cache   => [$cache],
+                                      Include => ['t/cache'];
+};
+ok( $@, qr/Cache must be a string value, not a reference at \Q$0/ );
+
+eval {
   $c = new Convert::Binary::C::Cached Cache   => $cache,
                                       Include => ['t/cache'];
 };
@@ -81,6 +87,21 @@ eval {
 };
 ok( $@, qr/Cannot parse more than once for cached objects at \Q$0/ );
 
+
+#------------------------------------------------------------------------------
+
+# check what happens if the cache file cannot be created
+
+eval {
+  $c = new Convert::Binary::C::Cached Cache   => 'abc/def/ghi/jkl/mno.pqr',
+                                      Include => ['t/cache'];
+};
+ok($@,'',"failed to create Convert::Binary::C::Cached object");
+
+eval {
+  $c->parse( 'enum { XXX };' );
+};
+ok( $@, qr/Cannot open 'abc\/def\/ghi\/jkl\/mno\.pqr':\s*.*?\s*at \Q$0/ );
 
 #------------------------------------------------------------------------------
 

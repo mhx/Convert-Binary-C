@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2002/11/27 19:31:18 +0000 $
 # $Revision: 16 $
-# $Snapshot: /Convert-Binary-C/0.04 $
+# $Snapshot: /Convert-Binary-C/0.05 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -148,7 +148,7 @@ $BISON = $Config{bison} || 'bison';
 
 @MAKER = (
   'NAME'            => $MODULE,
-  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.04 $'
+  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.05 $'
                                     =~ /(\d+\.\d+(?:_\d+)?)/;
                             @r ? $r[0] : '9.99' },
   'ABSTRACT'        => 'Binary Data Conversion using C Types',

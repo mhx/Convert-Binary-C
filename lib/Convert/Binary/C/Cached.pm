@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/11/25 13:48:37 +0000 $
-# $Revision: 5 $
-# $Snapshot: /Convert-Binary-C/0.04 $
+# $Date: 2002/11/28 11:30:58 +0000 $
+# $Revision: 6 $
+# $Snapshot: /Convert-Binary-C/0.05 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = sprintf '%.2f', 0.01*('$Revision: 5 $' =~ /(\d+)/)[0];
+$VERSION = sprintf '%.2f', 0.01*('$Revision: 6 $' =~ /(\d+)/)[0];
 
 my %cache;
 
@@ -290,7 +290,7 @@ sub __save_cache
   my $c = $cache{"$self"};
   my $fh = new IO::File;
 
-  $fh->open( ">$c->{cache}" or croak "Cannot open '$c->{cache}': $!" );
+  $fh->open( ">$c->{cache}" ) or croak "Cannot open '$c->{cache}': $!";
 
   my $what = exists $c->{code} ? 'code' : 'file';
 

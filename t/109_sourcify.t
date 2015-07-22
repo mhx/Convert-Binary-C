@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2002/11/20 18:48:33 +0000 $
 # $Revision: 2 $
-# $Snapshot: /Convert-Binary-C/0.04 $
+# $Snapshot: /Convert-Binary-C/0.05 $
 # $Source: /t/109_sourcify.t $
 #
 ################################################################################

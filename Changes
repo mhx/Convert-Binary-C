@@ -107,3 +107,11 @@ Version 0.04
 
 * upgraded to bison 1.75
 
+------------
+Version 0.05
+------------
+
+* fixed a bug that suppressed the error message
+  when the cache file could not be created, and
+  added a test for it
+
