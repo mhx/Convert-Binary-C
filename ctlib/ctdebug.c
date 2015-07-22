@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/01 11:29:54 +0000 $
-* $Revision: 2 $
-* $Snapshot: /Convert-Binary-C/0.08 $
+* $Date: 2003/01/20 19:11:18 +0000 $
+* $Revision: 3 $
+* $Snapshot: /Convert-Binary-C/0.09 $
 * $Source: /ctlib/ctdebug.c $
 *
 ********************************************************************************
@@ -50,7 +50,7 @@ unsigned long g_CT_dbflags                 = 0;
 /*===== STATIC VARIABLES =====================================================*/
 
 #ifdef CTYPE_DEBUGGING
-static void (*gs_vprintf)(char *, va_list) = NULL;
+static void (*gs_vprintf)(char *, va_list *) = NULL;
 #endif
 
 /*===== STATIC FUNCTIONS =====================================================*/
@@ -75,7 +75,7 @@ static void (*gs_vprintf)(char *, va_list) = NULL;
 *
 *******************************************************************************/
 
-int SetDebugCType( void (*dbfunc)(char *, ...), void (*dbvprintf)(char *, va_list),
+int SetDebugCType( void (*dbfunc)(char *, ...), void (*dbvprintf)(char *, va_list *),
                    unsigned long dbflags )
 {
   g_CT_dbfunc  = dbfunc;
@@ -106,7 +106,7 @@ void BisonDebugFunc( void *dummy, char *fmt, ... )
   if( dummy != NULL && gs_vprintf != NULL ) {
     va_list l;
     va_start( l, fmt );
-    gs_vprintf( fmt, l );
+    gs_vprintf( fmt, &l );
     va_end( l );
   }
 }

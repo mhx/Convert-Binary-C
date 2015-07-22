@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/03 13:12:32 +0000 $
-* $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.08 $
+* $Date: 2003/01/20 19:11:17 +0000 $
+* $Revision: 5 $
+* $Snapshot: /Convert-Binary-C/0.09 $
 * $Source: /ctlib/cpperr.c $
 *
 ********************************************************************************
@@ -124,7 +124,7 @@ void ucpp_ouch( char *fmt, ... )
   va_start( ap, fmt );
   str = F.newstr();
   F.scatf( str, "%s: (FATAL) ", current_filename );
-  F.vscatf( str, fmt, ap );
+  F.vscatf( str, fmt, &ap );
   va_end( ap );
 
   F.fatal( str );
@@ -163,7 +163,7 @@ void ucpp_error( long line, char *fmt, ... )
   else if( line == 0 )
     F.scatf( str, "%s: ", current_filename );
 
-  F.vscatf( str, fmt, ap );
+  F.vscatf( str, fmt, &ap );
 
   if( line >= 0 ) {
     struct stack_context *sc = report_context();
@@ -218,7 +218,7 @@ void ucpp_warning( long line, char *fmt, ... )
   else
     F.scatf( str, "(warning) ");
 
-  F.vscatf( str, fmt, ap );
+  F.vscatf( str, fmt, &ap );
 
   if( line >= 0 ) {
     struct stack_context *sc = report_context();

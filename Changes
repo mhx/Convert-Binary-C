@@ -181,3 +181,17 @@ Version 0.08
 
 * documentation updates and fixes
 
+------------
+Version 0.09
+------------
+
+* fixed problems with va_list on Linux-PPC that caused some
+  tests to segfault
+
+* updated preprocessor output detection in ccconfig for
+  "smart" preprocessors
+
+* minor fixes and cleanups
+
+* minor documentation updates
+

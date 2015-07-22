@@ -13,7 +13,7 @@
 * $Author: mhx $
 * $Date: 2003/01/14 20:13:03 +0000 $
 * $Revision: 19 $
-* $Snapshot: /Convert-Binary-C/0.08 $
+* $Snapshot: /Convert-Binary-C/0.09 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************

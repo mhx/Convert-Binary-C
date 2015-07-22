@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/01 11:29:54 +0000 $
-* $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.08 $
+* $Date: 2003/01/20 19:11:18 +0000 $
+* $Revision: 5 $
+* $Snapshot: /Convert-Binary-C/0.09 $
 * $Source: /ctlib/ctdebug.h $
 *
 ********************************************************************************
@@ -70,7 +70,7 @@ extern unsigned long g_CT_dbflags;
 #endif
 
 #ifdef CTYPE_DEBUGGING
-int SetDebugCType( void (*dbfunc)(char *, ...), void (*dbvprintf)(char *, va_list),
+int SetDebugCType( void (*dbfunc)(char *, ...), void (*dbvprintf)(char *, va_list *),
                    unsigned long dbflags );
 void BisonDebugFunc( void *dummy, char *fmt, ... );
 #else

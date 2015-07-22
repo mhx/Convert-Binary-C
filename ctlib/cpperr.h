@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/01 11:29:54 +0000 $
-* $Revision: 3 $
-* $Snapshot: /Convert-Binary-C/0.08 $
+* $Date: 2003/01/20 19:11:17 +0000 $
+* $Revision: 4 $
+* $Snapshot: /Convert-Binary-C/0.09 $
 * $Source: /ctlib/cpperr.h $
 *
 ********************************************************************************
@@ -37,7 +37,7 @@
 typedef struct {
   void * (*newstr)( void );
   void   (*scatf)( void *, char *, ... );
-  void   (*vscatf)( void *, char *, va_list );
+  void   (*vscatf)( void *, char *, va_list * );
   void   (*warn)( void * );
   void   (*error)( void * );
   void   (*fatal)( void * );

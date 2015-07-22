@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/10 22:40:46 +0000 $
-# $Revision: 10 $
-# $Snapshot: /Convert-Binary-C/0.08 $
+# $Date: 2003/01/20 18:13:18 +0000 $
+# $Revision: 11 $
+# $Snapshot: /Convert-Binary-C/0.09 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = sprintf '%.2f', 0.01*('$Revision: 10 $' =~ /(\d+)/)[0];
+$VERSION = sprintf '%.2f', 0.01*('$Revision: 11 $' =~ /(\d+)/)[0];
 
 my %cache;
 
@@ -342,28 +342,29 @@ Convert::Binary::C::Cached - Caching for Convert::Binary::C
 =head1 SYNOPSIS
 
   use Convert::Binary::C::Cached;
+  use Data::Dumper;
   
+  #------------------------
+  # Create a cached object
+  #------------------------
   $c = new Convert::Binary::C::Cached
-               ByteOrder => 'BigEndian',
-               Alignment => 8,
-               Cache     => '/tmp/foo.cache';
+             Cache   => '/tmp/cache.c',
+             Include => ['include']
+           ;
   
-  $c->configure( Include => ['/usr/include'],
-                 Define  => ['FOOBAR=12345'] );
+  #-------------------------------------------------
+  # Parse 'stdio.h' and dump the definition of FILE
+  #-------------------------------------------------
+  $c->parse_file( 'stdio.h' );
   
-  $c->parse_file( $file );
-  $c->Alignment( 2 );
-  
-  $p = $c->unpack( 'MyType', $data );
-  $s = $c->sizeof( 'BigType' );
-  $m = $c->member( 'AnotherType', 5 );
+  print Dumper( $c->typedef( 'FILE' ) );
 
 =head1 DESCRIPTION
 
 Convert::Binary::C::Cached simply adds caching capability to
 Convert::Binary::C. You can use it in just the same way that
 you would use Convert::Binary::C. The interface is exactly
-the same, which is why the example above is just the same.
+the same.
 
 To use the caching capability, you must pass the C<Cache> option
 to the constructor. If you don't pass it, you will receive
@@ -393,7 +394,8 @@ The object's configuration has changed.
 
 =item *
 
-The embedded code for a C<parse> method call has changed.
+The embedded code for a L<C<parse>|Convert::Binary::C/"parse"> method
+call has changed.
 
 =item *
 
@@ -405,8 +407,9 @@ modification or change timestamp.
 
 =head1 LIMITATIONS
 
-You cannot call C<parse> or C<parse_file> more that once
-when using a Convert::Binary::C::Cached object. This isn't
+You cannot
+call L<C<parse>|Convert::Binary::C/"parse"> or L<C<parse_file>|Convert::Binary::C/"parse_file"> more
+that once when using a Convert::Binary::C::Cached object. This isn't
 a big problem, as you usually don't call them multiple times.
 
 If a dependency file changes, but the change affects neither

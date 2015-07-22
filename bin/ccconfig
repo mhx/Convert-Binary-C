@@ -11,9 +11,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/10 22:35:40 +0000 $
-# $Revision: 32 $
-# $Snapshot: /Convert-Binary-C/0.08 $
+# $Date: 2003/01/20 17:35:18 +0000 $
+# $Revision: 33 $
+# $Snapshot: /Convert-Binary-C/0.09 $
 # $Source: /bin/ccconfig $
 #
 ################################################################################
@@ -30,7 +30,7 @@ use Data::Dumper;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = sprintf '%.2f', 0.01*('$Revision: 32 $' =~ /(\d+)/)[0];
+my $VERSION = sprintf '%.2f', 0.01*('$Revision: 33 $' =~ /(\d+)/)[0];
 my $MESSAGE = "\nThis is $NAME $VERSION ($0).\n\n";
 my %OPT;
 
@@ -1615,7 +1615,7 @@ sub _configure
 
   $self->_msg( "Checking if your compiler works..." );
 
-  my $line = 'Very useful, no doubt, that was to Saruman; yet it seems that he was not content.';
+  my $line = '"Very useful, no doubt, that was to Saruman; yet it seems that he was not content.";';
 
   $self->_temp( <<TEMP );
 $line

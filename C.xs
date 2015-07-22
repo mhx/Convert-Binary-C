@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/14 20:17:20 +0000 $
-* $Revision: 49 $
-* $Snapshot: /Convert-Binary-C/0.08 $
+* $Date: 2003/01/20 19:11:15 +0000 $
+* $Revision: 51 $
+* $Snapshot: /Convert-Binary-C/0.09 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -544,7 +544,7 @@ typedef struct {
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 
 #ifdef CTYPE_DEBUGGING
-static void debug_vprintf( char *f, va_list l );
+static void debug_vprintf( char *f, va_list *l );
 static void debug_printf( char *f, ... );
 static void debug_printf_ctlib( char *f, ... );
 static void SetDebugOptions( char *dbopts );
@@ -556,7 +556,7 @@ static void DumpSV( SV *buf, int level, SV *sv );
 static void fatal( char *f, ... );
 static void *ct_newstr( void );
 static void ct_scatf( void *p, char *f, ... );
-static void ct_vscatf( void *p, char *f, va_list l );
+static void ct_vscatf( void *p, char *f, va_list *l );
 static void ct_warn( void *p );
 static void ct_fatal( void *p );
 
@@ -826,9 +826,9 @@ static void ct_scatf( void *p, char *f, ... )
   va_end( l );
 }
 
-static void ct_vscatf( void *p, char *f, va_list l )
+static void ct_vscatf( void *p, char *f, va_list *l )
 {
-  sv_vcatpvf( (SV*)p, f, &l );
+  sv_vcatpvf( (SV*)p, f, l );
 }
 
 static void ct_warn( void *p )
@@ -1948,10 +1948,15 @@ static void AddIndent( SV *s, int level )
 #define MAXINDENT 16
   static const char tab[MAXINDENT] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
+#ifndef CBC_DONT_CLAMP_TO_MAXINDENT
+  if( level > MAXINDENT )
+    level = MAXINDENT;
+#else
   while( level > MAXINDENT ) {
     sv_catpvn( s, tab, MAXINDENT );
     level -= MAXINDENT;
   }
+#endif
 
   sv_catpvn( s, tab, level );
 #undef MAXINDENT
@@ -3846,9 +3851,9 @@ static int IsTypedefDefined( Typedef *pTypedef )
 *******************************************************************************/
 
 #ifdef CTYPE_DEBUGGING
-static void debug_vprintf( char *f, va_list l )
+static void debug_vprintf( char *f, va_list *l )
 {
-  vfprintf( gs_DB_stream, f, l );
+  vfprintf( gs_DB_stream, f, *l );
 }
 
 static void debug_printf( char *f, ... )

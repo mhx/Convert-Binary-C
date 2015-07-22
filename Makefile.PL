@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/10 22:24:41 +0000 $
-# $Revision: 29 $
-# $Snapshot: /Convert-Binary-C/0.08 $
+# $Date: 2003/01/20 18:11:56 +0000 $
+# $Revision: 30 $
+# $Snapshot: /Convert-Binary-C/0.09 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -174,7 +174,7 @@ ENDUSAGE
 
 WriteMakefile(
   'NAME'            => $MODULE,
-  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.08 $'
+  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.09 $'
                                     =~ /(\d+\.\d+(?:_\d+)?)/;
                             @r ? $r[0] : '9.99' },
   'ABSTRACT'        => 'Binary Data Conversion using C Types',
@@ -241,6 +241,7 @@ ctlib/pragma.c: ctlib/pragma.y
 
 \$(MYEXTLIB): \$(MYEXTLIB_OBJ)
 	\$(AR) $linkext \$(MYEXTLIB_OBJ)
+	\$(RANLIB) \$(MYEXTLIB)
 END
 }
 
