@@ -9,7 +9,7 @@ my $c = new Convert::Binary::C ByteOrder => 'BigEndian';
 #---------------------------------------------------
 # Add include paths and global preprocessor defines
 #---------------------------------------------------
-$c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.2/include',
+$c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.3/include',
              '/usr/include' )
   ->Define( qw( __USE_POSIX __USE_ISOC99=1 ) );
 

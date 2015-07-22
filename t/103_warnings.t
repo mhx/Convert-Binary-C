@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/05/20 21:06:40 +0100 $
-# $Revision: 39 $
-# $Snapshot: /Convert-Binary-C/0.53 $
+# $Date: 2004/07/01 07:35:10 +0100 $
+# $Revision: 40 $
+# $Snapshot: /Convert-Binary-C/0.54 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
@@ -21,7 +21,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 5178 }
+BEGIN { plan tests => 5254 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -494,9 +494,13 @@ eval_test(q{
   $p->add_hooks('test.bar', 'foo');                        # (E) No member expressions ('test.bar') allowed in add_hooks
   $p->add_hooks('int', 'foo');                             # (E) No basic types ('int') allowed in add_hooks
   $p->add_hooks('test', 'foo');                            # (E) Need a hash reference to define hooks for 'test'
-  $p->add_hooks('test', {pack => 42});                     # (E) pack hook defined for 'test' is not a code reference
+  $p->add_hooks('test', {pack => 42});                     # (E) pack hook defined for 'test' is not a code or array reference
+  $p->add_hooks('test', {pack => {foo => 42}});            # (E) pack hook defined for 'test' is not a code or array reference
+  $p->add_hooks('test', {pack => [42]});                   # (E) pack hook defined for 'test' is not a code reference
+  $p->add_hooks('test', {unpack => []});                   # (E) Need at least a code reference in unpack hook for type 'test'
   $p->add_hooks('test', {pack => sub {$_[0]}});            # no warning
-  $p->add_hooks('test', {pack => \&id, unpack => \&id });  # no warning
+  $p->add_hooks('test', {unpack => [sub {$_[0]}]});        # no warning
+  $p->add_hooks('test', {pack => \&id, unpack => \&id});   # no warning
 
   $p->delete_hooks('noway');                               # (E) Cannot find 'noway'
   $p->delete_hooks('test.bar');                            # (E) No member expressions ('test.bar') allowed in delete_hooks
@@ -513,6 +517,9 @@ eval_test(q{
   $p->add_hooks('test', {unpack => \&id });                # no warning
   $p->add_hooks('struct test', {unpack => undef});         # no warning
   $p->delete_hooks('test');                                # (1) No hooks defined for 'test'
+
+  $p->arg('test');                                         # (1) Useless use of arg in void context
+  $x = $p->arg('test');                                    # (E) Unknown argument type 'test' in arg
 
 }, [0 .. 2], [qw( Convert::Binary::C Convert::Binary::C::Cached )]);
 

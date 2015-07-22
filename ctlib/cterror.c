@@ -12,7 +12,7 @@
 * $Author: mhx $
 * $Date: 2004/03/22 20:23:28 +0000 $
 * $Revision: 15 $
-* $Snapshot: /Convert-Binary-C/0.53 $
+* $Snapshot: /Convert-Binary-C/0.54 $
 * $Source: /ctlib/cterror.c $
 *
 ********************************************************************************

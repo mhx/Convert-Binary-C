@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/05/23 23:06:23 +0100 $
-# $Revision: 7 $
-# $Snapshot: /Convert-Binary-C/0.53 $
+# $Date: 2004/07/01 07:34:20 +0100 $
+# $Revision: 8 $
+# $Snapshot: /Convert-Binary-C/0.54 $
 # $Source: /typemap $
 #
 ################################################################################
@@ -27,6 +27,8 @@ T_CBC_OBJECT
 	  if (sv) {
 	    IV tmp = SvIV(*sv);
 	    $var = INT2PTR($type, tmp);
+	    if ($var == NULL)
+	      Perl_croak(aTHX_ \"${Package}::$func_name(): $var is NULL\");
 	    if ($var->hv != hv)
 	      Perl_croak(aTHX_ \"${Package}::$func_name(): $var->hv is corrupt\");
 	  }

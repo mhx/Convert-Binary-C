@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:38:01 +0000 $
-# $Revision: 20 $
-# $Snapshot: /Convert-Binary-C/0.53 $
+# $Date: 2004/05/28 09:53:12 +0100 $
+# $Revision: 21 $
+# $Snapshot: /Convert-Binary-C/0.54 $
 # $Source: /t/106_parse.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 81 }
+BEGIN { plan tests => 90 }
 
 #===================================================================
 # create object (1 tests)
@@ -412,4 +412,39 @@ for my $t ( @tests ) {
   # Don't try to unpack data (or even worse, call $c->typedef('deep')).
   # Doing so can result in a stack overflow in perl during destruction.
 }
+
+#===================================================================
+# check parse error recovery (9 tests)
+#===================================================================
+
+$c = new Convert::Binary::C IntSize => 4;
+
+eval {
+  $c->parse(<<ENDC);
+
+struct foo {
+  int a, b, c;
+};
+
+}}} Whew!
+
+ENDC
+};
+
+ok($@, qr/syntax error/);
+
+# however, we should still be able to use 'foo'
+$s = eval { $c->sizeof('foo') };
+ok($@, '');
+ok($s, 12);
+
+$p = eval { $c->pack('foo', { a => 4711, b => -101, c => 42 }) };
+ok($@, '');
+ok(length $p, $s);
+
+$u = eval { $c->unpack('foo', $p) };
+ok($@, '');
+ok($u->{a}, 4711);
+ok($u->{b}, -101);
+ok($u->{c},   42);
 

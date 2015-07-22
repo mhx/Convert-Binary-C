@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/05/24 22:38:53 +0100 $
-# $Revision: 62 $
-# $Snapshot: /Convert-Binary-C/0.53 $
+# $Date: 2004/07/01 09:01:38 +0100 $
+# $Revision: 63 $
+# $Snapshot: /Convert-Binary-C/0.54 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.53 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.54 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -117,7 +117,7 @@ Convert::Binary::C - Binary Data Conversion using C Types
   #---------------------------------------------------
   # Add include paths and global preprocessor defines
   #---------------------------------------------------
-  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.2/include',
+  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.3/include',
                '/usr/include' )
     ->Define( qw( __USE_POSIX __USE_ISOC99=1 ) );
   
@@ -720,6 +720,8 @@ If you define hooks for a certain data type, each time this
 data type is processed the corresponding hook will be called
 to allow you to modify the data.
 
+=head2 Basic hooks
+
 Here's an example. Let's assume the following C code has been
 parsed:
 
@@ -879,6 +881,118 @@ This would print:
 
     0x0000 : 00 00 00 19 4A 75 73 74 20 61 6E 6F 74 68 65 72 : ....Just.another
     0x0010 : 20 50 65 72 6C 20 68 61 63 6B 65 72 2C          : .Perl.hacker,
+
+=head2 Advanced hooks
+
+But hooks are even more powerful. You can customize the arguments
+that are passed to your hooks and you can use L<C<arg>|/"arg"> to
+pass certain special arguments, such as the name of the type that
+is currently being processed by the hook.
+
+The following example shows how it is easily possible to peek into
+the perl internals using hooks.
+
+  use Config;
+  
+  $c = new Convert::Binary::C %CC, OrderMembers => 1;
+  $c->Include(["$Config{archlib}/CORE", @{$c->Include}]);
+  $c->parse(<<ENDC);
+  #include "EXTERN.h"
+  #include "perl.h"
+  ENDC
+  
+  $c->add_hooks($_ => { unpack_ptr => [\&unpack_ptr,
+                                       $c->arg(qw(SELF TYPE DATA))] })
+      for qw( XPVAV XPVHV MAGIC MGVTBL HV );
+
+First, we add the perl core include path and parse F<perl.h>. Then,
+we add an C<unpack_ptr> hook for a couple of the internal data types.
+
+The C<unpack_ptr> and C<pack_ptr> hooks are called whenever a pointer
+to a certain data structure is processed. This is by far the most
+experimental part of the hooks feature, as this includes B<any> kind
+of pointer. There's no way for the hook to know the difference between
+a plain pointer, or a pointer to a pointer, or a pointer to an array
+(this is because the difference doesn't matter anywhere else in
+Convert::Binary::C).
+
+But the hook above makes use of another very interesting feature: It
+uses L<C<arg>|/"arg"> to pass special arguments to the hook subroutine.
+Usually, the hook subroutine is simply passed a single data argument.
+But using the above definition, it'll get a reference to the calling
+object (C<SELF>), the name of the type being processed (C<TYPE>) and
+the data (C<DATA>).
+
+But how does our hook look like?
+
+  sub unpack_ptr {
+    my($self, $type, $ptr) = @_;
+    $ptr or return '<NULL>';
+    my $size = $self->sizeof($type);
+    $self->unpack($type, unpack("P$size", pack('I', $ptr)));
+  }
+
+As you can see, the hook is rather simple. First, it receives the
+arguments mentioned above. It performs a quick check if the pointer
+is C<NULL> and shouldn't be processed any further. Next, it determines
+the size of the type being processed. And finally, it'll just use
+the C<P>I<n> unpack template to read from that memory location and
+recursively call L<C<unpack>|/"unpack"> to unpack the type. (And yes,
+this may of course again call other hooks.)
+
+Now, let's test that:
+
+  my $ref = bless ["Boo!"], "Foo::Bar";
+  my $ptr = hex(("$ref" =~ /\(0x([[:xdigit:]]+)\)$/)[0]);
+  
+  print Dumper(unpack_ptr($c, 'AV', $ptr));
+
+Just for the fun of it, we create a blessed array reference. But how
+do we get a pointer to the corresponding C<AV>? This is rather easy,
+as the address of the C<AV> is just the hex value that appears when
+using the array reference in string context. So we just grab that and
+turn it into decimal. All that's left to do is just call our hook,
+as it can already handle C<AV> pointers. And this is what we get:
+
+  $VAR1 = {
+    'sv_any' => {
+      'xav_array' => '137944496',
+      'xav_fill' => '0',
+      'xav_max' => '0',
+      'xof_off' => '0',
+      'xnv_nv' => '0',
+      'xmg_magic' => '<NULL>',
+      'xmg_stash' => {
+        'sv_any' => {
+          'xhv_array' => '0',
+          'xhv_fill' => '0',
+          'xhv_max' => '7',
+          'xhv_keys' => '0',
+          'xnv_nv' => '0',
+          'xmg_magic' => '<NULL>',
+          'xmg_stash' => '<NULL>',
+          'xhv_riter' => '-1',
+          'xhv_eiter' => '0',
+          'xhv_pmroot' => '0',
+          'xhv_name' => '138048400'
+        },
+        'sv_refcnt' => '2',
+        'sv_flags' => '536870923'
+      },
+      'xav_alloc' => '137944496',
+      'xav_arylen' => '0',
+      'xav_flags' => '1'
+    },
+    'sv_refcnt' => '1',
+    'sv_flags' => '4106'
+  };
+
+Even though it is rather easy to do such stuff using C<unpack_ptr> hooks,
+you should really know what you're doing and do it with extreme care
+because of the limitations mentioned above. It's really easy to run into
+segmentation faults when you're dereferencing pointers that are not yours.
+
+=head2 Performance
 
 Using hooks isn't for free. In performance-critical applications
 you have to keep in mind that hooks are actually perl subroutines
@@ -2690,7 +2804,7 @@ moment it was parsed.
   # Create object, set include path, parse 'string.h' header
   #----------------------------------------------------------
   my $c = Convert::Binary::C->new
-          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.2/include',
+          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.3/include',
                      '/usr/include' )
           ->parse_file( 'string.h' );
   
@@ -2710,36 +2824,36 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1075114449,
-      'mtime' => 1075114440,
+      'ctime' => 1088459294,
+      'mtime' => 1088459256,
       'size' => 10792
     },
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.2/include/stddef.h' => {
-      'ctime' => 1076362098,
-      'mtime' => 1076362094,
-      'size' => 12695
-    },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1075114448,
-      'mtime' => 1075114440,
+      'ctime' => 1088459288,
+      'mtime' => 1088459256,
       'size' => 8600
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1075114447,
-      'mtime' => 1075114440,
-      'size' => 733
+      'ctime' => 1088459287,
+      'mtime' => 1088459256,
+      'size' => 818
+    },
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.3/include/stddef.h' => {
+      'ctime' => 1086789971,
+      'mtime' => 1086789970,
+      'size' => 12695
     },
     '/usr/include/string.h' => {
-      'ctime' => 1075114449,
-      'mtime' => 1075114440,
-      'size' => 14226
+      'ctime' => 1088459293,
+      'mtime' => 1088459256,
+      'size' => 15011
     }
   };
   @files = (
     '/usr/include/features.h',
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.2/include/stddef.h',
     '/usr/include/sys/cdefs.h',
     '/usr/include/gnu/stubs.h',
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.3/include/stddef.h',
     '/usr/include/string.h'
   );
 
@@ -3491,7 +3605,7 @@ a description on how to interpret this hash.
 
 =over 8
 
-=item C<add_hooks> TYPE =E<gt> { HOOK =E<gt> SUB, ... }, ...
+=item C<add_hooks> TYPE =E<gt> { HOOK =E<gt> SUB, HOOK =E<gt> [SUB, ARGS], ... }, ...
 
 This method allows you to register subroutines as hooks.
 Hooks are called whenever a certain C<TYPE> is packed or
@@ -3500,10 +3614,26 @@ feature.
 
 You can register hooks for all types except for basic types.
 This means you cannot register a hook for C<int>. C<TYPE> is
-the type you want to register a hook for. C<HOOK> is
-either C<'pack'> or C<'unpack'>. C<SUB> is a reference to
-a subroutine that takes on input argument, processes it and
-returns one output argument.
+the type you want to register a hook for. C<HOOK> can be one
+of the following:
+
+  pack
+  unpack
+  pack_ptr
+  unpack_ptr
+
+C<'pack'> and C<'unpack'> hooks are called when processing
+their C<TYPE>, while C<'pack_ptr'> and C<'unpack_ptr'> hooks
+are called when processing pointers to their C<TYPE>.
+
+C<SUB> is a reference to a subroutine that takes one input
+argument, processes it and returns one output argument.
+Alternatively, you can pass custom arguments to the hook by
+passing an array reference instead of C<SUB> that holds the
+subroutine reference in the first element and the arguments
+to be passed to the subroutine as the other elements. With
+the latter alternative, you can even pass special arguments
+to the hook using L<C<arg>|/"arg">.
 
 You can register hooks for as many types as you like with
 one call to L<C<add_hooks>|/"add_hooks">:
@@ -3511,8 +3641,11 @@ one call to L<C<add_hooks>|/"add_hooks">:
   $c->add_hooks(ObjectType => { pack   => \&obj_pack,
                                 unpack => \&obj_unpack },
                 ProtocolId => { unpack => sub {
-                                            $protos[$_[0]]
-                                          } });
+                                  $protos[$_[0]]
+                                },
+                                unpack_ptr => [sub {
+                                  sprintf "$_[0]:{0x%X}", $_[1]
+                                }, $c->arg('TYPE', 'DATA')] });
 
 To remove registered hooks, use
 either L<C<delete_hooks>|/"delete_hooks"> or L<C<delete_all_hooks>|/"delete_all_hooks">.
@@ -3556,6 +3689,42 @@ its object.
 =item C<delete_all_hooks>
 
 Removes all registered hooks and returns a reference to its object.
+
+=back
+
+=head2 arg
+
+=over 8
+
+=item C<arg> 'ARG', ...
+
+Creates placeholders for special arguments to be passed to hook
+subroutines. These arguments are currently:
+
+=over 4
+
+=item C<SELF>
+
+A reference to the calling Convert::Binary::C object. This may be
+useful if you need to work with the object inside the hook.
+
+=item C<TYPE>
+
+The name of the type that is currently being processed by the hook.
+
+=item C<DATA>
+
+The data argument that is usually passed to the hook.
+
+=item C<HOOK>
+
+The type of the hook as which the hook has been called,
+e.g. C<pack> or C<unpack_ptr>.
+
+=back
+
+L<C<arg>|/"arg"> will return a placeholder for each argument it is
+being passed.
 
 =back
 

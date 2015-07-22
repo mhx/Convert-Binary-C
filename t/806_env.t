@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2004/03/22 19:38:05 +0000 $
 # $Revision: 7 $
-# $Snapshot: /Convert-Binary-C/0.53 $
+# $Snapshot: /Convert-Binary-C/0.54 $
 # $Source: /t/806_env.t $
 #
 ################################################################################
