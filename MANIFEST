@@ -9,6 +9,8 @@ cbc/basic.h
 cbc/cbc.h
 cbc/debug.c
 cbc/debug.h
+cbc/dimension.c
+cbc/dimension.h
 cbc/hook.c
 cbc/hook.h
 cbc/idl.c
@@ -122,6 +124,9 @@ tests/236_typeinfo.t
 tests/237_parser.t
 tests/238_byteorder.t
 tests/239_macros.t
+tests/240_offsetof.t
+tests/241_sizeof.t
+tests/242_dimension.t
 tests/501_bfsimple.t
 tests/502_bfmicrosoft.t
 tests/503_bfgeneric.t

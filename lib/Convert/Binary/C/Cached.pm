@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/16 17:02:51 +0000 $
-# $Revision: 29 $
+# $Date: 2006/03/11 17:26:20 +0000 $
+# $Revision: 30 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.64_01 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.64_02 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 $VERSION = eval $VERSION;
 
 sub new
@@ -370,17 +370,17 @@ Convert::Binary::C::Cached - Caching for Convert::Binary::C
   #------------------------
   # Create a cached object
   #------------------------
-  $c = new Convert::Binary::C::Cached
-             Cache   => '/tmp/cache.c',
-             Include => ['include']
-           ;
+  $c = Convert::Binary::C::Cached->new(
+         Cache   => '/tmp/cache.c',
+         Include => ['include']
+       );
   
   #-------------------------------------------------
   # Parse 'stdio.h' and dump the definition of FILE
   #-------------------------------------------------
-  $c->parse_file( 'stdio.h' );
+  $c->parse_file('stdio.h');
   
-  print Dumper( $c->typedef( 'FILE' ) );
+  print Dumper($c->typedef('FILE'));
 
 =head1 DESCRIPTION
 

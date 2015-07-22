@@ -6,12 +6,12 @@ $c = new Convert::Binary::C;
 
 #-8<-
 
-$c->parse( <<'#-8<-' );
+$c->parse(<<'#-8<-');
 enum { A, B, C };
 
 #-8<-
 
-$c->parse( <<'#-8<-' );
+$c->parse(<<'#-8<-');
 struct foo {
   enum weekday *pWeekday;
   unsigned long year;
@@ -27,6 +27,6 @@ struct foo {
 
 #-8<-
 
-print Data::Dumper->Dump( [\@names], ['*names'] ), "\n";
-print Data::Dumper->Dump( [\@enums], ['*enums'] ), "\n";
+print Data::Dumper->Dump([\@names], ['*names']), "\n";
+print Data::Dumper->Dump([\@enums], ['*enums']), "\n";
 

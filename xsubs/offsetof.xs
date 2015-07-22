@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/04 22:26:28 +0000 $
-# $Revision: 8 $
+# $Date: 2006/03/12 11:10:52 +0000 $
+# $Revision: 10 $
 # $Source: /xsubs/offsetof.xs $
 #
 ################################################################################
@@ -40,7 +40,7 @@ CBC::offsetof(type, member)
     CHECK_PARSE_DATA;
     CHECK_VOID_CONTEXT;
 
-    while (*m && isSPACE(*m))
+    while (isSPACE(*m))
       m++;
 
     if (*m == '\0')
@@ -59,7 +59,7 @@ CBC::offsetof(type, member)
     if (mi.flags)
       WARN_FLAGS(type, mi.flags);
 
-    RETVAL = newSVuv(mi2.offset);
+    RETVAL = newSViv(mi2.offset);
 
   OUTPUT:
     RETVAL

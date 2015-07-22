@@ -5,6 +5,131 @@ What's to do?
 for future releases (in no special order):
 ------------------------------------------
 
+* make Dimension tag influence offset during pack / unpack, but only if the
+  Dimtag is _not_ '*'. So the following is possible:
+
+    struct foo {
+      int count;
+      int length;
+      int val[1];
+    };
+
+    struct bar {
+      int count;
+      int length;
+      struct foo val[1];
+    };
+
+    tag('foo.val', Dimension => 'count');
+    tag('bar.val', Dimension => 'count');
+
+    pack('bar', {
+                  count  =>  2,
+                  length => 28,
+                  val    => [
+                              { count => 3, length => 12, val => [1, 2, 3] },
+                              { count => 2, length =>  8, val => [4, 5] },
+                            ],
+                })
+
+    <=> pack("I*", 2 3 1 2 3 2 4 5)
+
+  (OTOH, we just can't handle a real "length" (in bytes) properly. Or can
+  we if we use hooks?)
+
+  BIG PROBLEM: Alignment properties would (again...) fall into the scope of
+               the pack/unpack code, which is UGLY!!
+
+* OK, I've finally decided that this needs a complete redesign...
+
+  - We need some code in the ctlib to recursively walk types.
+    This way, we can greatly simplify the pack/unpack code.
+    We should also be possible to handle the problems with
+    the ByteOrder and Dimension tags more easily.
+
+  - We should try to move as much code as possible into the
+    ctlib. For example, sourcify can be completely separated
+    from any perl stuff. This way, we can probably simplify
+    the way towards a python/ruby/perl6/... version.
+
+  - If we introduce a new level of error handling, we can even
+    move all the stuff that usually croaks or warns into ctlib.
+
+  - Ideally, we have as few code as possible to use the perl api.
+
+  - Probably, we can even implent parts of the module in perl.
+
+  - Does it make sense to tag multiple levels of dimensions?
+    If so, we need to get rid of using a linked list for dimensions,
+    which I think is a good idea anyway. (Accessing dimensions sucks.)
+    We probably need some method then to compute the total number of
+    elements in the array.
+
+  - While we're at it, we should also try to address the problem
+    of handling pointer arithmetics, sizeof expressions (non-constant
+    expressions in general, type casts [which can be non-constant,
+    too, depending on what size you configure], and so on)
+    I think this is partly solved by the expression parser/evaluator
+    we need anyway to support the eval method.
+
+  - Perhaps we can also think about starting to collect data about
+    functions.
+
+* make clear in the docs that Dimension _only_ affects pack/unpack
+
+* support lexically scoped warnings (perldoc perllexwarn, perldoc warnings, see warnings.pm)
+
+* can we move the PODs for each function to xsubs/ ?
+
+* separate preprocessor object handling from ctlib/ctparse -> ctlib/preproc
+
+    make sure modification of Include / Define / Assert / ... updates the
+    preprocessor object immediately, so defined() and stuff will work
+
+* C::B::C::Cached -> have "CacheDefines" option?
+
+* Add assertions code
+
+* cleanup remaining warnings from ucpp (MS compiler)
+
+* make c99_* configurable?
+
+* Make util/memalloc threadsafe! (when TRACE is enabled)
+  ($Config{i_pthread})
+
+* !!!! mark the "threads" feature as deprecated !!!!
+
+* Implement a Pack tag that only works for structs and that
+  doesn't work recursively. Use this to get rid of the pack
+  member in Struct. Note in the docs that this doesn't work
+  recursively, that it is used to implement #pragma pack and
+  that it can be used to remove the packing from structs.
+
+* other tags:
+
+    ByteOrder         ->  not for bitfield members
+    Pack              ->  only for structs
+    UnsignedChars
+    UnsignedBitfields
+    OrderMembers      ->  only for structs
+    EnumType          ->  only for enums
+    Size              ->  only for integral types (not sure about this one)
+
+* it would be Really Cool if we had more information about the
+  parsed source code, i.e. functions, variables, etc.
+
+* support C99 initializers ?
+
+* test on windows
+
+* enable-format-check
+
+* have a look at the compiler option -mwords-little-endian (arm-gcc)
+  => arbitrary byte order
+
+* extend sizeof() to support size of bitfields with .bits notation
+  (returned as string)
+
 * do we need a GCC bitfields engine? (dcc, ...?)
 
 * test bitfields in bench.pl
@@ -21,8 +146,6 @@ for future releases (in no special order):
 * introduce UnsignedChars and UnsignedBitfields for native method?
 
 * see if the Microsoft algorithm can be improved?
-
-* extend sizeof() to support size of bitfields with .bits notation???
 
 * add checks for bitfield behaviour to ccconfig
 
@@ -214,4 +337,23 @@ for future releases (in no special order):
   - should allow for use with PerlIO layers (?)
   - I have to think about that!!!
   - Any suggestions are strongly appreciated!
+
+* Plugins for foreign function calls (function calls during
+  $c->eval(), when target platform == source platform)
+
+  - look at how gcc, lcc, tinyc abstract platforms
+
+  - Q: who loads the shared objects? (cbc/plugin)
+
+  - Q: do we need to remember globals? (if anyone
+       passes pointer to such globals to functions)
+
+  - Q: how do we pass data from perl space to those
+       function?
+
+  - plugin needs to do symbol lookup
+
+  - debug symbols?
+
+  - abstract debugging information / behaviour?
 

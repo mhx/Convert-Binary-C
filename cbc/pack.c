@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/02/04 09:46:23 +0000 $
-* $Revision: 45 $
+* $Date: 2006/03/13 21:34:42 +0000 $
+* $Revision: 46 $
 * $Source: /cbc/pack.c $
 *
 ********************************************************************************
@@ -36,6 +36,7 @@
 
 /*===== LOCAL INCLUDES =======================================================*/
 
+#include "cbc/dimension.h"
 #include "cbc/hook.h"
 #include "cbc/idl.h"
 #include "cbc/pack.h"
@@ -145,6 +146,7 @@ struct PackInfo {
   SV        *bufsv;
   SV        *self;
   CByteOrder order;
+  HV        *parent;
 };
 
 typedef enum {
@@ -165,6 +167,9 @@ static void store_int_sv(pPACKARGS, unsigned size, unsigned sign, const Bitfield
 static SV *fetch_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldInfo *pBI);
 
 static unsigned load_size(const CParseConfig *pCfg, u_32 *pFlags, const BitfieldInfo *pBI);
+
+static void prepare_pack_format(pPACKARGS, const Declarator *pDecl, const CtTag *dimtag,
+                                int *pSize, u_32 *pFlags);
 
 static void pack_pointer(pPACKARGS, SV *sv);
 static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv, int inlined);
@@ -637,6 +642,76 @@ static unsigned load_size(const CParseConfig *pCfg, u_32 *pFlags, const Bitfield
 
 /*******************************************************************************
 *
+*   ROUTINE: prepare_pack_format
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2005
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void prepare_pack_format(pPACKARGS, const Declarator *pDecl, const CtTag *dimtag,
+                                int *pSize, u_32 *pFlags)
+{
+  int size, one = 0;
+
+  assert(pDecl != NULL);
+
+  if (dimtag || pDecl->size == 0)
+  {
+    if (pDecl->size == 0)
+    {
+      int dim = LL_count(pDecl->ext.array);
+
+      one = pDecl->item_size;
+
+      while (dim-- > 1)
+        one *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
+    }
+    else
+    {
+      one = pDecl->size / ((Value *) LL_get(pDecl->ext.array, 0))->iv;
+    }
+  }
+
+  /* check if it's an incomplete array type */
+  if (pDecl->array_flag && (dimtag ? dimtag_is_flexible(dimtag->any) : pDecl->size == 0))
+  {
+    assert(one > 0);
+
+    size = one;
+
+    *pFlags |= PACK_FLEXIBLE;
+  }
+  else
+  {
+    if (dimtag)
+    {
+      assert(!dimtag_is_flexible(dimtag->any));
+      assert(one > 0);
+
+      size = one * dimtag_eval(aTHX_ dimtag->any, 0, PACK->self, PACK->parent);
+    }
+    else
+    {
+      size = pDecl->size;
+    }
+  }
+
+  assert(size > 0);
+
+  *pSize = size;
+}
+
+/*******************************************************************************
+*
 *   ROUTINE: pack_pointer
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
@@ -753,7 +828,9 @@ static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv, int inlined)
               else
                 pBI = NULL;
 
+              PACK->parent = h;
               pack_type(aPACKARGS, &pStructDecl->type, pDecl, 0, pBI, e ? *e : NULL);
+              PACK->parent = NULL;
             }
           }
         }
@@ -1048,6 +1125,7 @@ static void pack_format(pPACKARGS, const CtTag *format, unsigned size, u_32 flag
 static void pack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
                                  int dimension, const BitfieldInfo *pBI, SV *sv)
 {
+  const CtTag *dimtag = NULL;
   int dim;
   dBYTEORDER;
 
@@ -1062,6 +1140,8 @@ static void pack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
       sv = hook_call(aTHX_ PACK->self, NULL, pDecl->identifier,
                      tag->any, HOOKID_pack, sv, 1);
 
+    dimtag = find_tag(pDecl->tags, CBC_TAG_DIMENSION);
+
     if ((tag = find_tag(pDecl->tags, CBC_TAG_FORMAT)) != NULL)
     {
       int size;
@@ -1069,21 +1149,7 @@ static void pack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
 
       assert(pBI == NULL);
 
-      /* check if it's an incomplete array type */
-      if (pDecl->array_flag && pDecl->size == 0)
-      {
-        dim  = LL_count(pDecl->ext.array);
-        size = pDecl->item_size;
-
-        while (dim-- > 1)
-          size *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
-
-        flags |= PACK_FLEXIBLE;
-      }
-      else
-        size = pDecl->size;
-
-      assert(size > 0);
+      prepare_pack_format(aPACKARGS, pDecl, dimtag, &size, &flags);
 
       pack_format(aPACKARGS, tag, size, flags, sv);
 
@@ -1106,17 +1172,25 @@ static void pack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
     if (DEFINED(sv) && SvROK(sv) && SvTYPE(ary = SvRV(sv)) == SVt_PVAV)
     {
       Value *v = (Value *) LL_get(pDecl->ext.array, dimension);
-      long i, s;
+      long i, s, avail;
       unsigned long pos;
       AV *a = (AV *) ary;
 
       while (dim-- > dimension + 1)
         size *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
 
-      if (v->flags & V_IS_UNDEF)
+      avail = av_len(a)+1;
+
+      if (dimtag)
       {
         assert(dimension == 0);
-        s = av_len(a)+1;
+        s = dimtag_eval(aTHX_ dimtag->any, avail, PACK->self, PACK->parent);
+        GROW_BUFFER(s*size, "dimension tag");
+      }
+      else if (v->flags & V_IS_UNDEF)
+      {
+        assert(dimension == 0);
+        s = avail;
         GROW_BUFFER(s*size, "incomplete array type");
       }
       else
@@ -1321,7 +1395,10 @@ static SV *unpack_struct(pPACKARGS, const Struct *pStruct, HV *hash)
               else
                 pBI = NULL;
 
+              PACK->parent = h;
               value = unpack_type(aPACKARGS, &pStructDecl->type, pDecl, 0, pBI);
+              PACK->parent = NULL;
+
               didstore = hv_store(h, pDecl->identifier, klen, value, 0);
 
               if (ordered)
@@ -1651,6 +1728,7 @@ static SV *unpack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
 {
   SV *rv = NULL;
   const CtTag *hooks = NULL;
+  const CtTag *dimtag = NULL;
   int dim;
   dBYTEORDER;
 
@@ -1663,6 +1741,8 @@ static SV *unpack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
 
     hooks = find_tag(pDecl->tags, CBC_TAG_HOOKS);
 
+    dimtag = find_tag(pDecl->tags, CBC_TAG_DIMENSION);
+
     if ((format = find_tag(pDecl->tags, CBC_TAG_FORMAT)) != NULL)
     {
       int size;
@@ -1670,21 +1750,7 @@ static SV *unpack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
 
       assert(pBI == NULL);
 
-      /* check if it's an incomplete array type */
-      if (pDecl->array_flag && pDecl->size == 0)
-      {
-        dim  = LL_count(pDecl->ext.array);
-        size = pDecl->item_size;
-
-        while (dim-- > 1)
-          size *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
-
-        flags |= PACK_FLEXIBLE;
-      }
-      else
-        size = pDecl->size;
-
-      assert(size > 0);
+      prepare_pack_format(aPACKARGS, pDecl, dimtag, &size, &flags);
 
       rv = unpack_format(aPACKARGS, format, size, flags);
 
@@ -1700,7 +1766,7 @@ static SV *unpack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
   {
     AV *a = newAV();
     Value *v = (Value *) LL_get(pDecl->ext.array, dimension);
-    long i, s;
+    long i, s, avail;
     unsigned long pos;
     int size = pDecl->item_size;
     dTHR;
@@ -1709,23 +1775,30 @@ static SV *unpack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
     assert(size > 0);
     assert(pBI == NULL);
 
-    while (dim-- > dimension + 1)
-      size *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
-
-    if (v->flags & V_IS_UNDEF)
-    {
-      assert(dimension == 0);
-      s = ((PACKLEN - PACKPOS) + (size - 1)) / size;
-    }
-    else
-      s = v->iv;
-
-    av_extend(a, s-1);
-
-    pos = PACKPOS;
-
     XCPT_TRY_START
     {
+      while (dim-- > dimension + 1)
+        size *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
+
+      avail = ((PACKLEN - PACKPOS) + (size - 1)) / size;
+
+      if (dimtag)
+      {
+        assert(dimension == 0);
+        s = dimtag_eval(aTHX_ dimtag->any, avail, PACK->self, PACK->parent);
+      }
+      else if (v->flags & V_IS_UNDEF)
+      {
+        assert(dimension == 0);
+        s = avail;
+      }
+      else
+        s = v->iv;
+
+      av_extend(a, s-1);
+
+      pos = PACKPOS;
+
       for (i = 0; i < s; ++i)
       {
         PACKPOS = pos + i * size;
@@ -1910,6 +1983,7 @@ PackHandle pk_create(const CBC *THIS, SV *self)
   Newz(0, hdl, 1, struct PackInfo);
   hdl->THIS = THIS;
   hdl->self = self;
+  hdl->parent = NULL;
   return hdl;
 }
 

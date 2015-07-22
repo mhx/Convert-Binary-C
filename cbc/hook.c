@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:37:57 +0000 $
-* $Revision: 11 $
+* $Date: 2006/03/11 13:49:59 +0000 $
+* $Revision: 12 $
 * $Source: /cbc/hook.c $
 *
 ********************************************************************************
@@ -45,7 +45,8 @@
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 
-static void hook_fill(pTHX_ const char *hook, const char *type, SingleHook *sth, SV *sub);
+static void single_hook_deref(pTHX_ const SingleHook *hook);
+static void single_hook_ref(pTHX_ const SingleHook *hook);
 
 
 /*===== EXTERNAL VARIABLES ===================================================*/
@@ -60,7 +61,66 @@ static void hook_fill(pTHX_ const char *hook, const char *type, SingleHook *sth,
 
 /*******************************************************************************
 *
-*   ROUTINE: hook_fill
+*   ROUTINE: single_hook_deref
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void single_hook_deref(pTHX_ const SingleHook *hook)
+{
+  assert(hook != NULL);
+
+  if (hook->sub)
+    SvREFCNT_dec(hook->sub);
+
+  if (hook->arg)
+    SvREFCNT_dec(hook->arg);
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: single_hook_ref
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void single_hook_ref(pTHX_ const SingleHook *hook)
+{
+  assert(hook != NULL);
+
+  if (hook->sub)
+    SvREFCNT_inc(hook->sub);
+
+  if (hook->arg)
+    SvREFCNT_inc(hook->arg);
+}
+
+
+/*===== FUNCTIONS ============================================================*/
+
+/*******************************************************************************
+*
+*   ROUTINE: single_hook_fill
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jun 2004
 *   CHANGED BY:                                   ON:
@@ -75,7 +135,8 @@ static void hook_fill(pTHX_ const char *hook, const char *type, SingleHook *sth,
 *
 *******************************************************************************/
 
-static void hook_fill(pTHX_ const char *hook, const char *type, SingleHook *sth, SV *sub)
+void single_hook_fill(pTHX_ const char *hook, const char *type, SingleHook *sth,
+                            SV *sub, U32 allowed_args)
 {
   if (!DEFINED(sub))
   {
@@ -112,9 +173,40 @@ static void hook_fill(pTHX_ const char *hook, const char *type, SingleHook *sth,
             else
             {
               I32 ix;
-              AV *out = newAV();
+              AV *out;
+
+              for (ix = 0; ix < len; ++ix)
+              {
+                pSV = av_fetch(in, ix+1, 0);
+                
+                if (pSV == NULL)
+                  fatal("NULL returned by av_fetch() in single_hook_fill()");
+
+                if (SvROK(*pSV) && sv_isa(*pSV, ARGTYPE_PACKAGE))
+                {
+                  HookArgType type = (HookArgType) SvIV(SvRV(*pSV));
+
+#define CHECK_ARG_TYPE(type)                                   \
+          case HOOK_ARG_ ## type:                              \
+            if ((allowed_args & SHF_ALLOW_ARG_ ## type) == 0)  \
+              Perl_croak(aTHX_ #type " argument not allowed"); \
+            break
+
+                  switch (type)
+                  {
+                    CHECK_ARG_TYPE(SELF);
+                    CHECK_ARG_TYPE(TYPE);
+                    CHECK_ARG_TYPE(DATA);
+                    CHECK_ARG_TYPE(HOOK);
+                  }
+
+#undef CHECK_ARG_TYPE
+                }
+              }
 
               sth->sub = sv;
+
+              out = newAV();
               av_extend(out, len-1);
 
               for (ix = 0; ix < len; ++ix)
@@ -122,7 +214,7 @@ static void hook_fill(pTHX_ const char *hook, const char *type, SingleHook *sth,
                 pSV = av_fetch(in, ix+1, 0);
 
                 if (pSV == NULL)
-                  fatal("NULL returned by av_fetch() in hook_fill()");
+                  fatal("NULL returned by av_fetch() in single_hook_fill()");
 
                 SvREFCNT_inc(*pSV);
 
@@ -148,8 +240,38 @@ not_code_or_array_ref:
   }
 }
 
+/*******************************************************************************
+*
+*   ROUTINE: single_hook_new
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
 
-/*===== FUNCTIONS ============================================================*/
+SingleHook *single_hook_new(const SingleHook *src)
+{
+  dTHX;
+  SingleHook *dst;
+
+  assert(src != NULL);
+
+  New(0, dst, 1, SingleHook);
+
+  *dst = *src;
+
+  single_hook_ref(aTHX_ src);
+
+  return dst;
+}
 
 /*******************************************************************************
 *
@@ -186,10 +308,8 @@ TypeHooks *hook_new(const TypeHooks *h)
     for (i = 0; i < HOOKID_COUNT; i++, src++, dst++)
     {
       *dst = *src;
-      if (src->sub)
-        SvREFCNT_inc(src->sub);
-      if (src->arg)
-        SvREFCNT_inc(src->arg);
+
+      single_hook_ref(aTHX_ src);
     }
   }
   else
@@ -202,6 +322,49 @@ TypeHooks *hook_new(const TypeHooks *h)
   }
 
   return r;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: single_hook_update
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void single_hook_update(SingleHook *dst, const SingleHook *src)
+{
+  dTHX;
+
+  assert(src != NULL);
+  assert(dst != NULL);
+
+  if (dst->sub != src->sub)
+  {
+    if (src->sub)
+      SvREFCNT_inc(src->sub);
+    if (dst->sub)
+      SvREFCNT_dec(dst->sub);
+  }
+
+  if (dst->arg != src->arg)
+  {
+    if (src->arg)
+      SvREFCNT_inc(src->arg);
+    if (dst->arg)
+      SvREFCNT_dec(dst->arg);
+  }
+
+  *dst = *src;
 }
 
 /*******************************************************************************
@@ -232,25 +395,35 @@ void hook_update(TypeHooks *dst, const TypeHooks *src)
   assert(dst != NULL);
 
   for (i = 0; i < HOOKID_COUNT; i++, hook_dst++, hook_src++)
-  {
-    if (hook_dst->sub != hook_src->sub)
-    {
-      if (hook_src->sub)
-        SvREFCNT_inc(hook_src->sub);
-      if (hook_dst->sub)
-        SvREFCNT_dec(hook_dst->sub);
-    }
+    single_hook_update(hook_dst, hook_src);
+}
 
-    if (hook_dst->arg != hook_src->arg)
-    {
-      if (hook_src->arg)
-        SvREFCNT_inc(hook_src->arg);
-      if (hook_dst->arg)
-        SvREFCNT_dec(hook_dst->arg);
-    }
+/*******************************************************************************
+*
+*   ROUTINE: single_hook_delete
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
 
-    *hook_dst = *hook_src;
-  }
+void single_hook_delete(SingleHook *hook)
+{
+  dTHX;
+
+  assert(hook != NULL);
+
+  single_hook_deref(aTHX_ hook);
+
+  Safefree(hook);
 }
 
 /*******************************************************************************
@@ -279,15 +452,154 @@ void hook_delete(TypeHooks *h)
     int i;
 
     for (i = 0; i < HOOKID_COUNT; i++, hook++)
-    {
-      if (hook->sub)
-        SvREFCNT_dec(hook->sub);
-      if (hook->arg)
-        SvREFCNT_dec(hook->arg);
-    }
+      single_hook_deref(aTHX_ hook);
 
     Safefree(h);
   }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: single_hook_call
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+/* TODO: The hook_call interface is a little ugly, mainly because we cannot
+ *       directly influence the arguments. This should probably be refactored.
+ */
+
+SV *single_hook_call(pTHX_ SV *self, const char *hook_id_str, const char *id_pre,
+                     const char *id, const SingleHook *hook, SV *in, int mortal)
+{
+  dSP;
+  int count;
+  SV *out;
+
+  CT_DEBUG(MAIN, ("single_hook_call(hid='%s', id='%s%s', hook=%p, in=%p(%d), mortal=%d)",
+                  hook_id_str, id_pre, id, hook, in, in ? SvREFCNT(in) : 0, mortal));
+
+  assert(self != NULL);
+  assert(hook != NULL);
+
+  if (hook->sub == NULL)
+    return in;
+
+  ENTER;
+  SAVETMPS;
+
+  PUSHMARK(SP);
+
+  if (hook->arg)
+  {
+    I32 ix, len;
+    len = av_len(hook->arg);
+
+    for (ix = 0; ix <= len; ++ix)
+    {
+      SV **pSV = av_fetch(hook->arg, ix, 0);
+      SV *sv;
+
+      if (pSV == NULL)
+        fatal("NULL returned by av_fetch() in single_hook_call()");
+
+      if (SvROK(*pSV) && sv_isa(*pSV, ARGTYPE_PACKAGE))
+      {
+        HookArgType type = (HookArgType) SvIV(SvRV(*pSV));
+
+        switch (type)
+        {
+          case HOOK_ARG_SELF:
+            sv = sv_mortalcopy(self);
+            break;
+
+          case HOOK_ARG_DATA:
+            assert(in != NULL);
+            sv = sv_mortalcopy(in);
+            break;
+
+          case HOOK_ARG_TYPE:
+            assert(id != NULL);
+            sv = sv_newmortal();
+            if (id_pre)
+            {
+              sv_setpv(sv, id_pre);
+              sv_catpv(sv, CONST_CHAR(id));
+            }
+            else
+              sv_setpv(sv, id);
+            break;
+
+          case HOOK_ARG_HOOK:
+            if (hook_id_str)
+            {
+              sv = sv_newmortal();
+              sv_setpv(sv, hook_id_str);
+            }
+            else
+            {
+              sv = &PL_sv_undef;
+            }
+            break;
+
+          default:
+            fatal("Invalid hook argument type (%d) in single_hook_call()", type);
+            break;
+        }
+      }
+      else
+        sv = sv_mortalcopy(*pSV);
+
+      XPUSHs(sv);
+    }
+  }
+  else
+  {
+    if (in)
+    {
+      /* only push the data argument */
+      XPUSHs(in);
+    }
+  }
+
+  PUTBACK;
+
+  count = call_sv(hook->sub, G_SCALAR);
+
+  SPAGAIN;
+
+  if (count != 1)
+    fatal("Hook returned %d elements instead of 1", count);
+
+  out = POPs;
+
+  CT_DEBUG(MAIN, ("single_hook_call: in=%p(%d), out=%p(%d)",
+                  in, in ? SvREFCNT(in) : 0, out, SvREFCNT(out)));
+
+  if (!mortal && in != NULL)
+    SvREFCNT_dec(in);
+  SvREFCNT_inc(out);
+
+  PUTBACK;
+  FREETMPS;
+  LEAVE;
+
+  if (mortal)
+    sv_2mortal(out);
+
+  CT_DEBUG(MAIN, ("single_hook_call: out=%p(%d)", out, SvREFCNT(out)));
+
+  return out;
 }
 
 /*******************************************************************************
@@ -310,11 +622,6 @@ void hook_delete(TypeHooks *h)
 SV *hook_call(pTHX_ SV *self, const char *id_pre, const char *id,
               const TypeHooks *pTH, enum HookId hook_id, SV *in, int mortal)
 {
-  dSP;
-  int count;
-  SV *out;
-  const SingleHook *hook;
-
   CT_DEBUG(MAIN, ("hook_call(id='%s%s', pTH=%p, in=%p(%d), mortal=%d)",
                   id_pre, id, pTH, in, SvREFCNT(in), mortal));
 
@@ -323,104 +630,8 @@ SV *hook_call(pTHX_ SV *self, const char *id_pre, const char *id,
   assert(id   != NULL);
   assert(in   != NULL);
 
-  hook = &pTH->hooks[hook_id];
-
-  if (hook->sub == NULL)
-    return in;
-
-  ENTER;
-  SAVETMPS;
-
-  PUSHMARK(SP);
-
-  if (hook->arg)
-  {
-    I32 ix, len;
-    len = av_len(hook->arg);
-
-    for (ix = 0; ix <= len; ++ix)
-    {
-      SV **pSV = av_fetch(hook->arg, ix, 0);
-      SV *sv;
-
-      if (pSV == NULL)
-        fatal("NULL returned by av_fetch() in hook_call()");
-
-      if (SvROK(*pSV) && sv_isa(*pSV, ARGTYPE_PACKAGE))
-      {
-        HookArgType type = (HookArgType) SvIV(SvRV(*pSV));
-
-        switch (type)
-        {
-          case HOOK_ARG_SELF:
-            sv = sv_mortalcopy(self);
-            break;
-
-          case HOOK_ARG_DATA:
-            sv = sv_mortalcopy(in);
-            break;
-
-          case HOOK_ARG_TYPE:
-            sv = sv_newmortal();
-            if (id_pre)
-            {
-              sv_setpv(sv, id_pre);
-              sv_catpv(sv, CONST_CHAR(id));
-            }
-            else
-              sv_setpv(sv, id);
-            break;
-
-          case HOOK_ARG_HOOK:
-            sv = sv_newmortal();
-            sv_setpv(sv, gs_HookIdStr[hook_id]);
-            break;
-
-          default:
-            fatal("Invalid hook argument type (%d) in hook_call()", type);
-            break;
-        }
-      }
-      else
-        sv = sv_mortalcopy(*pSV);
-
-      XPUSHs(sv);
-    }
-  }
-  else
-  {
-    /* only push the data argument */
-    XPUSHs(in);
-  }
-
-  PUTBACK;
-
-  count = call_sv(hook->sub, G_SCALAR);
-
-  SPAGAIN;
-
-  if (count != 1)
-    fatal("Hook returned %d elements instead of 1", count);
-
-  out = POPs;
-
-  CT_DEBUG(MAIN, ("hook_call: in=%p(%d), out=%p(%d)",
-                  in, SvREFCNT(in), out, SvREFCNT(out)));
-
-  if (!mortal)
-    SvREFCNT_dec(in);
-  SvREFCNT_inc(out);
-
-  PUTBACK;
-  FREETMPS;
-  LEAVE;
-
-  if (mortal)
-    sv_2mortal(out);
-
-  CT_DEBUG(MAIN, ("hook_call: out=%p(%d)", out, SvREFCNT(out)));
-
-  return out;
+  return single_hook_call(aTHX_ self, gs_HookIdStr[hook_id], id_pre, id,
+                          &pTH->hooks[hook_id], in, mortal);
 }
 
 /*******************************************************************************
@@ -471,7 +682,10 @@ int find_hooks(pTHX_ const char *type, HV *hooks, TypeHooks *pTH)
         fatal("Invalid hook id %d for hook '%s'", id, key);
     }
 
-    hook_fill(aTHX_ key, type, &pTH->hooks[id], sub);
+    single_hook_fill(aTHX_ key, type, &pTH->hooks[id], sub, SHF_ALLOW_ARG_SELF |
+                                                            SHF_ALLOW_ARG_TYPE |
+                                                            SHF_ALLOW_ARG_DATA |
+                                                            SHF_ALLOW_ARG_HOOK);
   }
 
   for (i = num = 0; i < HOOKID_COUNT; i++)
@@ -479,6 +693,64 @@ int find_hooks(pTHX_ const char *type, HV *hooks, TypeHooks *pTH)
       num++;
 
   return num;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: get_single_hook
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+SV *get_single_hook(pTHX_ const SingleHook *hook)
+{
+  SV *sv;
+
+  assert(hook != NULL);
+
+  sv = hook->sub;
+
+  if (sv == NULL)
+    return NULL;
+
+  sv = newRV_inc(sv);
+
+  if (hook->arg)
+  {
+    AV *av = newAV();
+    int j, len = 1 + av_len(hook->arg);
+
+    av_extend(av, len);
+    if (av_store(av, 0, sv) == NULL)
+      fatal("av_store() failed in get_hooks()");
+
+    for (j = 0; j < len; j++)
+    {
+      SV **pSV = av_fetch(hook->arg, j, 0);
+
+      if (pSV == NULL)
+        fatal("NULL returned by av_fetch() in get_hooks()");
+
+      SvREFCNT_inc(*pSV);
+
+      if (av_store(av, j+1, *pSV) == NULL)
+        fatal("av_store() failed in get_hooks()");
+    }
+
+    sv = newRV_noinc((SV *) av);
+  }
+
+  return sv;
 }
 
 /*******************************************************************************
@@ -507,38 +779,11 @@ HV *get_hooks(pTHX_ const TypeHooks *pTH)
 
   for (i = 0; i < HOOKID_COUNT; i++)
   {
-    SV *sv = pTH->hooks[i].sub;
+    SV *sv = get_single_hook(aTHX_ &pTH->hooks[i]);
     const char *id;
 
     if (sv == NULL)
       continue;
-
-    sv = newRV_inc(sv);
-
-    if (pTH->hooks[i].arg)
-    {
-      AV *av = newAV();
-      int j, len = 1 + av_len(pTH->hooks[i].arg);
-
-      av_extend(av, len);
-      if (av_store(av, 0, sv) == NULL)
-        fatal("av_store() failed in get_hooks()");
-
-      for (j = 0; j < len; j++)
-      {
-        SV **pSV = av_fetch(pTH->hooks[i].arg, j, 0);
-
-        if (pSV == NULL)
-          fatal("NULL returned by av_fetch() in get_hooks()");
-
-        SvREFCNT_inc(*pSV);
-
-        if (av_store(av, j+1, *pSV) == NULL)
-          fatal("av_store() failed in get_hooks()");
-      }
-
-      sv = newRV_noinc((SV *) av);
-    }
 
     id = gs_HookIdStr[i];
 

@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/04 22:21:25 +0000 $
-* $Revision: 5 $
+* $Date: 2006/03/11 13:48:10 +0000 $
+* $Revision: 7 $
 * $Source: /cbc/member.h $
 *
 ********************************************************************************
@@ -37,10 +37,11 @@
 
 /*===== DEFINES ==============================================================*/
 
-#define CBC_GM_ACCEPT_DOTLESS_MEMBER  0x1
-#define CBC_GM_DONT_CROAK             0x2
-#define CBC_GM_NO_OFFSET_SIZE_CALC    0x4
-
+#define CBC_GM_ACCEPT_DOTLESS_MEMBER         0x00000001U
+#define CBC_GM_DONT_CROAK                    0x00000002U
+#define CBC_GM_NO_OFFSET_SIZE_CALC           0x00000004U
+#define CBC_GM_REJECT_OUT_OF_BOUNDS_INDEX    0x00000008U
+#define CBC_GM_REJECT_OFFSET                 0x00000010U
 
 /*===== TYPEDEFS =============================================================*/
 
@@ -51,12 +52,44 @@ typedef struct {
 
 typedef struct {
   TypeSpec    type;
+  Struct     *parent;
   Declarator *pDecl;
   int         level;
-  unsigned    offset;
+  int         offset;
   unsigned    size;
   u_32        flags;
 } MemberInfo;
+
+struct me_walk_info
+{
+  enum me_walk_rv
+  {
+    MERV_COMPOUND_MEMBER,
+    MERV_ARRAY_INDEX,
+    MERV_OFFSET,
+    MERV_ERR_INVALID_MEMBER_START,
+    MERV_ERR_INVALID_INDEX,
+    MERV_ERR_INVALID_CHAR,
+    MERV_ERR_INDEX_NOT_TERMINATED,
+    MERV_ERR_INCOMPLETE,
+    MERV_ERR_TERMINATED,
+    MERV_END
+  } retval;
+
+  union
+  {
+    struct {
+      const char *name;
+      size_t name_length;
+      unsigned has_dot : 1;
+    } compound_member;
+    int array_index;
+    int offset;
+    char invalid_char;
+  } u;
+};
+
+typedef struct member_expr *MemberExprWalker;
 
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
@@ -70,5 +103,17 @@ SV *get_member_string(pTHX_ const MemberInfo *pMI, int offset, GMSInfo *pInfo);
 #define get_member CBC_get_member
 int get_member(pTHX_ const MemberInfo *pMI, const char *member,
                MemberInfo *pMIout, unsigned gm_flags);
+
+#define member_expr_walker_new CBC_member_expr_walker_new
+MemberExprWalker member_expr_walker_new(const char *expr, size_t len);
+
+#define member_expr_walker_retval_string CBC_member_expr_walker_retval_string
+const char *member_expr_walker_retval_string(enum me_walk_rv retval);
+
+#define member_expr_walker_walk CBC_member_expr_walker_walk
+void member_expr_walker_walk(MemberExprWalker me, struct me_walk_info *info);
+
+#define member_expr_walker_delete CBC_member_expr_walker_delete
+void member_expr_walker_delete(MemberExprWalker me);
 
 #endif

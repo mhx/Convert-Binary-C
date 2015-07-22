@@ -4,7 +4,7 @@ $c = Convert::Binary::C->new( Alignment   => 4
                             , LongSize    => 4
                             , PointerSize => 4
                             )
-                       ->parse( <<'ENDC' );
+                       ->parse(<<'ENDC');
 typedef struct {
   char abc;
   long day;
@@ -16,9 +16,9 @@ struct test {
 };
 ENDC
 
-for my $offset ( 24, 39, 69, 99 ) {
-  print "\$c->member( 'test', $offset )";
-  my $member = eval { $c->member( 'test', $offset ) };
+for my $offset (24, 39, 69, 99) {
+  print "\$c->member('test', $offset)";
+  my $member = eval { $c->member('test', $offset) };
   $@ and $@ =~ s/at\s$0.*//; #-8<-
   print $@ ? "\n  exception: $@" : " => '$member'\n";
   push @check, $member; #-8<-
@@ -51,7 +51,7 @@ print "\n#-8<-\n";
 
 #-8<----------------[4]-----------------------
 
-$c->parse( <<'#-8<-' );
+$c->parse(<<'#-8<-');
 union choice {
   struct {
     char  color[2];
@@ -68,19 +68,19 @@ union choice {
 
 print "Offset   Member               Type\n";
 print "--------------------------------------\n";
-for my $offset ( 0 .. $c->sizeof('choice') - 1 ) {
-  my $member = $c->member( 'choice', $offset );
-  my $type = $c->typeof( "choice $member" );
+for my $offset (0 .. $c->sizeof('choice') - 1) {
+  my $member = $c->member('choice', $offset);
+  my $type = $c->typeof("choice $member");
   printf " %3d     %-20s '%s'\n", $offset, $member, $type;
 }
 print "#-8<-\n";
 
 print "Offset   Member               Type\n";
 print "--------------------------------------\n";
-for my $offset ( 0 .. $c->sizeof('choice') - 1 ) {
+for my $offset (0 .. $c->sizeof('choice') - 1) {
   my $off = $offset;
-  for my $member ( $c->member( 'choice', $offset ) ) {
-    my $type = $c->typeof( "choice $member" );
+  for my $member ($c->member('choice', $offset)) {
+    my $type = $c->typeof("choice $member");
     printf " %3s     %-20s '%s'\n", $off, $member, $type;
     $off = '';
   }
@@ -89,5 +89,5 @@ print "#-8<-\n";
 
 #-8<-
 
-print "$_\n" for $c->member( 'choice' );
+print "$_\n" for $c->member('choice');
 

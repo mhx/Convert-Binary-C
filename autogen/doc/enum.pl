@@ -3,7 +3,7 @@ use Data::Dumper;
 $Data::Dumper::Indent = 1;
 
 $c = new Convert::Binary::C;
-$c->parse_file( 'definitions.c' );
+$c->parse_file('definitions.c');
 
 #-8<-
 
@@ -11,5 +11,5 @@ $c->parse_file( 'definitions.c' );
 
 #-8<-
 
-print Data::Dumper->Dump( [\%enum], ['*enum'] );
+print Data::Dumper->Dump([\%enum], ['*enum']);
 

@@ -8,13 +8,13 @@ typedef int foo;
 #-8<-
 
 $c = new Convert::Binary::C;
-$size = $c->sizeof( 'unsigned long' );
-$data = $c->pack( 'short int', 42 );
+$size = $c->sizeof('unsigned long');
+$data = $c->pack('short int', 42);
 
 #-8<-
 
 eval { #-8<-
-$size = $c->sizeof( 'struct { int a, b; }' );
+$size = $c->sizeof('struct { int a, b; }');
 }; #-8<-
 $@ or die "no error"; #-8<-
 
@@ -33,36 +33,36 @@ typedef struct foo matrix[8][8];
 
 #-8<-
 
-print $c->sizeof( 'foo.array' ), " bytes";
+print $c->sizeof('foo.array'), " bytes";
 print "\n#-8<-\n";
 
 #-8<-
 
 $data = $data x 1000; #-8<-
-$column = $c->unpack( 'matrix[2]', $data );
+$column = $c->unpack('matrix[2]', $data);
 defined $column or die "no"; #-8<-
 
 #-8<-
 
-$type = $c->typeof( 'matrix[2][3].array[7].y' );
+$type = $c->typeof('matrix[2][3].array[7].y');
 print "the type is $type";
 
 print "\n#-8<-\n";
 
 #-8<-
 
-$member = $c->member( 'matrix', 1431 );
+$member = $c->member('matrix', 1431);
 print $member;
 print "\n#-8<-\n";
 
 #-8<-
 
-$size = $c->sizeof( "matrix $member" );
+$size = $c->sizeof("matrix $member");
 
 #-8<-
 
-$member = $c->member( 'foo', 43 );
-$offset = $c->offsetof( 'foo', $member );
+$member = $c->member('foo', 43);
+$offset = $c->offsetof('foo', $member);
 print "'$member' is located at offset $offset of struct foo";
 
 print "\n#-8<-\n";
@@ -70,8 +70,18 @@ print "\n#-8<-\n";
 #-8<-
 
 $member =~ s/\+\d+$//;
-$offset = $c->offsetof( 'foo', $member );
+$offset = $c->offsetof('foo', $member);
 print "'$member' starts at offset $offset of struct foo";
+
+print "\n#-8<-\n";
+
+#-8<-
+
+$size   = $c->sizeof('foo.array[4711]');
+$offset = $c->offsetof('foo', 'array[-13]');
+
+print "\$size   = $size\n";   #-8<-
+print "\$offset = $offset\n"; #-8<-
 
 print "\n#-8<-\n";
 

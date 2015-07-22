@@ -2,10 +2,10 @@ use Convert::Binary::C; #-8<-
 use Data::Dumper; #-8<-
 $Data::Dumper::Indent = 1; #-8<-
 
-$c = Convert::Binary::C->new(ByteOrder => 'BigEndian')->parse( <<'#-8<-' );
+$c = Convert::Binary::C->new(ByteOrder => 'BigEndian')->parse(<<'#-8<-');
 typedef unsigned long u_32;
-typedef u_32 ProtoId;
-typedef ProtoId MyProtoId;
+typedef u_32          ProtoId;
+typedef ProtoId       MyProtoId;
 
 struct MsgHeader {
   MyProtoId id;
@@ -13,7 +13,7 @@ struct MsgHeader {
 };
 #-8<-
 
-$c->parse( <<'#-8<-' );
+$c->parse(<<'#-8<-');
 struct String {
   u_32 len;
   char buf[];

@@ -4,14 +4,14 @@
 *
 ********************************************************************************
 *
-* DESCRIPTION: C::B::C struct member utilities
+* DESCRIPTION: C::B::C compound member utilities
 *
 ********************************************************************************
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/04 23:49:59 +0000 $
-* $Revision: 15 $
+* $Date: 2006/03/12 11:10:50 +0000 $
+* $Revision: 18 $
 * $Source: /cbc/member.c $
 *
 ********************************************************************************
@@ -52,6 +52,20 @@ typedef union {
   LinkedList list;
   int        count;
 } AMSInfo;
+
+struct member_expr {
+  enum {
+    ST_MEMBER,
+    ST_INDEX,
+    ST_FINISH_INDEX,
+    ST_SEARCH,
+    ST_TERM
+  } state;
+  const char *p;
+  unsigned startup : 1;
+  unsigned has_dot : 1;
+  char buf[1];
+};
 
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
@@ -393,7 +407,7 @@ static GMSRV append_member_string_rec(pTHX_ const TypeSpec *pType, const Declara
                                                                                \
           if (best == GMS_HIT && pInfo == NULL)                                \
           {                                                                    \
-            CT_DEBUG(MAIN, ("Hit struct member without offset"));              \
+            CT_DEBUG(MAIN, ("Hit compound member without offset"));            \
             goto handle_union_end;                                             \
           }                                                                    \
         } STMT_END
@@ -691,7 +705,7 @@ SV *get_member_string(pTHX_ const MemberInfo *pMI, int offset, GMSInfo *pInfo)
 
 /*******************************************************************************
 *
-*   ROUTINE: GetStructMember
+*   ROUTINE: get_member
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
 *   CHANGED BY:                                   ON:
@@ -706,12 +720,13 @@ SV *get_member_string(pTHX_ const MemberInfo *pMI, int offset, GMSInfo *pInfo)
 *
 *******************************************************************************/
 
-#define TRUNC_ELEM                                                             \
+#define TRUNC_NAME                                                             \
         STMT_START {                                                           \
-          if (strlen(elem) > 20)                                               \
+          strncpy(trunc, name, 20);                                            \
+          if (strlen(name) > 20)                                               \
           {                                                                    \
-            elem[17] = elem[18] = elem[19] = '.';                              \
-            elem[20] = '\0';                                                   \
+            trunc[17] = trunc[18] = trunc[19] = '.';                           \
+            trunc[20] = '\0';                                                  \
           }                                                                    \
         } STMT_END
 
@@ -723,50 +738,39 @@ SV *get_member_string(pTHX_ const MemberInfo *pMI, int offset, GMSInfo *pInfo)
 
 #define CANNOT_ACCESS_MEMBER(type)                                             \
         STMT_START {                                                           \
-          (void) strcpy(elem, c);                                              \
-          TRUNC_ELEM;                                                          \
+          assert(name != NULL);                                                \
+          TRUNC_NAME;                                                          \
           (void) sprintf(err = errbuf,                                         \
-                         "Cannot access member '%s%s' of " type " type",       \
-                         dot, c);                                              \
+                         "Cannot access member '%s' of " type " type", trunc); \
           goto error;                                                          \
         } STMT_END
 
 int get_member(pTHX_ const MemberInfo *pMI, const char *member,
                MemberInfo *pMIout, unsigned gm_flags)
 {
-  int                accept_dotless_member = gm_flags & CBC_GM_ACCEPT_DOTLESS_MEMBER;
-  const int          do_calc = (gm_flags & CBC_GM_NO_OFFSET_SIZE_CALC) == 0;
+  unsigned           accept_dotless_member = gm_flags & CBC_GM_ACCEPT_DOTLESS_MEMBER;
+  const unsigned     do_calc = (gm_flags & CBC_GM_NO_OFFSET_SIZE_CALC) == 0;
+  const unsigned     reject_oobi = gm_flags & CBC_GM_REJECT_OUT_OF_BOUNDS_INDEX;
+  const unsigned     reject_offset = gm_flags & CBC_GM_REJECT_OFFSET;
   const TypeSpec    *pType;
-  const char        *c, *ixstr, *dot;
-  char              *e, *elem;
-  int                size, level, t_off, inc_c;
-  UV                 offset;
+  int                size, level, t_off;
+  int                offset;
   Struct            *pStruct;
   StructDeclaration *pSD;
   Declarator        *pDecl;
-  char              *err, errbuf[128];
+  char              *err, errbuf[128], trunc[32];
+  MemberExprWalker   walker;
+  const char        *name;
 
-  enum {
-    ST_MEMBER,
-    ST_INDEX,
-    ST_FINISH_INDEX,
-    ST_SEARCH
-  }                  state;
+  CT_DEBUG(MAIN, ("get_member( member=\"%s\", accept_dotless_member=%d, do_calc=%d, reject_oobi=%d )",
+                  member, accept_dotless_member, do_calc, reject_oobi));
 
-#ifdef CBC_DEBUGGING
-  static const char *Sstate[] = {
-    "ST_MEMBER",
-    "ST_INDEX",
-    "ST_FINISH_INDEX",
-    "ST_SEARCH"
-  };
-#endif
-
-  Newz(0, elem, strlen(member)+1, char);
+  walker = member_expr_walker_new(member, 0);
 
   if (pMIout)
     pMIout->flags = 0;
 
+  pStruct = NULL;
   pType = &pMI->type;
   pDecl = pMI->pDecl;
 
@@ -777,9 +781,8 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
     pType = pTypedef->pType;
   }
 
+  name   = NULL;
   err    = NULL;
-  c      = member;
-  state  = ST_SEARCH;
   offset = 0;
   level  = pMI->level;
   size   = do_calc ? -1 : 0;
@@ -804,74 +807,142 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
 
   for (;;)
   {
-    CT_DEBUG(MAIN, ("state = %s (%d) \"%s\" (offset=%"UVuf", level=%d, size=%d)",
-                    Sstate[state], state, c, offset, level, size));
+    struct me_walk_info mei;
 
-    while (*c && isSPACE(*c))
-      c++;
+    member_expr_walker_walk(walker, &mei);
 
-    if (*c == '\0')
-      break;
+    CT_DEBUG(MAIN, ("(offset=%d, level=%d, size=%d) %s (%d)", offset, level, size,
+                     member_expr_walker_retval_string(mei.retval), (int) mei.retval));
 
-    switch (state)
+    if (mei.retval == MERV_END)
     {
-      case ST_MEMBER:
-        if(!(isALPHA(*c) || *c == '_'))
-        {
-          err = "Struct members must start with a character or an underscore";
-          goto error;
-        }
+      break;
+    }
 
-        e = elem;
-        do *e++ = *c++; while (*c && (isALNUM(*c) || *c == '_'));
-        *e = '\0';
+    switch (mei.retval)
+    {
+      case MERV_ERR_INVALID_MEMBER_START:
+        err = "Struct members must start with a character or an underscore";
+        goto error;
 
-        CT_DEBUG(MAIN, ("MEMBER: \"%s\"", elem));
+      case MERV_ERR_INVALID_INDEX:
+        err = "Array indices must be constant decimal values";
+        goto error;
 
-        t_off = search_struct_member(pStruct, elem, &pSD, &pDecl);
-        pType = &pSD->type;
+      case MERV_ERR_INVALID_CHAR:
+        (void) sprintf(err = errbuf,
+                       "Invalid character '%c' (0x%02X) in "
+                       "compound member expression",
+                       mei.u.invalid_char, (int) mei.u.invalid_char);
+        goto error;
 
-        if (t_off < 0)
-        {
-          TRUNC_ELEM;
-          (void) sprintf(err = errbuf, "Cannot find struct member '%s'", elem);
-          goto error;
-        }
+      case MERV_ERR_INDEX_NOT_TERMINATED:
+        err = "Index operator not terminated correctly";
+        goto error;
 
-        if (do_calc)
-        {
-          size    = pDecl->size;
-          offset += t_off;
-        }
+      case MERV_ERR_INCOMPLETE:
+        err = "Incomplete compound member expression";
+        goto error;
 
-        level = 0;
-
-        state = ST_SEARCH;
+      case MERV_ERR_TERMINATED:
+        fatal("member expression already terminated in get_member()");
         break;
 
-      case ST_INDEX:
-        if (!isDIGIT(*c))
+      default:
+        /* handled in next switch */
+        break;
+    }
+
+    PROPAGATE_FLAGS(pType->tflags);
+
+    if (pDecl && !pDecl->pointer_flag && pType->tflags & T_TYPE &&
+        level == (pDecl->array_flag ? LL_count(pDecl->ext.array) : 0))
+    {
+      do
+      {
+        Typedef *pTypedef = (Typedef *) pType->ptr;
+        pDecl = pTypedef->pDecl;
+        pType = pTypedef->pType;
+      }
+      while (!pDecl->pointer_flag &&
+             pType->tflags & T_TYPE &&
+             pDecl->array_flag == 0);
+
+      if (do_calc)
+      {
+        size = pDecl->size;
+      }
+
+      level = 0;
+    }
+
+    switch (mei.retval)
+    {
+      case MERV_COMPOUND_MEMBER:
         {
-          err = "Array indices must be constant decimal values";
-          goto error;
+          name = mei.u.compound_member.name;
+
+          CT_DEBUG(MAIN, ("MEMBER: \"%s\"%s", name, mei.u.compound_member.has_dot ? " [dot]" : ""));
+
+          if (!accept_dotless_member && !mei.u.compound_member.has_dot)
+          {
+            (void) sprintf(err = errbuf,
+                           "Invalid character '%c' (0x%02X) in "
+                           "compound member expression",
+                           name[0], (int) name[0]);
+            goto error;
+          }
+
+          if (pDecl && pDecl->array_flag && level < LL_count(pDecl->ext.array))
+            CANNOT_ACCESS_MEMBER("array");
+          else if (pDecl && pDecl->pointer_flag)
+            CANNOT_ACCESS_MEMBER("pointer");
+          else if (pType->tflags & T_COMPOUND)
+          {
+            pStruct = (Struct *) pType->ptr;
+            PROPAGATE_FLAGS(pStruct->tflags);
+          }
+          else
+            CANNOT_ACCESS_MEMBER("non-compound");
+
+          t_off = search_struct_member(pStruct, name, &pSD, &pDecl);
+          pType = &pSD->type;
+
+          if (t_off < 0)
+          {
+            TRUNC_NAME;
+            (void) sprintf(err = errbuf, "Cannot find %s member '%s'",
+                           pStruct->tflags & T_STRUCT ? "struct" : "union", trunc);
+            goto error;
+          }
+
+          if (do_calc)
+          {
+            size    = pDecl->size;
+            offset += t_off;
+          }
+
+          level = 0;
         }
-
-        ixstr = c++;
-        while (*c && isDIGIT(*c))
-          c++;
-
-        state = ST_FINISH_INDEX;
         break;
 
-      case ST_FINISH_INDEX:
-        if (*c++ != ']')
-        {
-          err = "Index operator not terminated correctly";
-          goto error;
-        }
-        else
+      case MERV_ARRAY_INDEX:
         {
           int dim;
+
+          if (pDecl == NULL || (level == 0 && pDecl->array_flag == 0))
+          {
+            if (name)
+            {
+              TRUNC_NAME;
+              (void) sprintf(err = errbuf,
+                             "Cannot use '%s' as an array", trunc);
+            }
+            else
+              err = "Cannot use type as an array";
+
+            goto error;
+          }
 
           assert(pDecl->array_flag);
 
@@ -879,10 +950,19 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
 
           if (level >= dim)
           {
-            TRUNC_ELEM;
-            (void) sprintf(err = errbuf,
-                           "Cannot use '%s' as a %d-dimensional array",
-                           elem, level+1);
+            if (name)
+            {
+              TRUNC_NAME;
+              (void) sprintf(err = errbuf,
+                             "Cannot use '%s' as a %d-dimensional array",
+                             trunc, level+1);
+            }
+            else
+            {
+              (void) sprintf(err = errbuf,
+                             "Cannot use type as a %d-dimensional array",
+                             level+1);
+            }
             goto error;
           }
           else
@@ -891,9 +971,9 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
             int index;
 
             pValue = (Value *) LL_get(pDecl->ext.array, level);
-            index  = atoi(ixstr);
+            index  = mei.u.array_index;
 
-            CT_DEBUG(MAIN, ("INDEX: \"%d\"", index));
+            CT_DEBUG(MAIN, ("INDEX: %d", index));
 
             if (pValue->flags & V_IS_UNDEF)
             {
@@ -912,12 +992,22 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
             {
               dim = pValue->iv;
 
-              if (index >= dim)
+              if (reject_oobi)
               {
-                (void) sprintf(err = errbuf,
-                               "Cannot use index %d into array of size %d",
-                               index, dim );
-                goto error;
+                if (index < 0)
+                {
+                  (void) sprintf(err = errbuf,
+                                 "Cannot use negative index %d into array",
+                                 index);
+                  goto error;
+                }
+                else if (index >= dim)
+                {
+                  (void) sprintf(err = errbuf,
+                                 "Cannot use index %d into array of size %d",
+                                 index, dim);
+                  goto error;
+                }
               }
 
               if (do_calc)
@@ -940,125 +1030,23 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
             level++;
           }
         }
-
-        state = ST_SEARCH;
         break;
 
-      case ST_SEARCH:
-        CT_DEBUG(MAIN, ("SEARCH: level=%d, dim=%d", level,
-                 pDecl && pDecl->array_flag ? LL_count(pDecl->ext.array) : 0));
-
-        PROPAGATE_FLAGS(pType->tflags);
-
-        if (pDecl && !pDecl->pointer_flag && pType->tflags & T_TYPE &&
-            level == (pDecl->array_flag ? LL_count(pDecl->ext.array) : 0))
+      case MERV_OFFSET:
+        if (reject_offset)
         {
-          do
-          {
-            Typedef *pTypedef = (Typedef *) pType->ptr;
-            pDecl = pTypedef->pDecl;
-            pType = pTypedef->pType;
-          }
-          while (!pDecl->pointer_flag &&
-                 pType->tflags & T_TYPE &&
-                 pDecl->array_flag == 0);
-
-          if (do_calc)
-          {
-            size = pDecl->size;
-          }
-
-          level = 0;
+          err = "Cannot use offset in compound member expression";
+          goto error;
         }
-
-        inc_c = 1;
-        dot   = "";
-
-        switch (*c)
+        if (do_calc)
         {
-          case '+':
-            /*
-               Handle the special case that we have a member returned
-               by the 'member' method with appended "+digits".
-               If this sequence is found at the end of the string,
-               simply ignore it.
-            */
-            if (*(c+1) != '\0')
-            {
-              const char *p = c+1;
-
-              while (*p && isDIGIT(*p))
-                p++;
-
-              if (*p == '\0')
-              {
-                /* quit */
-                if (do_calc)
-                {
-                  offset += atoi(c+1);
-                }
-
-                c = p;
-                inc_c = 0;
-                break;
-              }
-            }
-
-            /* fall through */
-
-          default:
-            if (!accept_dotless_member || !(isALPHA(*c) || *c == '_'))
-            {
-              (void) sprintf(err = errbuf,
-                             "Invalid character '%c' (0x%02X) in "
-                             "struct member expression",
-                             *c, (int) *c);
-              goto error;
-            }
-
-            inc_c = 0;
-            dot   = ".";
-
-            /* fall through */
-
-          case '.':
-            if (pDecl && pDecl->array_flag && level < LL_count(pDecl->ext.array))
-              CANNOT_ACCESS_MEMBER("array");
-            else if (pDecl && pDecl->pointer_flag)
-              CANNOT_ACCESS_MEMBER("pointer");
-            else if (pType->tflags & T_COMPOUND)
-            {
-              pStruct = (Struct *) pType->ptr;
-              PROPAGATE_FLAGS( pStruct->tflags );
-            }
-            else
-              CANNOT_ACCESS_MEMBER("non-compound");
-
-            state = ST_MEMBER;
-            break;
-
-          case '[':
-            if (pDecl == NULL || (level == 0 && pDecl->array_flag == 0))
-            {
-              if (elem[0] != '\0')
-              {
-                TRUNC_ELEM;
-                (void) sprintf(err = errbuf,
-                               "Cannot use '%s' as an array", elem);
-              }
-              else
-                err = "Cannot use type as an array";
-
-              goto error;
-            }
-
-            state = ST_INDEX;
-            break;
+          offset += mei.u.offset;
         }
+        break;
 
-        if (inc_c)
-          c++;
-
+      default:
+        /* all error cases have been handled above */
+        fatal("unexpected retval (%d) in get_member()", (int) mei.retval);
         break;
     }
 
@@ -1066,14 +1054,8 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
     accept_dotless_member = 0;
   }
 
-  if (state != ST_SEARCH)
-  {
-    err = "Incomplete struct member expression";
-    goto error;
-  }
-
   error:
-  Safefree(elem);
+  member_expr_walker_delete(walker);
 
   if (err != NULL)
   {
@@ -1082,14 +1064,15 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
     Perl_croak(aTHX_ "%s", err);
   }
 
-  CT_DEBUG(MAIN, ("FINISHED: typespec=[ptr=%p, flags=0x%X], pDecl=%p[dim=%d], level=%d, offset=%d, size=%d",
+  CT_DEBUG(MAIN, ("FINISHED: typespec=[ptr=%p, flags=0x%X], pDecl=%p[dim=%d], level=%d, offset=%d, size=%d, parent=%p",
                   pType->ptr, pType->tflags, pDecl,
                   pDecl && pDecl->array_flag ? LL_count(pDecl->ext.array) : 0,
-                  level, offset, size));
+                  level, offset, size, pStruct));
 
   if (pMIout)
   {
     pMIout->type   = *pType;
+    pMIout->parent = pStruct;
     pMIout->pDecl  = pDecl;
     pMIout->level  = level;
     pMIout->offset = offset;
@@ -1097,5 +1080,300 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
   }
 
   return 1;
+}
+
+#undef TRUNC_NAME
+#undef PROPAGATE_FLAGS
+#undef CANNOT_ACCESS_MEMBER
+
+/*******************************************************************************
+*
+*   ROUTINE: member_expr_walker_new
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+MemberExprWalker member_expr_walker_new(const char *expr, size_t len)
+{
+  MemberExprWalker me;
+
+  assert(expr != NULL);
+
+  if (len == 0)
+    len = strlen(expr);
+
+  Newc(0, me, offsetof(struct member_expr, buf) + len + 1, char, struct member_expr);
+
+  me->state = ST_SEARCH;
+  me->p = expr;
+  me->startup = 1;
+  me->has_dot = 0;
+
+  CT_DEBUG(MAIN, ("(walk) created new walker @ %p", me));
+
+  return me;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: member_expr_walker_new
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+const char *member_expr_walker_retval_string(enum me_walk_rv retval)
+{
+  static const char *Sretval[] = {
+    "MERV_COMPOUND_MEMBER",
+    "MERV_ARRAY_INDEX",
+    "MERV_OFFSET",
+    "MERV_ERR_INVALID_MEMBER_START",
+    "MERV_ERR_INVALID_INDEX",
+    "MERV_ERR_INVALID_CHAR",
+    "MERV_ERR_INDEX_NOT_TERMINATED",
+    "MERV_ERR_INCOMPLETE",
+    "MERV_ERR_TERMINATED",
+    "MERV_END"
+  };
+
+  return Sretval[retval];
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: member_expr_walker_new
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void member_expr_walker_walk(MemberExprWalker me, struct me_walk_info *info)
+{
+#ifdef CBC_DEBUGGING
+  static const char *Sstate[] = {
+    "ST_MEMBER",
+    "ST_INDEX",
+    "ST_FINISH_INDEX",
+    "ST_SEARCH",
+    "ST_TERM"
+  };
+#endif
+  const char *c, *ixstr;
+
+  assert(me != NULL);
+
+  if (me->state == ST_TERM)
+  {
+    info->retval = MERV_ERR_TERMINATED;
+    return;
+  }
+
+  c = me->p;
+
+  for (;;)
+  {
+    CT_DEBUG(MAIN, ("(walk) state = %s (%d) \"%s\"%s%s", Sstate[me->state], me->state, c,
+                    me->startup ? " [startup]" : "", me->has_dot ? " [dot]" : ""));
+
+    while (isSPACE(*c))
+      c++;
+
+    if (*c == '\0')
+    {
+      if (me->state != ST_SEARCH)
+      {
+        info->retval = MERV_ERR_INCOMPLETE;
+        goto error;
+      }
+
+      info->retval = MERV_END;
+      me->state = ST_TERM;
+
+      return;
+    }
+
+    switch (me->state)
+    {
+      case ST_MEMBER:
+        if(!(isALPHA(*c) || *c == '_'))
+        {
+          info->retval = MERV_ERR_INVALID_MEMBER_START;
+          goto error;
+        }
+        else
+        {
+          char *e = &me->buf[0];
+          do *e++ = *c++; while (isALNUM(*c) || *c == '_');
+          *e = '\0';
+
+          info->retval = MERV_COMPOUND_MEMBER;
+          info->u.compound_member.name = &me->buf[0];
+          info->u.compound_member.name_length = e - &me->buf[0];
+          info->u.compound_member.has_dot = me->has_dot;
+
+          goto found;
+        }
+
+      case ST_INDEX:
+        ixstr = c;
+
+        if (*c == '-' || *c == '+')
+        {
+          c++;
+        }
+
+        if (!isDIGIT(*c))
+        {
+          info->retval = MERV_ERR_INVALID_INDEX;
+          goto error;
+        }
+
+        do c++; while (isDIGIT(*c));
+
+        me->state = ST_FINISH_INDEX;
+        break;
+
+      case ST_FINISH_INDEX:
+        if (*c++ != ']')
+        {
+          info->retval = MERV_ERR_INDEX_NOT_TERMINATED;
+          goto error;
+        }
+
+        info->retval = MERV_ARRAY_INDEX;
+        info->u.array_index = atoi(ixstr);
+
+        goto found;
+
+      case ST_SEARCH:
+        {
+          int inc_c = 1;
+
+          switch (*c)
+          {
+            case '+':
+              if (*(c+1) != '\0')
+              {
+                const char *p = c+1;
+
+                while (isDIGIT(*p)) p++;
+                while (isSPACE(*p)) p++;
+
+                /* only allowed at end of string */
+                if (*p == '\0')
+                {
+                  info->retval = MERV_OFFSET;
+                  info->u.offset = atoi(c+1);
+
+                  c = p;
+
+                  goto found;
+                }
+              }
+
+              /* fall through */
+
+            default:
+              if (!me->startup || !(isALPHA(*c) || *c == '_'))
+              {
+                info->retval = MERV_ERR_INVALID_CHAR;
+                info->u.invalid_char = *c;
+                goto error;
+              }
+
+              inc_c = 0;
+
+              /* fall through */
+
+            case '.':
+              me->has_dot = *c == '.';
+              me->state = ST_MEMBER;
+              break;
+
+            case '[':
+              me->state = ST_INDEX;
+              break;
+          }
+
+          if (inc_c)
+            c++;
+        }
+        break;
+
+      default:
+        fatal("invalid state (%d) in member_expr_walker_walk()", (int) me->state);
+        break;
+    }
+
+    /* only accept dotless members at the very beginning */
+    me->startup = 0;
+  }
+
+  error:
+
+  /* no need to update me->p here */
+  me->state = ST_TERM;
+
+  return;
+
+  found:
+
+  me->p = c;
+  me->state = ST_SEARCH;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: member_expr_walker_delete
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void member_expr_walker_delete(MemberExprWalker me)
+{
+  assert(me != NULL);
+
+  CT_DEBUG(MAIN, ("(walk) delete walker @ %p", me));
+
+  Safefree(me);
 }
 

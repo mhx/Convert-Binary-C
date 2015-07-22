@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/04 22:22:22 +0000 $
-* $Revision: 21 $
+* $Date: 2006/03/12 11:10:51 +0000 $
+* $Revision: 23 $
 * $Source: /cbc/type.c $
 *
 ********************************************************************************
@@ -84,7 +84,7 @@ static void *get_type_pointer(CBC *THIS, const char *name, const char **pEOS)
   if (!THIS->cpi.available)
     return NULL;
 
-  while (*c && isSPACE(*c))
+  while (isSPACE(*c))
     c++;
 
   if (*c == '\0')
@@ -132,10 +132,10 @@ static void *get_type_pointer(CBC *THIS, const char *name, const char **pEOS)
       break;
   }
 
-  while (*c && isSPACE(*c))
+  while (isSPACE(*c))
     c++;
 
-  while (c[len] && (c[len] == '_' || isALNUM(c[len])))
+  while (c[len] == '_' || isALNUM(c[len]))
     len++;
 
   if (len == 0)
@@ -167,7 +167,7 @@ static void *get_type_pointer(CBC *THIS, const char *name, const char **pEOS)
   {
     c += len;
 
-    while (*c && isSPACE(*c))
+    while (isSPACE(*c))
       c++;
 
     *pEOS = c;
@@ -207,7 +207,8 @@ int get_member_info(pTHX_ CBC *THIS, const char *name, MemberInfo *pMI, unsigned
 
   if (pMI)
   {
-    pMI->flags = 0;
+    pMI->flags  = 0;
+    pMI->parent = NULL;
 
     if (member && *member)
     {
@@ -483,9 +484,9 @@ int is_typedef_defined(Typedef *pTypedef)
 
 /*******************************************************************************
 *
-*   ROUTINE: check_allowed_types
+*   ROUTINE: check_allowed_types_string
 *
-*   WRITTEN BY: Marcus Holland-Moritz             ON: Apr 2003
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
 *   CHANGED BY:                                   ON:
 *
 ********************************************************************************
@@ -500,12 +501,12 @@ int is_typedef_defined(Typedef *pTypedef)
 
 #define CHECK_ALLOWED(flag, string)                                            \
         STMT_START {                                                           \
-          if ((allowedTypes & ALLOW_ ## flag) == 0)                            \
-            Perl_croak(aTHX_ "Cannot use %s on " string, method);              \
-          return;                                                              \
+          if ((allowed_types & ALLOW_ ## flag) == 0)                           \
+            return string;                                                     \
+          return NULL;                                                         \
         } STMT_END
 
-void check_allowed_types(pTHX_ const MemberInfo *pMI, const char *method, U32 allowedTypes)
+const char *check_allowed_types_string(const MemberInfo *pMI, U32 allowed_types)
 {
   const Declarator *pDecl = pMI->pDecl;
   const TypeSpec   *pType = &pMI->type;
@@ -521,8 +522,8 @@ void check_allowed_types(pTHX_ const MemberInfo *pMI, const char *method, U32 al
       pType = pTypedef->pType;
     }
     while (!pDecl->pointer_flag &&
-           pType->tflags & T_TYPE &&
-           pDecl->array_flag == 0);
+           !pDecl->array_flag &&
+           pType->tflags & T_TYPE);
   }
   else
     level = pMI->level;
@@ -547,5 +548,32 @@ void check_allowed_types(pTHX_ const MemberInfo *pMI, const char *method, U32 al
 
   if (pType->tflags & T_ENUM)
     CHECK_ALLOWED(ENUMS, "an enum");
+
+  return NULL;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: check_allowed_types
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Apr 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void check_allowed_types(pTHX_ const MemberInfo *pMI, const char *method, U32 allowed_types)
+{
+  const char *failed_type = check_allowed_types_string(pMI, allowed_types);
+
+  if (failed_type)
+    Perl_croak(aTHX_ "Cannot use %s on %s", method, failed_type);
 }
 

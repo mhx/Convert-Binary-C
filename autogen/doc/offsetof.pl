@@ -4,7 +4,7 @@ $c = Convert::Binary::C->new( Alignment   => 4
                             , LongSize    => 4
                             , PointerSize => 4
                             )
-                       ->parse( <<'ENDC' );
+                       ->parse(<<'ENDC');
 typedef struct {
   char abc;
   long day;
@@ -20,25 +20,27 @@ ENDC
   ['test',        'zap[5].day'  ],
   ['test.zap[2]', 'day'         ],
   ['test',        'zap[5].day+1'],
+  ['test',        'zap[-3].ptr' ],
 );
 
 @check = (); #-8<-
-for( @args ) {
-  my $offset = eval { $c->offsetof( @$_ ) };
-  printf "\$c->offsetof( '%s', '%s' ) => $offset\n", @$_;
+for (@args) {
+  my $offset = eval { $c->offsetof(@$_) };
+  printf "\$c->offsetof('%s', '%s') => $offset\n", @$_;
   push @check, $offset; #-8<-
 }
 
-@check == 3     or die 'count';    #-8<-
-$check[0] == 64 or die $check[0];  #-8<-
-$check[1] == 4  or die $check[1];  #-8<-
-$check[2] == 65 or die $check[2];  #-8<-
+@check == 4      or die 'count';    #-8<-
+$check[0] ==  64 or die $check[0];  #-8<-
+$check[1] ==  4  or die $check[1];  #-8<-
+$check[2] ==  65 or die $check[2];  #-8<-
+$check[3] == -28 or die $check[3];  #-8<-
 
 print "#-8<-\n";
 
 #-8<----------------[2]-----------------------
 
-$offset = $c->offsetof( 'test.zap', '[3].ptr+2' );
+$offset = $c->offsetof('test.zap', '[3].ptr+2');
 print "offset = $offset";
 
 $offset == 46 or die $offset;  #-8<-
@@ -46,8 +48,8 @@ print "\n#-8<-\n";
 
 #-8<----------------[3]-----------------------
 
-printf "offset = %d\n", $c->offsetof( 'week', 'day' );
-printf "offset = %d\n", $c->offsetof( 'week', '.day' );
+printf "offset = %d\n", $c->offsetof('week', 'day');
+printf "offset = %d\n", $c->offsetof('week', '.day');
 
 print "\n#-8<-\n";
 

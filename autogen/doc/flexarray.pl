@@ -2,7 +2,7 @@ use Convert::Binary::C; #-8<-
 use Data::Dumper; #-8<-
 $Data::Dumper::Indent = 1; #-8<-
 
-$c = Convert::Binary::C->new(ByteOrder => 'BigEndian', LongSize => 4)->parse( <<'#-8<-' );
+$c = Convert::Binary::C->new(ByteOrder => 'BigEndian', LongSize => 4)->parse(<<'#-8<-');
 struct message {
   long header;
   char data[];

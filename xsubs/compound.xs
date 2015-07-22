@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/04 22:44:07 +0000 $
-# $Revision: 5 $
+# $Date: 2006/03/12 11:10:52 +0000 $
+# $Revision: 6 $
 # $Source: /xsubs/compound.xs $
 #
 ################################################################################
@@ -179,7 +179,7 @@ CBC::compound(...)
           limit = T_STRUCT;
         }
 
-        while (*name && isSPACE(*name))
+        while (isSPACE(*name))
           name++;
 
         pStruct = HT_get(THIS->cpi.htStructs, name, 0, 0);

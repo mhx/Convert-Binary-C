@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/23 21:00:56 +0000 $
-# $Revision: 11 $
+# $Date: 2006/02/28 13:06:45 +0000 $
+# $Revision: 12 $
 # $Source: /tests/219_def.t $
 #
 ################################################################################
@@ -55,7 +55,7 @@ typedef enum enu enu;
 
 enum enu { ENU };
 
-struct su { union uni *ptr; };
+struct su { union uni *ptr; int flex[]; };
 union uni2 { int foo[3][4]; };
 enum  enu2 { FOO };
 
@@ -94,13 +94,13 @@ ENDC
   ['test2.foo[1]'    => ''       ],
   ['uni2.foo[1]'     => 'member' ],
   ['uni2.foo[2][3]'  => 'member' ],
-  ['uni2.foo[-1]'    => ''       ],
-  ['uni2.foo[2][-1]' => ''       ],
-  ['uni2.foo[3]'     => ''       ],
-  ['uni2.foo[2][4]'  => ''       ],
+  ['uni2.foo[-1]'    => 'member' ],
+  ['uni2.foo[2][-1]' => 'member' ],
+  ['uni2.foo[3]'     => 'member' ],
+  ['uni2.foo[2][4]'  => 'member' ],
   ['undef.x'         => ''       ],
   ['__array[9]'      => 'member' ],
-  ['__array[10]'     => ''       ],
+  ['__array[10]'     => 'member' ],
   ['__array.xxx'     => ''       ],
   ['enu.xxx'         => ''       ],
   ['enu???'          => ''       ],

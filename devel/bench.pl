@@ -1,6 +1,5 @@
 use Convert::Binary::C;
 use Getopt::Long;
-use Data::Dumper;
 use Benchmark;
 use strict;
 

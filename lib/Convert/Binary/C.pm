@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/02/26 21:18:42 +0000 $
-# $Revision: 81 $
+# $Date: 2006/03/24 18:24:10 +0000 $
+# $Revision: 84 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.64_01 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.64_02 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 $XS_VERSION = $VERSION;
 $VERSION    = eval $VERSION;
 
@@ -85,7 +85,7 @@ Convert::Binary::C - Binary Data Conversion using C Types
   #---------------------------------------------
   # Create a new object and parse embedded code
   #---------------------------------------------
-  my $c = Convert::Binary::C->new->parse( <<ENDC );
+  my $c = Convert::Binary::C->new->parse(<<ENDC);
   
   enum Month { JAN, FEB, MAR, APR, MAY, JUN,
                JUL, AUG, SEP, OCT, NOV, DEC };
@@ -103,7 +103,7 @@ Convert::Binary::C - Binary Data Conversion using C Types
   #-----------------------------------------------
   my $date = { year => 2002, month => 'DEC', day => 24 };
   
-  my $packed = $c->pack( 'Date', $date );
+  my $packed = $c->pack('Date', $date);
 
 =head2 Advanced
 
@@ -118,45 +118,45 @@ Convert::Binary::C - Binary Data Conversion using C Types
   #---------------------------------------------------
   # Add include paths and global preprocessor defines
   #---------------------------------------------------
-  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include',
-               '/usr/include' )
-    ->Define( qw( __USE_POSIX __USE_ISOC99=1 ) );
+  $c->Include('/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include',
+              '/usr/include')
+    ->Define(qw( __USE_POSIX __USE_ISOC99=1 ));
   
   #----------------------------------
   # Parse the 'time.h' header file
   #----------------------------------
-  $c->parse_file( 'time.h' );
+  $c->parse_file('time.h');
   
   #---------------------------------------
   # See which files the object depends on
   #---------------------------------------
-  print Dumper( [$c->dependencies] );
+  print Dumper([$c->dependencies]);
   
   #-----------------------------------------------------------
   # See if struct timespec is defined and dump its definition
   #-----------------------------------------------------------
-  if( $c->def( 'struct timespec' ) ) {
-    print Dumper( $c->struct( 'timespec' ) );
+  if ($c->def('struct timespec')) {
+    print Dumper($c->struct('timespec'));
   }
   
   #-------------------------------
   # Create some binary dummy data
   #-------------------------------
-  my $data = "binaryteststring";
+  my $data = "binary_test_string";
   
   #--------------------------------------------------------
   # Unpack $data according to 'struct timespec' definition
   #--------------------------------------------------------
-  if( length($data) >= $c->sizeof( 'timespec' ) ) {
-    my $perl = $c->unpack( 'timespec', $data );
-    print Dumper( $perl );
+  if (length($data) >= $c->sizeof('timespec')) {
+    my $perl = $c->unpack('timespec', $data);
+    print Dumper($perl);
   }
   
   #--------------------------------------------------------
   # See which member lies at offset 5 of 'struct timespec'
   #--------------------------------------------------------
-  my $member = $c->member( 'timespec', 5 );
-  print "member( 'timespec', 5 ) = '$member'\n";
+  my $member = $c->member('timespec', 5);
+  print "member('timespec', 5) = '$member'\n";
 
 =head1 DESCRIPTION
 
@@ -353,8 +353,8 @@ the L<C<configure>|/"configure"> method or directly pass the configuration
 options to the L<constructor|/"new">. If you want to change byte order
 and alignment, you can use
 
-  $c->configure( ByteOrder => 'LittleEndian',
-                 Alignment => 2 );
+  $c->configure(ByteOrder => 'LittleEndian',
+                Alignment => 2);
 
 or you can change the construction code to
 
@@ -368,7 +368,7 @@ alignment for packing and unpacking.
 Alternatively, you can use the option names as names of
 methods to configure the object, like:
 
-  $c->ByteOrder( 'LittleEndian' );
+  $c->ByteOrder('LittleEndian');
 
 You can also retrieve information about the current
 configuration of a Convert::Binary::C object. For details,
@@ -379,11 +379,11 @@ see the section about the L<C<configure>|/"configure"> method.
 Convert::Binary::C allows two ways of parsing C source. Either
 by parsing external C header or C source files:
 
-  $c->parse_file( 'header.h' );
+  $c->parse_file('header.h');
 
 Or by parsing C code embedded in your script:
 
-  $c->parse( <<'CCODE' );
+  $c->parse(<<'CCODE');
   struct foo {
     char ary[3];
     unsigned short baz;
@@ -401,8 +401,8 @@ throw an exception when a parse error occurs, you usually want to catch
 these in an C<eval> block:
 
   eval { $c->parse_file('header.h') };
-  if( $@ ) {
-    # do something appropriate
+  if ($@) {
+    # handle error appropriately
   }
 
 Perl's special C<$@> variable will contain an empty string (which
@@ -415,11 +415,11 @@ when you're configuring the object. This will allow you to write constructs
 like this:
 
   my $c = eval {
-    Convert::Binary::C->new( Include => ['/usr/include'] )
-                      ->parse_file( 'header.h' )
+    Convert::Binary::C->new(Include => ['/usr/include'])
+                      ->parse_file('header.h')
   };
-  if( $@ ) {
-    # do something appropriate
+  if ($@) {
+    # handle error appropriately
   }
 
 =head2 Packing and unpacking
@@ -434,15 +434,15 @@ you could write:
     baz => 40000,
     bar => -4711,
   };
-  $binary = $c->pack( 'foo', $data );
+  $binary = $c->pack('foo', $data);
 
 Unpacking will work exactly the same way, just that
 the L<C<unpack>|/"unpack"> method will take a byte string as its input
 and will return a reference to a (possibly very complex)
 Perl data structure.
 
-  $binary = from_memory();
-  $data = $c->unpack( 'foo', $binary );
+  $binary = get_data_from_memory();
+  $data = $c->unpack('foo', $binary);
 
 You can now easily access all of the values:
 
@@ -452,7 +452,7 @@ Or you can even more conveniently use
 the L<Data::Dumper|Data::Dumper> module:
 
   use Data::Dumper;
-  print Dumper( $data );
+  print Dumper($data);
 
 The output would look something like this:
 
@@ -477,9 +477,9 @@ If your C source contains includes or depends upon preprocessor
 defines, you may need to configure the internal preprocessor.
 Use the C<Include> and C<Define> configuration options for that:
 
-  $c->configure( Include => ['/usr/include',
-                             '/home/mhx/include'],
-                 Define  => [qw( NDEBUG FOO=42 )] );
+  $c->configure(Include => ['/usr/include',
+                            '/home/mhx/include'],
+                Define  => [qw( NDEBUG FOO=42 )]);
 
 If your code uses system includes, it is most likely
 that you will need to define the symbols that are usually
@@ -491,7 +491,7 @@ Assertions are supported by C<ucpp>, and you can define them
 either in the source code using C<#assert> or as a property
 of the Convert::Binary::C object using C<Assert>:
 
-  $c->configure( Assert => ['predicate(answer)'] );
+  $c->configure(Assert => ['predicate(answer)']);
 
 Information about defined macros can be retrieved from the
 preprocessor as long as its configuration isn't changed. The
@@ -614,13 +614,13 @@ It's possible to use these basic types without having parsed any
 code. You can simply do
 
   $c = new Convert::Binary::C;
-  $size = $c->sizeof( 'unsigned long' );
-  $data = $c->pack( 'short int', 42 );
+  $size = $c->sizeof('unsigned long');
+  $data = $c->pack('short int', 42);
 
 Even though the above works fine, it is not possible to define
 more complex types on the fly, so
 
-  $size = $c->sizeof( 'struct { int a, b; }' );
+  $size = $c->sizeof('struct { int a, b; }');
 
 will result in an error.
 
@@ -649,7 +649,7 @@ following C code:
 You may want to know the size of the C<array> member of C<struct foo>.
 This is quite easy:
 
-  print $c->sizeof( 'foo.array' ), " bytes";
+  print $c->sizeof('foo.array'), " bytes";
 
 will print
 
@@ -660,11 +660,23 @@ depending of course on the C<ShortSize> you configured.
 If you wanted to unpack only a single column of C<matrix>, that's
 easy as well (and of course it doesn't matter which index you use):
 
-  $column = $c->unpack( 'matrix[2]', $data );
+  $column = $c->unpack('matrix[2]', $data);
+
+Just like in C, it is possible to use out-of-bounds array indices.
+This means that, for example, despite C<array> is declared to have
+20 elements, the following code
+
+  $size   = $c->sizeof('foo.array[4711]');
+  $offset = $c->offsetof('foo', 'array[-13]');
+
+is perfectly valid and will result in:
+
+  $size   = 4
+  $offset = -48
 
 Member expressions can be arbitrarily complex:
 
-  $type = $c->typeof( 'matrix[2][3].array[7].y' );
+  $type = $c->typeof('matrix[2][3].array[7].y');
   print "the type is $type";
 
 will, for example, print
@@ -680,7 +692,7 @@ Members returned by the L<C<member>|/"member"> method have an optional
 offset suffix to indicate that the given offset doesn't point to the
 start of that member. For example,
 
-  $member = $c->member( 'matrix', 1431 );
+  $member = $c->member('matrix', 1431);
   print $member;
 
 will print
@@ -689,7 +701,7 @@ will print
 
 If you would use this as a member expression, like in
 
-  $size = $c->sizeof( "matrix $member" );
+  $size = $c->sizeof("matrix $member");
 
 the offset suffix will simply be ignored. Actually, it will be
 ignored for all methods if it's used in the first argument.
@@ -699,8 +711,8 @@ it will usually do what you mean, i. e. the offset suffix, if
 present, will be considered when determining the offset. This
 behaviour ensures that
 
-  $member = $c->member( 'foo', 43 );
-  $offset = $c->offsetof( 'foo', $member );
+  $member = $c->member('foo', 43);
+  $offset = $c->offsetof('foo', $member);
   print "'$member' is located at offset $offset of struct foo";
 
 will always correctly set C<$offset>:
@@ -712,7 +724,7 @@ offset where the member returned by L<C<member>|/"member"> starts,
 you just have to remove the suffix:
 
   $member =~ s/\+\d+$//;
-  $offset = $c->offsetof( 'foo', $member );
+  $offset = $c->offsetof('foo', $member);
   print "'$member' starts at offset $offset of struct foo";
 
 This would then print:
@@ -841,7 +853,7 @@ being thrown by the L<C<tag>|/"tag"> method.
 
 The C<ByteOrder> tag allows you to override the byte order of
 certain types or members. The implementation of this tag is
-considered experimental and may be subject to changes in the
+considered B<experimental> and may be subject to changes in the
 future.
 
 Usually it doesn't make much sense to override the byte order,
@@ -993,6 +1005,196 @@ little endian object. It attaches hooks to the little endian
 object and in the hooks it uses the big endian object
 to L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> the binary data.
 
+=head2 The Dimension Tag
+
+The C<Dimension> tag allows you to override the declared dimension
+of an array for packing or unpacking data. The implementation of
+this tag is considered B<experimental> and may be subject to changes
+in the future.
+
+The C<Dimension> tag is primarily useful to support variable length
+arrays. Usually, you have to write the following code for such a
+variable length array in C:
+
+  struct c_message
+  {
+    unsigned count;
+    char data[1];
+  };
+
+So, because you cannot declare an empty array, you declare an array
+with a single element. If you have a ISO-C99 compliant compiler,
+you can write this code instead:
+
+  struct c99_message
+  {
+    unsigned count;
+    char data[];
+  };
+
+This explicitly tells the compiler that C<data> is a flexible array
+member. Convert::Binary::C already uses this information to
+handle L<flexible array members|/"FLEXIBLE ARRAY MEMBERS AND INCOMPLETE TYPES"> in
+a special way.
+
+As you can see in the following example, the two types are treated
+differently:
+
+  $data = pack 'NC*', 3, 1..8;
+  $uc   = $c->unpack('c_message', $data);
+  $uc99 = $c->unpack('c99_message', $data);
+
+This will result in:
+
+  $uc = {'count' => 3,'data' => [1]};
+  $uc99 = {'count' => 3,'data' => [1,2,3,4,5,6,7,8]};
+
+However, only few compilers support ISO-C99, and you probably don't want
+to change your existing code only to get some extra features when
+using Convert::Binary::C.
+
+So it is possible to attach a tag to the C<data> member of
+the C<c_message> struct that tells Convert::Binary::C to treat
+the array as if it were flexible:
+
+  $c->tag('c_message.data', Dimension => '*');
+
+Now both C<c_message> and C<c99_message> will behave exactly the
+same when using L<C<pack>|/"pack"> or L<C<unpack>|/"unpack">.
+Repeating the above code:
+
+  $uc = $c->unpack('c_message', $data);
+
+This will result in:
+
+  $uc = {'count' => 3,'data' => [1,2,3,4,5,6,7,8]};
+
+But there's more you can do. Even though it probably doesn't
+make much sense, you can tag a fixed dimension to an array:
+
+  $c->tag('c_message.data', Dimension => '5');
+
+This will obviously result in:
+
+  $uc = {'count' => 3,'data' => [1,2,3,4,5]};
+
+A more useful way to use the C<Dimension> tag is to set it to
+the name of a member in the same compound:
+
+  $c->tag('c_message.data', Dimension => 'count');
+
+Convert::Binary::C will now use the value of that member to
+determine the size of the array, so unpacking will result in:
+
+  $uc = {'count' => 3,'data' => [1,2,3]};
+
+Of course, you can also tag flexible array members. And yes,
+it's also possible to use more complex member expressions:
+
+  $c->parse(<<ENDC);
+  struct msg_header
+  {
+    unsigned len[2];
+  };
+  
+  struct more_complex
+  {
+    struct msg_header hdr;
+    char data[];
+  };
+  ENDC
+  
+  $data = pack 'NNC*', 42, 7, 1 .. 10;
+  
+  $c->tag('more_complex.data', Dimension => 'hdr.len[1]');
+  
+  $u = $c->unpack('more_complex', $data);
+
+The result will be:
+
+  $u = {
+    'hdr' => {
+      'len' => [
+        42,
+        7
+      ]
+    },
+    'data' => [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ]
+  };
+
+By the way, it's also possible to tag arrays that are not
+embedded inside a compound:
+
+  $c->parse(<<ENDC);
+  typedef unsigned short short_array[];
+  ENDC
+  
+  $c->tag('short_array', Dimension => '5');
+  
+  $u = $c->unpack('short_array', $data);
+
+Resulting in:
+
+  $u = [0,42,0,7,258];
+
+The final and most powerful way to define a C<Dimension> tag is
+to pass it a subroutine reference. The referenced subroutine can
+execute whatever code is neccessary to determine the size of the
+tagged array:
+
+  sub get_size
+  {
+    my $m = shift;
+    return $m->{hdr}{len}[0] / $m->{hdr}{len}[1];
+  }
+  
+  $c->tag('more_complex.data', Dimension => \&get_size);
+  
+  $u = $c->unpack('more_complex', $data);
+  
+As you can guess from the above code, the subroutine is being passed
+a reference to hash that stores the already unpacked part of the
+compound embedding the tagged array. This is the result:
+
+  $u = {
+    'hdr' => {
+      'len' => [
+        42,
+        7
+      ]
+    },
+    'data' => [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  };
+
+You can also pass custom arguments to the subroutines by using
+the L<C<arg>|/"arg"> method. This is similar to the functionality
+offered by the L<C<Hooks>|/"The Hooks Tag"> tag.
+
+Of course, all that also works for the L<C<pack>|/"pack"> method
+as well.
+
+However, the current implementation has at least one shortcomings,
+which is why it's experimental: The C<Dimension> tag doesn't impact
+compound layout. This means that while you can alter the size of an
+array in the middle of a compound, the offset of the members after
+that array won't be impacted. I'd rather like to see the layout adapt
+dynamically, so this is what I'm hoping to implement in the future.
+
 =head2 The Hooks Tag
 
 Hooks are a special kind of tag that can be extremely useful.
@@ -1010,8 +1212,8 @@ Here's an example. Let's assume the following C code has been
 parsed:
 
   typedef unsigned long u_32;
-  typedef u_32 ProtoId;
-  typedef ProtoId MyProtoId;
+  typedef u_32          ProtoId;
+  typedef ProtoId       MyProtoId;
   
   struct MsgHeader {
     MyProtoId id;
@@ -1317,7 +1519,7 @@ as it can already handle C<AV> pointers. And this is what we get:
 
   $VAR1 = {
     'sv_any' => {
-      'xav_array' => '136333344',
+      'xav_array' => '136408352',
       'xav_fill' => '0',
       'xav_max' => '0',
       'xof_off' => '0',
@@ -1335,12 +1537,12 @@ as it can already handle C<AV> pointers. And this is what we get:
           'xhv_riter' => '-1',
           'xhv_eiter' => '0',
           'xhv_pmroot' => '0',
-          'xhv_name' => '136640880'
+          'xhv_name' => '137664640'
         },
         'sv_refcnt' => '2',
         'sv_flags' => '536870923'
       },
-      'xav_alloc' => '136333344',
+      'xav_alloc' => '136408352',
       'xav_arylen' => '0',
       'xav_flags' => '1'
     },
@@ -1426,13 +1628,13 @@ used with configuration options) will throw an exception if you
 pass an odd number of elements. Configuration will normally look
 like this:
 
-  $c->configure( ByteOrder => 'BigEndian', IntSize => 2 );
+  $c->configure(ByteOrder => 'BigEndian', IntSize => 2);
 
 To retrieve the current value of a configuration option, you
 must pass a single argument to L<C<configure>|/"configure"> that
 holds the name of the option, just like
 
-  $order = $c->configure( 'ByteOrder' );
+  $order = $c->configure('ByteOrder');
 
 If you want to get the values of all configuration options at
 once, you can call L<C<configure>|/"configure"> without any
@@ -1446,7 +1648,7 @@ used with the L<Data::Dumper|Data::Dumper> module, for example:
   $c = new Convert::Binary::C Define  => ['DEBUGGING', 'FOO=123'],
                               Include => ['/usr/include'];
   
-  print Dumper( $c->configure );
+  print Dumper($c->configure);
 
 Which will print something like this:
 
@@ -1490,7 +1692,7 @@ Since you may not always want to write a L<C<configure>|/"configure"> call
 when you only want to change a single configuration item, you can
 use any configuration option name as a method name, like:
 
-  $c->ByteOrder( 'LittleEndian' ) if $c->IntSize < 4;
+  $c->ByteOrder('LittleEndian') if $c->IntSize < 4;
 
 (Yes, the example doesn't make very much sense... ;-)
 
@@ -1504,19 +1706,19 @@ which is just the behaviour of the
 corresponding L<C<configure>|/"configure"> call.
 So the following are equivalent:
 
-  $c->configure( Define => ['foo', 'bar=123'] );
-  $c->Define( ['foo', 'bar=123'] );
+  $c->configure(Define => ['foo', 'bar=123']);
+  $c->Define(['foo', 'bar=123']);
 
 But if you pass a list of strings instead of an array reference
 (which cannot be done when using L<C<configure>|/"configure">),
 the new list items are B<appended> to the current list, so
 
   $c = new Convert::Binary::C Include => ['/include'];
-  $c->Include( '/usr/include', '/usr/local/include' );
-  print Dumper( $c->Include );
+  $c->Include('/usr/include', '/usr/local/include');
+  print Dumper($c->Include);
   
-  $c->Include( ['/usr/local/include'] );
-  print Dumper( $c->Include );
+  $c->Include(['/usr/local/include']);
+  print Dumper($c->Include);
 
 will first print all three include paths, but finally
 only C</usr/local/include> will be configured:
@@ -1535,12 +1737,12 @@ as they return a reference to their object if called as a
 set method. So, if you like, you can configure your object
 like this:
 
-  $c = Convert::Binary::C->new( IntSize => 4 )
-         ->Define( qw( __DEBUG__ DB_LEVEL=3 ) )
-         ->ByteOrder( 'BigEndian' );
+  $c = Convert::Binary::C->new(IntSize => 4)
+         ->Define(qw( __DEBUG__ DB_LEVEL=3 ))
+         ->ByteOrder('BigEndian');
   
-  $c->configure( EnumType => 'Both', Alignment => 4 )
-    ->Include( '/usr/include', '/usr/local/include' );
+  $c->configure(EnumType => 'Both', Alignment => 4)
+    ->Include('/usr/include', '/usr/local/include');
 
 In the example above, C<qw( ... )> is the word list quoting
 operator. It returns a list of all non-whitespace sequences,
@@ -1933,11 +2135,11 @@ enumeration constant will be an integer.
   printf "Weekday = %s (%d)\n\n", $date->{weekday},
                                   $date->{weekday};
   
-  if( $date->{month} == 0 ) {
+  if ($date->{month} == 0) {
     print "It's $date->{month}, happy new year!\n\n";
   }
   
-  print Dumper( $date );
+  print Dumper($date);
 
 This will print:
 
@@ -1969,7 +2171,7 @@ error. To parse the above code correctly, you have to
 disable the C<void> keyword in the Convert::Binary::C
 parser:
 
-  $c->DisabledKeywords( [qw( void )] );
+  $c->DisabledKeywords([qw( void )]);
 
 By default, the Convert::Binary::C parser will recognize
 the keywords C<inline> and C<restrict>. If your compiler
@@ -1982,7 +2184,7 @@ Only if you're using the keywords as identifiers, like in
 
 you'll have to disable these ISO-C99 keywords:
 
-  $c->DisabledKeywords( [qw( inline restrict )] );
+  $c->DisabledKeywords([qw( inline restrict )]);
 
 The parser allows you to disable the following keywords:
 
@@ -2015,7 +2217,7 @@ the second one is only a marker for a language extension.
 
 Using the preprocessor, you could of course do the following:
 
-  $c->Define( qw( __signed__=signed __extension__= ) );
+  $c->Define(qw( __signed__=signed __extension__= ));
 
 However, the preprocessor symbols could be undefined or
 redefined in the code, and
@@ -2036,10 +2238,8 @@ map C<__signed__> to the built-in C keyword C<signed> and
 ignore C<__extension__>. This could be done with the following
 code:
 
-  $c->KeywordMap( {
-                    __signed__    => 'signed',
-                    __extension__ => undef,
-                  } );
+  $c->KeywordMap({ __signed__    => 'signed',
+                   __extension__ => undef });
 
 You can specify any valid identifier as hash key, and either
 a valid C keyword or C<undef> as hash value.
@@ -2057,8 +2257,8 @@ Note that C<KeywordMap> and C<DisabledKeywords> perfectly work
 together. You could, for example, disable the C<signed> keyword,
 but still have C<__signed__> mapped to the original C<signed> token:
 
-  $c->configure( DisabledKeywords => [ 'signed' ],
-                 KeywordMap       => { __signed__  => 'signed' } );
+  $c->configure(DisabledKeywords => [ 'signed' ],
+                KeywordMap       => { __signed__  => 'signed' });
 
 This would allow you to define
 
@@ -2142,7 +2342,7 @@ to what the C<-D> option does for most preprocessors.
 The following will define the symbol C<FOO> and
 define C<BAR> to be C<12345>:
 
-  $c->configure( Define => [qw(FOO BAR=12345)] );
+  $c->configure(Define => [qw( FOO BAR=12345 )]);
 
 =item C<Assert> =E<gt> [ ASSERTIONS ]
 
@@ -2155,7 +2355,7 @@ macro definitions. Only the way the assertions are
 defined is a bit different and mimics the way they
 are defined with the C<#assert> directive:
 
-  $c->configure( Assert => ['foo(bar)'] );
+  $c->configure(Assert => ['foo(bar)']);
 
 =item C<OrderMembers> =E<gt> 0 | 1
 
@@ -2178,7 +2378,7 @@ code.
   use Convert::Binary::C;
   use Data::Dumper;
   
-  $c = Convert::Binary::C->new->parse( <<'ENDC' );
+  $c = Convert::Binary::C->new->parse(<<'ENDC');
   struct test {
     char one;
     char two;
@@ -2194,11 +2394,11 @@ code.
   
   $data = "Convert";
   
-  $u1 = $c->unpack( 'test', $data );
+  $u1 = $c->unpack('test', $data);
   $c->OrderMembers(1);
-  $u2 = $c->unpack( 'test', $data );
+  $u2 = $c->unpack('test', $data);
   
-  print Data::Dumper->Dump( [$u1, $u2], [qw(u1 u2)] );
+  print Data::Dumper->Dump([$u1, $u2], [qw(u1 u2)]);
 
 This will print something like:
 
@@ -2248,7 +2448,7 @@ Use this option to specify and configure a bitfield
 layouting engine. You can choose an engine by passing
 its name to the C<Engine> option, like:
 
-  $c->configure( Bitfields => { Engine => 'Generic' } );
+  $c->configure(Bitfields => { Engine => 'Generic' });
 
 Each engine can have its own set of options, although
 currently none of them does.
@@ -2354,13 +2554,15 @@ recognized by Convert::Binary::C. This is necessary
 because different functions (even different blocks within
 the same function) can define types with the same name:
 
-  void my_func( int i )
+  void my_func(int i)
   {
-    if( i < 10 ) {
+    if (i < 10)
+    {
       enum digit { ONE, TWO, THREE } x = ONE;
       printf("%d, %d\n", i, x);
     }
-    else {
+    else
+    {
       enum digit { THREE, TWO, ONE } x = ONE;
       printf("%d, %d\n", i, x);
     }
@@ -2397,7 +2599,7 @@ The L<C<clean>|/"clean"> method returns a reference to its object.
 Makes the object return an exact independent copy of itself.
 
   $c = new Convert::Binary::C Include => ['/usr/include'];
-  $c->parse_file( 'definitions.c' );
+  $c->parse_file('definitions.c');
   $clone = $c->clone;
 
 The above code is technically equivalent (Mostly. Actually,
@@ -2407,9 +2609,9 @@ as L<C<compound>|/"compound"> return the definitions in a different
 order.) to:
 
   $c = new Convert::Binary::C Include => ['/usr/include'];
-  $c->parse_file( 'definitions.c' );
+  $c->parse_file('definitions.c');
   $clone = new Convert::Binary::C %{$c->configure};
-  $clone->parse( $c->sourcify );
+  $clone->parse($c->sourcify);
 
 Using L<C<clone>|/"clone"> is just a lot faster.
 
@@ -2444,7 +2646,7 @@ a compound, for example.
 
   use Convert::Binary::C;
   
-  my $c = Convert::Binary::C->new->parse( <<'ENDC' );
+  my $c = Convert::Binary::C->new->parse(<<'ENDC');
   
   typedef struct __not  not;
   typedef struct __not *ptr;
@@ -2457,13 +2659,13 @@ a compound, for example.
   
   ENDC
   
-  for my $type ( qw( not ptr foo bar xxx foo.xxx foo.abc
-                     xxx.yyy quad quad[3] quad[4] short[1] ),
-                 'unsigned long' )
+  for my $type (qw( not ptr foo bar xxx foo.xxx foo.abc xxx.yyy
+                    quad quad[3] quad[5] quad[-3] short[1] ),
+                'unsigned long')
   {
-    my $def = $c->def( $type );
-    printf "%-14s  =>  %s\n", $type, defined $def
-                                     ? "'$def'" : 'undef';
+    my $def = $c->def($type);
+    printf "%-14s  =>  %s\n",
+            $type,     defined $def ? "'$def'" : 'undef';
   }
 
 The following would be returned by the L<C<def>|/"def"> method:
@@ -2478,12 +2680,19 @@ The following would be returned by the L<C<def>|/"def"> method:
   xxx.yyy         =>  undef
   quad            =>  'typedef'
   quad[3]         =>  'member'
-  quad[4]         =>  ''
+  quad[5]         =>  'member'
+  quad[-3]        =>  'member'
   short[1]        =>  undef
   unsigned long   =>  'basic'
 
 So, if L<C<def>|/"def"> returns a non-empty string, you can safely use
 any other method with that type's name or with that member expression.
+
+Concerning arrays, note that the index into an array doesn't
+need to be within the bounds of the array's definition, just
+like in C. In the above example, C<quad[5]> and C<quad[-3]> are
+valid members of the C<quad> array, even though it is declared to
+have only four elements.
 
 In cases where the typedef namespace overlaps with the
 namespace of enums/structs/unions, the L<C<def>|/"def"> method
@@ -2555,10 +2764,11 @@ Perl arrays.
   use Data::Dumper;
   use Data::Hexdumper;
   
-  $c = Convert::Binary::C->new( ByteOrder => 'BigEndian',
-                                LongSize  => 4,
-                                ShortSize => 2 )
-                         ->parse( <<'ENDC' );
+  $c = Convert::Binary::C->new( ByteOrder => 'BigEndian'
+                              , LongSize  => 4
+                              , ShortSize => 2
+                              )
+                         ->parse(<<'ENDC');
   struct test {
     char    ary[3];
     union {
@@ -2571,7 +2781,7 @@ Perl arrays.
 Hashes don't have to contain a key for each compound member
 and arrays may be truncated:
 
-  $binary = $c->pack( 'test', { ary => [1, 2], uni => { quad => 42 } } );
+  $binary = $c->pack('test', { ary => [1, 2], uni => { quad => 42 } });
 
 Elements not defined in the Perl data structure will be
 set to zero in the packed byte string. If you pass C<undef> as
@@ -2579,7 +2789,7 @@ or simply omit the second parameter, the whole string will be
 initialized with zero bytes. On success, the packed byte
 string is returned.
 
-  print hexdump( data => $binary );
+  print hexdump(data => $binary);
 
 The above code would print:
 
@@ -2587,8 +2797,8 @@ The above code would print:
 
 You could also use L<C<unpack>|/"unpack"> and dump the data structure.
 
-  $unpacked = $c->unpack( 'test', $binary );
-  print Data::Dumper->Dump( [$unpacked], ['unpacked'] );
+  $unpacked = $c->unpack('test', $binary);
+  print Data::Dumper->Dump([$unpacked], ['unpacked']);
 
 This would print:
 
@@ -2612,11 +2822,11 @@ you may pack any member of that compound object. Simply add
 a L<member expression|/"Member Expressions"> to the type
 name, just as you would access the member in C:
 
-  $array = $c->pack( 'test.ary', [1, 2, 3] );
-  print hexdump( data => $array );
+  $array = $c->pack('test.ary', [1, 2, 3]);
+  print hexdump(data => $array);
   
-  $value = $c->pack( 'test.uni.word[1]', 2 );
-  print hexdump( data => $value );
+  $value = $c->pack('test.uni.word[1]', 2);
+  print hexdump(data => $value);
 
 This would give you:
 
@@ -2637,18 +2847,18 @@ having to L<C<unpack>|/"unpack"> everything, change the members, and
 then L<C<pack>|/"pack"> again (which could waste lots of memory
 and CPU cycles). So, instead of doing something like
 
-  $test = $c->unpack( 'test', $binary );
+  $test = $c->unpack('test', $binary);
   $test->{uni}{quad} = 4711;
-  $new = $c->pack( 'test', $test );
+  $new = $c->pack('test', $test);
 
 to change the C<uni.quad> member of C<$packed>, you
 could simply do either
 
-  $new = $c->pack( 'test', { uni => { quad => 4711 } }, $binary );
+  $new = $c->pack('test', { uni => { quad => 4711 } }, $binary);
 
 or
 
-  $c->pack( 'test', { uni => { quad => 4711 } }, $binary );
+  $c->pack('test', { uni => { quad => 4711 } }, $binary);
 
 while the latter would directly modify C<$packed>.
 Besides this code being a lot shorter (and perhaps even
@@ -2665,11 +2875,11 @@ be an exact copy of that string.
   $too_short = pack "C*", (1 .. 4);
   $too_long  = pack "C*", (1 .. 20);
   
-  $c->pack( 'test', { uni => { quad => 0x4711 } }, $too_short );
-  print "too_short:\n", hexdump( data => $too_short );
+  $c->pack('test', { uni => { quad => 0x4711 } }, $too_short);
+  print "too_short:\n", hexdump(data => $too_short);
   
-  $copy = $c->pack( 'test', { uni => { quad => 0x4711 } }, $too_long );
-  print "\ncopy:\n", hexdump( data => $copy );
+  $copy = $c->pack('test', { uni => { quad => 0x4711 } }, $too_long);
+  print "\ncopy:\n", hexdump(data => $copy);
 
 This would print:
 
@@ -2695,9 +2905,10 @@ previously parsed type definition.
   use Convert::Binary::C;
   use Data::Dumper;
   
-  $c = Convert::Binary::C->new( ByteOrder => 'BigEndian',
-                                LongSize  => 4,
-                                ShortSize => 2 )
+  $c = Convert::Binary::C->new( ByteOrder => 'BigEndian'
+                              , LongSize  => 4
+                              , ShortSize => 2
+                              )
                          ->parse( <<'ENDC' );
   struct test {
     char    ary[3];
@@ -2709,15 +2920,15 @@ previously parsed type definition.
   ENDC
   
   # Generate some binary dummy data
-  $binary = pack "C*", (1 .. $c->sizeof('test'));
+  $binary = pack "C*", 1 .. $c->sizeof('test');
 
 On failure, e.g. if the specified type cannot be found, the
 method will throw an exception. On success, a reference to
 a complex Perl data structure is returned, which can directly
 be dumped using the L<Data::Dumper|Data::Dumper> module:
 
-  $unpacked = $c->unpack( 'test', $binary );
-  print Dumper( $unpacked );
+  $unpacked = $c->unpack('test', $binary);
+  print Dumper($unpacked);
 
 This would print:
 
@@ -2744,9 +2955,9 @@ name, just as you would access the member in C:
   $binary2 = substr $binary, $c->offsetof('test', 'uni.word');
   
   $unpack1 = $unpacked->{uni}{word};
-  $unpack2 = $c->unpack( 'test.uni.word', $binary2 );
+  $unpack2 = $c->unpack('test.uni.word', $binary2);
   
-  print Data::Dumper->Dump( [$unpack1, $unpack2], [qw(unpack1 unpack2)] );
+  print Data::Dumper->Dump([$unpack1, $unpack2], [qw(unpack1 unpack2)]);
 
 You will find that the output is exactly the same for
 both C<$unpack1> and C<$unpack2>:
@@ -2799,7 +3010,7 @@ initializers automatically.
 
 Given the above code has been parsed
 
-  $init = $c->initializer( 'data' );
+  $init = $c->initializer('data');
   print "data x = $init;\n";
 
 would print the following:
@@ -2831,7 +3042,7 @@ how you want to initialize the type:
     stuff => 'yes?',
   };
   
-  $init = $c->initializer( 'data', $data );
+  $init = $c->initializer('data', $data);
   print "data x = $init;\n";
 
 This would print the following:
@@ -2856,8 +3067,8 @@ to initialize a member other than the first. This is considered
 a feature, because it allows you to use L<C<unpack>|/"unpack"> to generate
 the initializer data:
 
-  $data = $c->unpack( 'data', $binary );
-  $init = $c->initializer( 'data', $data );
+  $data = $c->unpack('data', $binary);
+  $init = $c->initializer('data', $data);
 
 Since L<C<unpack>|/"unpack"> unpacks all union members, you would
 otherwise have to delete all but the first one previous to feeding
@@ -2881,7 +3092,7 @@ If the type defines some kind of compound object, you may
 ask for the size of a L<member|/"Member Expressions"> of
 that compound object:
 
-  $size = $c->sizeof( 'test.uni.word[1]' );
+  $size = $c->sizeof('test.uni.word[1]');
 
 This would set C<$size> to C<2>.
 
@@ -2952,7 +3163,7 @@ of L<MEMBER|/"Member Expressions"> relative to L<TYPE|/"UNDERSTANDING TYPES">.
                               , LongSize    => 4
                               , PointerSize => 4
                               )
-                         ->parse( <<'ENDC' );
+                         ->parse(<<'ENDC');
   typedef struct {
     char abc;
     long day;
@@ -2968,18 +3179,20 @@ of L<MEMBER|/"Member Expressions"> relative to L<TYPE|/"UNDERSTANDING TYPES">.
     ['test',        'zap[5].day'  ],
     ['test.zap[2]', 'day'         ],
     ['test',        'zap[5].day+1'],
+    ['test',        'zap[-3].ptr' ],
   );
   
-  for( @args ) {
-    my $offset = eval { $c->offsetof( @$_ ) };
-    printf "\$c->offsetof( '%s', '%s' ) => $offset\n", @$_;
+  for (@args) {
+    my $offset = eval { $c->offsetof(@$_) };
+    printf "\$c->offsetof('%s', '%s') => $offset\n", @$_;
   }
 
 The final loop will print:
 
-  $c->offsetof( 'test', 'zap[5].day' ) => 64
-  $c->offsetof( 'test.zap[2]', 'day' ) => 4
-  $c->offsetof( 'test', 'zap[5].day+1' ) => 65
+  $c->offsetof('test', 'zap[5].day') => 64
+  $c->offsetof('test.zap[2]', 'day') => 4
+  $c->offsetof('test', 'zap[5].day+1') => 65
+  $c->offsetof('test', 'zap[-3].ptr') => -28
 
 =over 2
 
@@ -2997,16 +3210,22 @@ iteration.
 
 =item *
 
-Even the L<offset suffix|/"Offsets"> is supported
+The L<offset suffix|/"Offsets"> is also supported
 by L<C<offsetof>|/"offsetof">, so the third iteration
 will correctly print 65.
+
+=item *
+
+The last iteration demonstrates that even out-of-bounds
+array indices are handled correctly, just as they are
+handled in C.
 
 =back
 
 Unlike the C macro, L<C<offsetof>|/"offsetof"> also works
 on array types.
 
-  $offset = $c->offsetof( 'test.zap', '[3].ptr+2' );
+  $offset = $c->offsetof('test.zap', '[3].ptr+2');
   print "offset = $offset";
 
 This will print:
@@ -3017,8 +3236,8 @@ If L<TYPE|/"UNDERSTANDING TYPES"> is a
 compound, L<MEMBER|/"Member Expressions"> may
 optionally be prefixed with a dot, so
 
-  printf "offset = %d\n", $c->offsetof( 'week', 'day' );
-  printf "offset = %d\n", $c->offsetof( 'week', '.day' );
+  printf "offset = %d\n", $c->offsetof('week', 'day');
+  printf "offset = %d\n", $c->offsetof('week', '.day');
 
 are both equivalent and will print
 
@@ -3066,7 +3285,7 @@ parsed type.
                               , LongSize    => 4
                               , PointerSize => 4
                               )
-                         ->parse( <<'ENDC' );
+                         ->parse(<<'ENDC');
   typedef struct {
     char abc;
     long day;
@@ -3078,18 +3297,18 @@ parsed type.
   };
   ENDC
   
-  for my $offset ( 24, 39, 69, 99 ) {
-    print "\$c->member( 'test', $offset )";
-    my $member = eval { $c->member( 'test', $offset ) };
+  for my $offset (24, 39, 69, 99) {
+    print "\$c->member('test', $offset)";
+    my $member = eval { $c->member('test', $offset) };
     print $@ ? "\n  exception: $@" : " => '$member'\n";
   }
 
 This will print:
 
-  $c->member( 'test', 24 ) => '.zap[2].abc'
-  $c->member( 'test', 39 ) => '.zap[3]+3'
-  $c->member( 'test', 69 ) => '.zap[5].ptr+1'
-  $c->member( 'test', 99 )
+  $c->member('test', 24) => '.zap[2].abc'
+  $c->member('test', 39) => '.zap[3]+3'
+  $c->member('test', 69) => '.zap[5].ptr+1'
+  $c->member('test', 99)
     exception: Offset 99 out of range (0 <= offset < 96) 
 
 =over 2
@@ -3116,7 +3335,12 @@ and thus the remaining offset of 1 is also appended.
 
 The last iteration causes an exception because the offset
 of 99 is not valid for C<struct test> since the size
-of C<struct test> is only 96.
+of C<struct test> is only 96. You might argue that this is
+inconsistent, since L<C<offsetof>|/"offsetof"> can also handle
+out-of-bounds array members. But as soon as you have more
+than one level of array nesting, there's an infinite number
+of out-of-bounds members for a single given offset, so it
+would be impossible to return a list of all members.
 
 =back
 
@@ -3254,7 +3478,7 @@ referenced with an offset. Padding regions will be at the end.
 If OFFSET is not given in the method call, L<C<member>|/"member"> will
 return a list of I<all> possible members of L<TYPE|/"UNDERSTANDING TYPES">.
 
-  print "$_\n" for $c->member( 'choice' );
+  print "$_\n" for $c->member('choice');
 
 This will print:
 
@@ -3401,12 +3625,69 @@ convert the C string to a Perl string and vice versa.
 
 See L<"The Format Tag"> for an example.
 
+=item C<ByteOrder> =E<gt> 'BigEndian' | 'LittleEndian'
+
+The C<ByteOrder> tag allows you to explicitly set the byte
+order of a L<TYPE|/"UNDERSTANDING TYPES">.
+
+See L<"The ByteOrder Tag"> for an example.
+
+=item C<Dimension> =E<gt> '*'
+
+=item C<Dimension> =E<gt> VALUE
+
+=item C<Dimension> =E<gt> MEMBER
+
+=item C<Dimension> =E<gt> SUB
+
+=item C<Dimension> =E<gt> [ SUB, ARGS ]
+
+The C<Dimension> tag allows you to alter the size of an array
+dynamically.
+
+You can tag fixed size arrays as being flexible using C<'*'>.
+This is useful if you cannot use flexible array members in
+your source code.
+
+  $c->tag('type.array', Dimension => '*');
+
+You can also tag an array to have a fixed size different
+from the one it was originally declared with.
+
+  $c->tag('type.array', Dimension => 42);
+
+If the array is a member of a compound, you can also tag it
+with to have a size corresponding to the value of another
+member in that compound.
+
+  $c->tag('type.array', Dimension => 'count');
+
+Finally, you can specify a subroutine that is called when
+the size of the array needs to be determined.
+
+  $c->tag('type.array', Dimension => \&get_count);
+
+By default, and if the array is a compound member, that
+subroutine will be passed a reference to the hash storing
+the data for the compound.
+
+You can also instruct Convert::Binary::C to pass additional
+arguments to the subroutine by passing an array reference
+instead of the subroutine reference. This array contains
+the subroutine reference as well as a list of arguments.
+It is possible to define certain special arguments using
+the L<C<arg>|/"arg"> method.
+
+  $c->tag('type.array', Dimension => [\&get_count, $c->arg('SELF'), 42]);
+
+See L<"The Dimension Tag"> for various examples.
+
 =item C<Hooks> =E<gt> { HOOK =E<gt> SUB, HOOK =E<gt> [ SUB, ARGS ], ... }, ...
 
 The C<Hooks> tag allows you to register subroutines as hooks.
 
 Hooks are called whenever a certain C<TYPE> is packed or
-unpacked. Hooks are currently considered an experimental
+unpacked. Hooks are currently considered an B<experimental>
 feature.
 
 C<HOOK> can be one of the following:
@@ -3496,15 +3777,15 @@ See L<"USING TAGS"> for an example.
 
 =item C<arg> 'ARG', ...
 
-Creates placeholders for special arguments to be passed to hook
-subroutines. These arguments are currently:
+Creates placeholders for special arguments to be passed to hooks
+or other subroutines. These arguments are currently:
 
 =over 4
 
 =item C<SELF>
 
 A reference to the calling Convert::Binary::C object. This may be
-useful if you need to work with the object inside the hook.
+useful if you need to work with the object inside the subroutine.
 
 =item C<TYPE>
 
@@ -3512,17 +3793,18 @@ The name of the type that is currently being processed by the hook.
 
 =item C<DATA>
 
-The data argument that is usually passed to the hook.
+The data argument that is passed to the subroutine.
 
 =item C<HOOK>
 
-The type of the hook as which the hook has been called,
+The type of the hook as which the subroutine has been called,
 for example C<pack> or C<unpack_ptr>.
 
 =back
 
 L<C<arg>|/"arg"> will return a placeholder for each argument it is
-being passed.
+being passed. Note that not all arguments may be supported depending
+on the context of the subroutine.
 
 =back
 
@@ -3551,9 +3833,9 @@ moment it was parsed.
   # Create object, set include path, parse 'string.h' header
   #----------------------------------------------------------
   my $c = Convert::Binary::C->new
-          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include',
-                     '/usr/include' )
-          ->parse_file( 'string.h' );
+          ->Include('/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include',
+                    '/usr/include')
+          ->parse_file('string.h');
   
   #----------------------------------------------------------
   # Get dependencies of the object, extract dependency files
@@ -3564,8 +3846,8 @@ moment it was parsed.
   #-----------------------------
   # Dump dependencies and files
   #-----------------------------
-  print Data::Dumper->Dump( [$depend, \@files],
-                         [qw( depend   *files )] );
+  print Data::Dumper->Dump([$depend, \@files],
+                        [qw( depend   *files )]);
 
 The above code would print something like this:
 
@@ -3621,13 +3903,13 @@ are equivalent:
 
 =item C<sourcify> CONFIG
 
-Returns a string that holds the C code necessary to
+Returns a string that holds the C source code necessary to
 represent all parsed C data structures.
 
   use Convert::Binary::C;
   
   $c = new Convert::Binary::C;
-  $c->parse( <<'END' );
+  $c->parse(<<'END');
   
   #define ADD(a, b) ((a) + (b))
   #define NUMBER 42
@@ -3692,9 +3974,10 @@ The above code would print something like this:
 
 The purpose of the L<C<sourcify>|/"sourcify"> method is to enable
 some kind of platform-independent caching. The C code generated
-by L<C<sourcify>|/"sourcify"> can be parsed by a standard C compiler,
-as well as of course the Convert::Binary::C parser. However, it might
-be significantly shorter than the code that has originally been parsed.
+by L<C<sourcify>|/"sourcify"> can be parsed by any standard C compiler,
+as well as of course by the Convert::Binary::C parser. However, the code
+may be significantly shorter than the code that has originally been parsed.
+
 When parsing a typical header file, it's easily possible that you need
 to open dozens of other files that are included from that file, and
 end up parsing several hundred kilobytes of C code. Since most of it
@@ -3715,7 +3998,7 @@ Turns preprocessor context information on or off. If this is turned
 on, L<C<sourcify>|/"sourcify"> will insert C<#line> preprocessor
 directives in its output. So in the above example
 
-  print $c->sourcify( { Context => 1 } );
+  print $c->sourcify({ Context => 1 });
 
 would print:
 
@@ -3764,10 +4047,10 @@ using L<C<parse>|/"parse">.
 
 =item C<Defines> =E<gt> 0 | 1
 
-Turn this on if you want the defined macros to be part of the
-code output. Given the example code above
+Turn this on if you want all the defined macros to be part of
+the source code output. Given the example code above
 
-  print $c->sourcify( { Defines => 1 } );
+  print $c->sourcify({ Defines => 1 });
 
 would print:
 
@@ -3810,6 +4093,7 @@ would print:
   #define ADD(a, b) ((a) + (b))
   #define NUMBER 42
 
+The macro definitions always appear at the end of the source code.
 The order of the macro definitions is undefined.
 
 =back
@@ -4757,6 +5041,9 @@ which will unpack the following array:
     1061109567
   ];
 
+You can also alter the length of an array using
+the L<C<Dimension>|/"The Dimension Tag"> tag.
+
 =head1 FLOATING POINT VALUES
 
 When using Convert::Binary::C to handle floating point values,
@@ -4794,7 +5081,7 @@ and will not attempt to convert the floating point value.
 =head1 BITFIELDS
 
 Bitfield support in Convert::Binary::C is currently in an
-experimental state. You are encouraged to test it, but you
+B<experimental> state. You are encouraged to test it, but you
 should not blindly rely on its results.
 
 You are also encouraged to supply layouting algorithms for
@@ -4959,7 +5246,7 @@ StrongARM
 
 =back
 
-The module should build with any perl binary from 5.5.3
+The module should build with any perl binary from 5.004
 up to the latest development version.
 
 =head1 COMPARISON WITH SIMILAR MODULES
@@ -5086,6 +5373,33 @@ use the CPAN Request Tracker at L<http://rt.cpan.org/> to
 create a ticket for the module. Alternatively, just send a
 mail to E<lt>mhx@cpan.orgE<gt>.
 
+=head1 EXPERIMENTAL FEATURES
+
+Some features in Convert::Binary::C are marked as experimental.
+This has most probably one of the following reasons:
+
+=over 2
+
+=item *
+
+The feature does not behave in exactly the way that I wish
+it did, possibly due to some limitations in the current
+design of the module.
+
+=item *
+
+The feature hasn't been tested enough and may completely
+fail to produce the expected results.
+
+=back
+
+I hope to fix most issues with these experimental features
+someday, but this may mean that I have to change the way
+they currently work in a way that's not backwards compatible.
+So if any of these features is useful to you, you can use
+it, but you should be aware that the behaviour or the
+interface may change in future releases of this module.
+
 =head1 TODO
 
 If you're interested in what I currently plan to improve
@@ -5127,6 +5441,4 @@ linked to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
-
-
 

@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/04 12:44:55 +0000 $
-* $Revision: 14 $
+* $Date: 2006/03/11 13:48:59 +0000 $
+* $Revision: 15 $
 * $Source: /cbc/tag.c $
 *
 ********************************************************************************
@@ -37,6 +37,7 @@
 /*===== LOCAL INCLUDES =======================================================*/
 
 #include "cbc/hook.h"
+#include "cbc/dimension.h"
 #include "cbc/tag.h"
 #include "cbc/util.h"
 
@@ -81,6 +82,28 @@ typedef void     (* TagVerifyMethod)(pTHX_ const TagTypeInfo *ptti, const CtTag 
 
 
 /*===== STATIC FUNCTIONS =====================================================*/
+
+/*
+ *                 So, how and when are tag methods called?
+ *
+ * Upon tag creation, TAG_INIT() is called to initialize the newly allocated
+ * tag object. This can be used to allocate extra memory to store more tag
+ * information or simply to initialize the flags and any members.
+ *
+ * TAG_CLONE() is obviously called when a tag object is cloned.
+ *
+ * TAG_FREE() is called when when a tag is removed from a taglist and the
+ * tag object is about to be destroyed.
+ *
+ * TAG_SET() is called when the tag is assigned a (new) value. This method
+ * can itself decide whether a SET is an UPDATE or a DELETE. In the latter
+ * case, TAG_FREE() will be called after TAG_SET() returns.
+ *
+ * TAG_GET() is called to get information about the tag object.
+ *
+ * TAG_VERIFY() is optionally called before TAG_SET() / TAG_GET(), but you
+ * usually don't need to implement it if you implement the latter methods.
+ */
 
 /*******************************************************************************
 *
@@ -210,6 +233,64 @@ static TAG_GET(Hooks)
   return newRV_noinc((SV *) get_hooks(aTHX_ tag->any));
 }
 
+/*******************************************************************************
+*
+*   ROUTINE: Dimension_*
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static TAG_INIT(Dimension)
+{
+  tag->any = dimtag_new(NULL);
+}
+
+static TAG_CLONE(Dimension)
+{
+  dst->any = dimtag_new(src->any);
+}
+
+static TAG_FREE(Dimension)
+{
+  dimtag_delete(tag->any);
+}
+
+static TAG_SET(Dimension)
+{
+  if (SvOK(val))
+  {
+    DimensionTag newdim;
+
+    if (dimtag_parse(aTHX_ &ptti->mi, ptti->type, val, &newdim) > 0)
+    {
+      dimtag_update(tag->any, &newdim);
+
+      return TSRV_UPDATE;
+    }
+  }
+
+  return TSRV_DELETE;
+}
+
+static TAG_GET(Dimension)
+{
+  return dimtag_get(aTHX_ tag->any);
+}
+
+static TAG_VERIFY(Dimension)
+{
+  dimtag_verify(aTHX_ &ptti->mi, ptti->type);
+}
 
 /*===== FUNCTIONS ============================================================*/
 

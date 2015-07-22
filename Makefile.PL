@@ -3,8 +3,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/02/26 17:38:38 +0000 $
-# $Revision: 97 $
+# $Date: 2006/03/11 13:41:28 +0000 $
+# $Revision: 98 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -77,6 +77,7 @@ $BISON = $Config{bison} || 'bison';
 
 @OBJECT = qw(
   cbc/basic
+  cbc/dimension
   cbc/hook
   cbc/idl
   cbc/init
@@ -561,6 +562,9 @@ END
   }
 
   $::FEATURES{'$coverage'}{enabled} and $postamble .= <<END;
+
+cover_clean:
+	\@rm -f *.bb *.gcda *.gcov
 
 cover_simple:
 	\@for file in *.bb *.gcda; do \$(GCOV) -p \$\$file; done

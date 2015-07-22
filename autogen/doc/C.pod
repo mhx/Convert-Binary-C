@@ -434,6 +434,16 @@ easy as well (and of course it doesn't matter which index you use):
 
   $$types.pl [6]$$
 
+Just like in C, it is possible to use out-of-bounds array indices.
+This means that, for example, despite C<array> is declared to have
+20 elements, the following code
+
+  $$types.pl [12]$$
+
+is perfectly valid and will result in:
+
+  @@types.pl [6]@@
+
 Member expressions can be arbitrarily complex:
 
   $$types.pl [7]$$
@@ -572,7 +582,7 @@ being thrown by the L<C<tag>|/"tag"> method.
 
 The C<ByteOrder> tag allows you to override the byte order of
 certain types or members. The implementation of this tag is
-considered experimental and may be subject to changes in the
+considered B<experimental> and may be subject to changes in the
 future.
 
 Usually it doesn't make much sense to override the byte order,
@@ -653,6 +663,123 @@ along with a big endian L<C<clone>|/"clone"> of the original
 little endian object. It attaches hooks to the little endian
 object and in the hooks it uses the big endian object
 to L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> the binary data.
+
+=head2 The Dimension Tag
+
+The C<Dimension> tag allows you to override the declared dimension
+of an array for packing or unpacking data. The implementation of
+this tag is considered B<experimental> and may be subject to changes
+in the future.
+
+The C<Dimension> tag is primarily useful to support variable length
+arrays. Usually, you have to write the following code for such a
+variable length array in C:
+
+  $$dimension.pl [1]$$
+
+So, because you cannot declare an empty array, you declare an array
+with a single element. If you have a ISO-C99 compliant compiler,
+you can write this code instead:
+
+  $$dimension.pl [2]$$
+
+This explicitly tells the compiler that C<data> is a flexible array
+member. Convert::Binary::C already uses this information to
+handle L<flexible array members|/"FLEXIBLE ARRAY MEMBERS AND INCOMPLETE TYPES"> in
+a special way.
+
+As you can see in the following example, the two types are treated
+differently:
+
+  $$dimension.pl [3]$$
+
+This will result in:
+
+  @@dimension.pl [1]@@
+
+However, only few compilers support ISO-C99, and you probably don't want
+to change your existing code only to get some extra features when
+using Convert::Binary::C.
+
+So it is possible to attach a tag to the C<data> member of
+the C<c_message> struct that tells Convert::Binary::C to treat
+the array as if it were flexible:
+
+  $$dimension.pl [4]$$
+
+Now both C<c_message> and C<c99_message> will behave exactly the
+same when using L<C<pack>|/"pack"> or L<C<unpack>|/"unpack">.
+Repeating the above code:
+
+  $$dimension.pl [5]$$
+
+This will result in:
+
+  @@dimension.pl [2]@@
+
+But there's more you can do. Even though it probably doesn't
+make much sense, you can tag a fixed dimension to an array:
+
+  $$dimension.pl [6]$$
+
+This will obviously result in:
+
+  @@dimension.pl [3]@@
+
+A more useful way to use the C<Dimension> tag is to set it to
+the name of a member in the same compound:
+
+  $$dimension.pl [7]$$
+
+Convert::Binary::C will now use the value of that member to
+determine the size of the array, so unpacking will result in:
+
+  @@dimension.pl [4]@@
+
+Of course, you can also tag flexible array members. And yes,
+it's also possible to use more complex member expressions:
+
+  $$dimension.pl [8]$$
+
+The result will be:
+
+  @@dimension.pl [5]@@
+
+By the way, it's also possible to tag arrays that are not
+embedded inside a compound:
+
+  $$dimension.pl [9]$$
+
+Resulting in:
+
+  @@dimension.pl [6]@@
+
+The final and most powerful way to define a C<Dimension> tag is
+to pass it a subroutine reference. The referenced subroutine can
+execute whatever code is neccessary to determine the size of the
+tagged array:
+
+  $$dimension.pl [10]$$
+  
+As you can guess from the above code, the subroutine is being passed
+a reference to hash that stores the already unpacked part of the
+compound embedding the tagged array. This is the result:
+
+  @@dimension.pl [7]@@
+
+You can also pass custom arguments to the subroutines by using
+the L<C<arg>|/"arg"> method. This is similar to the functionality
+offered by the L<C<Hooks>|/"The Hooks Tag"> tag.
+
+Of course, all that also works for the L<C<pack>|/"pack"> method
+as well.
+
+However, the current implementation has at least one shortcomings,
+which is why it's experimental: The C<Dimension> tag doesn't impact
+compound layout. This means that while you can alter the size of an
+array in the middle of a compound, the offset of the members after
+that array won't be impacted. I'd rather like to see the layout adapt
+dynamically, so this is what I'm hoping to implement in the future.
 
 =head2 The Hooks Tag
 
@@ -1744,6 +1871,12 @@ The following would be returned by the L<C<def>|/"def"> method:
 So, if L<C<def>|/"def"> returns a non-empty string, you can safely use
 any other method with that type's name or with that member expression.
 
+Concerning arrays, note that the index into an array doesn't
+need to be within the bounds of the array's definition, just
+like in C. In the above example, C<quad[5]> and C<quad[-3]> are
+valid members of the C<quad> array, even though it is declared to
+have only four elements.
+
 In cases where the typedef namespace overlaps with the
 namespace of enums/structs/unions, the L<C<def>|/"def"> method
 will give preference to the typedef and will thus return
@@ -2048,9 +2181,15 @@ iteration.
 
 =item *
 
-Even the L<offset suffix|/"Offsets"> is supported
+The L<offset suffix|/"Offsets"> is also supported
 by L<C<offsetof>|/"offsetof">, so the third iteration
 will correctly print 65.
+
+=item *
+
+The last iteration demonstrates that even out-of-bounds
+array indices are handled correctly, just as they are
+handled in C.
 
 =back
 
@@ -2138,7 +2277,12 @@ and thus the remaining offset of 1 is also appended.
 
 The last iteration causes an exception because the offset
 of 99 is not valid for C<struct test> since the size
-of C<struct test> is only 96.
+of C<struct test> is only 96. You might argue that this is
+inconsistent, since L<C<offsetof>|/"offsetof"> can also handle
+out-of-bounds array members. But as soon as you have more
+than one level of array nesting, there's an infinite number
+of out-of-bounds members for a single given offset, so it
+would be impossible to return a list of all members.
 
 =back
 
@@ -2323,12 +2467,69 @@ convert the C string to a Perl string and vice versa.
 
 See L<"The Format Tag"> for an example.
 
+=item C<ByteOrder> =E<gt> 'BigEndian' | 'LittleEndian'
+
+The C<ByteOrder> tag allows you to explicitly set the byte
+order of a L<TYPE|/"UNDERSTANDING TYPES">.
+
+See L<"The ByteOrder Tag"> for an example.
+
+=item C<Dimension> =E<gt> '*'
+
+=item C<Dimension> =E<gt> VALUE
+
+=item C<Dimension> =E<gt> MEMBER
+
+=item C<Dimension> =E<gt> SUB
+
+=item C<Dimension> =E<gt> [ SUB, ARGS ]
+
+The C<Dimension> tag allows you to alter the size of an array
+dynamically.
+
+You can tag fixed size arrays as being flexible using C<'*'>.
+This is useful if you cannot use flexible array members in
+your source code.
+
+  $$dimension2.pl [2]$$
+
+You can also tag an array to have a fixed size different
+from the one it was originally declared with.
+
+  $$dimension2.pl [3]$$
+
+If the array is a member of a compound, you can also tag it
+with to have a size corresponding to the value of another
+member in that compound.
+
+  $$dimension2.pl [4]$$
+
+Finally, you can specify a subroutine that is called when
+the size of the array needs to be determined.
+
+  $$dimension2.pl [5]$$
+
+By default, and if the array is a compound member, that
+subroutine will be passed a reference to the hash storing
+the data for the compound.
+
+You can also instruct Convert::Binary::C to pass additional
+arguments to the subroutine by passing an array reference
+instead of the subroutine reference. This array contains
+the subroutine reference as well as a list of arguments.
+It is possible to define certain special arguments using
+the L<C<arg>|/"arg"> method.
+
+  $$dimension2.pl [6]$$
+
+See L<"The Dimension Tag"> for various examples.
+
 =item C<Hooks> =E<gt> { HOOK =E<gt> SUB, HOOK =E<gt> [ SUB, ARGS ], ... }, ...
 
 The C<Hooks> tag allows you to register subroutines as hooks.
 
 Hooks are called whenever a certain C<TYPE> is packed or
-unpacked. Hooks are currently considered an experimental
+unpacked. Hooks are currently considered an B<experimental>
 feature.
 
 C<HOOK> can be one of the following:
@@ -2403,15 +2604,15 @@ See L<"USING TAGS"> for an example.
 
 =item C<arg> 'ARG', ...
 
-Creates placeholders for special arguments to be passed to hook
-subroutines. These arguments are currently:
+Creates placeholders for special arguments to be passed to hooks
+or other subroutines. These arguments are currently:
 
 =over 4
 
 =item C<SELF>
 
 A reference to the calling Convert::Binary::C object. This may be
-useful if you need to work with the object inside the hook.
+useful if you need to work with the object inside the subroutine.
 
 =item C<TYPE>
 
@@ -2419,17 +2620,18 @@ The name of the type that is currently being processed by the hook.
 
 =item C<DATA>
 
-The data argument that is usually passed to the hook.
+The data argument that is passed to the subroutine.
 
 =item C<HOOK>
 
-The type of the hook as which the hook has been called,
+The type of the hook as which the subroutine has been called,
 for example C<pack> or C<unpack_ptr>.
 
 =back
 
 L<C<arg>|/"arg"> will return a placeholder for each argument it is
-being passed.
+being passed. Note that not all arguments may be supported depending
+on the context of the subroutine.
 
 =back
 
@@ -2473,7 +2675,7 @@ are equivalent:
 
 =item C<sourcify> CONFIG
 
-Returns a string that holds the C code necessary to
+Returns a string that holds the C source code necessary to
 represent all parsed C data structures.
 
   $$sourcify.pl [1]$$
@@ -2484,9 +2686,10 @@ The above code would print something like this:
 
 The purpose of the L<C<sourcify>|/"sourcify"> method is to enable
 some kind of platform-independent caching. The C code generated
-by L<C<sourcify>|/"sourcify"> can be parsed by a standard C compiler,
-as well as of course the Convert::Binary::C parser. However, it might
-be significantly shorter than the code that has originally been parsed.
+by L<C<sourcify>|/"sourcify"> can be parsed by any standard C compiler,
+as well as of course by the Convert::Binary::C parser. However, the code
+may be significantly shorter than the code that has originally been parsed.
+
 When parsing a typical header file, it's easily possible that you need
 to open dozens of other files that are included from that file, and
 end up parsing several hundred kilobytes of C code. Since most of it
@@ -2518,8 +2721,8 @@ using L<C<parse>|/"parse">.
 
 =item C<Defines> =E<gt> 0 | 1
 
-Turn this on if you want the defined macros to be part of the
-code output. Given the example code above
+Turn this on if you want all the defined macros to be part of
+the source code output. Given the example code above
 
   $$sourcify.pl [3]$$
 
@@ -2527,6 +2730,7 @@ would print:
 
   @@sourcify.pl [3]@@
 
+The macro definitions always appear at the end of the source code.
 The order of the macro definitions is undefined.
 
 =back
@@ -3168,6 +3372,9 @@ which will unpack the following array:
 
   @@flexarray.pl [3]@@
 
+You can also alter the length of an array using
+the L<C<Dimension>|/"The Dimension Tag"> tag.
+
 =head1 FLOATING POINT VALUES
 
 When using Convert::Binary::C to handle floating point values,
@@ -3205,7 +3412,7 @@ and will not attempt to convert the floating point value.
 =head1 BITFIELDS
 
 Bitfield support in Convert::Binary::C is currently in an
-experimental state. You are encouraged to test it, but you
+B<experimental> state. You are encouraged to test it, but you
 should not blindly rely on its results.
 
 You are also encouraged to supply layouting algorithms for
@@ -3317,7 +3524,7 @@ StrongARM
 
 =back
 
-The module should build with any perl binary from 5.5.3
+The module should build with any perl binary from 5.004
 up to the latest development version.
 
 =head1 COMPARISON WITH SIMILAR MODULES
@@ -3444,6 +3651,33 @@ use the CPAN Request Tracker at L<http://rt.cpan.org/> to
 create a ticket for the module. Alternatively, just send a
 mail to E<lt>mhx@cpan.orgE<gt>.
 
+=head1 EXPERIMENTAL FEATURES
+
+Some features in Convert::Binary::C are marked as experimental.
+This has most probably one of the following reasons:
+
+=over 2
+
+=item *
+
+The feature does not behave in exactly the way that I wish
+it did, possibly due to some limitations in the current
+design of the module.
+
+=item *
+
+The feature hasn't been tested enough and may completely
+fail to produce the expected results.
+
+=back
+
+I hope to fix most issues with these experimental features
+someday, but this may mean that I have to change the way
+they currently work in a way that's not backwards compatible.
+So if any of these features is useful to you, you can use
+it, but you should be aware that the behaviour or the
+interface may change in future releases of this module.
+
 =head1 TODO
 
 If you're interested in what I currently plan to improve
@@ -3485,6 +3719,4 @@ linked to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
-
-
 

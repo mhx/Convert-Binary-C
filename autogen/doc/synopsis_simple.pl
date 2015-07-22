@@ -3,7 +3,7 @@ use Convert::Binary::C;
 #---------------------------------------------
 # Create a new object and parse embedded code
 #---------------------------------------------
-my $c = Convert::Binary::C->new->parse( <<ENDC );
+my $c = Convert::Binary::C->new->parse(<<ENDC);
 
 enum Month { JAN, FEB, MAR, APR, MAY, JUN,
              JUL, AUG, SEP, OCT, NOV, DEC };
@@ -21,4 +21,4 @@ ENDC
 #-----------------------------------------------
 my $date = { year => 2002, month => 'DEC', day => 24 };
 
-my $packed = $c->pack( 'Date', $date );
+my $packed = $c->pack('Date', $date);

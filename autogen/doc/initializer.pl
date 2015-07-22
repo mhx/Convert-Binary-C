@@ -2,7 +2,7 @@ use Convert::Binary::C; #-8<-
 use Data::Dumper; #-8<-
 $Data::Dumper::Indent = 1; $^W = 0; #-8<-
 
-$c = Convert::Binary::C->new->parse( <<'#-8<-' );
+$c = Convert::Binary::C->new->parse(<<'#-8<-');
 struct date {
   unsigned year : 12;
   unsigned month:  4;
@@ -21,7 +21,7 @@ typedef struct {
 } data;
 #-8<-
 
-$init = $c->initializer( 'data' );
+$init = $c->initializer('data');
 print "data x = $init;\n";
 
 print "#-8<-\n";
@@ -37,12 +37,12 @@ $data = {
   stuff => 'yes?',
 };
 
-$init = $c->initializer( 'data', $data );
+$init = $c->initializer('data', $data);
 print "data x = $init;\n";
 
 #-8<-
 
-$binary = 'x'x $c->sizeof( 'data' ); #-8<-
-$data = $c->unpack( 'data', $binary );
-$init = $c->initializer( 'data', $data );
+$binary = 'x'x $c->sizeof('data'); #-8<-
+$data = $c->unpack('data', $binary);
+$init = $c->initializer('data', $data);
 

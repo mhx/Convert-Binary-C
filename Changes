@@ -1,4 +1,14 @@
 ----------------------------
+Version 0.64_02 (2006-03-24)
+----------------------------
+
+* struct members are now treated more Cish than before
+
+* added experimental Dimension tag
+
+* cleaned up some internals
+
+----------------------------
 Version 0.64_01 (2006-02-27)
 ----------------------------
 

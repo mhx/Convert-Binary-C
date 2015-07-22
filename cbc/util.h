@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:01 +0000 $
-* $Revision: 6 $
+* $Date: 2006/03/10 15:24:58 +0000 $
+* $Revision: 7 $
 * $Source: /cbc/util.h $
 *
 ********************************************************************************
@@ -76,5 +76,8 @@ LinkedList clone_string_list(LinkedList list);
 
 #define dump_sv CBC_dump_sv
 void dump_sv(pTHX_ SV *buf, int level, SV *sv);
+
+#define identify_sv CBC_identify_sv
+const char *identify_sv(SV *sv);
 
 #endif

@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/04 22:22:23 +0000 $
-* $Revision: 7 $
+* $Date: 2006/03/11 13:50:47 +0000 $
+* $Revision: 8 $
 * $Source: /cbc/type.h $
 *
 ********************************************************************************
@@ -63,7 +63,10 @@ SV *get_type_name_string(pTHX_ const MemberInfo *pMI);
 #define is_typedef_defined CBC_is_typedef_defined
 int is_typedef_defined(Typedef *pTypedef);
 
+#define check_allowed_types_string CBC_check_allowed_types_string
+const char *check_allowed_types_string(const MemberInfo *pMI, U32 allowed_types);
+
 #define check_allowed_types CBC_check_allowed_types
-void check_allowed_types(pTHX_ const MemberInfo *pMI, const char *method, U32 allowedTypes);
+void check_allowed_types(pTHX_ const MemberInfo *pMI, const char *method, U32 allowed_types);
 
 #endif

@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:00 +0000 $
-* $Revision: 11 $
+* $Date: 2006/03/10 15:24:56 +0000 $
+* $Revision: 12 $
 * $Source: /cbc/util.c $
 *
 ********************************************************************************
@@ -679,5 +679,44 @@ void dump_sv(pTHX_ SV *buf, int level, SV *sv)
       /* nothing */
       break;
   }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: identify_sv
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Identify an SV and return a string describing its type.
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+const char *identify_sv(SV *sv)
+{
+  if (sv == NULL || !SvOK(sv)) return "an undefined value";
+
+  if (SvROK(sv))
+  {
+    switch (SvTYPE(SvRV(sv)))
+    {
+      case SVt_PVAV: return "an array reference";
+      case SVt_PVHV: return "a hash reference";
+      case SVt_PVCV: return "a code reference";
+      default:       return "a reference";
+    }
+  }
+
+  if (SvIOK(sv)) return "an integer value";
+  if (SvNOK(sv)) return "a numeric value";
+  if (SvPOK(sv)) return "a string value";
+
+  return "an unknown value";
 }
 

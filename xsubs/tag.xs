@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/04 22:27:03 +0000 $
-# $Revision: 5 $
+# $Date: 2006/03/10 15:25:58 +0000 $
+# $Revision: 6 $
 # $Source: /xsubs/tag.xs $
 #
 ################################################################################
@@ -60,9 +60,11 @@ CBC::tag(type, ...)
       XSRETURN_EMPTY;
     }
 
+    NEED_PARSE_DATA;
+
     tti.type = type;
 
-    if (!get_member_info(aTHX_ THIS, type, &tti.mi, CBC_GMI_NO_CALC))
+    if (!get_member_info(aTHX_ THIS, type, &tti.mi, 0))
       Perl_croak(aTHX_ "Cannot find '%s'", type);
 
     if (tti.mi.level != 0)

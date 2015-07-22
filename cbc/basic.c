@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:37:56 +0000 $
-* $Revision: 3 $
+* $Date: 2006/03/12 11:10:51 +0000 $
+* $Revision: 4 $
 * $Source: /cbc/basic.c $
 *
 ********************************************************************************
@@ -295,7 +295,7 @@ int get_basic_type_spec(const char *name, TypeSpec *pTS)
   {
     success:
     /* skip whitespace */
-    while (*name && isSPACE(*name))
+    while (isSPACE(*name))
       name++;
 
     if (*name == '\0')
@@ -306,7 +306,7 @@ int get_basic_type_spec(const char *name, TypeSpec *pTS)
 
     c = name++;
 
-    while (*name && isALPHA(*name))
+    while (isALPHA(*name))
       name++;
 
     if (*name != '\0' && !isSPACE(*name))

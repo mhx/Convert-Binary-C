@@ -6,13 +6,13 @@ $c = new Convert::Binary::C Alignment => 4, CompoundAlignment => 4;
 
 #-8<-
 
-$c->parse( <<'#-8<-' );
+$c->parse(<<'#-8<-');
 struct onebyte {
   char byte;
 };
 #-8<-
 
-$c->parse( <<'#-8<-' );
+$c->parse(<<'#-8<-');
 typedef unsigned char U8;
 
 struct msg_head {

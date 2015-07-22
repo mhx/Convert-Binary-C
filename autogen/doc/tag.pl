@@ -4,7 +4,7 @@ $Data::Dumper::Indent = 1; #-8<-
 
 sub rout { @_ } #-8<-
 
-$c = Convert::Binary::C->new(ByteOrder => 'BigEndian')->parse( <<'#-8<-' );
+$c = Convert::Binary::C->new(ByteOrder => 'BigEndian')->parse(<<'#-8<-');
 struct test {
   int a;
   struct {
