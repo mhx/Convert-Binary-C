@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/04/04 20:19:02 +0100 $
-* $Revision: 32 $
+* $Date: 2005/05/29 09:23:02 +0100 $
+* $Revision: 34 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
@@ -54,15 +54,13 @@ typedef struct {
 
   void (*layout_compound)(const LayoutParam *, Struct *);
 
-  u_32 flags;
-
-#define CHARS_ARE_UNSIGNED   0x00000001U    /* TODO: this shouldn't be here */
-#define ISSUE_WARNINGS       0x00000002U
-
-#define HAS_CPP_COMMENTS     0x00010000U
-#define HAS_MACRO_VAARGS     0x00020000U
-
-#define DISABLE_PARSER       0x80000000U
+  /* boolean options */
+  unsigned unsigned_chars     : 1;
+  unsigned unsigned_bitfields : 1;
+  unsigned issue_warnings     : 1;
+  unsigned disable_parser     : 1;
+  unsigned has_cpp_comments   : 1;
+  unsigned has_macro_vaargs   : 1;
 
   u_32 keywords;
 

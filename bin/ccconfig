@@ -11,8 +11,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/05/12 20:10:37 +0100 $
-# $Revision: 58 $
+# $Date: 2005/06/10 13:15:30 +0100 $
+# $Revision: 59 $
 # $Source: /bin/ccconfig $
 #
 ################################################################################
@@ -29,7 +29,7 @@ use Data::Dumper;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = ('$Snapshot: /Convert-Binary-C/0.58_01 $' =~ /([^\/\s]+)\s*\$$/)[0];
+my $VERSION = ('$Snapshot: /Convert-Binary-C/0.59 $' =~ /([^\/\s]+)\s*\$$/)[0];
 my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT = (
   'output-format' => 'dumper',
@@ -2930,5 +2930,3 @@ it under the same terms as Perl itself.
 See L<Convert::Binary::C>.
 
 =cut
-
-

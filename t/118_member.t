@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/01/23 11:49:28 +0000 $
-# $Revision: 10 $
+# $Date: 2005/05/26 10:19:32 +0100 $
+# $Revision: 11 $
 # $Source: /t/118_member.t $
 #
 ################################################################################
@@ -232,10 +232,8 @@ sub run_tests {
       }
     }
     for( @warn ) {
-      unless( /^\QBitfields are unsupported/ ) {
-        print "# wrong warning\n";
-        $fail++;
-      }
+      print "# wrong warning\n";
+      $fail++;
     }
     ok( $fail == 0 );
     ok( $success > 0 );

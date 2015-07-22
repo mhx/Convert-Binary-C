@@ -37,4 +37,31 @@ print "#-8<-\n";
 $tags = $c->tag('test.a');
 
 print Data::Dumper->Dump([$tags], [qw(tags)]); #-8<-
+print "#-8<-\n";
+
+#-8<-
+
+$u = $data = 'x'x100; #-8<-
+
+$c->parse(<<ENDC);
+struct header {
+  int id;
+  int len;
+  unsigned flags;
+};
+
+struct message {
+  struct header;
+  short samples[32];
+};
+ENDC
+
+for my $type (qw( header message header.len )) {
+  $c->tag($type, Hooks => { unpack => sub { print "unpack: $type\n"; @_ } });
+}
+
+for my $type (qw( header message )) {
+  print "[unpacking $type]\n";
+  $u = $c->unpack($type, $data);
+}
 

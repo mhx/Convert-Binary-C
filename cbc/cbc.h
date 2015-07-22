@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/04/22 12:51:50 +0100 $
-* $Revision: 11 $
+* $Date: 2005/05/29 09:23:00 +0100 $
+* $Revision: 14 $
 * $Source: /cbc/cbc.h $
 *
 ********************************************************************************
@@ -213,19 +213,14 @@
 
 #define WARN(args) STMT_START { if (PERL_WARNINGS_ON) Perl_warn args; } STMT_END
 
-#define WARN2(args) STMT_START { if (PERL_WARNINGS_ON && THIS->cfg.flags & ISSUE_WARNINGS) Perl_warn args; } STMT_END
-
-#define WARN_BITFIELDS(type) \
-          WARN((aTHX_ "Bitfields are unsupported in %s('%s')", method, type))
+#define WARN2(args) STMT_START { if (PERL_WARNINGS_ON && THIS->cfg.issue_warnings) Perl_warn args; } STMT_END
 
 #define WARN_UNSAFE(type) \
           WARN((aTHX_ "Unsafe values used in %s('%s')", method, type))
 
 #define WARN_FLAGS(type, flags)                                                \
           STMT_START {                                                         \
-            if ((flags) & T_HASBITFIELD)                                       \
-              WARN_BITFIELDS(type);                                            \
-            else if ((flags) & T_UNSAFE_VAL)                                   \
+            if ((flags) & T_UNSAFE_VAL)                                        \
               WARN_UNSAFE(type);                                               \
           } STMT_END
 
@@ -326,8 +321,8 @@ typedef struct {
     ET_INTEGER, ET_STRING, ET_BOTH
   }             enumType;
 
-  u_32          flags;
-#define CBC_ORDER_MEMBERS    0x00000001U
+  /* boolean options */
+  unsigned      order_members      : 1;
 
   const char   *ixhash;
   HV           *hv;

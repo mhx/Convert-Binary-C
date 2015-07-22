@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/05/23 10:04:14 +0100 $
-# $Revision: 28 $
+# $Date: 2005/06/10 13:55:58 +0100 $
+# $Revision: 30 $
 # $Source: /t/101_config.t $
 #
 ################################################################################
@@ -22,7 +22,7 @@ use constant FAIL    => 0;
 
 $^W = 1;
 
-BEGIN { plan tests => 2014 }
+BEGIN { plan tests => 2070 }
 
 $debug = Convert::Binary::C::feature( 'debug' );
 
@@ -105,6 +105,9 @@ sub check_config
       skip( $reason, $fail, 0, "unexpected warnings issued for option '$option'" );
     }
     else {
+      for my $warning ( @warn ) {
+        print "# unexpected warning: $warning";
+      }
       skip( $reason, scalar @warn, 0, "warnings issued for option '$option'" );
     }
   }
@@ -201,6 +204,9 @@ sub check_option_strlist
       ok( "@$value", "@{$config->{in}}", "invalid value for '$option' via $option" );
     }
 
+    for my $warning ( @warn ) {
+      print "# unexpected warning: $warning";
+    }
     ok( scalar @warn, 0, "warnings issued for option '$option'" );
   }
 
@@ -387,7 +393,8 @@ check_config( 'EnumType',
   @refs
 );
 
-check_config_bool( $_ ) for qw( UnsignedChars
+check_config_bool( $_ ) for qw( UnsignedBitfields
+                                UnsignedChars
                                 Warnings
                                 HasCPPComments
                                 HasMacroVAARGS );
@@ -540,6 +547,7 @@ ok( $@, qr/Invalid method some_method called.*$thisfile/ );
 %config = (
   'KeywordMap' => {},
   'DisabledKeywords' => [],
+  'UnsignedBitfields' => 0,
   'UnsignedChars' => 0,
   'CharSize' => 1,
   'ShortSize' => 2,
@@ -580,6 +588,7 @@ ok( compare_config( \%config, $cfg ) );
 %newcfg = (
   'KeywordMap' => {'__signed__' => 'signed', '__restrict' => undef},
   'DisabledKeywords' => ['const', 'register'],
+  'UnsignedBitfields' => 1,
   'UnsignedChars' => 1,
   'CharSize' => 2,
   'ShortSize' => 4,
@@ -619,7 +628,7 @@ eval {
   $p->FloatSize( 8 )->Include( qw( /usr/include /include ) )->DisabledKeywords( [qw( const register )] )
     ->Alignment( 2 )->Define( qw( BAR=456 ) )->configure( ByteOrder => 'BigEndian' );
 
-  $p->configure( PointerSize => 2 )->Warnings( 1 )
+  $p->configure( PointerSize => 2 )->Warnings( 1 )->UnsignedBitfields( 1 )
     ->KeywordMap( {'__signed__' => 'signed', '__restrict' => undef} );
 
   $p->CharSize(2);

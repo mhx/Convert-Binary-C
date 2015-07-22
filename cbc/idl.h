@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/03/10 21:20:12 +0000 $
-* $Revision: 4 $
+* $Date: 2005/05/31 02:09:44 +0100 $
+* $Revision: 5 $
 * $Source: /cbc/idl.h $
 *
 ********************************************************************************
@@ -97,7 +97,7 @@ typedef struct {
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
-#define IDListToStr CBC_IDListToStr
-const char *IDListToStr(pTHX_ IDList *idl);
+#define idl_to_str CBC_idl_to_str
+const char *idl_to_str(pTHX_ IDList *idl);
 
 #endif

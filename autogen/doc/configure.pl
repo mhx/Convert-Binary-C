@@ -53,3 +53,7 @@ $c->configure( Define => [qw(FOO BAR=12345)] );
 
 $c->configure( Assert => ['foo(bar)'] );
 
+#-8<- 10
+
+$c->configure( Bitfields => { Engine => 'Generic' } );
+

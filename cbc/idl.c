@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/03/10 21:20:11 +0000 $
-* $Revision: 2 $
+* $Date: 2005/05/31 02:09:07 +0100 $
+* $Revision: 3 $
 * $Source: /cbc/idl.c $
 *
 ********************************************************************************
@@ -57,7 +57,7 @@
 
 /*******************************************************************************
 *
-*   ROUTINE: IDListToStr
+*   ROUTINE: idl_to_str
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jul 2003
 *   CHANGED BY:                                   ON:
@@ -72,7 +72,7 @@
 *
 *******************************************************************************/
 
-const char *IDListToStr(pTHX_ IDList *idl)
+const char *idl_to_str(pTHX_ IDList *idl)
 {
   SV *sv;
   unsigned i;
@@ -97,7 +97,7 @@ const char *IDListToStr(pTHX_ IDList *idl)
         break;
 
       default:
-        /* TODO: fatal() ? */
+        fatal("invalid choice (%d) in idl_to_str()", (int) cur->choice);
         break;
     }
   }

@@ -11,8 +11,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/05/23 14:28:19 +0100 $
-* $Revision: 55 $
+* $Date: 2005/05/31 00:57:54 +0100 $
+* $Revision: 57 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -973,7 +973,7 @@ declaring_list
 	      {
 	        if (($1.tflags & ANY_TYPE_NAME) == 0)
 	          $1.tflags |= T_INT;
-	        CTT_REFCOUNT_INC($1.ptr);
+	        ctt_refcount_inc($1.ptr);
 	        $$ = typedef_list_new($1, LL_new());
 	        LL_push(PSTATE->pCPI->typedef_lists, $$);
 	        MAKE_TYPEDEF($$, $2);
@@ -1258,7 +1258,7 @@ member_declaration_list
 	      $$ = NULL;
 	    else
 	    {
-	      CTT_REFCOUNT_INC($1->type.ptr);
+	      ctt_refcount_inc($1->type.ptr);
 	      $$ = LL_new();
 	      LL_push($$, $1);
 	    }
@@ -1269,7 +1269,7 @@ member_declaration_list
 	      $$ = NULL;
 	    else
 	    {
-	      CTT_REFCOUNT_INC($2->type.ptr);
+	      ctt_refcount_inc($2->type.ptr);
 	      $$ = $1;
 	      LL_push($$, $2);
 	    }
@@ -1577,8 +1577,6 @@ type_name
 	      (void) PSTATE->pCPC->get_type_info(&PSTATE->pCPC->layout, &$1, NULL, "sf", &size, &flags);
 	      $$.iv    = size;
 	      $$.flags = 0;
-	      if (flags & T_HASBITFIELD)
-	        $$.flags |= V_IS_UNSAFE_BITFIELD;
 	      if (flags & T_UNSAFE_VAL)
 	        $$.flags |= V_IS_UNSAFE;
 	    }
@@ -1599,8 +1597,6 @@ type_name
 	        (void) PSTATE->pCPC->get_type_info(&PSTATE->pCPC->layout, &$1, NULL, "sf", &size, &flags);
 	        $$.iv = size * $2.multiplicator;
 	        $$.flags = 0;
-	        if (flags & T_HASBITFIELD)
-	          $$.flags |= V_IS_UNSAFE_BITFIELD;
 	        if (flags & T_UNSAFE_VAL)
 	          $$.flags |= V_IS_UNSAFE;
 	      }

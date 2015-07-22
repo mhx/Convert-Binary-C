@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/05/16 18:24:25 +0100 $
-* $Revision: 26 $
+* $Date: 2005/06/13 20:34:35 +0100 $
+* $Revision: 33 $
 * $Source: /cbc/pack.c $
 *
 ********************************************************************************
@@ -27,6 +27,8 @@
 #define PERL_NO_GET_CONTEXT
 #include <EXTERN.h>
 #include <perl.h>
+
+#define NO_XSLOCKS
 #include <XSUB.h>
 
 #include "ppport.h"
@@ -108,10 +110,10 @@ static SV *fetch_float_sv(pPACKARGS, unsigned size, u_32 flags);
 static void store_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldInfo *pBI, SV *sv);
 static SV *fetch_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldInfo *pBI);
 
-static unsigned load_size(const CBC *THIS, u_32 *pFlags);
+static unsigned load_size(const CBC *THIS, u_32 *pFlags, const BitfieldInfo *pBI);
 
 static void pack_pointer(pPACKARGS, SV *sv);
-static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv);
+static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv, int inlined);
 static void pack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldInfo *pBI, SV *sv);
 static void pack_basic(pPACKARGS, u_32 flags, const BitfieldInfo *pBI, SV *sv);
 static void pack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags, SV *sv);
@@ -537,38 +539,46 @@ static SV *fetch_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldI
 *
 *******************************************************************************/
 
-static unsigned load_size(const CBC *THIS, u_32 *pFlags)
+static unsigned load_size(const CBC *THIS, u_32 *pFlags, const BitfieldInfo *pBI)
 {
-  u_32 flags;
   unsigned size;
 
-  flags = *pFlags;
+  if (pBI)
+  {
+    size = pBI->size;
+
+    if (THIS->cfg.unsigned_bitfields && (*pFlags & (T_SIGNED | T_UNSIGNED)) == 0)
+      *pFlags |= T_UNSIGNED;
+  }
+  else
+  {
+    u_32 flags = *pFlags;
 
 #define LOAD_SIZE(type)                                                        \
         size = THIS->cfg.layout.type ## _size ? THIS->cfg.layout.type ## _size \
                                               : CTLIB_ ## type ## _SIZE
 
-  if (flags & T_VOID)  /* XXX: do we want void ? */
-    size = 1;
-  else if (flags & T_CHAR)
-  {
-    LOAD_SIZE(char);
-    if ((flags & (T_SIGNED | T_UNSIGNED)) == 0 &&
-        (THIS->cfg.flags & CHARS_ARE_UNSIGNED))
-      flags |= T_UNSIGNED;
-  }
-  else if ((flags & (T_LONG | T_DOUBLE)) == (T_LONG | T_DOUBLE))
-    LOAD_SIZE(long_double);
-  else if (flags & T_LONGLONG) LOAD_SIZE(long_long);
-  else if (flags & T_FLOAT)    LOAD_SIZE(float);
-  else if (flags & T_DOUBLE)   LOAD_SIZE(double);
-  else if (flags & T_SHORT)    LOAD_SIZE(short);
-  else if (flags & T_LONG)     LOAD_SIZE(long);
-  else                         LOAD_SIZE(int);
+    if (flags & T_VOID)  /* XXX: do we want void ? */
+      size = 1;
+    else if (flags & T_CHAR)
+    {
+      LOAD_SIZE(char);
+      if (THIS->cfg.unsigned_chars && (flags & (T_SIGNED | T_UNSIGNED)) == 0)
+        flags |= T_UNSIGNED;
+    }
+    else if ((flags & (T_LONG | T_DOUBLE)) == (T_LONG | T_DOUBLE))
+      LOAD_SIZE(long_double);
+    else if (flags & T_LONGLONG) LOAD_SIZE(long_long);
+    else if (flags & T_FLOAT)    LOAD_SIZE(float);
+    else if (flags & T_DOUBLE)   LOAD_SIZE(double);
+    else if (flags & T_SHORT)    LOAD_SIZE(short);
+    else if (flags & T_LONG)     LOAD_SIZE(long);
+    else                         LOAD_SIZE(int);
 
 #undef LOAD_SIZE
 
-  *pFlags = flags;
+    *pFlags = flags;
+  }
 
   return size;
 }
@@ -620,16 +630,16 @@ static void pack_pointer(pPACKARGS, SV *sv)
 *
 *******************************************************************************/
 
-static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv)
+static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv, int inlined)
 {
   StructDeclaration *pStructDecl;
   Declarator        *pDecl;
   long               pos;
 
-  CT_DEBUG(MAIN, (XSCLASS "::pack_struct( THIS=%p, pStruct=%p, sv=%p )",
-           THIS, pStruct, sv));
+  CT_DEBUG(MAIN, (XSCLASS "::pack_struct( THIS=%p, pStruct=%p, sv=%p, inlined=%d )",
+           THIS, pStruct, sv, inlined));
 
-  if (pStruct->tags)
+  if (pStruct->tags && !inlined)
   {
     CtTag *tag;
 
@@ -680,9 +690,10 @@ static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv)
               if (pDecl->bitfield_flag)
               {
                 pBI = &pDecl->ext.bitfield;
-                /* assert(pBI->bits > 0);   TODO: is this true at all? I don't think so... */
-                /* assert(pBI->pos >= 0);
-                   assert(pBI->size > 0);   TODO: not true yet  */
+
+                assert(pBI->bits > 0);  /* because id_len is > 0, too */
+                assert(pBI->pos < 64);
+                assert(pBI->size > 0 && pBI->size <= 8);
               }
               else
                 pBI = NULL;
@@ -702,7 +713,7 @@ static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv)
           assert(pStructDecl->offset >= 0);
           PACKPOS = pos + pStructDecl->offset;
 
-          pack_struct(aPACKARGS, (Struct *) pTS->ptr, sv);
+          pack_struct(aPACKARGS, (Struct *) pTS->ptr, sv, 1);
 
           IDLP_PUSH(ID);
         }
@@ -712,7 +723,7 @@ static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv)
     }
     else
       WARN((aTHX_ "'%s' should be a hash reference",
-            IDListToStr(aTHX_ &(PACK->idl))));
+            idl_to_str(aTHX_ &(PACK->idl))));
   }
 }
 
@@ -740,9 +751,6 @@ static void pack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldI
 
   CT_DEBUG(MAIN, (XSCLASS "::pack_enum( THIS=%p, pEnumSpec=%p, pBI=%p sv=%p )",
            THIS, pEnumSpec, pBI, sv));
-
-  if (pBI && pBI->size == 0)   /* TODO: temporary workaround */
-    return;             /* TODO: handle bitfields */
 
   if (pEnumSpec->tags)
   {
@@ -834,12 +842,9 @@ static void pack_basic(pPACKARGS, u_32 flags, const BitfieldInfo *pBI, SV *sv)
   CT_DEBUG(MAIN, (XSCLASS "::pack_basic( THIS=%p, flags=0x%08lX, pBI=%p sv=%p )",
            THIS, (unsigned long) flags, pBI, sv));
 
-  if (pBI && pBI->size == 0)   /* TODO: temporary workaround */
-    return;             /* TODO: handle bitfields */
-
   CT_DEBUG(MAIN, ("buffer.pos=%lu, buffer.length=%lu", PACKPOS, PACKLEN));
 
-  size = pBI ? pBI->size : load_size(THIS, &flags);
+  size = load_size(THIS, &flags, pBI);
 
   GROW_BUFFER(size, "insufficient space");
 
@@ -912,7 +917,7 @@ static void pack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags, SV 
     if (len > size)
     {
       WARN((aTHX_ "Source string is longer than '%s' (%d > %d)",
-            IDListToStr(aTHX_ &(PACK->idl)), len, size));
+            idl_to_str(aTHX_ &(PACK->idl)), len, size));
 
       len = size;
     }
@@ -1048,7 +1053,7 @@ static void pack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
     {
       if (DEFINED(sv))
         WARN((aTHX_ "'%s' should be an array reference",
-                    IDListToStr(aTHX_ &(PACK->idl))));
+                    idl_to_str(aTHX_ &(PACK->idl))));
 
       /* this is safe with flexible array members */
       while (dim-- > dimension)
@@ -1063,7 +1068,7 @@ static void pack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
 
     if (DEFINED(sv) && SvROK(sv))
       WARN((aTHX_ "'%s' should be a scalar value",
-                  IDListToStr(aTHX_ &(PACK->idl))));
+                  idl_to_str(aTHX_ &(PACK->idl))));
     sv = hook_call_typespec(aTHX_ PACK->self, pTS, HOOKID_pack_ptr, sv, 1);
     pack_pointer(aPACKARGS, sv);
   }
@@ -1081,13 +1086,13 @@ static void pack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
     if (pStruct->declarations == NULL)
       WARN_UNDEF_STRUCT(pStruct);
     else
-      pack_struct(aPACKARGS, pStruct, sv);
+      pack_struct(aPACKARGS, pStruct, sv, 0);
   }
   else
   {
     if (DEFINED(sv) && SvROK(sv))
       WARN((aTHX_ "'%s' should be a scalar value",
-                  IDListToStr(aTHX_ &(PACK->idl))));
+                  idl_to_str(aTHX_ &(PACK->idl))));
 
     CT_DEBUG(MAIN, ("SET '%s' @ %lu", pDecl ? pDecl->identifier : "", PACKPOS));
 
@@ -1153,11 +1158,13 @@ static SV *unpack_struct(pPACKARGS, const Struct *pStruct, HV *hash)
   int                ordered;
   SV                *sv;
   CtTag             *hooks = NULL;
+  dTHR;
+  dXCPT;
 
   CT_DEBUG(MAIN, (XSCLASS "::unpack_struct( THIS=%p, pStruct=%p, hash=%p )",
            THIS, pStruct, hash));
 
-  if (pStruct->tags)
+  if (pStruct->tags && hash == NULL)
   {
     CtTag *format;
 
@@ -1170,85 +1177,114 @@ static SV *unpack_struct(pPACKARGS, const Struct *pStruct, HV *hash)
     }
   }
 
-  ordered = THIS->flags & CBC_ORDER_MEMBERS && THIS->ixhash != NULL;
+  ordered = THIS->order_members && THIS->ixhash != NULL;
 
   if (h == NULL)
     h = ordered ? newHV_indexed(aTHX_ THIS) :  newHV();
 
   pos = PACKPOS;
 
-  LL_foreach(pStructDecl, pStruct->declarations)
+  XCPT_TRY_START
   {
-    if (pStructDecl->declarators)
+    LL_foreach(pStructDecl, pStruct->declarations)
     {
-      LL_foreach(pDecl, pStructDecl->declarators)
+      if (pStructDecl->declarators)
       {
-        U32 klen = CTT_IDLEN(pDecl);
-
-        if (klen > 0)
+        LL_foreach(pDecl, pStructDecl->declarators)
         {
-          if (hv_exists(h, pDecl->identifier, klen))
-          {
-            WARN((aTHX_ "Member '%s' used more than once in %s%s%s defined in %s(%d)",
-                  pDecl->identifier,
-                  pStruct->tflags & T_UNION ? "union" : "struct",
-                  pStruct->identifier[0] != '\0' ? " " : "",
-                  pStruct->identifier[0] != '\0' ? pStruct->identifier : "",
-                  pStruct->context.pFI->name, pStruct->context.line));
-          }
-          else
-          {
-            SV *value, **didstore;
-            BitfieldInfo *pBI;
+          U32 klen = CTT_IDLEN(pDecl);
 
-            assert(pDecl->offset >= 0);
-            PACKPOS = pos + pDecl->offset;
-  
-            if (pDecl->bitfield_flag)
+          if (klen > 0)
+          {
+            if (hv_exists(h, pDecl->identifier, klen))
             {
-              pBI = &pDecl->ext.bitfield;
-              /* assert(pBI->bits > 0);   TODO: is this true at all? I don't think so... */
-              /* assert(pBI->pos >= 0);
-                 assert(pBI->size > 0);   TODO: not true yet  */
+              WARN((aTHX_ "Member '%s' used more than once in %s%s%s defined in %s(%d)",
+                    pDecl->identifier,
+                    pStruct->tflags & T_UNION ? "union" : "struct",
+                    pStruct->identifier[0] != '\0' ? " " : "",
+                    pStruct->identifier[0] != '\0' ? pStruct->identifier : "",
+                    pStruct->context.pFI->name, pStruct->context.line));
             }
             else
-              pBI = NULL;
+            {
+              SV *value, **didstore;
+              BitfieldInfo *pBI;
 
-            value = unpack_type_i(aPACKARGS, &pStructDecl->type, pDecl, 0, pBI);
-            didstore = hv_store(h, pDecl->identifier, klen, value, 0);
+              assert(pDecl->offset >= 0);
+              PACKPOS = pos + pDecl->offset;
+    
+              if (pDecl->bitfield_flag)
+              {
+                pBI = &pDecl->ext.bitfield;
 
-            if (ordered)
-              SvSETMAGIC(value);
+                assert(pBI->bits > 0);  /* because id_len is > 0, too */
+                assert(pBI->pos < 64);
+                assert(pBI->size > 0 && pBI->size <= 8);
+              }
+              else
+                pBI = NULL;
 
-            if (!didstore)
-              SvREFCNT_dec(value);
+              value = unpack_type_i(aPACKARGS, &pStructDecl->type, pDecl, 0, pBI);
+              didstore = hv_store(h, pDecl->identifier, klen, value, 0);
+
+              if (ordered)
+                SvSETMAGIC(value);
+
+              if (!didstore)
+                SvREFCNT_dec(value);
+            }
           }
         }
       }
+      else
+      {
+        TypeSpec *pTS = &pStructDecl->type;
+
+        FOLLOW_AND_CHECK_TSPTR(pTS);
+
+        assert(pStructDecl->offset >= 0);
+        PACKPOS = pos + pStructDecl->offset;
+
+        (void) unpack_struct(aPACKARGS, (Struct *) pTS->ptr, h);
+      }
     }
-    else
+  }
+  XCPT_TRY_END
+
+  XCPT_CATCH
+  {
+    if (hash == NULL)
     {
-      TypeSpec *pTS = &pStructDecl->type;
-
-      FOLLOW_AND_CHECK_TSPTR(pTS);
-
-      assert(pStructDecl->offset >= 0);
-      PACKPOS = pos + pStructDecl->offset;
-
-      (void) unpack_struct(aPACKARGS, (Struct *) pTS->ptr, h);
+      CT_DEBUG(MAIN, ("freeing hv @ %p in unpack_struct:%d", h, __LINE__));
+      SvREFCNT_dec((SV *) h);
     }
+
+    XCPT_RETHROW;
   }
 
   if (hash)
     return NULL;
 
-  sv = newRV_noinc((SV*)h);
+  sv = newRV_noinc((SV *) h);
 
 handle_unpack_hook:
 
   if (hooks)
-    sv = hook_call(aTHX_ PACK->self, pStruct->tflags & T_STRUCT ? "struct " : "union ",
-                   pStruct->identifier, hooks->any, HOOKID_unpack, sv, 0);
+  {
+    XCPT_TRY_START
+    {
+      sv = hook_call(aTHX_ PACK->self, pStruct->tflags & T_STRUCT ? "struct " : "union ",
+                     pStruct->identifier, hooks->any, HOOKID_unpack, sv, 0);
+    }
+    XCPT_TRY_END
+
+    XCPT_CATCH
+    {
+      CT_DEBUG(MAIN, ("freeing sv @ %p in unpack_struct:%d", sv, __LINE__));
+      SvREFCNT_dec(sv);
+      XCPT_RETHROW;
+    }
+  }
 
   return sv;
 }
@@ -1281,9 +1317,6 @@ static SV *unpack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const Bitfield
 
   CT_DEBUG(MAIN, (XSCLASS "::unpack_enum( THIS=%p, pEnumSpec=%p, pBI=%p )",
                  THIS, pEnumSpec, pBI));
-
-  if (pBI && pBI->size == 0)   /* TODO: temporary workaround */
-    return newSV(0);    /* TODO: handle bitfields */
 
   if (pEnumSpec->tags)
   {
@@ -1366,8 +1399,24 @@ static SV *unpack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const Bitfield
 handle_unpack_hook:
 
   if (hooks)
-    sv = hook_call(aTHX_ PACK->self, "enum ", pEnumSpec->identifier,
-                   hooks->any, HOOKID_unpack, sv, 0);
+  {
+    dTHR;
+    dXCPT;
+
+    XCPT_TRY_START
+    {
+      sv = hook_call(aTHX_ PACK->self, "enum ", pEnumSpec->identifier,
+                     hooks->any, HOOKID_unpack, sv, 0);
+    }
+    XCPT_TRY_END
+
+    XCPT_CATCH
+    {
+      CT_DEBUG(MAIN, ("freeing sv @ %p in unpack_enum:%d", sv, __LINE__));
+      SvREFCNT_dec(sv);
+      XCPT_RETHROW;
+    }
+  }
 
   return sv;
 }
@@ -1396,12 +1445,9 @@ static SV *unpack_basic(pPACKARGS, u_32 flags, const BitfieldInfo *pBI)
   CT_DEBUG(MAIN, (XSCLASS "::unpack_basic( THIS=%p, flags=0x%08lX, pBI=%p )",
                   THIS, (unsigned long) flags, pBI));
 
-  if (pBI && pBI->size == 0)   /* TODO: temporary workaround */
-    return newSV(0);    /* TODO: handle bitfields */
-
   CT_DEBUG(MAIN, ("buffer.pos=%lu, buffer.length=%lu", PACKPOS, PACKLEN));
 
-  size = pBI ? pBI->size : load_size(THIS, &flags);
+  size = load_size(THIS, &flags, pBI);
 
   CHECK_BUFFER(size);
 
@@ -1553,6 +1599,8 @@ static SV *unpack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl
     long i, s;
     unsigned long pos;
     int size = pDecl->item_size;
+    dTHR;
+    dXCPT;
 
     assert(size > 0);
     assert(pBI == NULL);
@@ -1572,20 +1620,46 @@ static SV *unpack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl
 
     pos = PACKPOS;
 
-    for (i = 0; i < s; ++i)
+    XCPT_TRY_START
     {
-      PACKPOS = pos + i * size;
-      av_store(a, i, unpack_type_i(aPACKARGS, pTS, pDecl, dimension+1, NULL));
+      for (i = 0; i < s; ++i)
+      {
+        PACKPOS = pos + i * size;
+        av_store(a, i, unpack_type_i(aPACKARGS, pTS, pDecl, dimension+1, NULL));
+      }
+    }
+    XCPT_TRY_END
+
+    XCPT_CATCH
+    {
+      CT_DEBUG(MAIN, ("freeing av @ %p in unpack_type_i:%d", a, __LINE__));
+      SvREFCNT_dec((SV *) a);
+      XCPT_RETHROW;
     }
 
     rv = newRV_noinc((SV *) a);
   }
   else if (pDecl && pDecl->pointer_flag)
   {
+    dTHR;
+    dXCPT;
+
     assert(pBI == NULL);
 
     rv = unpack_pointer(aPACKARGS);
-    rv = hook_call_typespec(aTHX_ PACK->self, pTS, HOOKID_unpack_ptr, rv, 0);
+
+    XCPT_TRY_START
+    {
+      rv = hook_call_typespec(aTHX_ PACK->self, pTS, HOOKID_unpack_ptr, rv, 0);
+    }
+    XCPT_TRY_END
+
+    XCPT_CATCH
+    {
+      CT_DEBUG(MAIN, ("freeing rv @ %p in unpack_type_i:%d", rv, __LINE__));
+      SvREFCNT_dec(rv);
+      XCPT_RETHROW;
+    }
   }
   else if (pTS->tflags & T_TYPE)
   {
@@ -1622,10 +1696,24 @@ handle_unpack_hook:
 
   if (hooks)
   {
+    dTHR;
+    dXCPT;
+
     assert(pDecl != NULL);
 
-    rv = hook_call(aTHX_ PACK->self, "", pDecl->identifier,
-                   hooks->any, HOOKID_unpack, rv, 0);
+    XCPT_TRY_START
+    {
+      rv = hook_call(aTHX_ PACK->self, "", pDecl->identifier,
+                     hooks->any, HOOKID_unpack, rv, 0);
+    }
+    XCPT_TRY_END
+
+    XCPT_CATCH
+    {
+      CT_DEBUG(MAIN, ("freeing rv @ %p in unpack_type_i:%d", rv, __LINE__));
+      SvREFCNT_dec(rv);
+      XCPT_RETHROW;
+    }
   }
 
   return rv;

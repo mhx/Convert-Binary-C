@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:19:15 +0000 $
-* $Revision: 147 $
+* $Date: 2005/06/13 20:35:13 +0100 $
+* $Revision: 149 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -33,6 +33,8 @@
 #define PERL_NO_GET_CONTEXT
 #include <EXTERN.h>
 #include <perl.h>
+
+#define NO_XSLOCKS
 #include <XSUB.h>
 
 #define NEED_newRV_noinc_GLOBAL
@@ -457,16 +459,16 @@ BOOT:
 #endif
 #ifdef CBC_DEBUGGING
     init_debugging(aTHX);
-    if ((str = getenv("CBC_DEBUG_OPT")) != NULL)
+    if ((str = PerlEnv_getenv("CBC_DEBUG_OPT")) != NULL)
       set_debug_options(aTHX_ str);
-    if ((str = getenv("CBC_DEBUG_FILE")) != NULL)
+    if ((str = PerlEnv_getenv("CBC_DEBUG_FILE")) != NULL)
       set_debug_file(aTHX_ str);
 #endif
     gs_DisableParser = 0;
-    if ((str = getenv("CBC_DISABLE_PARSER")) != NULL)
+    if ((str = PerlEnv_getenv("CBC_DISABLE_PARSER")) != NULL)
       gs_DisableParser = atoi(str);
     gs_OrderMembers = 0;
-    if ((str = getenv("CBC_ORDER_MEMBERS")) != NULL)
+    if ((str = PerlEnv_getenv("CBC_ORDER_MEMBERS")) != NULL)
     {
       if (isDIGIT(str[0]))
         gs_OrderMembers = atoi(str);

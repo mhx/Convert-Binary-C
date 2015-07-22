@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/05/07 14:05:18 +0100 $
-* $Revision: 7 $
+* $Date: 2005/05/29 09:23:02 +0100 $
+* $Revision: 9 $
 * $Source: /cbc/object.c $
 *
 ********************************************************************************
@@ -95,7 +95,6 @@ CBC *cbc_new(pTHX)
   THIS->as.bo                         = CBC_DEFAULT_BYTEORDER;
   THIS->enumType                      = CBC_DEFAULT_ENUMTYPE;
   THIS->ixhash                        = NULL;
-  THIS->flags                         = 0;
 
   THIS->basic                         = basic_types_new();
 
@@ -121,8 +120,8 @@ CBC *cbc_new(pTHX)
   THIS->cfg.disabled_keywords         = LL_new();
   THIS->cfg.keyword_map               = HT_new(1);
   THIS->cfg.keywords                  = HAS_ALL_KEYWORDS;
-  THIS->cfg.flags                     = HAS_CPP_COMMENTS
-                                      | HAS_MACRO_VAARGS;
+  THIS->cfg.has_cpp_comments          = 1;
+  THIS->cfg.has_macro_vaargs          = 1;
 
   init_parse_info(&THIS->cpi);
 

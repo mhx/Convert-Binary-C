@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/04/22 21:46:09 +0100 $
-* $Revision: 27 $
+* $Date: 2005/05/31 01:16:40 +0100 $
+* $Revision: 29 $
 * $Source: /ctlib/cttype.c $
 *
 ********************************************************************************
@@ -35,47 +35,49 @@
 
 #include "cttype.h"
 #include "ctdebug.h"
+#include "cterror.h"
 #include "util/memalloc.h"
 
 
 /*===== DEFINES ==============================================================*/
 
-#define CONSTRUCT_OBJECT( type, name )                                         \
+#define CONSTRUCT_OBJECT(type, name)                                           \
   type *name;                                                                  \
-  AllocF( type *, name, sizeof( type ) );                                      \
+  AllocF(type *, name, sizeof(type));                                          \
   PROFILE_ADD(type, sizeof(type))
 
-#define CLONE_OBJECT( type, dest, src )                                        \
+#define CLONE_OBJECT(type, dest, src)                                          \
   type *dest;                                                                  \
-  if( (src) == NULL )                                                          \
+  if ((src) == NULL)                                                           \
     return NULL;                                                               \
-  AllocF( type *, dest, sizeof( type ) );                                      \
-  memcpy( dest, src, sizeof( type ) );                                         \
+  AllocF(type *, dest, sizeof(type));                                          \
+  memcpy(dest, src, sizeof(type));                                             \
   PROFILE_ADD(type, sizeof(type))
 
-#define CONSTRUCT_OBJECT_IDENT( type, name )                                   \
+#define CONSTRUCT_OBJECT_IDENT(type, name)                                     \
   type *name;                                                                  \
-  if( identifier && id_len == 0 )                                              \
-    id_len = strlen( identifier );                                             \
-  AllocF( type *, name, offsetof( type, identifier ) + id_len + 1 );           \
-  if( identifier ) {                                                           \
-    strncpy( name->identifier, identifier, id_len );                           \
+  if (identifier && id_len == 0)                                               \
+    id_len = strlen(identifier);                                               \
+  AllocF(type *, name, offsetof(type, identifier) + id_len + 1);               \
+  if (identifier)                                                              \
+  {                                                                            \
+    strncpy(name->identifier, identifier, id_len);                             \
     name->identifier[id_len] = '\0';                                           \
   }                                                                            \
   else                                                                         \
     name->identifier[0] = '\0';                                                \
   name->id_len = (unsigned char) (id_len < 255 ? id_len : 255);                \
-  PROFILE_ADD(type, offsetof( type, identifier ) + id_len + 1)
+  PROFILE_ADD(type, offsetof(type, identifier) + id_len + 1)
 
-#define CLONE_OBJECT_IDENT( type, dest, src )                                  \
+#define CLONE_OBJECT_IDENT(type, dest, src)                                    \
   type *dest;                                                                  \
-  size_t count = offsetof( type, identifier ) + 1;                             \
-  if( (src) == NULL )                                                          \
+  size_t count = offsetof(type, identifier) + 1;                               \
+  if ((src) == NULL)                                                           \
     return NULL;                                                               \
-  if( src->id_len )                                                            \
-    count += CTT_IDLEN( src );                                                 \
-  AllocF( type *, dest, count );                                               \
-  memcpy( dest, src, count );                                                  \
+  if ((src)->id_len)                                                           \
+    count += CTT_IDLEN(src);                                                   \
+  AllocF(type *, dest, count);                                                 \
+  memcpy(dest, src, count);                                                    \
   PROFILE_ADD(type, count)
 
 #define DELETE_OBJECT_IDENT(type, ptr)                                         \
@@ -210,15 +212,15 @@ void profile_dump(void)
 *
 *******************************************************************************/
 
-Value *value_new( signed long iv, u_32 flags )
+Value *value_new(signed long iv, u_32 flags)
 {
-  CONSTRUCT_OBJECT( Value, pValue );
+  CONSTRUCT_OBJECT(Value, pValue);
 
   pValue->iv    = iv;
   pValue->flags = flags;
 
-  CT_DEBUG( TYPE, ("type::value_new( iv=%ld flags=0x%08lX ) = %p",
-                   iv, (unsigned long) flags, pValue) );
+  CT_DEBUG(TYPE, ("type::value_new( iv=%ld flags=0x%08lX ) = %p",
+                  iv, (unsigned long) flags, pValue));
 
   return pValue;
 }
@@ -240,11 +242,11 @@ Value *value_new( signed long iv, u_32 flags )
 *
 *******************************************************************************/
 
-void value_delete( Value *pValue )
+void value_delete(Value *pValue)
 {
-  CT_DEBUG( TYPE, ("type::value_delete( pValue=%p )", pValue) );
+  CT_DEBUG(TYPE, ("type::value_delete( pValue=%p )", pValue));
 
-  if( pValue )
+  if (pValue)
     DELETE_OBJECT(Value, pValue);
 }
 
@@ -265,11 +267,11 @@ void value_delete( Value *pValue )
 *
 *******************************************************************************/
 
-Value *value_clone( const Value *pSrc )
+Value *value_clone(const Value *pSrc)
 {
-  CLONE_OBJECT( Value, pDest, pSrc );
+  CLONE_OBJECT(Value, pDest, pSrc);
 
-  CT_DEBUG( TYPE, ("type::value_clone( %p ) = %p", pSrc, pDest) );
+  CT_DEBUG(TYPE, ("type::value_clone( %p ) = %p", pSrc, pDest));
 
   return pDest;
 }
@@ -291,24 +293,26 @@ Value *value_clone( const Value *pSrc )
 *
 *******************************************************************************/
 
-Enumerator *enum_new( char *identifier, int id_len, Value *pValue )
+Enumerator *enum_new(const char *identifier, int id_len, Value *pValue)
 {
-  CONSTRUCT_OBJECT_IDENT( Enumerator, pEnum );
+  CONSTRUCT_OBJECT_IDENT(Enumerator, pEnum);
 
-  if( pValue ) {
+  if (pValue)
+  {
     pEnum->value = *pValue;
-    if( pValue->flags & V_IS_UNDEF )
+    if (pValue->flags & V_IS_UNDEF)
       pEnum->value.flags |= V_IS_UNSAFE_UNDEF;
   }
-  else {
+  else
+  {
     pEnum->value.iv    = 0;
     pEnum->value.flags = V_IS_UNDEF;
   }
 
-  CT_DEBUG( TYPE, ("type::enum_new( identifier=\"%s\", pValue=%p "
-                   "[iv=%ld, flags=0x%08lX] ) = %p",
-                   pEnum->identifier, pValue, pEnum->value.iv,
-                   (unsigned long) pEnum->value.flags, pEnum) );
+  CT_DEBUG(TYPE, ("type::enum_new( identifier=\"%s\", pValue=%p "
+                  "[iv=%ld, flags=0x%08lX] ) = %p",
+                  pEnum->identifier, pValue, pEnum->value.iv,
+                  (unsigned long) pEnum->value.flags, pEnum));
 
   return pEnum;
 }
@@ -330,12 +334,12 @@ Enumerator *enum_new( char *identifier, int id_len, Value *pValue )
 *
 *******************************************************************************/
 
-void enum_delete( Enumerator *pEnum )
+void enum_delete(Enumerator *pEnum)
 {
-  CT_DEBUG( TYPE, ("type::enum_delete( pEnum=%p [identifier=\"%s\"] )",
-                   pEnum, pEnum ? pEnum->identifier : "") );
+  CT_DEBUG(TYPE, ("type::enum_delete( pEnum=%p [identifier=\"%s\"] )",
+                  pEnum, pEnum ? pEnum->identifier : ""));
 
-  if( pEnum )
+  if (pEnum)
     DELETE_OBJECT_IDENT(Enumerator, pEnum);
 }
 
@@ -356,12 +360,12 @@ void enum_delete( Enumerator *pEnum )
 *
 *******************************************************************************/
 
-Enumerator *enum_clone( const Enumerator *pSrc )
+Enumerator *enum_clone(const Enumerator *pSrc)
 {
-  CLONE_OBJECT_IDENT( Enumerator, pDest, pSrc );
+  CLONE_OBJECT_IDENT(Enumerator, pDest, pSrc);
 
-  CT_DEBUG( TYPE, ("type::enum_clone( pSrc=%p [identifier=\"%s\"] ) = %p",
-                   pSrc, pSrc ? pSrc->identifier : "", pDest) );
+  CT_DEBUG(TYPE, ("type::enum_clone( pSrc=%p [identifier=\"%s\"] ) = %p",
+                  pSrc, pSrc ? pSrc->identifier : "", pDest));
 
   return pDest;
 }
@@ -383,7 +387,7 @@ Enumerator *enum_clone( const Enumerator *pSrc )
 *
 *******************************************************************************/
 
-EnumSpecifier *enumspec_new(char *identifier, int id_len, LinkedList enumerators)
+EnumSpecifier *enumspec_new(const char *identifier, int id_len, LinkedList enumerators)
 {
   CONSTRUCT_OBJECT_IDENT(EnumSpecifier, pEnumSpec);
 
@@ -392,7 +396,7 @@ EnumSpecifier *enumspec_new(char *identifier, int id_len, LinkedList enumerators
   pEnumSpec->refcount = 0;
   pEnumSpec->tags     = NULL;
 
-  if( enumerators == NULL )
+  if (enumerators == NULL)
     pEnumSpec->enumerators = NULL;
   else
     enumspec_update(pEnumSpec, enumerators);
@@ -434,7 +438,7 @@ void enumspec_update(EnumSpecifier *pEnumSpec, LinkedList enumerators)
   pEnumSpec->enumerators = enumerators;
   min = max = 0;
 
-  LL_foreach (pEnum, enumerators)
+  LL_foreach(pEnum, enumerators)
   {
     if (pEnum->value.iv > max)
       max = pEnum->value.iv;
@@ -562,7 +566,7 @@ EnumSpecifier *enumspec_clone(const EnumSpecifier *pSrc)
 *
 *******************************************************************************/
 
-Declarator *decl_new(char *identifier, int id_len)
+Declarator *decl_new(const char *identifier, int id_len)
 {
   CONSTRUCT_OBJECT_IDENT(Declarator, pDecl);
 
@@ -664,19 +668,19 @@ Declarator *decl_clone(const Declarator *pSrc)
 *
 *******************************************************************************/
 
-StructDeclaration *structdecl_new( TypeSpec type, LinkedList declarators )
+StructDeclaration *structdecl_new(TypeSpec type, LinkedList declarators)
 {
-  CONSTRUCT_OBJECT( StructDeclaration, pStructDecl );
+  CONSTRUCT_OBJECT(StructDeclaration, pStructDecl);
 
   pStructDecl->type        = type;
   pStructDecl->declarators = declarators;
   pStructDecl->offset      = 0;
   pStructDecl->size        = 0;
 
-  CT_DEBUG( TYPE, ("type::structdecl_new( type=[tflags=0x%08lX,ptr=%p], "
-                   "declarators=%p [count=%d] ) = %p",
-                   (unsigned long) type.tflags, type.ptr, declarators,
-                   LL_count( declarators ), pStructDecl) );
+  CT_DEBUG(TYPE, ("type::structdecl_new( type=[tflags=0x%08lX,ptr=%p], "
+                  "declarators=%p [count=%d] ) = %p",
+                  (unsigned long) type.tflags, type.ptr, declarators,
+                  LL_count(declarators), pStructDecl));
 
   return pStructDecl;
 }
@@ -698,12 +702,13 @@ StructDeclaration *structdecl_new( TypeSpec type, LinkedList declarators )
 *
 *******************************************************************************/
 
-void structdecl_delete( StructDeclaration *pStructDecl )
+void structdecl_delete(StructDeclaration *pStructDecl)
 {
-  CT_DEBUG( TYPE, ("type::structdecl_delete( pStructDecl=%p )", pStructDecl) );
+  CT_DEBUG(TYPE, ("type::structdecl_delete( pStructDecl=%p )", pStructDecl));
 
-  if( pStructDecl ) {
-    LL_destroy( pStructDecl->declarators, (LLDestroyFunc) decl_delete );
+  if (pStructDecl)
+  {
+    LL_destroy(pStructDecl->declarators, (LLDestroyFunc) decl_delete);
     DELETE_OBJECT(StructDeclaration, pStructDecl);
   }
 }
@@ -725,13 +730,13 @@ void structdecl_delete( StructDeclaration *pStructDecl )
 *
 *******************************************************************************/
 
-StructDeclaration *structdecl_clone( const StructDeclaration *pSrc )
+StructDeclaration *structdecl_clone(const StructDeclaration *pSrc)
 {
-  CLONE_OBJECT( StructDeclaration, pDest, pSrc );
+  CLONE_OBJECT(StructDeclaration, pDest, pSrc);
 
-  CT_DEBUG( TYPE, ("type::structdecl_clone( pSrc=%p ) = %p", pSrc, pDest) );
+  CT_DEBUG(TYPE, ("type::structdecl_clone( pSrc=%p ) = %p", pSrc, pDest));
 
-  pDest->declarators = LL_clone( pSrc->declarators, (LLCloneFunc) decl_clone );
+  pDest->declarators = LL_clone(pSrc->declarators, (LLCloneFunc) decl_clone);
 
   return pDest;
 }
@@ -753,7 +758,7 @@ StructDeclaration *structdecl_clone( const StructDeclaration *pSrc )
 *
 *******************************************************************************/
 
-Struct *struct_new(char *identifier, int id_len, u_32 tflags, unsigned pack, LinkedList declarations)
+Struct *struct_new(const char *identifier, int id_len, u_32 tflags, unsigned pack, LinkedList declarations)
 {
   CONSTRUCT_OBJECT_IDENT(Struct, pStruct);
 
@@ -851,19 +856,19 @@ Struct *struct_clone(const Struct *pSrc)
 *
 *******************************************************************************/
 
-Typedef *typedef_new( TypeSpec *pType, Declarator *pDecl )
+Typedef *typedef_new(TypeSpec *pType, Declarator *pDecl)
 {
-  CONSTRUCT_OBJECT( Typedef, pTypedef );
+  CONSTRUCT_OBJECT(Typedef, pTypedef);
 
   pTypedef->ctype = TYP_TYPEDEF;
 
   pTypedef->pType = pType;
   pTypedef->pDecl = pDecl;
 
-  CT_DEBUG( TYPE, ("type::typedef_new( type=[tflags=0x%08lX,ptr=%p], "
-                   "pDecl=%p [identifier=\"%s\"] ) = %p",
-                   (unsigned long) pType->tflags, pType->ptr, pDecl,
-                   pDecl ? pDecl->identifier : "", pTypedef) );
+  CT_DEBUG(TYPE, ("type::typedef_new( type=[tflags=0x%08lX,ptr=%p], "
+                  "pDecl=%p [identifier=\"%s\"] ) = %p",
+                  (unsigned long) pType->tflags, pType->ptr, pDecl,
+                  pDecl ? pDecl->identifier : "", pTypedef));
 
   return pTypedef;
 }
@@ -885,12 +890,13 @@ Typedef *typedef_new( TypeSpec *pType, Declarator *pDecl )
 *
 *******************************************************************************/
 
-void typedef_delete( Typedef *pTypedef )
+void typedef_delete(Typedef *pTypedef)
 {
-  CT_DEBUG( TYPE, ("type::typedef_delete( pTypedef=%p )", pTypedef) );
+  CT_DEBUG(TYPE, ("type::typedef_delete( pTypedef=%p )", pTypedef));
 
-  if( pTypedef ) {
-    decl_delete( pTypedef->pDecl );
+  if (pTypedef)
+  {
+    decl_delete(pTypedef->pDecl);
     DELETE_OBJECT(Typedef, pTypedef);
   }
 }
@@ -912,13 +918,13 @@ void typedef_delete( Typedef *pTypedef )
 *
 *******************************************************************************/
 
-Typedef *typedef_clone( const Typedef *pSrc )
+Typedef *typedef_clone(const Typedef *pSrc)
 {
-  CLONE_OBJECT( Typedef, pDest, pSrc );
+  CLONE_OBJECT(Typedef, pDest, pSrc);
 
-  CT_DEBUG( TYPE, ("type::typedef_clone( pSrc=%p ) = %p", pSrc, pDest) );
+  CT_DEBUG(TYPE, ("type::typedef_clone( pSrc=%p ) = %p", pSrc, pDest));
 
-  pDest->pDecl = decl_clone( pSrc->pDecl );
+  pDest->pDecl = decl_clone(pSrc->pDecl);
 
   return pDest;
 }
@@ -940,17 +946,17 @@ Typedef *typedef_clone( const Typedef *pSrc )
 *
 *******************************************************************************/
 
-TypedefList *typedef_list_new( TypeSpec type, LinkedList typedefs )
+TypedefList *typedef_list_new(TypeSpec type, LinkedList typedefs)
 {
-  CONSTRUCT_OBJECT( TypedefList, pTypedefList );
+  CONSTRUCT_OBJECT(TypedefList, pTypedefList);
 
   pTypedefList->ctype    = TYP_TYPEDEF_LIST;
 
   pTypedefList->type     = type;
   pTypedefList->typedefs = typedefs;
 
-  CT_DEBUG( TYPE, ("type::typedef_list_new( type=[tflags=0x%08lX,ptr=%p], typedefs=%p ) = %p",
-                   (unsigned long) type.tflags, type.ptr, typedefs, pTypedefList) );
+  CT_DEBUG(TYPE, ("type::typedef_list_new( type=[tflags=0x%08lX,ptr=%p], typedefs=%p ) = %p",
+                  (unsigned long) type.tflags, type.ptr, typedefs, pTypedefList));
 
   return pTypedefList;
 }
@@ -972,12 +978,13 @@ TypedefList *typedef_list_new( TypeSpec type, LinkedList typedefs )
 *
 *******************************************************************************/
 
-void typedef_list_delete( TypedefList *pTypedefList )
+void typedef_list_delete(TypedefList *pTypedefList)
 {
-  CT_DEBUG( TYPE, ("type::typedef_list_delete( pTypedefList=%p )", pTypedefList) );
+  CT_DEBUG(TYPE, ("type::typedef_list_delete( pTypedefList=%p )", pTypedefList));
 
-  if( pTypedefList ) {
-    LL_destroy( pTypedefList->typedefs, (LLDestroyFunc) typedef_delete );
+  if (pTypedefList)
+  {
+    LL_destroy(pTypedefList->typedefs, (LLDestroyFunc) typedef_delete);
     DELETE_OBJECT(TypedefList, pTypedefList);
   }
 }
@@ -999,21 +1006,23 @@ void typedef_list_delete( TypedefList *pTypedefList )
 *
 *******************************************************************************/
 
-TypedefList *typedef_list_clone( const TypedefList *pSrc )
+TypedefList *typedef_list_clone(const TypedefList *pSrc)
 {
-  CLONE_OBJECT( TypedefList, pDest, pSrc );
+  CLONE_OBJECT(TypedefList, pDest, pSrc);
 
-  CT_DEBUG( TYPE, ("type::typedef_list_clone( pSrc=%p ) = %p", pSrc, pDest) );
+  CT_DEBUG(TYPE, ("type::typedef_list_clone( pSrc=%p ) = %p", pSrc, pDest));
 
-  if( pSrc->typedefs ) {
+  if (pSrc->typedefs)
+  {
     Typedef *pTypedef;
 
     pDest->typedefs = LL_new();
 
-    LL_foreach( pTypedef, pSrc->typedefs ) {
-      Typedef *pClone = typedef_clone( pTypedef );
+    LL_foreach(pTypedef, pSrc->typedefs)
+    {
+      Typedef *pClone = typedef_clone(pTypedef);
       pClone->pType = &pDest->type;
-      LL_push( pDest->typedefs, pClone );
+      LL_push(pDest->typedefs, pClone);
     }
   }
 
@@ -1037,25 +1046,68 @@ TypedefList *typedef_list_clone( const TypedefList *pSrc )
 *
 *******************************************************************************/
 
-TypedefList *get_typedef_list( Typedef *pTypedef )
+TypedefList *get_typedef_list(Typedef *pTypedef)
 {
   TypedefList *pTDL;
 
-  CT_DEBUG( TYPE, ("type::get_typedef_list( pTypedef=%p )", pTypedef) );
+  CT_DEBUG(TYPE, ("type::get_typedef_list( pTypedef=%p )", pTypedef));
 
-  if(   pTypedef        == NULL
-     || pTypedef->ctype != TYP_TYPEDEF
-     || pTypedef->pType == NULL
-    )
+  if (pTypedef        == NULL        ||
+      pTypedef->ctype != TYP_TYPEDEF ||
+      pTypedef->pType == NULL)
     return NULL;
 
   /* assume that pType points to type member of typedef list */
-  pTDL = (TypedefList *)
-         ( ((u_8 *) pTypedef->pType) - offsetof(TypedefList, type) );
+  pTDL = (TypedefList *) (((u_8 *) pTypedef->pType) - offsetof(TypedefList, type));
 
-  if( pTDL->ctype != TYP_TYPEDEF_LIST )
+  if (pTDL->ctype != TYP_TYPEDEF_LIST)
     return NULL;
 
   return pTDL;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: ctt_refcount_inc
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: May 2005
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Increment reference count of structs / enums.
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void ctt_refcount_inc(void *ptr)
+{
+  if (ptr == NULL)
+    return;
+
+  switch (GET_CTYPE(ptr))
+  {
+    case TYP_ENUM:
+      if (((EnumSpecifier *) ptr)->refcount < ~((unsigned)0))
+        ((EnumSpecifier *) ptr)->refcount++;
+      break;
+
+    case TYP_STRUCT:
+      if (((Struct *) ptr)->refcount < ~((unsigned)0))
+        ((Struct *) ptr)->refcount++;
+      break;
+
+    case TYP_TYPEDEF:
+    case TYP_TYPEDEF_LIST:
+      /* no refcounting */
+      break;
+
+    default:
+      fatal_error("invalid cttype (%d) passed to ctt_refcount_inc()", GET_CTYPE(ptr));
+      break;
+  }
 }
 

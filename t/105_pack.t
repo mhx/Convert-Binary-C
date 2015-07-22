@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/01/31 08:46:19 +0000 $
-# $Revision: 20 $
+# $Date: 2005/05/26 10:19:31 +0100 $
+# $Revision: 21 $
 # $Source: /t/105_pack.t $
 #
 ################################################################################
@@ -19,7 +19,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 277 }
+BEGIN { plan tests => 275 }
 
 eval {
   $p = new Convert::Binary::C ByteOrder     => 'BigEndian'
@@ -360,10 +360,7 @@ chkwarn();
 #===================================================================
 
 ok($p->pack('zero', {}), '', 'pack on zero size type (bug #3753)');
-chkwarn( qr/Bitfields are unsupported in pack\('zero'\)/ );
-
 ok(reccmp_keys({}, $p->unpack('zero', '')), '', 'unpack on zero size type');
-chkwarn( qr/Bitfields are unsupported in pack\('zero'\)/ );
 
 #===================================================================
 # check unpack in list context

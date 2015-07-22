@@ -67,6 +67,18 @@ my %CC = (
     #   aCC_pack         => {},
     },
 
+    hpux10_parisc64 => {
+    ###  gcc_plain        => {},
+    #   cc_plain         => {},  ## same as ia64/cc_plain
+    ###  aCC_plain        => {},
+    #   dcc_plain        => {},  ## same as linux_parisc64/gcc_plain
+    ###  dcc_pack         => {},
+    ###  dcc_pack1        => {},
+    ###  dcc_pack2        => {},
+    ###  dcc_pack4        => {},
+    #   dcc_pack8        => {},  ## same as dcc_pack
+    },
+
     hpux11_parisc64 => {
     #   gcc_plain        => {},  ## same as cc_plain
     #   gcc_pack         => {},
@@ -215,8 +227,8 @@ __DATA__
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/05/23 13:09:55 +0100 $
-# $Revision: 6 $
+# $Date: 2005/06/10 11:54:37 +0100 $
+# $Revision: 8 $
 # $Source: /devel/bitfields/maketest $
 #
 ################################################################################
@@ -235,9 +247,6 @@ $^W = 1;
 BEGIN { plan tests => %%NUM_TESTS%% }
 
 $BIN = $] < 5.006 ? '%x' : '%08b';
-
-# TODO: only as long as we're implementing bitfields
-$SIG{__WARN__} = sub { $_[0] =~ /Bitfields are unsupported/ or print STDERR $_[0] };
 
 %%COMPILER%%
 

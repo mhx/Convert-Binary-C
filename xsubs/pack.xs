@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/04/01 23:11:01 +0100 $
-# $Revision: 4 $
+# $Date: 2005/05/26 15:26:22 +0100 $
+# $Revision: 6 $
 # $Source: /xsubs/pack.xs $
 #
 ################################################################################
@@ -24,7 +24,7 @@
 #
 ################################################################################
 
-SV *
+void
 CBC::pack(type, data = &PL_sv_undef, string = NULL)
   const char *type
   SV *data
@@ -35,6 +35,8 @@ CBC::pack(type, data = &PL_sv_undef, string = NULL)
     char *buffer;
     MemberInfo mi;
     PackInfo pack;
+    SV *rv;
+    dXCPT;
 
   CODE:
     CT_DEBUG_METHOD1("'%s'", type);
@@ -63,15 +65,15 @@ CBC::pack(type, data = &PL_sv_undef, string = NULL)
 
     if (string == NULL)
     {
-      RETVAL = newSV(mi.size);
+      rv = newSV(mi.size);
 
-      /* force RETVAL into a PV when mi.size is zero (bug #3753) */
+      /* force rv into a PV when mi.size is zero (bug #3753) */
       if (mi.size == 0)
-        sv_grow(RETVAL, 1);
+        sv_grow(rv, 1);
 
-      SvPOK_only(RETVAL);
-      SvCUR_set(RETVAL, mi.size);
-      buffer = SvPVX(RETVAL);
+      SvPOK_only(rv);
+      SvCUR_set(rv, mi.size);
+      buffer = SvPVX(rv);
 
       /* We get an mi.size+1 buffer from newSV. So the following */
       /* call will properly \0-terminate our return value.       */
@@ -84,16 +86,16 @@ CBC::pack(type, data = &PL_sv_undef, string = NULL)
 
       if (GIMME_V == G_VOID)
       {
-        RETVAL = &PL_sv_undef;
+        rv = NULL;
         buffer = SvGROW(string, max+1);
         SvCUR_set(string, max);
       }
       else
       {
-        RETVAL = newSV(max);
-        SvPOK_only(RETVAL);
-        buffer = SvPVX(RETVAL);
-        SvCUR_set(RETVAL, max);
+        rv = newSV(max);
+        SvPOK_only(rv);
+        buffer = SvPVX(rv);
+        SvCUR_set(rv, max);
         Copy(SvPVX(string), buffer, len, char);
       }
 
@@ -103,7 +105,7 @@ CBC::pack(type, data = &PL_sv_undef, string = NULL)
 
     /* may be used to grow the buffer */
     pack.self       = ST(0);
-    pack.bufsv      = RETVAL;
+    pack.bufsv      = rv ? rv : string;
 
     pack.buf.buffer = buffer;
     pack.buf.length = mi.size;
@@ -115,16 +117,31 @@ CBC::pack(type, data = &PL_sv_undef, string = NULL)
 
     SvGETMAGIC(data);
 
-    pack_type(aTHX_ THIS, &pack, &mi.type, mi.pDecl, mi.level, data);
+    XCPT_TRY_START
+    {
+      pack_type(aTHX_ THIS, &pack, &mi.type, mi.pDecl, mi.level, data);
+    }
+    XCPT_TRY_END
 
     IDLIST_FREE(&pack.idl);
+
+    XCPT_CATCH
+    {
+      if (rv)
+        SvREFCNT_dec(rv);
+
+      XCPT_RETHROW;
+    }
 
     /* this makes substr() as third argument work */
     if (string)
       SvSETMAGIC(string);
 
-  OUTPUT:
-    RETVAL
+    if (rv == NULL)
+      XSRETURN_EMPTY;
+
+    ST(0) = sv_2mortal(rv);
+    XSRETURN(1);
 
 
 ################################################################################
@@ -146,7 +163,7 @@ CBC::unpack(type, string)
     STRLEN len;
     MemberInfo mi;
     PackInfo pack;
-    unsigned long i, count;
+    unsigned long count;
 
   PPCODE:
     CT_DEBUG_METHOD1("'%s'", type);
@@ -178,18 +195,36 @@ CBC::unpack(type, string)
 
     if (count > 0)
     {
+      dXCPT;
+      unsigned long i;
       SV **sva;
 
       /* newHV_indexed() messes with the stack, so we cannot
        * store the return values on the stack immediately...
        */
 
-      New(0, sva, count, SV *);
+      Newz(0, sva, count, SV *);
 
-      for (i = 0; i < count; i++)
+      XCPT_TRY_START
       {
-        pack.buf.pos = i*mi.size;
-        sva[i] = unpack_type(aTHX_ THIS, &pack, &mi.type, mi.pDecl, mi.level);
+        for (i = 0; i < count; i++)
+        {
+          pack.buf.pos = i*mi.size;
+          sva[i] = unpack_type(aTHX_ THIS, &pack, &mi.type, mi.pDecl, mi.level);
+        }
+
+      }
+      XCPT_TRY_END
+
+      XCPT_CATCH
+      {
+        for (i = 0; i < count; i++)
+          if (sva[i])
+            SvREFCNT_dec(sva[i]);
+
+        Safefree(sva);
+
+        XCPT_RETHROW;
       }
 
       EXTEND(SP, count);

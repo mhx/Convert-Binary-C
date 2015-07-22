@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/03/10 20:47:09 +0000 $
-* $Revision: 9 $
+* $Date: 2005/05/26 12:01:22 +0100 $
+* $Revision: 10 $
 * $Source: /cbc/hook.c $
 *
 ********************************************************************************
@@ -387,7 +387,8 @@ SV *hook_call(pTHX_ SV *self, const char *id_pre, const char *id,
       XPUSHs(sv);
     }
   }
-  else {
+  else
+  {
     /* only push the data argument */
     XPUSHs(in);
   }

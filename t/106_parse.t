@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/01/23 11:49:33 +0000 $
-# $Revision: 23 $
+# $Date: 2005/05/26 10:19:32 +0100 $
+# $Revision: 24 $
 # $Source: /t/106_parse.t $
 #
 ################################################################################
@@ -153,23 +153,15 @@ $max_size = 0;
 @success = ();
 
 $SIG{__WARN__} = sub {
-  if( $_[0] =~ /Bitfields are unsupported in \w+\('wait[^']*'\)/ ) {
-    $bitfield = 1;
-    return;
-  }
   print "# unexpected warning: $_[0]";
   push @fail, $_[0];
 };
 
 for my $t ( keys %size ) {
-  $bitfield = 0;  # reset!!!
   eval { $s = $p->sizeof($t) };
 
   if( $@ ) {
     print "# sizeof failed for '$t': $@\n";
-  }
-  elsif( $bitfield ) {
-    next;  # cannot handle bitfields yet
   }
   elsif( $size{$t} != $s ) {
     print "# incorrect size for '$t' (expected $size{$t}, got $s)\n";

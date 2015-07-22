@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/04/22 21:33:40 +0100 $
-* $Revision: 8 $
+* $Date: 2005/05/31 02:09:45 +0100 $
+* $Revision: 9 $
 * $Source: /cbc/init.c $
 *
 ********************************************************************************
@@ -124,7 +124,7 @@ static void get_init_str_struct(pTHX_ CBC *THIS, Struct *pStruct, SV *init,
     if (SvROK(init) && SvTYPE(h = SvRV(init)) == SVt_PVHV)
       hash = (HV *) h;
     else
-      WARN((aTHX_ "'%s' should be a hash reference", IDListToStr(aTHX_ idl)));
+      WARN((aTHX_ "'%s' should be a hash reference", idl_to_str(aTHX_ idl)));
   }
 
   ENTER_LEVEL;
@@ -219,7 +219,7 @@ static void get_init_str_type(pTHX_ CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
         ary = (AV *) sv;
       else
         WARN((aTHX_ "'%s' should be an array reference",
-                    IDListToStr(aTHX_ idl)));
+                    idl_to_str(aTHX_ idl)));
     }
 
     ENTER_LEVEL;
@@ -265,7 +265,7 @@ handle_basic:
       if (DEFINED(init))
       {
         if (SvROK(init))
-          WARN((aTHX_ "'%s' should be a scalar value", IDListToStr(aTHX_ idl)));
+          WARN((aTHX_ "'%s' should be a scalar value", idl_to_str(aTHX_ idl)));
         sv_catsv(string, init);
       }
       else

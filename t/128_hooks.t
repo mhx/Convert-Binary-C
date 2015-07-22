@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/05/05 23:16:38 +0100 $
-# $Revision: 10 $
+# $Date: 2005/06/10 14:03:35 +0100 $
+# $Revision: 14 $
 # $Source: /t/128_hooks.t $
 #
 ################################################################################
@@ -19,10 +19,14 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 394 }
+BEGIN { plan tests => 594 }
 
 eval { require Scalar::Util };
-my $reason = $@ ? 'Cannot load Scalar::Util' : '';
+my $reason = $@ ? 'skip: cannot load Scalar::Util' : '';
+unless ($reason) {
+  eval { Scalar::Util::dualvar(42, 'answer') eq 'answer' or die };
+  $reason = 'skip: cannot use dualvar()' if $@;
+}
 
 my $c = new Convert::Binary::C ByteOrder   => 'BigEndian',
                                EnumType    => 'String',
@@ -607,5 +611,54 @@ sub string_unpack {
   pack "c$_[0]->{len}", @{$_[0]->{buf}}
 }
 
-####### TODO: test what happens when hooks die #######
+# dying hooks used to leak memory
+# we cannot really test that they don't leak, but we test if dying works
+# any remaining leaks will hopefully show up with valgrind...
+
+$c->clean->EnumType('Integer')->parse(<<ENDC);
+
+typedef int foo;
+
+enum NUM { ZERO, ONE, TWO, THREE };
+
+struct inlined {
+  foo a[2][2];
+};
+
+typedef struct {
+  struct {
+    struct inlined;
+    enum NUM num, *pnum;
+    foo b, *pb;
+  } a;
+  struct inlined b, *pb;
+  struct {
+    struct inlined;
+    enum NUM num, *pnum;
+    foo b[2], *pb;
+  } c[2][2];
+} test;
+
+ENDC
+
+my $bd = 'x' x $c->sizeof('test');
+my $pd = eval { $c->unpack('test', $bd) };
+
+for my $t (['foo' => 40], ['enum NUM' => 10], ['struct inlined' => 4]) {
+  $c->tag($t->[0], Hooks => { pack       => sub { rand($t->[1]) < 1 and die "($t->[0]) pack\n";       shift },
+                              unpack     => sub { rand($t->[1]) < 1 and die "($t->[0]) unpack\n";     shift },
+                              pack_ptr   => sub { rand($t->[1]) < 1 and die "($t->[0]) pack_ptr\n";   shift },
+                              unpack_ptr => sub { rand($t->[1]) < 1 and die "($t->[0]) unpack_ptr\n"; shift } });
+}
+
+for (1 .. 100) {
+  my $x = eval { $c->pack('test', $pd) };
+  $@ and print "# $@";
+  ok($@ =~ /pack/ xor defined $x);
+  my $y = eval { $c->unpack('test', $bd) };
+  $@ and print "# $@";
+  ok($@ =~ /unpack/ xor defined $y);
+}
+
+#### TODO: is there a way to check for leaking scalars? (Devel::Arena ?)
 

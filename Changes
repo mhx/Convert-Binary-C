@@ -1,8 +1,20 @@
+-------------------------
+Version 0.59 (2005-06-13)
+-------------------------
+
+* fixed: dying hooks no longer leak memory
+
+* added new 'UnsignedBitfields' option
+
+* removed 'Bitfields are unsupported' warning
+
+* documented bitfield support
+
+* the usual cleanups and corrections
+
 ----------------------------
 Version 0.58_01 (2005-05-23)
 ----------------------------
-
-  === THIS IS A   N O N - S T A B L E   BETA RELEASE ===
 
 * bitfields are now supported; since bitfield implementations
   differ from compiler to compiler (sometimes significantly),

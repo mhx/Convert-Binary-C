@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/05/23 10:40:14 +0100 $
-# $Revision: 9 $
+# $Date: 2005/05/31 00:35:07 +0100 $
+# $Revision: 11 $
 # $Source: /t/501_bfsimple.t $
 #
 ################################################################################
@@ -19,12 +19,9 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 8988 }
+BEGIN { plan tests => 8990 }
 
 $BIN = $] < 5.006 ? '%x' : '%08b';
-
-# TODO: only as long as we're implementing bitfields
-$SIG{__WARN__} = sub { $_[0] =~ /Bitfields are unsupported/ or print STDERR $_[0] };
 
 my $c = eval { new Convert::Binary::C Bitfields => { Engine => 'Simple', BlockSize => 4 },
                                       EnumType  => 'String' };
@@ -419,6 +416,24 @@ ENDC
     }
   }
 }
+
+### test UnsignedBitfields option
+
+$c->clean->Bitfields({ BlockSize => 1 })->parse(<<ENDC);
+
+struct bf {
+  int x : 8;
+};
+
+ENDC
+
+$bf = $c->unpack('bf', pack('C', 255));
+ok($bf->{x}, -1);
+
+$c->UnsignedBitfields(1);
+
+$bf = $c->unpack('bf', pack('C', 255));
+ok($bf->{x}, 255);
 
 sub showbits
 {

@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/04/22 21:33:40 +0100 $
-* $Revision: 24 $
+* $Date: 2005/05/31 01:16:41 +0100 $
+* $Revision: 27 $
 * $Source: /ctlib/cttype.h $
 *
 ********************************************************************************
@@ -44,13 +44,11 @@
 #define V_IS_UNSAFE_UNDEF              0x10000000
 #define V_IS_UNSAFE_CAST               0x20000000
 #define V_IS_UNSAFE_PTROP              0x40000000
-#define V_IS_UNSAFE_BITFIELD           0x80000000
 
-#define IS_UNSAFE_VAL( val ) ( (val).flags & ( V_IS_UNSAFE            \
-                                             | V_IS_UNSAFE_UNDEF      \
-                                             | V_IS_UNSAFE_CAST       \
-                                             | V_IS_UNSAFE_PTROP      \
-                                             | V_IS_UNSAFE_BITFIELD ) )
+#define IS_UNSAFE_VAL( val ) ( (val).flags & ( V_IS_UNSAFE       \
+                                             | V_IS_UNSAFE_UNDEF \
+                                             | V_IS_UNSAFE_CAST  \
+                                             | V_IS_UNSAFE_PTROP ) )
 
 /* type flags */
 
@@ -96,46 +94,6 @@
 #define IS_TYP_STRUCT( ptr )          ( GET_CTYPE( ptr ) == TYP_STRUCT )
 #define IS_TYP_TYPEDEF( ptr )         ( GET_CTYPE( ptr ) == TYP_TYPEDEF )
 #define IS_TYP_TYPEDEF_LIST( ptr )    ( GET_CTYPE( ptr ) == TYP_TYPEDEF_LIST )
-
-/* refcount increment / decrement */
-
-#define CTT_REFCOUNT_INC(ptr)                                                  \
-        do {                                                                   \
-          register void *_p = (ptr);                                           \
-          if (_p) {                                                            \
-            switch (GET_CTYPE(_p)) {                                           \
-              case TYP_ENUM:                                                   \
-                if (((EnumSpecifier *) _p)->refcount < ~((unsigned)0))         \
-                  ((EnumSpecifier *) _p)->refcount++;                          \
-                break;                                                         \
-              case TYP_STRUCT:                                                 \
-                if (((Struct *) _p)->refcount < ~((unsigned)0))                \
-                  ((Struct *) _p)->refcount++;                                 \
-                break;                                                         \
-              default:                                                         \
-                break;                                                         \
-            }                                                                  \
-          }                                                                    \
-        } while (0)
-
-#define CTT_REFCOUNT_DEC(ptr)                                                  \
-        do {                                                                   \
-          register void *_p = (ptr);                                           \
-          if (_p) {                                                            \
-            switch (GET_CTYPE(_p)) {                                           \
-              case TYP_ENUM:                                                   \
-                if (((EnumSpecifier *) _p)->refcount > 0)                      \
-                  ((EnumSpecifier *) _p)->refcount--;                          \
-                break;                                                         \
-              case TYP_STRUCT:                                                 \
-                if (((Struct *) _p)->refcount > 0)                             \
-                  ((Struct *) _p)->refcount--;                                 \
-                break;                                                         \
-              default:                                                         \
-                break;                                                         \
-            }                                                                  \
-          }                                                                    \
-        } while (0)
 
 #define CTT_IDLEN(ptr)  ((ptr)->id_len < 255 ? (ptr)->id_len                   \
                          : 255 + strlen((ptr)->identifier + 255))
@@ -249,65 +207,68 @@ typedef struct {
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
 #define value_new CTlib_value_new
-Value *value_new( signed long iv, u_32 flags );
+Value *value_new(signed long iv, u_32 flags);
 #define value_delete CTlib_value_delete
-void value_delete( Value *pValue );
+void value_delete(Value *pValue);
 #define value_clone CTlib_value_clone
-Value *value_clone( const Value *pSrc );
+Value *value_clone(const Value *pSrc);
 
 #define enum_new CTlib_enum_new
-Enumerator *enum_new( char *identifier, int id_len, Value *pValue );
+Enumerator *enum_new(const char *identifier, int id_len, Value *pValue);
 #define enum_delete CTlib_enum_delete
-void enum_delete( Enumerator *pEnum );
+void enum_delete(Enumerator *pEnum);
 #define enum_clone CTlib_enum_clone
-Enumerator *enum_clone( const Enumerator *pSrc );
+Enumerator *enum_clone(const Enumerator *pSrc);
 
 #define enumspec_new CTlib_enumspec_new
-EnumSpecifier *enumspec_new( char *identifier, int id_len, LinkedList enumerators );
+EnumSpecifier *enumspec_new(const char *identifier, int id_len, LinkedList enumerators);
 #define enumspec_update CTlib_enumspec_update
-void enumspec_update( EnumSpecifier *pEnumSpec, LinkedList enumerators );
+void enumspec_update(EnumSpecifier *pEnumSpec, LinkedList enumerators);
 #define enumspec_delete CTlib_enumspec_delete
-void enumspec_delete( EnumSpecifier *pEnumSpec );
+void enumspec_delete(EnumSpecifier *pEnumSpec);
 #define enumspec_clone CTlib_enumspec_clone
-EnumSpecifier *enumspec_clone( const EnumSpecifier *pSrc );
+EnumSpecifier *enumspec_clone(const EnumSpecifier *pSrc);
 
 #define decl_new CTlib_decl_new
-Declarator *decl_new( char *identifier, int id_len );
+Declarator *decl_new(const char *identifier, int id_len);
 #define decl_delete CTlib_decl_delete
-void decl_delete( Declarator *pDecl );
+void decl_delete(Declarator *pDecl);
 #define decl_clone CTlib_decl_clone
-Declarator *decl_clone( const Declarator *pSrc );
+Declarator *decl_clone(const Declarator *pSrc);
 
 #define structdecl_new CTlib_structdecl_new
-StructDeclaration *structdecl_new( TypeSpec type, LinkedList declarators );
+StructDeclaration *structdecl_new(TypeSpec type, LinkedList declarators);
 #define structdecl_delete CTlib_structdecl_delete
-void structdecl_delete( StructDeclaration *pStructDecl );
+void structdecl_delete(StructDeclaration *pStructDecl);
 #define structdecl_clone CTlib_structdecl_clone
-StructDeclaration *structdecl_clone( const StructDeclaration *pSrc );
+StructDeclaration *structdecl_clone(const StructDeclaration *pSrc);
 
 #define struct_new CTlib_struct_new
-Struct *struct_new( char *identifier, int id_len, u_32 tflags, unsigned pack,
-                    LinkedList declarations );
+Struct *struct_new(const char *identifier, int id_len, u_32 tflags, unsigned pack,
+                   LinkedList declarations);
 #define struct_delete CTlib_struct_delete
-void struct_delete( Struct *pStruct );
+void struct_delete(Struct *pStruct);
 #define struct_clone CTlib_struct_clone
-Struct *struct_clone( const Struct *pSrc );
+Struct *struct_clone(const Struct *pSrc);
 
 #define typedef_new CTlib_typedef_new
-Typedef *typedef_new( TypeSpec *pType, Declarator *pDecl );
+Typedef *typedef_new(TypeSpec *pType, Declarator *pDecl);
 #define typedef_delete CTlib_typedef_delete
-void typedef_delete( Typedef *pTypedef );
+void typedef_delete(Typedef *pTypedef);
 #define typedef_clone CTlib_typedef_clone
-Typedef *typedef_clone( const Typedef *pSrc );
+Typedef *typedef_clone(const Typedef *pSrc);
 
 #define typedef_list_new CTlib_typedef_list_new
-TypedefList *typedef_list_new( TypeSpec type, LinkedList typedefs );
+TypedefList *typedef_list_new(TypeSpec type, LinkedList typedefs);
 #define typedef_list_delete CTlib_typedef_list_delete
-void typedef_list_delete( TypedefList *pTypedefList );
+void typedef_list_delete(TypedefList *pTypedefList);
 #define typedef_list_clone CTlib_typedef_list_clone
-TypedefList *typedef_list_clone( const TypedefList *pSrc );
+TypedefList *typedef_list_clone(const TypedefList *pSrc);
 
 #define get_typedef_list CTlib_get_typedef_list
-TypedefList *get_typedef_list( Typedef *pTypedef );
+TypedefList *get_typedef_list(Typedef *pTypedef);
+
+#define ctt_refcount_inc CTlib_ctt_refcount_inc
+void ctt_refcount_inc(void *ptr);
 
 #endif

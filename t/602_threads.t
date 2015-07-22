@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/05/23 10:17:11 +0100 $
-# $Revision: 23 $
+# $Date: 2005/05/26 10:19:33 +0100 $
+# $Revision: 24 $
 # $Source: /t/602_threads.t $
 #
 ################################################################################
@@ -124,26 +124,17 @@ END
   my %size = do { local (@ARGV, $/) = ('t/include/sizeof.pl'); eval <> };
   my $max_size = 0;
   my @fail = ();
-  my $bitfield;
 
   local $SIG{__WARN__} = sub {
-    if( $_[0] =~ /Bitfields are unsupported in \w+\('wait[^']*'\)/ ) {
-      $bitfield = 1;
-      return;
-    }
     print "# unexpected warning: $_[0]";
     push @fail, $_[0];
   };
 
   for my $t ( keys %size ) {
-    $bitfield = 0;
     my $s = eval { $p->sizeof($t) };
 
     if( $@ ) {
       print "# sizeof failed for '$t': $@\n";
-    }
-    elsif( $bitfield ) {
-      next;  # cannot handle bitfields yet
     }
     elsif( $size{$t} != $s ) {
       print "# incorrect size for '$t' (expected $size{$t}, got $s)\n";

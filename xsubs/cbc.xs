@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/05/19 18:54:02 +0100 $
-# $Revision: 3 $
+# $Date: 2005/05/29 09:23:03 +0100 $
+# $Revision: 5 $
 # $Source: /xsubs/cbc.xs $
 #
 ################################################################################
@@ -43,13 +43,13 @@ CBC::new(...)
       if (gs_DisableParser)
       {
         Perl_warn(aTHX_ XSCLASS " parser is DISABLED");
-        THIS->cfg.flags |= DISABLE_PARSER;
+        THIS->cfg.disable_parser = 1;
       }
 
       /* Only preset the option here, user may explicitly */
       /* disable OrderMembers in the constructor          */
       if (gs_OrderMembers)
-        THIS->flags |= CBC_ORDER_MEMBERS;
+        THIS->order_members = 1;
 
       /*
        *  bless the new object here, because handle_option()
@@ -63,7 +63,7 @@ CBC::new(...)
 
       post_configure_update(aTHX_ THIS);
 
-      if (gs_OrderMembers && THIS->flags & CBC_ORDER_MEMBERS)
+      if (gs_OrderMembers && THIS->order_members)
         load_indexed_hash_module(aTHX_ THIS);
 
       XSRETURN(1);

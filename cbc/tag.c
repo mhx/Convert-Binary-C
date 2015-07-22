@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:41 +0000 $
-* $Revision: 11 $
+* $Date: 2005/06/13 20:34:38 +0100 $
+* $Revision: 12 $
 * $Source: /cbc/tag.c $
 *
 ********************************************************************************
@@ -224,6 +224,7 @@ void handle_tag(pTHX_ const TagTypeInfo *ptti, CtTagList *ptl, SV *name, SV *val
 
     if (tag == NULL)
     {
+      dTHR;
       dXCPT;
 
       tag = tag_new(tagid, gs_TagTbl[tagid].vtbl);

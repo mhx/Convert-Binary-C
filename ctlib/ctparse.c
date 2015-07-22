@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/04/04 20:19:01 +0100 $
-* $Revision: 52 $
+* $Date: 2005/05/29 09:54:10 +0100 $
+* $Revision: 54 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -68,7 +68,7 @@
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 
-static char *get_path_name( const char *dir, const char *file );
+static char *get_path_name(const char *dir, const char *file);
 
 
 /*===== EXTERNAL VARIABLES ===================================================*/
@@ -101,31 +101,32 @@ CParseInfo *g_current_cpi;
 *
 *******************************************************************************/
 
-static char *get_path_name( const char *dir, const char *file )
+static char *get_path_name(const char *dir, const char *file)
 {
   int dirlen = 0, filelen, append_delim = 0;
   char *buf, *b;
 
-  if( dir != NULL ) {
-    dirlen = strlen( dir );
-    if( !IS_ANY_DIRECTORY_DELIMITER( dir[dirlen-1] ) )
+  if (dir != NULL)
+  {
+    dirlen = strlen(dir);
+    if (!IS_ANY_DIRECTORY_DELIMITER(dir[dirlen-1]))
       append_delim = 1;
   }
 
-  filelen = strlen( file );
+  filelen = strlen(file);
 
-  AllocF( char *, buf, dirlen + append_delim + filelen + 1 );
+  AllocF(char *, buf, dirlen + append_delim + filelen + 1);
   
-  if( dir != NULL )
-    strcpy( buf, dir );
+  if (dir != NULL)
+    strcpy(buf, dir);
 
-  if( append_delim )
+  if (append_delim)
     buf[dirlen++] = SYSTEM_DIRECTORY_DELIMITER;
 
-  strcpy( buf+dirlen, file );
+  strcpy(buf+dirlen, file);
 
-  for( b=buf; *b; b++ )
-    if( IS_NON_SYSTEM_DIR_DELIM( *b ) )
+  for (b = buf; *b; b++)
+    if (IS_NON_SYSTEM_DIR_DELIM(*b))
       *b = SYSTEM_DIRECTORY_DELIMITER;
 
   return buf;
@@ -151,8 +152,8 @@ static char *get_path_name( const char *dir, const char *file )
 *
 *******************************************************************************/
 
-int parse_buffer( const char *filename, const Buffer *pBuf,
-                 const CParseConfig *pCPC, CParseInfo *pCPI )
+int parse_buffer(const char *filename, const Buffer *pBuf,
+                 const CParseConfig *pCPC, CParseInfo *pCPI)
 {
   int                rval;
   char              *file, *str;
@@ -163,8 +164,8 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
   struct CPP        *cpp;
 #endif
 
-  CT_DEBUG( CTLIB, ("ctparse::parse_buffer( %s, %p, %p, %p )",
-            filename ? filename : BUFFER_NAME, pBuf, pCPI, pCPC) );
+  CT_DEBUG(CTLIB, ("ctparse::parse_buffer( %s, %p, %p, %p )",
+           filename ? filename : BUFFER_NAME, pBuf, pCPI, pCPC));
 
 #ifndef UCPP_REENTRANT
   g_current_cpi = pCPI;
@@ -174,30 +175,31 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
   /* Initialize parse info structures */
   /*----------------------------------*/
 
-  if( pCPI->enums == NULL && pCPI->structs == NULL &&
-      pCPI->typedef_lists == NULL ) {
-    CT_DEBUG( CTLIB, ("creating linked lists") );
+  if (pCPI->enums == NULL && pCPI->structs == NULL &&
+      pCPI->typedef_lists == NULL)
+  {
+    CT_DEBUG(CTLIB, ("creating linked lists"));
 
     pCPI->enums         = LL_new();
     pCPI->structs       = LL_new();
     pCPI->typedef_lists = LL_new();
 
-    pCPI->htEnumerators = HT_new_ex( 5, HT_AUTOGROW );
-    pCPI->htEnums       = HT_new_ex( 4, HT_AUTOGROW );
-    pCPI->htStructs     = HT_new_ex( 4, HT_AUTOGROW );
-    pCPI->htTypedefs    = HT_new_ex( 4, HT_AUTOGROW );
-    pCPI->htFiles       = HT_new_ex( 3, HT_AUTOGROW );
+    pCPI->htEnumerators = HT_new_ex(5, HT_AUTOGROW);
+    pCPI->htEnums       = HT_new_ex(4, HT_AUTOGROW);
+    pCPI->htStructs     = HT_new_ex(4, HT_AUTOGROW);
+    pCPI->htTypedefs    = HT_new_ex(4, HT_AUTOGROW);
+    pCPI->htFiles       = HT_new_ex(3, HT_AUTOGROW);
 
     pCPI->errorStack    = LL_new();
   }
-  else if( pCPI->enums != NULL && pCPI->structs != NULL &&
-           pCPI->typedef_lists != NULL ) {
-    CT_DEBUG( CTLIB, ("re-using linked lists") );
-    pop_all_errors( pCPI );
+  else if (pCPI->enums != NULL && pCPI->structs != NULL &&
+           pCPI->typedef_lists != NULL)
+  {
+    CT_DEBUG(CTLIB, ("re-using linked lists"));
+    pop_all_errors(pCPI);
   }
-  else {
-    CT_DEBUG( CTLIB, ("CParseInfo is inconsistent!") );   /* TODO: fail here! */
-  }
+  else
+    fatal_error("CParseInfo is inconsistent!");
 
   /*----------------------------*/
   /* Try to open the input file */
@@ -205,28 +207,32 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
 
   infile = NULL;
 
-  if( filename != NULL ) {
-    file = get_path_name( NULL, filename );
+  if (filename != NULL)
+  {
+    file = get_path_name(NULL, filename);
 
-    CT_DEBUG( CTLIB, ("Trying '%s'...", file) );
+    CT_DEBUG(CTLIB, ("Trying '%s'...", file));
 
-    infile = fopen( file, "r" );
+    infile = fopen(file, "r");
 
-    if( infile == NULL ) {
-      LL_foreach( str, pCPC->includes ) {
-        Free( file );
+    if (infile == NULL)
+    {
+      LL_foreach(str, pCPC->includes)
+      {
+        Free(file);
 
-        file = get_path_name( str, filename );
+        file = get_path_name(str, filename);
 
-        CT_DEBUG( CTLIB, ("Trying '%s'...", file) );
+        CT_DEBUG(CTLIB, ("Trying '%s'...", file));
 
-        if( (infile = fopen( file, "r" )) != NULL )
+        if((infile = fopen(file, "r")) != NULL)
           break;
       }
 
-      if( infile == NULL ) {
-        Free( file );
-        push_error( pCPI, "Cannot find input file '%s'", filename );
+      if (infile == NULL)
+      {
+        Free(file);
+        push_error(pCPI, "Cannot find input file '%s'", filename);
 #ifndef UCPP_REENTRANT
         g_current_cpi = NULL;
 #endif
@@ -239,7 +245,7 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
   /* Set up the preprocessor */
   /*-------------------------*/
 
-  CT_DEBUG( CTLIB, ("initializing preprocessor") );
+  CT_DEBUG(CTLIB, ("initializing preprocessor"));
 
 #ifdef UCPP_REENTRANT
   cpp = new_cpp();
@@ -261,40 +267,43 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
 
   init_tables( aUCPP_ 1 );
 
-  CT_DEBUG( CTLIB, ("configuring preprocessor") );
+  CT_DEBUG(CTLIB, ("configuring preprocessor"));
 
-  init_include_path( aUCPP_ NULL );
+  init_include_path(aUCPP_ NULL);
 
-  if( filename != NULL ) {
-    set_init_filename( aUCPP_ file, 1 );
-    Free( file );
+  if (filename != NULL)
+  {
+    set_init_filename(aUCPP_ file, 1);
+    Free(file);
   }
   else
-    set_init_filename( aUCPP_ BUFFER_NAME, 0 );
+    set_init_filename(aUCPP_ BUFFER_NAME, 0);
 
-  init_lexer_state( &lexer );
-  init_lexer_mode( &lexer );
+  init_lexer_state(&lexer);
+  init_lexer_mode(&lexer);
 
   lexer.flags |= HANDLE_ASSERTIONS
               |  HANDLE_PRAGMA
               |  LINE_NUM;
 
-  if( pCPC->flags & ISSUE_WARNINGS )
+  if (pCPC->issue_warnings)
     lexer.flags |= WARN_STANDARD
                 |  WARN_ANNOYING
                 |  WARN_TRIGRAPHS
                 |  WARN_TRIGRAPHS_MORE;
 
-  if( pCPC->flags & HAS_CPP_COMMENTS )
+  if (pCPC->has_cpp_comments)
     lexer.flags |= CPLUSPLUS_COMMENTS;
 
-  if( pCPC->flags & HAS_MACRO_VAARGS )
+  if (pCPC->has_macro_vaargs)
     lexer.flags |= MACRO_VAARG;
 
-  if( infile != NULL ) {
+  if (infile != NULL)
+  {
     lexer.input        = infile;
   }
-  else {
+  else
+  {
     lexer.input        = NULL;
     lexer.input_string = (unsigned char *) pBuf->buffer;
     lexer.pbuf         = pBuf->pos;
@@ -303,55 +312,60 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
 
   /* Add includes */
 
-  LL_foreach( str, pCPC->includes ) {
-    CT_DEBUG( CTLIB, ("adding include path '%s'", str) );
-    add_incpath( aUCPP_ str );
+  LL_foreach(str, pCPC->includes)
+  {
+    CT_DEBUG(CTLIB, ("adding include path '%s'", str));
+    add_incpath(aUCPP_ str);
   }
 
   /* Make defines */
 
-  LL_foreach( str, pCPC->defines ) {
-    CT_DEBUG( CTLIB, ("defining macro '%s'", str) );
-    (void) define_macro( aUCPP_ &lexer, str );
+  LL_foreach(str, pCPC->defines)
+  {
+    CT_DEBUG(CTLIB, ("defining macro '%s'", str));
+    (void) define_macro(aUCPP_ &lexer, str);
   }
 
   /* Make assertions */
 
-  LL_foreach( str, pCPC->assertions ) {
-    CT_DEBUG( CTLIB, ("making assertion '%s'", str) );
-    (void) make_assertion( aUCPP_ str );
+  LL_foreach(str, pCPC->assertions)
+  {
+    CT_DEBUG(CTLIB, ("making assertion '%s'", str));
+    (void) make_assertion(aUCPP_ str);
   }
 
-  enter_file( aUCPP_ &lexer, lexer.flags );
+  enter_file(aUCPP_ &lexer, lexer.flags);
 
   /*---------------------*/
   /* Create the C parser */
   /*---------------------*/
 
-  pState = c_parser_new( pCPC, pCPI, aUCPP_ &lexer );
+  pState = c_parser_new(pCPC, pCPI, aUCPP_ &lexer);
 
   /*-----------------*/
   /* Parse the input */
   /*-----------------*/
 
-  if( pCPC->flags & DISABLE_PARSER ) {
-    CT_DEBUG( CTLIB, ("parser is disabled, running only preprocessor") );
+  if (pCPC->disable_parser)
+  {
+    CT_DEBUG(CTLIB, ("parser is disabled, running only preprocessor"));
     rval = 0;
   }
-  else {
-    CT_DEBUG( CTLIB, ("entering parser") );
-    rval = c_parser_run( pState );
-    CT_DEBUG( CTLIB, ("c_parse() returned %d", rval) );
+  else
+  {
+    CT_DEBUG(CTLIB, ("entering parser"));
+    rval = c_parser_run(pState);
+    CT_DEBUG(CTLIB, ("c_parse() returned %d", rval));
   }
 
   /*-------------------------------*/
   /* Finish parsing (cleanup ucpp) */
   /*-------------------------------*/
 
-  if( rval || (pCPC->flags & DISABLE_PARSER) )
-    while( lex( aUCPP_ &lexer ) < CPPERR_EOF );
+  if (rval || pCPC->disable_parser)
+    while (lex(aUCPP_ &lexer) < CPPERR_EOF);
 
-  (void) check_cpp_errors( aUCPP_ &lexer );
+  (void) check_cpp_errors(aUCPP_ &lexer);
 
   if (DEBUG_FLAG(PREPROC))
   {
@@ -362,11 +376,11 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
     print_defines(aUCPP);
   }
 
-  free_lexer_state( &lexer );
-  wipeout( aUCPP );
+  free_lexer_state(&lexer);
+  wipeout(aUCPP);
 
 #ifdef UCPP_REENTRANT
-  del_cpp( cpp );
+  del_cpp(cpp);
 #endif
 
 #ifdef MEM_DEBUG
@@ -377,20 +391,21 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
   /* Cleanup the C parser */
   /*----------------------*/
 
-  c_parser_delete( pState );
+  c_parser_delete(pState);
 
   /* Invalidate the buffer name in the parsed files table */
 
-  if( filename == NULL )
-    ((FileInfo *) HT_get( pCPI->htFiles, BUFFER_NAME, 0, 0 ))->valid = 0;
+  if (filename == NULL)
+    ((FileInfo *) HT_get(pCPI->htFiles, BUFFER_NAME, 0, 0))->valid = 0;
 
 #if !defined NDEBUG && defined CTLIB_DEBUGGING
-  if( DEBUG_FLAG( HASH ) ) {
-    HT_dump( pCPI->htEnumerators );
-    HT_dump( pCPI->htEnums );
-    HT_dump( pCPI->htStructs );
-    HT_dump( pCPI->htTypedefs );
-    HT_dump( pCPI->htFiles );
+  if (DEBUG_FLAG(HASH))
+  {
+    HT_dump(pCPI->htEnumerators);
+    HT_dump(pCPI->htEnums);
+    HT_dump(pCPI->htStructs);
+    HT_dump(pCPI->htTypedefs);
+    HT_dump(pCPI->htFiles);
   }
 #endif
 
@@ -418,11 +433,12 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
 *
 *******************************************************************************/
 
-void init_parse_info( CParseInfo *pCPI )
+void init_parse_info(CParseInfo *pCPI)
 {
   CT_DEBUG( CTLIB, ("ctparse::init_parse_info()") );
 
-  if( pCPI ) {
+  if (pCPI)
+  {
     pCPI->typedef_lists = NULL;
     pCPI->structs       = NULL;
     pCPI->enums         = NULL;
@@ -454,28 +470,30 @@ void init_parse_info( CParseInfo *pCPI )
 *
 *******************************************************************************/
 
-void free_parse_info( CParseInfo *pCPI )
+void free_parse_info(CParseInfo *pCPI)
 {
-  CT_DEBUG( CTLIB, ("ctparse::free_parse_info()") );
+  CT_DEBUG(CTLIB, ("ctparse::free_parse_info()"));
 
-  if( pCPI ) {
-    LL_destroy( pCPI->enums,         (LLDestroyFunc) enumspec_delete );
-    LL_destroy( pCPI->structs,       (LLDestroyFunc) struct_delete );
-    LL_destroy( pCPI->typedef_lists, (LLDestroyFunc) typedef_list_delete );
+  if (pCPI)
+  {
+    LL_destroy(pCPI->enums,         (LLDestroyFunc) enumspec_delete);
+    LL_destroy(pCPI->structs,       (LLDestroyFunc) struct_delete);
+    LL_destroy(pCPI->typedef_lists, (LLDestroyFunc) typedef_list_delete);
 
-    HT_destroy( pCPI->htEnumerators, NULL );
-    HT_destroy( pCPI->htEnums,       NULL );
-    HT_destroy( pCPI->htStructs,     NULL );
-    HT_destroy( pCPI->htTypedefs,    NULL );
+    HT_destroy(pCPI->htEnumerators, NULL);
+    HT_destroy(pCPI->htEnums,       NULL);
+    HT_destroy(pCPI->htStructs,     NULL);
+    HT_destroy(pCPI->htTypedefs,    NULL);
 
-    HT_destroy( pCPI->htFiles,       (LLDestroyFunc) fileinfo_delete );
+    HT_destroy(pCPI->htFiles,       (LLDestroyFunc) fileinfo_delete);
 
-    if( pCPI->errorStack ) {
-      pop_all_errors( pCPI );
-      LL_delete( pCPI->errorStack );
+    if (pCPI->errorStack)
+    {
+      pop_all_errors(pCPI);
+      LL_delete(pCPI->errorStack);
     }
 
-    init_parse_info( pCPI );  /* make sure everything is NULL'd */
+    init_parse_info(pCPI);  /* make sure everything is NULL'd */
   }
 }
 
@@ -496,27 +514,27 @@ void free_parse_info( CParseInfo *pCPI )
 *
 *******************************************************************************/
 
-void reset_parse_info( CParseInfo *pCPI )
+void reset_parse_info(CParseInfo *pCPI)
 {
   Struct *pStruct;
   TypedefList *pTDL;
   Typedef *pTD;
 
-  CT_DEBUG( CTLIB, ("ctparse::reset_parse_info(): got %d struct(s)",
-                    LL_count( pCPI->structs )) );
+  CT_DEBUG(CTLIB, ("ctparse::reset_parse_info(): got %d struct(s)",
+                   LL_count(pCPI->structs)));
 
   /* clear size and align fields */
-  LL_foreach( pStruct, pCPI->structs )
+  LL_foreach(pStruct, pCPI->structs)
   {
-    CT_DEBUG( CTLIB, ("resetting struct '%s':", pStruct->identifier[0] ?
-                      pStruct->identifier : "<no-identifier>" ) );
+    CT_DEBUG(CTLIB, ("resetting struct '%s':", pStruct->identifier[0] ?
+                     pStruct->identifier : "<no-identifier>"));
 
     pStruct->align = 0;
     pStruct->size  = 0;
   }
 
-  LL_foreach( pTDL, pCPI->typedef_lists )
-    LL_foreach( pTD, pTDL->typedefs )
+  LL_foreach(pTDL, pCPI->typedef_lists)
+    LL_foreach(pTD, pTDL->typedefs)
     {
       pTD->pDecl->size      = -1;
       pTD->pDecl->item_size = -1;
@@ -550,7 +568,7 @@ void update_parse_info(CParseInfo *pCPI, const CParseConfig *pCPC)
                    LL_count(pCPI->structs)));
 
   /* compute size and alignment */
-  LL_foreach (pStruct, pCPI->structs)
+  LL_foreach(pStruct, pCPI->structs)
   {
     CT_DEBUG(CTLIB, ("updating struct '%s':", pStruct->identifier[0] ?
                      pStruct->identifier : "<no-identifier>"));
@@ -559,8 +577,8 @@ void update_parse_info(CParseInfo *pCPI, const CParseConfig *pCPC)
       pCPC->layout_compound(&pCPC->layout, pStruct);
   }
 
-  LL_foreach (pTDL, pCPI->typedef_lists)
-    LL_foreach (pTD, pTDL->typedefs)
+  LL_foreach(pTDL, pCPI->typedef_lists)
+    LL_foreach(pTD, pTDL->typedefs)
       if (pTD->pDecl->size < 0)
       {
         unsigned size, item_size;
@@ -591,183 +609,155 @@ void update_parse_info(CParseInfo *pCPI, const CParseConfig *pCPC)
 *
 *******************************************************************************/
 
-#define PTR_NOT_FOUND( ptr )                                                   \
-        do {                                                                   \
-          fprintf( stderr, "FATAL: pointer " #ptr " (%p) not found! (%s:%d)\n",\
-                           ptr, __FILE__, __LINE__ );                          \
-          abort();                                                             \
-        } while(0)
+#define PTR_NOT_FOUND(ptr)                                                     \
+          fatal_error("FATAL: pointer " #ptr " (%p) not found! (%s:%d)\n",     \
+                      ptr, __FILE__, __LINE__)
 
-void clone_parse_info( CParseInfo *pDest, const CParseInfo *pSrc )
+#define REMAP_PTR(what, target)                                                \
+        do {                                                                   \
+          if (target != NULL)                                                  \
+          {                                                                    \
+            void *ptr = HT_get(ptrmap, (const char *) &target,                 \
+                               sizeof(void *), 0);                             \
+                                                                               \
+            CT_DEBUG(CTLIB, (#what ": %p => %p", target, ptr));                \
+                                                                               \
+            if (ptr)                                                           \
+              target = ptr;                                                    \
+            else                                                               \
+              PTR_NOT_FOUND((void *) target);                                  \
+          }                                                                    \
+        } while (0)
+
+void clone_parse_info(CParseInfo *pDest, const CParseInfo *pSrc)
 {
   HashTable      ptrmap;
   EnumSpecifier *pES;
   Struct        *pStruct;
   TypedefList   *pTDL;
 
-  CT_DEBUG( CTLIB, ("ctparse::clone_parse_info()") );
+  CT_DEBUG(CTLIB, ("ctparse::clone_parse_info()"));
 
-  if(   pSrc->enums         == NULL
-     || pSrc->structs       == NULL
-     || pSrc->typedef_lists == NULL
-     || pSrc->htEnumerators == NULL
-     || pSrc->htEnums       == NULL
-     || pSrc->htStructs     == NULL
-     || pSrc->htTypedefs    == NULL
-     || pSrc->htFiles       == NULL
-    )
+  if (pSrc->enums         == NULL || 
+      pSrc->structs       == NULL || 
+      pSrc->typedef_lists == NULL || 
+      pSrc->htEnumerators == NULL || 
+      pSrc->htEnums       == NULL || 
+      pSrc->htStructs     == NULL || 
+      pSrc->htTypedefs    == NULL || 
+      pSrc->htFiles       == NULL)
     return;  /* don't clone empty objects */
 
-  ptrmap = HT_new_ex( 3, HT_AUTOGROW );
+  ptrmap = HT_new_ex(3, HT_AUTOGROW);
 
   pDest->enums         = LL_new();
   pDest->structs       = LL_new();
   pDest->typedef_lists = LL_new();
-  pDest->htEnumerators = HT_new_ex( HT_size( pSrc->htEnumerators ), HT_AUTOGROW );
-  pDest->htEnums       = HT_new_ex( HT_size( pSrc->htEnums ), HT_AUTOGROW );
-  pDest->htStructs     = HT_new_ex( HT_size( pSrc->htStructs ), HT_AUTOGROW );
-  pDest->htTypedefs    = HT_new_ex( HT_size( pSrc->htTypedefs ), HT_AUTOGROW );
+  pDest->htEnumerators = HT_new_ex(HT_size(pSrc->htEnumerators), HT_AUTOGROW);
+  pDest->htEnums       = HT_new_ex(HT_size(pSrc->htEnums), HT_AUTOGROW);
+  pDest->htStructs     = HT_new_ex(HT_size(pSrc->htStructs), HT_AUTOGROW);
+  pDest->htTypedefs    = HT_new_ex(HT_size(pSrc->htTypedefs), HT_AUTOGROW);
   pDest->errorStack    = LL_new();
 
-  CT_DEBUG( CTLIB, ("cloning enums") );
+  CT_DEBUG(CTLIB, ("cloning enums"));
 
-  LL_foreach( pES, pSrc->enums ) {
+  LL_foreach(pES, pSrc->enums)
+  {
     Enumerator    *pEnum;
-    EnumSpecifier *pClone = enumspec_clone( pES );
+    EnumSpecifier *pClone = enumspec_clone(pES);
 
-    CT_DEBUG( CTLIB, ("storing pointer to map: %p <=> %p", pES, pClone) );
-    HT_store( ptrmap, (const char *) &pES, sizeof( pES ), 0, pClone );
-    LL_push( pDest->enums, pClone );
+    CT_DEBUG(CTLIB, ("storing pointer to map: %p <=> %p", pES, pClone));
+    HT_store(ptrmap, (const char *) &pES, sizeof(pES), 0, pClone);
+    LL_push(pDest->enums, pClone);
 
-    if( pClone->identifier[0] )
-      HT_store( pDest->htEnums, pClone->identifier, 0, 0, pClone );
+    if (pClone->identifier[0])
+      HT_store(pDest->htEnums, pClone->identifier, 0, 0, pClone);
 
-    LL_foreach( pEnum, pClone->enumerators )
-      HT_store( pDest->htEnumerators, pEnum->identifier, 0, 0, pEnum );
+    LL_foreach(pEnum, pClone->enumerators)
+      HT_store(pDest->htEnumerators, pEnum->identifier, 0, 0, pEnum);
   }
 
-  CT_DEBUG( CTLIB, ("cloning structs") );
+  CT_DEBUG(CTLIB, ("cloning structs"));
 
-  LL_foreach( pStruct, pSrc->structs ) {
-    Struct *pClone = struct_clone( pStruct );
+  LL_foreach(pStruct, pSrc->structs)
+  {
+    Struct *pClone = struct_clone(pStruct);
 
-    CT_DEBUG( CTLIB, ("storing pointer to map: %p <=> %p", pStruct, pClone) );
-    HT_store( ptrmap, (const char *) &pStruct, sizeof( pStruct ), 0, pClone );
-    LL_push( pDest->structs, pClone );
+    CT_DEBUG(CTLIB, ("storing pointer to map: %p <=> %p", pStruct, pClone));
+    HT_store(ptrmap, (const char *) &pStruct, sizeof(pStruct), 0, pClone);
+    LL_push(pDest->structs, pClone);
 
-    if( pClone->identifier[0] )
-      HT_store( pDest->htStructs, pClone->identifier, 0, 0, pClone );
+    if (pClone->identifier[0])
+      HT_store(pDest->htStructs, pClone->identifier, 0, 0, pClone);
   }
 
-  CT_DEBUG( CTLIB, ("cloning typedefs") );
+  CT_DEBUG(CTLIB, ("cloning typedefs"));
 
-  LL_foreach( pTDL, pSrc->typedef_lists ) {
-    TypedefList *pClone = typedef_list_clone( pTDL );
+  LL_foreach(pTDL, pSrc->typedef_lists)
+  {
+    TypedefList *pClone = typedef_list_clone(pTDL);
     Typedef *pOld, *pNew;
 
-    LL_reset( pTDL->typedefs );
-    LL_reset( pClone->typedefs );
+    LL_reset(pTDL->typedefs);
+    LL_reset(pClone->typedefs);
 
-    while(   (pOld = LL_next(pTDL->typedefs))   != NULL
-          && (pNew = LL_next(pClone->typedefs)) != NULL
-         ) {
-      CT_DEBUG( CTLIB, ("storing pointer to map: %p <=> %p", pOld, pNew) );
-      HT_store( ptrmap, (const char *) &pOld, sizeof( pOld ), 0, pNew );
-      HT_store( pDest->htTypedefs, pNew->pDecl->identifier, 0, 0, pNew );
+    while ((pOld = LL_next(pTDL->typedefs))   != NULL &&
+           (pNew = LL_next(pClone->typedefs)) != NULL)
+    {
+      CT_DEBUG(CTLIB, ("storing pointer to map: %p <=> %p", pOld, pNew));
+      HT_store(ptrmap, (const char *) &pOld, sizeof(pOld), 0, pNew);
+      HT_store(pDest->htTypedefs, pNew->pDecl->identifier, 0, 0, pNew);
     }
 
-    LL_push( pDest->typedef_lists, pClone );
+    LL_push(pDest->typedef_lists, pClone);
   }
 
-  CT_DEBUG( CTLIB, ("cloning file information") );
+  CT_DEBUG(CTLIB, ("cloning file information"));
 
   {
     void *pOld, *pNew;
 
-    pDest->htFiles = HT_clone( pSrc->htFiles, (HTCloneFunc) fileinfo_clone );
+    pDest->htFiles = HT_clone(pSrc->htFiles, (HTCloneFunc) fileinfo_clone);
 
-    HT_reset( pSrc->htFiles );
-    HT_reset( pDest->htFiles );
+    HT_reset(pSrc->htFiles);
+    HT_reset(pDest->htFiles);
 
-    while(   HT_next( pSrc->htFiles, NULL, NULL, &pOld)
-          && HT_next( pDest->htFiles, NULL, NULL, &pNew)
-         ) {
-      CT_DEBUG( CTLIB, ("storing pointer to map: %p <=> %p", pOld, pNew) );
-      HT_store( ptrmap, (const char *) &pOld, sizeof( pOld ), 0, pNew );
+    while (HT_next(pSrc->htFiles, NULL, NULL, &pOld) &&
+           HT_next(pDest->htFiles, NULL, NULL, &pNew))
+    {
+      CT_DEBUG(CTLIB, ("storing pointer to map: %p <=> %p", pOld, pNew));
+      HT_store(ptrmap, (const char *) &pOld, sizeof(pOld), 0, pNew);
     }
   }
 
-  CT_DEBUG( CTLIB, ("remapping pointers for enums") );
+  CT_DEBUG(CTLIB, ("remapping pointers for enums"));
 
-  LL_foreach( pES, pDest->enums ) {
-    void *ptr;
+  LL_foreach(pES, pDest->enums)
+    REMAP_PTR(EnumSpec, pES->context.pFI);
 
-    ptr = HT_get( ptrmap, (const char *) &pES->context.pFI,
-                          sizeof(void *), 0 );
+  CT_DEBUG(CTLIB, ("remapping pointers for structs"));
 
-    CT_DEBUG( CTLIB, ("EnumSpec @ %p: %p => %p", pES, pES->context.pFI, ptr) );
-
-    if( ptr )
-      pES->context.pFI = ptr;
-    else
-      PTR_NOT_FOUND( (void *) pES->context.pFI );
-  }
-
-  CT_DEBUG( CTLIB, ("remapping pointers for structs") );
-
-  LL_foreach( pStruct, pDest->structs ) {
+  LL_foreach(pStruct, pDest->structs)
+  {
     StructDeclaration *pStructDecl;
-    void *ptr;
 
-    CT_DEBUG( CTLIB, ("remapping pointers for struct @ %p ('%s')",
-                      pStruct, pStruct->identifier) );
+    CT_DEBUG(CTLIB, ("remapping pointers for struct @ %p ('%s')",
+                     pStruct, pStruct->identifier));
 
-    LL_foreach( pStructDecl, pStruct->declarations ) {
-      if( pStructDecl->type.ptr != NULL ) {
-        ptr = HT_get( ptrmap, (const char *) &pStructDecl->type.ptr,
-                              sizeof(void *), 0 );
+    LL_foreach(pStructDecl, pStruct->declarations)
+      REMAP_PTR(StructDecl, pStructDecl->type.ptr);
 
-        CT_DEBUG( CTLIB, ("StructDecl @ %p: %p => %p",
-                          pStructDecl, pStructDecl->type.ptr, ptr) );
-
-        if( ptr )
-          pStructDecl->type.ptr = ptr;
-        else
-          PTR_NOT_FOUND( pStructDecl->type.ptr );
-      }
-    }
-
-    ptr = HT_get( ptrmap, (const char *) &pStruct->context.pFI,
-                          sizeof(void *), 0 );
-
-    CT_DEBUG( CTLIB, ("Struct @ %p: %p => %p",
-                      pStruct, pStruct->context.pFI, ptr) );
-
-    if( ptr )
-      pStruct->context.pFI = ptr;
-    else
-      PTR_NOT_FOUND( (void *) pStruct->context.pFI );
+    REMAP_PTR(Struct, pStruct->context.pFI);
   }
 
-  CT_DEBUG( CTLIB, ("remapping pointers for typedef lists") );
+  CT_DEBUG(CTLIB, ("remapping pointers for typedef lists"));
 
-  LL_foreach( pTDL, pDest->typedef_lists ) {
-    if( pTDL->type.ptr != NULL ) {
-      void *ptr = HT_get( ptrmap, (const char *) &pTDL->type.ptr,
-                                  sizeof(void *), 0 );
+  LL_foreach(pTDL, pDest->typedef_lists)
+    REMAP_PTR(TypedefList, pTDL->type.ptr);
 
-      CT_DEBUG( CTLIB, ("TypedefList @ %p: %p => %p",
-                        pTDL, pTDL->type.ptr, ptr) );
-
-      if( ptr )
-        pTDL->type.ptr = ptr;
-      else
-        PTR_NOT_FOUND( pTDL->type.ptr );
-    }
-  }
-
-  HT_destroy( ptrmap, NULL );
+  HT_destroy(ptrmap, NULL);
 }
 
+#undef REMAP_PTR
 #undef PTR_NOT_FOUND
 

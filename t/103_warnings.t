@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/05/19 15:40:35 +0100 $
-# $Revision: 56 $
+# $Date: 2005/05/31 01:55:54 +0100 $
+# $Revision: 59 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 6098 }
+BEGIN { plan tests => 6138 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -166,6 +166,13 @@ eval_test(q{
   $p->configure(DisabledKeywords => 42);                        # (E) DisabledKeywords wants a reference to an array of strings
   $p->configure(DisabledKeywords => { foo => 42 });             # (E) DisabledKeywords wants an array reference
 
+  $p->configure(Bitfields => 42);                               # (E) Bitfields wants a hash reference
+  $p->configure(Bitfields => []);                               # (E) Bitfields wants a hash reference
+  $p->configure(Bitfields => { Engine => 'FooBar' });           # (E) Unknown bitfield layout engine 'FooBar'
+  $p->configure(Bitfields => { Engine => 'Simple' });           # no warning
+  $p->configure(Bitfields => { ByteOrder => 'BigEndian' });     # (E) Invalid option 'ByteOrder' for bitfield layout engine 'Simple'
+  $p->configure(Bitfields => { NoSuchOption => 42 });           # (E) Invalid option 'NoSuchOption' for bitfield layout engine 'Simple'
+
   $x = $p->def('');                                             # no warning
   $x = $p->def('struct  ');                                     # no warning
   $x = $p->def('notthere');                                     # no warning
@@ -184,7 +191,7 @@ eval_test(q{
   $x = $p->pack('nodef', 'yyy');                                # (E) Got no struct declarations in resolution of 'nodef'
   $x = $p->pack('xxx', 'yyy');                                  # (E) Got no definition for 'union xxx'
   $p->pack('na', 'yyy', $data);                                 # (E) Cannot find 'na'
-  $x = $p->pack('hasbf', {});                                   # (1) Bitfields are unsupported in pack('hasbf')
+  $x = $p->pack('hasbf', {});                                   # no warning
   $x = $p->pack('t_unsafe', []);                                # (1) Unsafe values used in pack('t_unsafe')
   $x = $p->pack('s_unsafe', {});                                # (1) Unsafe values used in pack('s_unsafe')
   $x = $p->pack('nonnative', 0);                                # [ ieeefp] (1) Cannot pack 1 byte floating point values
@@ -225,7 +232,7 @@ eval_test(q{
   $x = $p->pack('short double', 42);                            # (E) Unsupported basic type 'short double'
   $x = $p->pack('fp_unsupp', 42);                               # (1) Unsupported floating point type 'short float' in pack
 
-  $x = $p->pack('hasbf.bf', {});                                # (1) Bitfields are unsupported in pack('hasbf.bf')
+  $x = $p->pack('hasbf.bf', {});                                # no warning
 
   $p->unpack('test', $data);                                    # (1) Useless use of unpack in void context
   $x = $p->unpack('', $data);                                   # (E) Cannot find ''
@@ -235,7 +242,7 @@ eval_test(q{
   $x = $p->unpack('test', $data);                               # (1) Data too short
   @x = $p->unpack('test', $data);                               # no warning
   $x = $p->unpack('array', '');                                 # no warning
-  $x = $p->unpack('hasbf', $data);                              # (1) Bitfields are unsupported in unpack('hasbf')
+  $x = $p->unpack('hasbf', $data);                              # no warning
   $x = $p->unpack('t_unsafe', $data);                           # (1) Unsafe values used in unpack('t_unsafe')
                                                                 # (1) Data too short
   $x = $p->unpack('s_unsafe', $data);                           # (1) Unsafe values used in unpack('s_unsafe')
@@ -250,7 +257,7 @@ eval_test(q{
   $x = $p->unpack('signed float', 'x'x100);                     # (E) Unsupported basic type 'signed float'
   $x = $p->unpack('fp_unsupp', 'x'x100);                        # (1) Unsupported floating point type 'short float' in unpack
 
-  $x = $p->unpack('hasbf.bf', 'x'x100);                         # (1) Bitfields are unsupported in unpack('hasbf.bf')
+  $x = $p->unpack('hasbf.bf', 'x'x100);                         # no warning
 
   $p->initializer('test');                                      # (1) Useless use of initializer in void context
   $p->initializer('test', $data);                               # (1) Useless use of initializer in void context
@@ -293,7 +300,7 @@ eval_test(q{
   $x = $p->sizeof('long =');                                    # (E) Cannot find 'long ='
   $x = $p->sizeof('nodef');                                     # (E) Got no struct declarations in resolution of 'nodef'
   $x = $p->sizeof('xxx');                                       # (E) Got no definition for 'union xxx'
-  $x = $p->sizeof('hasbf');                                     # (1) Bitfields are unsupported in sizeof('hasbf')
+  $x = $p->sizeof('hasbf');                                     # no warning
   $x = $p->sizeof('hasbf.bf.c');                                # (E) Cannot use sizeof on bitfields
   $x = $p->sizeof('t_unsafe');                                  # (1) Unsafe values used in sizeof('t_unsafe')
   $x = $p->sizeof('s_unsafe');                                  # (1) Unsafe values used in sizeof('s_unsafe')
@@ -376,7 +383,7 @@ eval_test(q{
   $x = $p->offsetof('test', 'foo[0x1]');                        # (E) Index operator not terminated correctly
   $x = $p->offsetof('test', 'foo[2]');                          # (E) Cannot use index 2 into array of size 2
   $x = $p->offsetof('test', 'foo[1][2][0]');                    # (E) Cannot use 'foo' as a 3-dimensional array
-  $x = $p->offsetof('hasbf', 'nobf');                           # (1) Bitfields are unsupported in offsetof('hasbf')
+  $x = $p->offsetof('hasbf', 'nobf');                           # no warning
   $x = $p->offsetof('s_unsafe', 'foo');                         # (1) Unsafe values used in offsetof('s_unsafe')
 
   $x = $p->offsetof('test.bar', 'foo');                         # (E) Cannot access member '.foo' of non-compound type
@@ -395,7 +402,7 @@ eval_test(q{
   $x = $p->offsetof('test.ary[2][2]', '');                      # (1) Empty string passed as member expression
   $x = $p->offsetof('test.ary[2][2]', "\t ");                   # (1) Empty string passed as member expression
 
-  $x = $p->offsetof('hasbf', 'bf');                             # (1) Bitfields are unsupported in offsetof('hasbf')
+  $x = $p->offsetof('hasbf', 'bf');                             # no warning
   $x = $p->offsetof('hasbf', 'bf.c');                           # (E) Cannot use offsetof on bitfields
 
   $p->member('xxx', 6666);                                      # (1) Useless use of member in void context
@@ -409,7 +416,7 @@ eval_test(q{
   $x = $p->member('enu', 6666);                                 # (E) Cannot use member on an enum
   $x = $p->member('test', 6666);                                # (E) Offset 6666 out of range
   $x = $p->member('test', -10);                                 # (E) Offset -10 out of range
-  $x = $p->member('hasbf', 1);                                  # (1) Bitfields are unsupported in member('hasbf')
+  $x = $p->member('hasbf', 1);                                  # no warning
   $x = $p->member('s_unsafe', 1);                               # (1) Unsafe values used in member('s_unsafe')
 
   $x = $p->member('test.bar', 6666);                            # (E) Cannot use member on a basic type
@@ -778,7 +785,7 @@ struct multiple {
 enum e_unsafe {
   SAFE = 42,
   GOOD,
-  UNSAFE = sizeof(union __hasbf),
+  UNSAFE = &2,   /* pointer op makes it unsafe */
   BAD
 };
 
@@ -792,7 +799,7 @@ typedef struct {
   enum {
     SAFE2 = 42,
     GOOD2,
-    UNSAFE2 = sizeof(union __hasbf),
+    UNSAFE2 = *2,   /* pointer op makes it unsafe */
     BAD2
   } noname;
 } e_unsafe_noname;

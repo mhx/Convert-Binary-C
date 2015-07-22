@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/21 07:35:49 +0000 $
-# $Revision: 72 $
+# $Date: 2005/06/10 13:15:47 +0100 $
+# $Revision: 73 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.58_01 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.59 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -166,7 +166,7 @@ Convert::Binary::C - Binary Data Conversion using C Types
   #---------------------------------------------------
   # Add include paths and global preprocessor defines
   #---------------------------------------------------
-  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5/include',
+  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5-20050130/include',
                '/usr/include' )
     ->Define( qw( __USE_POSIX __USE_ISOC99=1 ) );
   
@@ -622,7 +622,7 @@ as TYPEs in the L<method reference|/"METHODS">, are handled
 by the module.
 
 Many of the methods,
-namely L<C<pack>|/"pack">, L<C<unpack>|/"unpack">, L<C<sizeof>|/"sizeof">, L<C<typeof>|/"typeof">, L<C<member>|/"member"> and L<C<offsetof>|/"offsetof">,
+namely L<C<pack>|/"pack">, L<C<unpack>|/"unpack">, L<C<sizeof>|/"sizeof">, L<C<typeof>|/"typeof">, L<C<member>|/"member">, L<C<offsetof>|/"offsetof">, L<C<def>|/"def">, L<C<initializer>|/"initializer"> and L<C<tag>|/"tag">,
 are passed a TYPE to operate on as their first argument.
 
 =head2 Standard Types
@@ -1194,7 +1194,7 @@ as it can already handle C<AV> pointers. And this is what we get:
 
   $VAR1 = {
     'sv_any' => {
-      'xav_array' => '136424048',
+      'xav_array' => '136389768',
       'xav_fill' => '0',
       'xav_max' => '0',
       'xof_off' => '0',
@@ -1212,12 +1212,12 @@ as it can already handle C<AV> pointers. And this is what we get:
           'xhv_riter' => '-1',
           'xhv_eiter' => '0',
           'xhv_pmroot' => '0',
-          'xhv_name' => '136428288'
+          'xhv_name' => '137098848'
         },
         'sv_refcnt' => '2',
         'sv_flags' => '536870923'
       },
-      'xav_alloc' => '136424048',
+      'xav_alloc' => '136389768',
       'xav_arylen' => '0',
       'xav_flags' => '1'
     },
@@ -1326,14 +1326,18 @@ Which will print something like this:
     'EnumSize' => 4,
     'DisabledKeywords' => [],
     'FloatSize' => 4,
-    'LongLongSize' => 8,
     'Alignment' => 1,
+    'LongLongSize' => 8,
     'LongDoubleSize' => 12,
     'KeywordMap' => {},
     'Include' => [
       '/usr/include'
     ],
     'HasCPPComments' => 1,
+    'Bitfields' => {
+      'Engine' => 'Generic'
+    },
+    'UnsignedBitfields' => 0,
     'Warnings' => 0,
     'CompoundAlignment' => 1,
     'OrderMembers' => 0
@@ -1927,6 +1931,13 @@ to be unsigned if specified without an
 explicit C<signed> or C<unsigned> type specifier.
 By default, characters are signed.
 
+=item C<UnsignedBitfields> =E<gt> 0 | 1
+
+Use this boolean option if you want bitfields
+to be unsigned if specified without an
+explicit C<signed> or C<unsigned> type specifier.
+By default, bitfields are signed.
+
 =item C<Warnings> =E<gt> 0 | 1
 
 Use this boolean option if you want warnings to be issued
@@ -2087,6 +2098,38 @@ turn this option on if you don't have to.
 You can also influence hash member ordering by using
 the L<C<CBC_ORDER_MEMBERS>|/"CBC_ORDER_MEMBERS"> environment
 variable.
+
+=item C<Bitfields> =E<gt> { OPTION =E<gt> VALUE, ... }
+
+Use this option to specify and configure a bitfield
+layouting engine. You can choose an engine by passing
+its name to the C<Engine> option, like:
+
+  $c->configure( Bitfields => { Engine => 'Generic' } );
+
+Each engine can have its own set of options, although
+currently none of them does.
+
+You can choose between the following bitfield engines:
+
+=over 4
+
+=item C<Generic>
+
+This engine implements the behaviour of most UNIX C compilers,
+including GCC. It does not handle packed bitfields yet.
+
+=item C<Microsoft>
+
+This engine implements the behaviour of Microsoft's C<cl> compiler.
+It should be fairly complete and can handle packed bitfields.
+
+=item C<Simple>
+
+This engine is only used for testing the bitfield infrastructure
+in Convert::Binary::C. There's usually no reason to use it.
+
+=back
 
 =back
 
@@ -3119,6 +3162,43 @@ L<C<tag>|/"tag"> will throw an exception if an error occurs.
 If called as a 'set' method, it will return a reference to its
 object, allowing you to chain together consecutive method calls.
 
+Note that when a compound is inlined, tags attached to the
+inlined compound are ignored, for example:
+
+  $c->parse(<<ENDC);
+  struct header {
+    int id;
+    int len;
+    unsigned flags;
+  };
+  
+  struct message {
+    struct header;
+    short samples[32];
+  };
+  ENDC
+  
+  for my $type (qw( header message header.len )) {
+    $c->tag($type, Hooks => { unpack => sub { print "unpack: $type\n"; @_ } });
+  }
+  
+  for my $type (qw( header message )) {
+    print "[unpacking $type]\n";
+    $u = $c->unpack($type, $data);
+  }
+
+This will print:
+
+  [unpacking header]
+  unpack: header.len
+  unpack: header
+  [unpacking message]
+  unpack: header.len
+  unpack: message
+
+As you can see from the above output, tags attached to members
+of inlined compounds (C<header.len> are still handled.
+
 The following tags can be configured:
 
 =over 4
@@ -3287,7 +3367,7 @@ moment it was parsed.
   # Create object, set include path, parse 'string.h' header
   #----------------------------------------------------------
   my $c = Convert::Binary::C->new
-          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5/include',
+          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5-20050130/include',
                      '/usr/include' )
           ->parse_file( 'string.h' );
   
@@ -3307,36 +3387,36 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1098733223,
-      'mtime' => 1098733212,
-      'size' => 10832
-    },
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5/include/stddef.h' => {
-      'ctime' => 1106035290,
-      'mtime' => 1106035290,
-      'size' => 12695
+      'ctime' => 1118258518,
+      'mtime' => 1118258507,
+      'size' => 11587
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1098733222,
-      'mtime' => 1098733212,
-      'size' => 8600
+      'ctime' => 1118258517,
+      'mtime' => 1118258507,
+      'size' => 9633
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1098733221,
-      'mtime' => 1098733212,
-      'size' => 818
+      'ctime' => 1118258517,
+      'mtime' => 1118258507,
+      'size' => 694
+    },
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5-20050130/include/stddef.h' => {
+      'ctime' => 1113250846,
+      'mtime' => 1113250845,
+      'size' => 12695
     },
     '/usr/include/string.h' => {
-      'ctime' => 1098733223,
-      'mtime' => 1098733212,
-      'size' => 15011
+      'ctime' => 1118258518,
+      'mtime' => 1118258507,
+      'size' => 16281
     }
   };
   @files = (
     '/usr/include/features.h',
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5/include/stddef.h',
     '/usr/include/sys/cdefs.h',
     '/usr/include/gnu/stubs.h',
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5-20050130/include/stddef.h',
     '/usr/include/string.h'
   );
 
@@ -4409,20 +4489,18 @@ and will not attempt to convert the floating point value.
 
 =head1 BITFIELDS
 
-Bitfields are currently not supported by Convert::Binary::C,
-because I generally don't use them. I plan to support them
-in a later release, when I will have found an easy way of
-integrating them into the module.
+Bitfield support in Convert::Binary::C is currently in an
+experimental state. You are encouraged to test it, but you
+should not blindly rely on its results.
 
-Whenever a method has to deal with bitfields, it will issue
-a warning message that bitfields are unsupported. Thus, you
-may use bitfields in your C source code, but you won't be
-annoyed with warning messages unless you really use a type
-that actually contains bitfields in a method call
-like L<C<sizeof>|/"sizeof"> or L<C<pack>|/"pack">.
+You are also encouraged to supply layouting algorithms for
+compilers whose bitfield implementation is not handled
+correctly at the moment. Even better that the plain algorithm
+is of course a patch that adds a new bitfield layouting
+engine.
 
-While bitfields are not appropriately handled by the conversion
-routines yet, they are already parsed correctly. This means
+While bitfields may not be handled correctly by the conversion
+routines yet, they are always parsed correctly. This means
 that you can reliably use the declarator fields as returned
 by the L<C<struct>|/"struct"> or L<C<typedef>|/"typedef"> methods.
 Given the following source
@@ -4476,20 +4554,18 @@ a call to L<C<struct>|/"struct"> will return
             {
               'declarator' => 'integer',
               'size' => 4,
-              'offset' => 0
+              'offset' => 4
             }
           ],
           'type' => 'int'
         }
       ],
-      'size' => 4
+      'size' => 8
     }
   );
 
-No size/offset keys will be returned for bitfield entries.
-Also, the size of a structure containing bitfields is not
-valid, as bitfields internally do not increase the size
-of a structure yet.
+No size/offset keys will currently be returned for bitfield
+entries.
 
 =head1 MULTITHREADING
 
@@ -4747,6 +4823,3 @@ linked to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
-
-
-

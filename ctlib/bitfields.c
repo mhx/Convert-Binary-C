@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/05/23 14:39:09 +0100 $
-* $Revision: 13 $
+* $Date: 2005/06/10 13:26:54 +0100 $
+* $Revision: 16 $
 * $Source: /ctlib/bitfields.c $
 *
 ********************************************************************************
@@ -265,11 +265,16 @@ static enum BLError Generic_push(aSELF, const BLPushParam *pParam)
 
   bit = &pParam->pDecl->ext.bitfield;
 
+  CT_DEBUG(CTLIB, ("(Generic) pushing bitfield (%s:%d/s=%d/a=%d), offset=%d.%d, max_align=%d",
+                   pParam->pDecl->identifier, bit->bits,
+                   pParam->type_size, pParam->type_align,
+                   self->offset, self->bit_offset, self->max_align));
+
   if (self->cur_type_size != (int) pParam->type_size)
   {
     int align = (int) pParam->type_align < self->max_align
               ? (int) pParam->type_align : self->max_align;
-    int delta = self->offset % pParam->type_size;
+    int delta = self->offset % align;
 
     if (align > self->align)
       self->align = align;
@@ -277,12 +282,15 @@ static enum BLError Generic_push(aSELF, const BLPushParam *pParam)
     self->offset     -= delta;
     self->bit_offset += BITS(delta);
 
+    CT_DEBUG(CTLIB, ("(Generic) type size change: size: %d -> %d, align: %d -> %d, offset=%d.%d",
+                     self->cur_type_size, pParam->type_size, self->cur_type_align, align,
+                     self->offset, self->bit_offset));
+  
     self->cur_type_size  = pParam->type_size;
     self->cur_type_align = align;
   }
 
-  while (bit->bits > BITS(self->cur_type_size) - self->bit_offset ||
-         self->bit_offset > BITS(self->cur_type_align))
+  while (bit->bits > BITS(self->cur_type_size) - self->bit_offset)
   {
     self->offset += self->cur_type_align;
 
@@ -290,6 +298,9 @@ static enum BLError Generic_push(aSELF, const BLPushParam *pParam)
       self->bit_offset -= BITS(self->cur_type_align);
     else
       self->bit_offset = 0;
+
+    CT_DEBUG(CTLIB, ("(Generic) move offset -> %d.%d",
+                     self->offset, self->bit_offset));
   }
 
   if (bit->bits == 0)
@@ -318,7 +329,7 @@ static enum BLError Generic_push(aSELF, const BLPushParam *pParam)
     assert(used_bytes <= self->cur_type_size);
 
     pParam->pDecl->offset = self->offset;
-    pParam->pDecl->size   = used_bytes;  /* TODO: see Simple engine */
+    pParam->pDecl->size   = used_bytes;
 
     bit->size             = used_bytes;
 
@@ -333,18 +344,18 @@ static enum BLError Generic_push(aSELF, const BLPushParam *pParam)
         break;
 
       default:
-        /* TODO: error */
+        fatal_error("(Generic) invalid byte-order (%d)", self->byte_order);
         break;
     }
 
     assert(bit->pos < 64);
 
     self->bit_offset = new_bit_offset;
-
-    CT_DEBUG(CTLIB, ("(Generic) new bitfield (%s) at (offset=%d, size=%d, pos=%d, bits=%d), bit_offset=%d",
-                     pParam->pDecl->identifier, pParam->pDecl->offset, bit->size,
-                     bit->pos, bit->bits, self->bit_offset));
   }
+
+  CT_DEBUG(CTLIB, ("(Generic) new bitfield (%s) at (offset=%d, size=%d, pos=%d, bits=%d)",
+                   pParam->pDecl->identifier, pParam->pDecl->offset,
+                   bit->size, bit->pos, bit->bits));
 
   return BLE_NO_ERROR;
 }
@@ -370,7 +381,12 @@ static enum BLError Generic_finalize(aSELF)
 {
   BL_SELF(Generic);
 
+  CT_DEBUG(CTLIB, ("(Generic) finalizing bitfield (offset=%d.%d)",
+                   self->offset, self->bit_offset));
+
   self->offset += (self->bit_offset + (BITS(1)-1)) / BITS(1);
+
+  CT_DEBUG(CTLIB, ("(Generic) final offset=%d", self->offset));
 
   return BLE_NO_ERROR;
 }
@@ -505,9 +521,7 @@ static enum BLError Microsoft_push(aSELF, const BLPushParam *pParam)
     if (bit->bits > BITS(self->cur_type_size) - self->bit_offset)
     {
       if (bit->bits > BITS(self->cur_type_size))
-      {
-        /* TODO: error? truncate? */
-      }
+        return BLE_BITFIELD_TOO_WIDE;
 
       self->offset    += self->cur_type_size;
       self->bit_offset = 0;
@@ -524,7 +538,7 @@ static enum BLError Microsoft_push(aSELF, const BLPushParam *pParam)
         break;
 
       default:
-        /* TODO: error */
+        fatal_error("(Microsoft) invalid byte-order (%d)", self->byte_order);
         break;
     }
 
@@ -533,8 +547,8 @@ static enum BLError Microsoft_push(aSELF, const BLPushParam *pParam)
     self->bit_offset += bit->bits;
 
     pParam->pDecl->offset = self->offset;
-    pParam->pDecl->size   = self->cur_type_size;  /* TODO: see Simple engine */
-    bit->size             = self->cur_type_size;  /* TODO: can be too big */
+    pParam->pDecl->size   = self->cur_type_size;
+    bit->size             = self->cur_type_size;
 
     CT_DEBUG(CTLIB, ("(Microsoft) new bitfield (%s) at (offset=%d, size=%d, pos=%d, bits=%d), bit_offset=%d",
                      pParam->pDecl->identifier, pParam->pDecl->offset, bit->size,
@@ -676,7 +690,7 @@ static enum BLError Simple_push(aSELF, const BLPushParam *pParam)
     }
 
     pParam->pDecl->offset = self->offset + self->pos;
-    pParam->pDecl->size   = self->block_size;   /* TODO: should we really set this??? (see also comment at BitfieldInfo.size in cttype.h) */
+    pParam->pDecl->size   = self->block_size;
 
     bit->size = (unsigned char) self->block_size;
 
@@ -691,7 +705,7 @@ static enum BLError Simple_push(aSELF, const BLPushParam *pParam)
         break;
 
       default:
-        /* TODO: this is an error */
+        fatal_error("(Simple) invalid byte-order (%d)", self->byte_order);
         break;
     }
 

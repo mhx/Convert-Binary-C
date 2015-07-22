@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/05/19 18:53:42 +0100 $
-* $Revision: 9 $
+* $Date: 2005/05/29 09:23:02 +0100 $
+* $Revision: 11 $
 * $Source: /cbc/option.c $
 *
 ********************************************************************************
@@ -770,26 +770,22 @@ void handle_string_list(pTHX_ const char *option, LinkedList list, SV *sv, SV **
           }                                                                    \
         } STMT_END
 
-#define FLAG_OPTION(member, name, flag)                                        \
+#define FLAG_OPTION(name, flag)                                                \
           case OPTION_ ## name :                                               \
             if (sv_val)                                                        \
             {                                                                  \
               if (SvROK(sv_val))                                               \
                 Perl_croak(aTHX_ #name " must be a boolean value, "            \
                                        "not a reference");                     \
-              else if ((THIS->member & flag) !=                                \
-                       (SvIV(sv_val) ? flag : 0))                              \
+              else if (THIS->flag != SvIV(sv_val) ? 1 : 0)                     \
               {                                                                \
-                THIS->member ^= flag;                                          \
+                THIS->flag = SvIV(sv_val) ? 1 : 0;                             \
                 changes = 1;                                                   \
               }                                                                \
             }                                                                  \
             if (rval)                                                          \
-              *rval = newSViv(THIS->member & flag ? 1 : 0);                    \
+              *rval = newSViv(THIS->flag ? 1 : 0);                             \
             break;
-
-#define CFGFLAG_OPTION(name, flag)   FLAG_OPTION(cfg.flags, name, flag)
-#define INTFLAG_OPTION(name, flag)   FLAG_OPTION(flags, name, flag)
 
 #define IVAL_OPTION(name, config)                                              \
           case OPTION_ ## name :                                               \
@@ -820,12 +816,13 @@ int handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval)
 {
   START_OPTIONS
 
-    CFGFLAG_OPTION(UnsignedChars,  CHARS_ARE_UNSIGNED)
-    CFGFLAG_OPTION(Warnings,       ISSUE_WARNINGS    )
-    CFGFLAG_OPTION(HasCPPComments, HAS_CPP_COMMENTS  )
-    CFGFLAG_OPTION(HasMacroVAARGS, HAS_MACRO_VAARGS  )
+    FLAG_OPTION(OrderMembers,      order_members         )
 
-    INTFLAG_OPTION(OrderMembers,   CBC_ORDER_MEMBERS )
+    FLAG_OPTION(Warnings,          cfg.issue_warnings    )
+    FLAG_OPTION(HasCPPComments,    cfg.has_cpp_comments  )
+    FLAG_OPTION(HasMacroVAARGS,    cfg.has_macro_vaargs  )
+    FLAG_OPTION(UnsignedChars,     cfg.unsigned_chars    )
+    FLAG_OPTION(UnsignedBitfields, cfg.unsigned_bitfields)
 
     IVAL_OPTION(PointerSize,       cfg.layout.ptr_size          )
     IVAL_OPTION(EnumSize,          cfg.layout.enum_size         )
@@ -891,7 +888,7 @@ int handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval)
   POST_PROCESS
 
     OPTION(OrderMembers)
-      if (sv_val && THIS->flags & CBC_ORDER_MEMBERS && THIS->ixhash == NULL)
+      if (sv_val && THIS->order_members && THIS->ixhash == NULL)
         load_indexed_hash_module(aTHX_ THIS);
     ENDOPT
 
@@ -903,8 +900,6 @@ int handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval)
 #undef OPTION
 #undef ENDOPT
 #undef UPDATE
-#undef INTFLAG_OPTION
-#undef CFGFLAG_OPTION
 #undef FLAG_OPTION
 #undef IVAL_OPTION
 #undef STRLIST_OPTION
@@ -926,12 +921,9 @@ int handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval)
 *
 *******************************************************************************/
 
-#define FLAG_OPTION(member, name, flag)                                        \
-          sv = newSViv(THIS->member & flag ? 1 : 0);                           \
+#define FLAG_OPTION(name, flag)                                                \
+          sv = newSViv(THIS->flag);                                            \
           HV_STORE_CONST(hv, #name, sv);
-
-#define CFGFLAG_OPTION(name, flag)  FLAG_OPTION(cfg.flags, name, flag)
-#define INTFLAG_OPTION(name, flag)  FLAG_OPTION(flags, name, flag)
 
 #define STRLIST_OPTION(name, config)                                           \
           handle_string_list(aTHX_ #name, THIS->config, NULL, &sv);            \
@@ -950,12 +942,13 @@ SV *get_configuration(pTHX_ CBC *THIS)
   HV *hv = newHV();
   SV *sv;
 
-  CFGFLAG_OPTION(UnsignedChars,  CHARS_ARE_UNSIGNED)
-  CFGFLAG_OPTION(Warnings,       ISSUE_WARNINGS    )
-  CFGFLAG_OPTION(HasCPPComments, HAS_CPP_COMMENTS  )
-  CFGFLAG_OPTION(HasMacroVAARGS, HAS_MACRO_VAARGS  )
+  FLAG_OPTION(OrderMembers,      order_members         )
 
-  INTFLAG_OPTION(OrderMembers,   CBC_ORDER_MEMBERS )
+  FLAG_OPTION(Warnings,          cfg.issue_warnings    )
+  FLAG_OPTION(HasCPPComments,    cfg.has_cpp_comments  )
+  FLAG_OPTION(HasMacroVAARGS,    cfg.has_macro_vaargs  )
+  FLAG_OPTION(UnsignedChars,     cfg.unsigned_chars    )
+  FLAG_OPTION(UnsignedBitfields, cfg.unsigned_bitfields)
 
   IVAL_OPTION(PointerSize,       cfg.layout.ptr_size          )
   IVAL_OPTION(EnumSize,          cfg.layout.enum_size         )
@@ -987,8 +980,6 @@ SV *get_configuration(pTHX_ CBC *THIS)
   return newRV_noinc((SV *) hv);
 }
 
-#undef INTFLAG_OPTION
-#undef CFGFLAG_OPTION
 #undef FLAG_OPTION
 #undef STRLIST_OPTION
 #undef IVAL_OPTION
