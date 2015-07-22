@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/22 19:37:56 +0000 $
-* $Revision: 9 $
-* $Snapshot: /Convert-Binary-C/0.56 $
+* $Date: 2004/11/23 19:22:30 +0000 $
+* $Revision: 11 $
+* $Snapshot: /Convert-Binary-C/0.57 $
 * $Source: /ctlib/ctdebug.h $
 *
 ********************************************************************************
@@ -44,6 +44,7 @@
 #define DB_CTYPE_CTLIB   0x00000020
 #define DB_CTYPE_HASH    0x00000040
 #define DB_CTYPE_TYPE    0x00000080
+#define DB_CTYPE_PREPROC 0x00000100
 
 #ifdef CTYPE_DEBUGGING
 
@@ -64,6 +65,7 @@
 
 #else
 
+#define DEBUG_FLAG( flag )      0
 #define CT_DEBUG( flag, out )   (void) 0
 
 #endif

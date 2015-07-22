@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:38:01 +0000 $
-# $Revision: 19 $
-# $Snapshot: /Convert-Binary-C/0.56 $
+# $Date: 2004/11/23 19:23:31 +0000 $
+# $Revision: 20 $
+# $Snapshot: /Convert-Binary-C/0.57 $
 # $Source: /t/102_misc.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 212 }
+BEGIN { plan tests => 204 }
 
 #===================================================================
 # perform some average stuff
@@ -278,7 +278,7 @@ ok($f,pack('C*',1,42,13,4,5,6));
 #------------------------------------------------
 
 @tests = (
-  ['char',        1                 ],
+  ['char',        $p->CharSize      ],
   ['short',       $p->ShortSize     ],
   ['int',         $p->IntSize       ],
   ['long',        $p->LongSize      ],
@@ -293,15 +293,6 @@ for( @tests ) {
   ok( $@, '' );
   ok( $size, $_->[1] );
 }
-
-ok( $p->sizeof('char'),        1                  );
-ok( $p->sizeof('short'),       $p->ShortSize      );
-ok( $p->sizeof('int'),         $p->IntSize        );
-ok( $p->sizeof('long'),        $p->LongSize       );
-ok( $p->sizeof('long long'),   $p->LongLongSize   );
-ok( $p->sizeof('float'),       $p->FloatSize      );
-ok( $p->sizeof('double'),      $p->DoubleSize     );
-ok( $p->sizeof('long double'), $p->LongDoubleSize );
 
 check_basic( $p );
 

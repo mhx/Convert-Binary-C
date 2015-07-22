@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/08/22 19:41:58 +0100 $
-# $Revision: 22 $
-# $Snapshot: /Convert-Binary-C/0.56 $
+# $Date: 2004/11/23 19:23:30 +0000 $
+# $Revision: 23 $
+# $Snapshot: /Convert-Binary-C/0.57 $
 # $Source: /t/101_config.t $
 #
 ################################################################################
@@ -23,7 +23,7 @@ use constant FAIL    => 0;
 
 $^W = 1;
 
-BEGIN { plan tests => 1914 }
+BEGIN { plan tests => 2014 }
 
 $debug = Convert::Binary::C::feature( 'debug' );
 
@@ -316,6 +316,7 @@ check_config( 'EnumSize', @tests );
 
 check_config( $_, @tests ) for qw( PointerSize
                                    IntSize
+                                   CharSize
                                    ShortSize
                                    LongSize
                                    LongLongSize );
@@ -541,6 +542,7 @@ ok( $@, qr/Invalid method some_method called.*$thisfile/ );
   'KeywordMap' => {},
   'DisabledKeywords' => [],
   'UnsignedChars' => 0,
+  'CharSize' => 1,
   'ShortSize' => 2,
   'EnumType' => 'Integer',
   'EnumSize' => 4,
@@ -579,6 +581,7 @@ ok( compare_config( \%config, $cfg ) );
   'KeywordMap' => {'__signed__' => 'signed', '__restrict' => undef},
   'DisabledKeywords' => ['const', 'register'],
   'UnsignedChars' => 1,
+  'CharSize' => 2,
   'ShortSize' => 4,
   'EnumType' => 'Both',
   'EnumSize' => 0,
@@ -617,6 +620,8 @@ eval {
 
   $p->configure( PointerSize => 2 )->Warnings( 1 )
     ->KeywordMap( {'__signed__' => 'signed', '__restrict' => undef} );
+
+  $p->CharSize(2);
 
   $cfg = $p->configure;
 };

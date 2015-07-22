@@ -763,6 +763,15 @@ in most cases 2 or 4. If you set it to zero, the size of an
 integer on the host system will be used. This is also the
 default unless overridden by C<CBC_DEFAULT_INT_SIZE> at compile time.
 
+=item C<CharSize> =E<gt> 0 | 1 | 2 | 4 | 8
+
+Set the number of bytes that are occupied by a C<char>.
+This rarely needs to be changed, except for some platforms
+that don't care about bytes, e.g. DSPs.
+If you set this to zero, the size of a C<char> on the host
+system will be used. This is also the default unless
+overridden by C<CBC_DEFAULT_CHAR_SIZE> at compile time.
+
 =item C<ShortSize> =E<gt> 0 | 1 | 2 | 4 | 8
 
 Set the number of bytes that are occupied by a short integer.
@@ -2608,6 +2617,7 @@ consists of one or more of the following characters:
   
   l   enable debug output from the C lexer
   p   enable debug output from the C parser
+  P   enable debug output from the C preprocessor
   r   enable debug output from the #pragma parser
   
   y   enable debug output from yacc (bison)
@@ -3033,5 +3043,6 @@ linked to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
+
 
 

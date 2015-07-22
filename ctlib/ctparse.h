@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/08/22 19:40:01 +0100 $
-* $Revision: 23 $
-* $Snapshot: /Convert-Binary-C/0.56 $
+* $Date: 2004/11/23 19:23:11 +0000 $
+* $Revision: 24 $
+* $Snapshot: /Convert-Binary-C/0.57 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
@@ -52,6 +52,7 @@
 
 #define CTLIB_double_SIZE  sizeof( double )
 #define CTLIB_float_SIZE   sizeof( float )
+#define CTLIB_char_SIZE    sizeof( char )
 #define CTLIB_short_SIZE   sizeof( short )
 #define CTLIB_long_SIZE    sizeof( long )
 #define CTLIB_int_SIZE     sizeof( int )
@@ -82,6 +83,7 @@ typedef struct {
 typedef struct {
   unsigned alignment;
   unsigned compound_alignment;
+  unsigned char_size;
   unsigned int_size;
   unsigned short_size;
   unsigned long_size;

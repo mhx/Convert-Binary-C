@@ -5,6 +5,10 @@ What's to do?
 for future releases (in no special order):
 ------------------------------------------
 
+* add tag() method:
+
+    $c->tag(type, 'string');
+
 * handle Cray behaviour
 
 * make byteorder.[ch] work with "binary" strings (0b01001)

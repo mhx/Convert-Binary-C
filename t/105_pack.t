@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/05/20 21:06:41 +0100 $
-# $Revision: 16 $
-# $Snapshot: /Convert-Binary-C/0.56 $
+# $Date: 2004/11/23 19:23:32 +0000 $
+# $Revision: 17 $
+# $Snapshot: /Convert-Binary-C/0.57 $
 # $Source: /t/105_pack.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 208 }
+BEGIN { plan tests => 244 }
 
 eval {
   $p = new Convert::Binary::C ByteOrder     => 'BigEndian'
@@ -265,6 +265,31 @@ $p->UnsignedChars(1);
 $tests{$_}{unpack}{out} = 255 for qw( c_8 char );
 uchar_test( %tests );
 
+#===================================================================
+# check unsigned 16-bit chars (36 tests)
+#===================================================================
+
+%tests = (
+  'char'          => {
+                       pack   => { in => 65535, out => pack('n', 65535) },
+                       unpack => { in => pack('n', 65535), out => -1 },
+                     },
+  'signed char'   => {
+                       pack   => { in => 65535, out => pack('n', 65535) },
+                       unpack => { in => pack('n', 65535), out => -1 },
+                     },
+  'unsigned char' => {
+                       pack   => { in => 65535, out => pack('n', 65535) },
+                       unpack => { in => pack('n', 65535), out => 65535 },
+                     },
+);
+
+$p->CharSize(2)->UnsignedChars(0);
+uchar_test( %tests );
+$p->UnsignedChars(1);
+$tests{char}{unpack}{out} = 65535;
+uchar_test( %tests );
+$p->CharSize(1);
 
 sub uchar_test
 {

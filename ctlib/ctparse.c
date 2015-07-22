@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/08/22 19:39:59 +0100 $
-* $Revision: 39 $
-* $Snapshot: /Convert-Binary-C/0.56 $
+* $Date: 2004/11/23 19:23:11 +0000 $
+* $Revision: 41 $
+* $Snapshot: /Convert-Binary-C/0.57 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -514,6 +514,15 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
 
   if( rval || (pCPC->flags & DISABLE_PARSER) )
     while( lex( aUCPP_ &lexer ) < CPPERR_EOF );
+
+  if (DEBUG_FLAG(PREPROC))
+  {
+#ifdef UCPP_REENTRANT
+    cpp->
+#endif
+    emit_output = stderr;  /* the best we can get here... */
+    print_defines(aUCPP);
+  }
 
   free_lexer_state( &lexer );
   wipeout( aUCPP );
@@ -1035,13 +1044,14 @@ ErrorGTI get_type_info( const CParseConfig *pCPC, const TypeSpec *pTS,
 #define LOAD_SIZE( type ) \
         size = pCPC->type ## _size ? pCPC->type ## _size : CTLIB_ ## type ## _SIZE
 
-    if( flags & (T_CHAR | T_VOID) )  /* XXX: do we want void ? */
+    if( flags & T_VOID )  /* XXX: do we want void ? */
       size = 1;
     else if( (flags & (T_LONG|T_DOUBLE)) == (T_LONG|T_DOUBLE) )
       LOAD_SIZE( long_double );
     else if( flags & T_LONGLONG ) LOAD_SIZE( long_long );
     else if( flags & T_FLOAT )    LOAD_SIZE( float );
     else if( flags & T_DOUBLE )   LOAD_SIZE( double );
+    else if( flags & T_CHAR )     LOAD_SIZE( char );
     else if( flags & T_SHORT )    LOAD_SIZE( short );
     else if( flags & T_LONG )     LOAD_SIZE( long );
     else                          LOAD_SIZE( int );

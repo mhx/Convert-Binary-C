@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/22 19:37:58 +0000 $
-* $Revision: 6 $
-* $Snapshot: /Convert-Binary-C/0.56 $
+* $Date: 2004/11/23 18:07:48 +0000 $
+* $Revision: 7 $
+* $Snapshot: /Convert-Binary-C/0.57 $
 * $Source: /ctlib/ucpp/config.h $
 *
 ********************************************************************************
@@ -94,7 +94,7 @@
 
 #define ARITHMETIC_CHECKS
 
-/* #define LOW_MEM */
+#define LOW_MEM
 
 #define NO_UCPP_ERROR_FUNCTIONS
 

@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/05/20 20:22:25 +0100 $
-# $Revision: 11 $
-# $Snapshot: /Convert-Binary-C/0.56 $
+# $Date: 2004/11/23 19:23:11 +0000 $
+# $Revision: 12 $
+# $Snapshot: /Convert-Binary-C/0.57 $
 # $Source: /ctlib/t_config.pl $
 #
 ################################################################################
@@ -31,6 +31,7 @@ use Devel::Tokenizer::C;
   PointerSize
   EnumSize
   IntSize
+  CharSize
   ShortSize
   LongSize
   LongLongSize

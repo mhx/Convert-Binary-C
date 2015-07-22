@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/08/22 21:42:13 +0100 $
-# $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.56 $
+# $Date: 2004/11/23 19:23:32 +0000 $
+# $Revision: 4 $
+# $Snapshot: /Convert-Binary-C/0.57 $
 # $Source: /t/132_native.t $
 #
 ################################################################################
@@ -21,7 +21,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 55 }
+BEGIN { plan tests => 59 }
 
 eval {
   $s = Convert::Binary::C::native('IntSize');
@@ -47,8 +47,8 @@ ok($@, '');
 ok($s2 > 0);
 ok($s == $s2);
 
-for (qw( PointerSize IntSize ShortSize LongSize LongLongSize FloatSize
-         DoubleSize LongDoubleSize Alignment CompoundAlignment )) {
+for (qw( PointerSize IntSize CharSize ShortSize LongSize LongLongSize
+         FloatSize DoubleSize LongDoubleSize Alignment CompoundAlignment )) {
   my $nat = $c->native($_);
   ok($nat, Convert::Binary::C::native($_));
   print "# native($_) = $nat\n";

@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2004/04/04 13:27:49 +0100 $
 # $Revision: 2 $
-# $Snapshot: /Convert-Binary-C/0.56 $
+# $Snapshot: /Convert-Binary-C/0.57 $
 # $Source: /t/127_flexarray.t $
 #
 ################################################################################

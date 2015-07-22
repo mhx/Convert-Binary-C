@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/08/22 21:41:49 +0100 $
-* $Revision: 129 $
-* $Snapshot: /Convert-Binary-C/0.56 $
+* $Date: 2004/11/23 19:23:11 +0000 $
+* $Revision: 131 $
+* $Snapshot: /Convert-Binary-C/0.57 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -110,6 +110,15 @@
         CBC_DEFAULT_INT_SIZE != 4 && \
         CBC_DEFAULT_INT_SIZE != 8
 #error "CBC_DEFAULT_INT_SIZE is invalid!"
+#endif
+
+#ifndef CBC_DEFAULT_CHAR_SIZE
+#define CBC_DEFAULT_CHAR_SIZE    CTLIB_char_SIZE
+#elif   CBC_DEFAULT_CHAR_SIZE != 1 && \
+        CBC_DEFAULT_CHAR_SIZE != 2 && \
+        CBC_DEFAULT_CHAR_SIZE != 4 && \
+        CBC_DEFAULT_CHAR_SIZE != 8
+#error "CBC_DEFAULT_CHAR_SIZE is invalid!"
 #endif
 
 #ifndef CBC_DEFAULT_SHORT_SIZE
@@ -729,6 +738,8 @@ static SV *FetchFloatSV( pPACKARGS, unsigned size, u_32 flags );
 
 static void StoreIntSV( pPACKARGS, unsigned size, unsigned sign, SV *sv );
 static SV *FetchIntSV( pPACKARGS, unsigned size, unsigned sign );
+
+static unsigned LoadSize(const CBC *THIS, u_32 *pFlags);
 
 static SV *GetPointer( pPACKARGS );
 static SV *GetStruct( pPACKARGS, Struct *pStruct, HV *hash );
@@ -2072,6 +2083,59 @@ static SV *FetchIntSV( pPACKARGS, unsigned size, unsigned sign )
 
 /*******************************************************************************
 *
+*   ROUTINE: LoadSize
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Nov 2004
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static unsigned LoadSize(const CBC *THIS, u_32 *pFlags)
+{
+  u_32 flags;
+  unsigned size;
+
+  flags = *pFlags;
+
+#define LOAD_SIZE( type )                                                      \
+        size = THIS->cfg.type ## _size ? THIS->cfg.type ## _size               \
+                                       : CTLIB_ ## type ## _SIZE
+
+  if (flags & T_VOID)  /* XXX: do we want void ? */
+    size = 1;
+  else if (flags & T_CHAR)
+  {
+    LOAD_SIZE(char);
+    if ((flags & (T_SIGNED|T_UNSIGNED)) == 0 &&
+        (THIS->cfg.flags & CHARS_ARE_UNSIGNED))
+      flags |= T_UNSIGNED;
+  }
+  else if ((flags & (T_LONG|T_DOUBLE)) == (T_LONG|T_DOUBLE))
+    LOAD_SIZE(long_double);
+  else if (flags & T_LONGLONG) LOAD_SIZE(long_long);
+  else if (flags & T_FLOAT)    LOAD_SIZE(float);
+  else if (flags & T_DOUBLE)   LOAD_SIZE(double);
+  else if (flags & T_SHORT)    LOAD_SIZE(short);
+  else if (flags & T_LONG)     LOAD_SIZE(long);
+  else                         LOAD_SIZE(int);
+
+#undef LOAD_SIZE
+
+  *pFlags = flags;
+
+  return size;
+}
+
+/*******************************************************************************
+*
 *   ROUTINE: SetPointer
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
@@ -2305,28 +2369,7 @@ static void SetBasicType( pPACKARGS, u_32 flags, SV *sv )
   CT_DEBUG( MAIN, ("buffer.pos=%lu, buffer.length=%lu",
             PACK->buf.pos, PACK->buf.length) );
 
-#define LOAD_SIZE( type )                                                      \
-        size = THIS->cfg.type ## _size ? THIS->cfg.type ## _size               \
-                                       : CTLIB_ ## type ## _SIZE
-
-  if( flags & T_VOID )  /* XXX: do we want void ? */
-    size = 1;
-  else if( flags & T_CHAR ) {
-    size = 1;
-    if( (flags & (T_SIGNED|T_UNSIGNED)) == 0 &&
-        (THIS->cfg.flags & CHARS_ARE_UNSIGNED) )
-      flags |= T_UNSIGNED;
-  }
-  else if( (flags & (T_LONG|T_DOUBLE)) == (T_LONG|T_DOUBLE) )
-    LOAD_SIZE( long_double );
-  else if( flags & T_LONGLONG ) LOAD_SIZE( long_long );
-  else if( flags & T_FLOAT )    LOAD_SIZE( float );
-  else if( flags & T_DOUBLE )   LOAD_SIZE( double );
-  else if( flags & T_SHORT )    LOAD_SIZE( short );
-  else if( flags & T_LONG )     LOAD_SIZE( long );
-  else                          LOAD_SIZE( int );
-
-#undef LOAD_SIZE
+  size = LoadSize(THIS, &flags);
 
   ALIGN_BUFFER( size );
   GROW_BUFFER( size, "insufficient space" );
@@ -2739,28 +2782,7 @@ static SV *GetBasicType( pPACKARGS, u_32 flags )
   CT_DEBUG( MAIN, ("buffer.pos=%lu, buffer.length=%lu",
                    PACK->buf.pos, PACK->buf.length) );
 
-#define LOAD_SIZE( type )                                                      \
-        size = THIS->cfg.type ## _size ? THIS->cfg.type ## _size               \
-                                       : CTLIB_ ## type ## _SIZE
-
-  if( flags & T_VOID )  /* XXX: do we want void ? */
-    size = 1;
-  else if( flags & T_CHAR ) {
-    size = 1;
-    if( (flags & (T_SIGNED|T_UNSIGNED)) == 0 &&
-        (THIS->cfg.flags & CHARS_ARE_UNSIGNED) )
-      flags |= T_UNSIGNED;
-  }
-  else if( (flags & (T_LONG|T_DOUBLE)) == (T_LONG|T_DOUBLE) )
-    LOAD_SIZE( long_double );
-  else if( flags & T_LONGLONG ) LOAD_SIZE( long_long );
-  else if( flags & T_FLOAT )    LOAD_SIZE( float );
-  else if( flags & T_DOUBLE )   LOAD_SIZE( double );
-  else if( flags & T_SHORT )    LOAD_SIZE( short );
-  else if( flags & T_LONG )     LOAD_SIZE( long );
-  else                          LOAD_SIZE( int );
-
-#undef LOAD_SIZE
+  size = LoadSize(THIS, &flags);
 
   ALIGN_BUFFER( size );
   CHECK_BUFFER( size );
@@ -5629,6 +5651,7 @@ static void SetDebugOptions( pTHX_ const char *dbopts )
         case 'c': dbgflags  |= DB_CTYPE_CTLIB;     break;
         case 'H': dbgflags  |= DB_CTYPE_HASH;      break;
         case 't': dbgflags  |= DB_CTYPE_TYPE;      break;
+        case 'P': dbgflags  |= DB_CTYPE_PREPROC;   break;
 
         default:
           Perl_croak(aTHX_ "Unknown debug option '%c'", *dbopts);
@@ -6267,6 +6290,7 @@ static const StringOption EnumTypeOption[] = {
 static const IV PointerSizeOption[]       = {     0, 1, 2, 4, 8         };
 static const IV EnumSizeOption[]          = { -1, 0, 1, 2, 4, 8         };
 static const IV IntSizeOption[]           = {     0, 1, 2, 4, 8         };
+static const IV CharSizeOption[]          = {     0, 1, 2, 4, 8         };
 static const IV ShortSizeOption[]         = {     0, 1, 2, 4, 8         };
 static const IV LongSizeOption[]          = {     0, 1, 2, 4, 8         };
 static const IV LongLongSizeOption[]      = {     0, 1, 2, 4, 8         };
@@ -6357,6 +6381,7 @@ static int HandleOption( pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval )
     IVAL_OPTION( PointerSize,       ptr_size           )
     IVAL_OPTION( EnumSize,          enum_size          )
     IVAL_OPTION( IntSize,           int_size           )
+    IVAL_OPTION( CharSize,          char_size          )
     IVAL_OPTION( ShortSize,         short_size         )
     IVAL_OPTION( LongSize,          long_size          )
     IVAL_OPTION( LongLongSize,      long_long_size     )
@@ -6480,6 +6505,7 @@ static SV *GetConfiguration( pTHX_ CBC *THIS )
   IVAL_OPTION( PointerSize,       ptr_size           )
   IVAL_OPTION( EnumSize,          enum_size          )
   IVAL_OPTION( IntSize,           int_size           )
+  IVAL_OPTION( CharSize,          char_size          )
   IVAL_OPTION( ShortSize,         short_size         )
   IVAL_OPTION( LongSize,          long_size          )
   IVAL_OPTION( LongLongSize,      long_long_size     )
@@ -6729,6 +6755,7 @@ CBC::new( ... )
 		  THIS->cfg.ptr_size           = CBC_DEFAULT_PTR_SIZE;
 		  THIS->cfg.enum_size          = CBC_DEFAULT_ENUM_SIZE;
 		  THIS->cfg.int_size           = CBC_DEFAULT_INT_SIZE;
+		  THIS->cfg.char_size          = CBC_DEFAULT_CHAR_SIZE;
 		  THIS->cfg.short_size         = CBC_DEFAULT_SHORT_SIZE;
 		  THIS->cfg.long_size          = CBC_DEFAULT_LONG_SIZE;
 		  THIS->cfg.long_long_size     = CBC_DEFAULT_LONG_LONG_SIZE;
@@ -8749,6 +8776,7 @@ native(...)
 
 		  HV_STORE_CONST(h, "PointerSize", newSViv(CTLIB_POINTER_SIZE));
 		  HV_STORE_CONST(h, "IntSize", newSViv(CTLIB_int_SIZE));
+		  HV_STORE_CONST(h, "CharSize", newSViv(CTLIB_char_SIZE));
 		  HV_STORE_CONST(h, "ShortSize", newSViv(CTLIB_short_SIZE));
 		  HV_STORE_CONST(h, "LongSize", newSViv(CTLIB_long_SIZE));
 		  HV_STORE_CONST(h, "LongLongSize", newSViv(CTLIB_long_long_SIZE));
@@ -8773,6 +8801,9 @@ native(...)
 		      break;
 		    case OPTION_IntSize:
 		      RETVAL = newSViv(CTLIB_int_SIZE);
+		      break;
+		    case OPTION_CharSize:
+		      RETVAL = newSViv(CTLIB_char_SIZE);
 		      break;
 		    case OPTION_ShortSize:
 		      RETVAL = newSViv(CTLIB_short_SIZE);

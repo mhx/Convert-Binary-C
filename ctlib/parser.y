@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/09/18 21:20:43 +0100 $
-* $Revision: 37 $
-* $Snapshot: /Convert-Binary-C/0.56 $
+* $Date: 2004/09/19 18:31:44 +0100 $
+* $Revision: 38 $
+* $Snapshot: /Convert-Binary-C/0.57 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -1598,7 +1598,8 @@ initializer_opt
 	;
 
 initializer
-	: '{' initializer_list comma_opt '}'
+	: '{' '}'
+	| '{' initializer_list comma_opt '}'
 	| assignment_expression {}
 	;
 

@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/09/18 21:21:04 +0100 $
-# $Revision: 66 $
-# $Snapshot: /Convert-Binary-C/0.56 $
+# $Date: 2004/11/23 19:23:42 +0000 $
+# $Revision: 67 $
+# $Snapshot: /Convert-Binary-C/0.57 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.56 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.57 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -956,7 +956,7 @@ as it can already handle C<AV> pointers. And this is what we get:
 
   $VAR1 = {
     'sv_any' => {
-      'xav_array' => '137956856',
+      'xav_array' => '137578064',
       'xav_fill' => '0',
       'xav_max' => '0',
       'xof_off' => '0',
@@ -974,12 +974,12 @@ as it can already handle C<AV> pointers. And this is what we get:
           'xhv_riter' => '-1',
           'xhv_eiter' => '0',
           'xhv_pmroot' => '0',
-          'xhv_name' => '138060760'
+          'xhv_name' => '137186368'
         },
         'sv_refcnt' => '2',
         'sv_flags' => '536870923'
       },
-      'xav_alloc' => '137956856',
+      'xav_alloc' => '137578064',
       'xav_arylen' => '0',
       'xav_flags' => '1'
     },
@@ -1081,6 +1081,7 @@ Which will print something like this:
     'Assert' => [],
     'UnsignedChars' => 0,
     'DoubleSize' => 8,
+    'CharSize' => 1,
     'EnumType' => 'Integer',
     'PointerSize' => 4,
     'EnumSize' => 4,
@@ -1175,6 +1176,15 @@ Set the number of bytes that are occupied by an integer. This is
 in most cases 2 or 4. If you set it to zero, the size of an
 integer on the host system will be used. This is also the
 default unless overridden by C<CBC_DEFAULT_INT_SIZE> at compile time.
+
+=item C<CharSize> =E<gt> 0 | 1 | 2 | 4 | 8
+
+Set the number of bytes that are occupied by a C<char>.
+This rarely needs to be changed, except for some platforms
+that don't care about bytes, e.g. DSPs.
+If you set this to zero, the size of a C<char> on the host
+system will be used. This is also the default unless
+overridden by C<CBC_DEFAULT_CHAR_SIZE> at compile time.
 
 =item C<ShortSize> =E<gt> 0 | 1 | 2 | 4 | 8
 
@@ -2839,28 +2849,28 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1092288224,
-      'mtime' => 1092288215,
-      'size' => 10792
+      'ctime' => 1098733223,
+      'mtime' => 1098733212,
+      'size' => 10832
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1092288222,
-      'mtime' => 1092288215,
+      'ctime' => 1098733222,
+      'mtime' => 1098733212,
       'size' => 8600
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1092288221,
-      'mtime' => 1092288215,
+      'ctime' => 1098733221,
+      'mtime' => 1098733212,
       'size' => 818
     },
     '/usr/include/string.h' => {
-      'ctime' => 1092288224,
-      'mtime' => 1092288215,
+      'ctime' => 1098733223,
+      'mtime' => 1098733212,
       'size' => 15011
     },
     '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.4/include/stddef.h' => {
-      'ctime' => 1093624078,
-      'mtime' => 1093624077,
+      'ctime' => 1098821917,
+      'mtime' => 1098821916,
       'size' => 12695
     }
   };
@@ -3818,6 +3828,7 @@ properties, like:
     'LongLongSize' => 8,
     'LongDoubleSize' => 12,
     'DoubleSize' => 8,
+    'CharSize' => 1,
     'EnumSize' => 4,
     'CompoundAlignment' => 1,
     'PointerSize' => 4
@@ -3876,6 +3887,7 @@ consists of one or more of the following characters:
   
   l   enable debug output from the C lexer
   p   enable debug output from the C parser
+  P   enable debug output from the C preprocessor
   r   enable debug output from the #pragma parser
   
   y   enable debug output from yacc (bison)
@@ -4394,5 +4406,6 @@ linked to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
+
 
 

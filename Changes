@@ -1,4 +1,13 @@
 -------------------------
+Version 0.57 (2004-11-23)
+-------------------------
+
+* allow empty initializers (spotted by Mike Lamb)
+
+* add CharSize option to support architectures where
+  chars are larger than 8 bits (spotted by Esa Östring)
+
+-------------------------
 Version 0.56 (2004-09-19)
 -------------------------
 
