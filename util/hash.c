@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/06/11 19:59:38 +0100 $
-* $Revision: 29 $
+* $Date: 2007/12/06 20:58:23 +0000 $
+* $Revision: 31 $
 * $Source: /util/hash.c $
 *
 ********************************************************************************
@@ -56,17 +56,22 @@ struct _hashTable {
 
 #ifdef DEBUG_UTIL_HASH
 
-#ifdef UTIL_FORMAT_CHECK
-# define HASH_DEBUG_FUNC debug_check
-#else
-# define HASH_DEBUG_FUNC gs_dbfunc
-#endif
+# ifdef UTIL_FORMAT_CHECK
 
-#define DEBUG( flag, out )                                             \
-          do {                                                         \
-            if( HASH_DEBUG_FUNC && ((DB_HASH_ ## flag) & gs_dbflags) ) \
-              HASH_DEBUG_FUNC out ;                                    \
-          } while(0)
+#  define DEBUG( flag, out ) debug_check out
+
+static void debug_check(const char *str, ...)
+            __attribute__(( __format__( __printf__, 1, 2 ), __noreturn__ ));
+
+# else
+
+#  define DEBUG( flag, out )                                       \
+            do {                                                   \
+              if( gs_dbfunc && ((DB_HASH_ ## flag) & gs_dbflags) ) \
+                gs_dbfunc out ;                                    \
+            } while(0)
+
+# endif
 
 static void (*gs_dbfunc)(const char *, ...) = NULL;
 static unsigned long gs_dbflags             = 0;
@@ -136,10 +141,7 @@ static unsigned long gs_dbflags             = 0;
 /* static functions */
 
 #if defined(DEBUG_UTIL_HASH) && defined(UTIL_FORMAT_CHECK)
-static void debug_check(char *str, ...)
-            __attribute__(( __format__( __printf__, 1, 2 ), __noreturn__ ));
-
-static void debug_check(char *str __attribute__(( __unused__ )), ...)
+static void debug_check(const char *str __attribute__(( __unused__ )), ...)
 {
   fprintf( stderr, "compiled with UTIL_FORMAT_CHECK, please don't run\n" );
   abort();

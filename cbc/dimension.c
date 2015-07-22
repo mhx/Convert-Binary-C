@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/06/11 19:59:54 +0100 $
-* $Revision: 4 $
+* $Date: 2007/12/06 20:58:03 +0000 $
+* $Revision: 6 $
 * $Source: /cbc/dimension.c $
 *
 ********************************************************************************
@@ -837,7 +837,7 @@ long dimtag_eval(pTHX_ const DimensionTag *dim, long avail, SV *self, HV *parent
   assert(dim != NULL);
   assert(self != NULL);
 
-  CT_DEBUG(MAIN, ("dimtag_eval(%p(%d), %ld, %p, %p)", dim, (int)dim->type, self, parent));
+  CT_DEBUG(MAIN, ("dimtag_eval(%p(%d), %ld, %p, %p)", dim, (int)dim->type, avail, self, parent));
 
   switch (dim->type)
   {

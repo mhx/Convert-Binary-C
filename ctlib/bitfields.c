@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/06/11 19:59:51 +0100 $
-* $Revision: 21 $
+* $Date: 2007/12/06 20:58:04 +0000 $
+* $Revision: 23 $
 * $Source: /ctlib/bitfields.c $
 *
 ********************************************************************************
@@ -270,7 +270,7 @@ static enum BLError Generic_push(aSELF, const BLPushParam *pParam)
   CT_DEBUG(CTLIB, ("(Generic) pushing bitfield (%s:%d/s=%d/a=%d), offset=%d.%d, max_align=%d",
                    pParam->pDecl->identifier, bit->bits,
                    pParam->type_size, pParam->type_align,
-                   self->offset, self->bit_offset, self->max_align));
+                   (int) self->offset, self->bit_offset, (int) self->max_align));
 
   if (self->cur_type_size != (int) pParam->type_size)
   {
@@ -286,7 +286,7 @@ static enum BLError Generic_push(aSELF, const BLPushParam *pParam)
 
     CT_DEBUG(CTLIB, ("(Generic) type size change: size: %d -> %d, align: %d -> %d, offset=%d.%d",
                      self->cur_type_size, pParam->type_size, self->cur_type_align, align,
-                     self->offset, self->bit_offset));
+                     (int) self->offset, self->bit_offset));
   
     self->cur_type_size  = pParam->type_size;
     self->cur_type_align = align;
@@ -302,7 +302,7 @@ static enum BLError Generic_push(aSELF, const BLPushParam *pParam)
       self->bit_offset = 0;
 
     CT_DEBUG(CTLIB, ("(Generic) move offset -> %d.%d",
-                     self->offset, self->bit_offset));
+                     (int) self->offset, self->bit_offset));
   }
 
   if (bit->bits == 0)
@@ -384,11 +384,11 @@ static enum BLError Generic_finalize(aSELF)
   BL_SELF(Generic);
 
   CT_DEBUG(CTLIB, ("(Generic) finalizing bitfield (offset=%d.%d)",
-                   self->offset, self->bit_offset));
+                   (int) self->offset, self->bit_offset));
 
   self->offset += (self->bit_offset + (BITS(1)-1)) / BITS(1);
 
-  CT_DEBUG(CTLIB, ("(Generic) final offset=%d", self->offset));
+  CT_DEBUG(CTLIB, ("(Generic) final offset=%d", (int) self->offset));
 
   return BLE_NO_ERROR;
 }

@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/06/11 19:59:57 +0100 $
-* $Revision: 15 $
+* $Date: 2007/12/06 20:58:04 +0000 $
+* $Revision: 17 $
 * $Source: /cbc/hook.c $
 *
 ********************************************************************************
@@ -487,7 +487,7 @@ SV *single_hook_call(pTHX_ SV *self, const char *hook_id_str, const char *id_pre
   SV *out;
 
   CT_DEBUG(MAIN, ("single_hook_call(hid='%s', id='%s%s', hook=%p, in=%p(%d), mortal=%d)",
-                  hook_id_str, id_pre, id, hook, in, in ? SvREFCNT(in) : 0, mortal));
+                  hook_id_str, id_pre, id, hook, in, in ? (int) SvREFCNT(in) : 0, mortal));
 
   assert(self != NULL);
   assert(hook != NULL);
@@ -584,7 +584,7 @@ SV *single_hook_call(pTHX_ SV *self, const char *hook_id_str, const char *id_pre
   out = POPs;
 
   CT_DEBUG(MAIN, ("single_hook_call: in=%p(%d), out=%p(%d)",
-                  in, in ? SvREFCNT(in) : 0, out, SvREFCNT(out)));
+                  in, in ? (int) SvREFCNT(in) : 0, out, (int) SvREFCNT(out)));
 
   if (!mortal && in != NULL)
     SvREFCNT_dec(in);
@@ -597,7 +597,7 @@ SV *single_hook_call(pTHX_ SV *self, const char *hook_id_str, const char *id_pre
   if (mortal)
     sv_2mortal(out);
 
-  CT_DEBUG(MAIN, ("single_hook_call: out=%p(%d)", out, SvREFCNT(out)));
+  CT_DEBUG(MAIN, ("single_hook_call: out=%p(%d)", out, (int) SvREFCNT(out)));
 
   return out;
 }
@@ -623,7 +623,7 @@ SV *hook_call(pTHX_ SV *self, const char *id_pre, const char *id,
               const TypeHooks *pTH, enum HookId hook_id, SV *in, int mortal)
 {
   CT_DEBUG(MAIN, ("hook_call(id='%s%s', pTH=%p, in=%p(%d), mortal=%d)",
-                  id_pre, id, pTH, in, SvREFCNT(in), mortal));
+                  id_pre, id, pTH, in, (int) SvREFCNT(in), mortal));
 
   assert(self != NULL);
   assert(pTH  != NULL);

@@ -9,8 +9,8 @@ print OUT <<'!NO!SUBS!';
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/06/11 19:59:50 +0100 $
-# $Revision: 3 $
+# $Date: 2007/11/12 21:11:29 +0000 $
+# $Revision: 4 $
 # $Source: /bin/elf.PL $
 #
 ################################################################################
@@ -73,6 +73,13 @@ my @elftype = qw( ET_NONE ET_REL ET_EXEC ET_DYN ET_CORE );
 my @sectype = qw(
   SHT_NULL SHT_PROGBITS SHT_SYMTAB SHT_STRTAB SHT_RELA SHT_HASH
   SHT_DYNAMIC SHT_NOTE SHT_NOBITS SHT_REL SHT_SHLIB SHT_DYNSYM
+);
+
+#-------------------
+# ELF Segment Types
+#-------------------
+my @segtype = qw(
+  PT_NULL PT_LOAD PT_DYNAMIC PT_INTERP PT_NOTE PT_SHLIB PT_PHDR
 );
 
 #-------------------
@@ -196,6 +203,7 @@ my %hook = (
   'Ehdr.e_machine' => \%machine,
   'Ehdr.e_type'    => \@elftype,
   'Shdr.sh_type'   => \@sectype,
+  'Phdr.p_type'    => \@segtype,
 );
 
 for my $c (qw( Elf32 Elf64 )) {
@@ -272,6 +280,14 @@ sub get_name
 {
   my($tab, $off) = @_;
   return unpack "Z*", substr $elf, $tab->{sh_offset} + $off;
+}
+
+#--------------------------
+# Read all program headers
+#--------------------------
+for my $ix (0 .. $header->{e_phnum}-1) {
+  my $phdr = get('Phdr', $header->{e_phoff} + $ix*$header->{e_phentsize});
+  print Data::Dumper->Dump([$phdr], ["*$class\_Phdr"]) if $opt{debug};
 }
 
 #--------------------------

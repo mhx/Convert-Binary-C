@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/06/11 19:59:40 +0100 $
-# $Revision: 4 $
+# $Date: 2007/12/06 21:35:23 +0000 $
+# $Revision: 5 $
 # $Source: /tests/703_bugs.t $
 #
 ################################################################################
@@ -14,7 +14,7 @@
 #
 ################################################################################
 
-use Test::More tests => 10;
+use Test::More tests => 11;
 use Convert::Binary::C @ARGV;
 
 my $code = <<ENDC;
@@ -91,4 +91,23 @@ $c1->tag('hash', Hooks => { unpack_ptr => [\&unpack_hash, $c1->arg(qw(SELF TYPE 
   @warn = ();
   $dummy = $c1->unpack('hash', $c1->pack('hash', { a => 0 }));
   is(scalar @warn, 0, 'hook_call assertion failed');
+}
+
+$c1->clean->parse(<<'ENDC');
+typedef int foo_t;
+ENDC
+
+$c1->tag('foo_t', Hooks => { unpack => \&foo });
+
+is($c1->unpack('foo_t', $c1->pack('foo_t', 42)), 42, 'unpack with moved stack');
+
+sub blow_stack
+{
+  return (1) x 2000;
+}
+
+sub foo
+{
+  my @a = blow_stack();
+  $_[0];
 }

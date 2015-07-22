@@ -5,6 +5,20 @@ What's to do?
 for future releases (in no special order):
 ------------------------------------------
 
+* >> Perhaps to make the documentation complete, it would help to add a
+  >> remark on opening, reading and writing incrementally and closing
+  >> binary files.
+  >
+  > Mmmmh, I'm not sure the C::B::C docs are the right place to add
+  > such documentation. Such documentation is better placed in the
+  > perl core.
+  
+  My error in communication.  I do not mean to document open, read
+  etc.  I just mean to provide some indication (e.g., via outline
+  example or just a sentence or so) on how one would read/write
+  binary files into/out-of structures.
+
+
 * encapsulate internal types better:
 
     e.g. struct:

@@ -3,8 +3,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/06/11 19:59:33 +0100 $
-# $Revision: 107 $
+# $Date: 2007/12/06 20:59:00 +0000 $
+# $Revision: 109 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -235,6 +235,11 @@ ENDUSAGE
   $myopt ? () : $_
 } @ARGV;
 
+if ($FEATURES{'$format-check'}{enabled} and not $FEATURES{debug}{enabled}) {
+  print "Implicitly enabling 'debug' feature with 'format-check'\n";
+  $FEATURES{debug}{enabled} = 1;
+}
+
 if ($FEATURES{debug}{enabled}) {
   push @OBJECT, @DBGOBJ;
 }
@@ -332,15 +337,20 @@ sub configure
   }
  
   my $config = {
+    'CCFLAGS' => $Config{ccflags},
     'DEFINE' => join(' ', map("-D$_", @DEFINE)),
     'depend' => { find_depend( @INC_PATH ) },
   };
 
   if ($FEATURES{'$coverage'}{enabled}) {
-    $config->{'OPTIMIZE'} = '-g -fprofile-arcs -ftest-coverage';
+    $config->{'CCFLAGS'} .= ' -g -fprofile-arcs -ftest-coverage';
     if ($Config{gccversion} =~ /(\d+)\.(\d+)\.(\d+)/ && ($1+1e-3*$2+1e-6*$3) >= 3.004) {
       $config->{'LDLOADLIBS'} = '-lgcov';  # not a valid parameter, but works...
     }
+  }
+
+  if ($FEATURES{'$format-check'}{enabled}) {
+    $config->{'CCFLAGS'} .= ' -Wformat=2';
   }
 
   if (eval $ExtUtils::MakeMaker::VERSION >= 6) {
@@ -367,7 +377,7 @@ sub MY::c_o
 {
   package MY;
   my $c_o = shift->SUPER::c_o(@_);
-  if (eval $ExtUtils::MakeMaker::VERSION >= 6.17) {
+  if (!$ENV{CBC_MAKEFILE_DEBUG} and eval $ExtUtils::MakeMaker::VERSION >= 6.17) {
     $c_o =~ s/^(\s+)(\$\(CCCMD\).*)$/$1\$(NOECHO) \$(ECHO) Compiling [\$(CC) \$(OPTIMIZE)] \$<\n$1\$(NOECHO) $2\n$1\$(NOECHO) \$(MV) \$(\@F) t_object.tmp\n$1\$(NOECHO) \$(MV) t_object.tmp \$\@/mg;
   }
   else {

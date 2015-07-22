@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/06/11 19:59:55 +0100 $
-* $Revision: 22 $
+* $Date: 2007/12/06 20:58:04 +0000 $
+* $Revision: 24 $
 * $Source: /cbc/member.c $
 *
 ********************************************************************************
@@ -1075,8 +1075,8 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
     Perl_croak(aTHX_ "%s", err);
   }
 
-  CT_DEBUG(MAIN, ("FINISHED: typespec=[ptr=%p, flags=0x%X], pDecl=%p[dim=%d], level=%d, offset=%d, size=%d, parent=%p",
-                  pType->ptr, pType->tflags, pDecl,
+  CT_DEBUG(MAIN, ("FINISHED: typespec=[ptr=%p, flags=0x%lX], pDecl=%p[dim=%d], level=%d, offset=%d, size=%d, parent=%p",
+                  pType->ptr, (unsigned long) pType->tflags, pDecl,
                   pDecl && pDecl->array_flag ? LL_count(pDecl->ext.array) : 0,
                   level, offset, size, pStruct));
 

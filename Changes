@@ -1,4 +1,17 @@
 -------------------------
+Version 0.69 (2007-12-06)
+-------------------------
+
+* fix: unpack would return garbage when an unpack hook
+  causes the perl stack to be reallocated
+
+* make ccconfig handle blanks in paths correctly
+
+* slightly improve ELF parser example
+
+* fix debug format strings
+
+-------------------------
 Version 0.68 (2007-06-25)
 -------------------------
 
