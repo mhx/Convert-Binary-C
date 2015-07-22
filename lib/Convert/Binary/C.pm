@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/20 12:47:05 +0100 $
-# $Revision: 43 $
-# $Snapshot: /Convert-Binary-C/0.40 $
+# $Date: 2003/06/06 12:43:02 +0100 $
+# $Revision: 44 $
+# $Snapshot: /Convert-Binary-C/0.41 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.40 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.41 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -690,11 +690,11 @@ you just have to remove the suffix:
 
   $member =~ s/\+\d+$//;
   $offset = $c->offsetof( 'foo', $member );
-  print "'$member' is starts at offset $offset of struct foo";
+  print "'$member' starts at offset $offset of struct foo";
 
 This would then print:
 
-  '.array[9].y' is starts at offset 42 of struct foo
+  '.array[9].y' starts at offset 42 of struct foo
 
 =head1 METHODS
 
@@ -759,7 +759,7 @@ used with the L<Data::Dumper|Data::Dumper> module, for example:
   
   print Dumper( $c->configure );
 
-This will print something like this:
+Which will print something like this:
 
   $VAR1 = {
     'Define' => [
@@ -772,7 +772,7 @@ This will print something like this:
     'ShortSize' => 2,
     'HasMacroVAARGS' => 1,
     'Assert' => [],
-    'UnsignedChars' => 0,
+    'UnsignedChars' => '0',
     'DoubleSize' => 8,
     'EnumType' => 'Integer',
     'PointerSize' => 4,
@@ -787,7 +787,7 @@ This will print something like this:
     'Include' => [
       '/usr/include'
     ],
-    'Warnings' => 0
+    'Warnings' => '0'
   };
 
 Since you may not always want to write a L<C<configure>|/"configure"> call
@@ -1129,7 +1129,7 @@ is fast, but may be not very useful. It is also the default.
 
   $date = {
     'weekday' => 1,
-    'month' => 0,
+    'month' => '0',
     'day' => 7,
     'year' => 2002
   };
@@ -1213,6 +1213,7 @@ you'll have to disable these ISO-C99 keywords:
 
 The parser allows you to disable the following keywords:
 
+  asm
   auto
   const
   double
@@ -1627,7 +1628,7 @@ This would print:
   $unpacked = {
     'uni' => {
       'word' => [
-        0,
+        '0',
         42
       ],
       'quad' => 42
@@ -1635,14 +1636,14 @@ This would print:
     'ary' => [
       1,
       2,
-      0
+      '0'
     ]
   };
 
-If L<TYPE|/"UNDERSTANDING TYPES"> refers to a compound object, you may pack any
-member of that compound object. Simply add a member string
-to the type name, just as you would access the member in
-C:
+If L<TYPE|/"UNDERSTANDING TYPES"> refers to a compound object,
+you may pack any member of that compound object. Simply add
+a L<member expression|/"Member Expressions"> to the type
+name, just as you would access the member in C:
 
   $array = $c->pack( 'test.ary', [1, 2, 3] );
   print hexdump( data => $array );
@@ -1768,10 +1769,10 @@ This would print:
     ]
   };
 
-If L<TYPE|/"UNDERSTANDING TYPES"> refers to a compound object, you may unpack any
-member of that compound object. Simply add a member string
-to the type name, just as you would access the member in
-C:
+If L<TYPE|/"UNDERSTANDING TYPES"> refers to a compound object,
+you may unpack any member of that compound object. Simply add
+a L<member expression|/"Member Expressions"> to the type
+name, just as you would access the member in C:
 
   $binary2 = substr $binary, $c->offsetof('test', 'uni.word');
   
@@ -1803,8 +1804,9 @@ both C<$unpack1> and C<$unpack2>:
 This method will return the size of a C type in bytes.
 If it cannot find the type, it will throw an exception.
 
-If the type defines some kind of compound object, you
-may ask for the size of a member of that compound object:
+If the type defines some kind of compound object, you may
+ask for the size of a L<member|/"Member Expressions"> of
+that compound object:
 
   $size = $c->sizeof( 'test.uni.word[1]' );
 
@@ -1823,13 +1825,13 @@ While this only makes sense for compound types, it's legal
 to also use it for non-compound types.
 If it cannot find the type, it will throw an exception.
 
-The L<C<typeof>|/"typeof"> method can be used on any valid
-member, even on arrays or unnamed types. It will always
-return a string that holds the name (or in case of unnamed
-types only the class) of the type, optionally followed by
-a C<'*'> character to indicate it's a pointer type, and
-optionally followed by one or more array dimensions if
-it's an array type.
+The L<C<typeof>|/"typeof"> method can be used on any
+valid L<member|/"Member Expressions">, even on arrays or
+unnamed types. It will always return a string that holds
+the name (or in case of unnamed types only the class) of
+the type, optionally followed by a C<'*'> character to
+indicate it's a pointer type, and optionally followed by
+one or more array dimensions if it's an array type.
 
   for my $member ( qw( test test.uni test.uni.quad
                        test.uni.word test.uni.word[1] ) ) {
@@ -2209,28 +2211,28 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1048627175,
-      'mtime' => 1048627165,
+      'ctime' => '1048627175',
+      'mtime' => '1048627165',
       'size' => 10999
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1048627172,
-      'mtime' => 1048627165,
+      'ctime' => '1048627172',
+      'mtime' => '1048627165',
       'size' => 8400
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1048627172,
-      'mtime' => 1048627165,
+      'ctime' => '1048627172',
+      'mtime' => '1048627165',
       'size' => 657
     },
     '/usr/include/string.h' => {
-      'ctime' => 1048627175,
-      'mtime' => 1048627165,
+      'ctime' => '1048627175',
+      'mtime' => '1048627165',
       'size' => 14226
     },
     '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.2/include/stddef.h' => {
-      'ctime' => 1046205460,
-      'mtime' => 1046205454,
+      'ctime' => '1046205460',
+      'mtime' => '1046205454',
       'size' => 12695
     }
   };
@@ -2459,7 +2461,7 @@ similar to this:
       },
       'identifier' => '__socket_type',
       'context' => 'definitions.c(4)',
-      'sign' => 0
+      'sign' => '0'
     }
   );
 
@@ -2569,7 +2571,7 @@ to this:
       'identifier' => 'STRUCT_SV',
       'align' => 1,
       'context' => 'definitions.c(14)',
-      'pack' => 0,
+      'pack' => '0',
       'type' => 'struct',
       'declarations' => [
         {
@@ -2577,7 +2579,7 @@ to this:
             {
               'declarator' => '*sv_any',
               'size' => 4,
-              'offset' => 0
+              'offset' => '0'
             }
           ],
           'type' => 'void'
@@ -2609,7 +2611,7 @@ to this:
       'identifier' => 'xxx',
       'align' => 1,
       'context' => 'definitions.c(22)',
-      'pack' => 0,
+      'pack' => '0',
       'type' => 'struct',
       'declarations' => [
         {
@@ -2617,7 +2619,7 @@ to this:
             {
               'declarator' => 'a',
               'size' => 4,
-              'offset' => 0
+              'offset' => '0'
             }
           ],
           'type' => 'int'
@@ -2638,7 +2640,7 @@ to this:
     {
       'align' => 1,
       'context' => 'definitions.c(20)',
-      'pack' => 0,
+      'pack' => '0',
       'type' => 'union',
       'declarations' => [
         {
@@ -2646,7 +2648,7 @@ to this:
             {
               'declarator' => 'abc[2]',
               'size' => 8,
-              'offset' => 0
+              'offset' => '0'
             }
           ],
           'type' => 'int'
@@ -2656,7 +2658,7 @@ to this:
             {
               'declarator' => 'ab[3][4]',
               'size' => 96,
-              'offset' => 0
+              'offset' => '0'
             }
           ],
           'type' => 'struct xxx'
@@ -2666,7 +2668,7 @@ to this:
             {
               'declarator' => 'ptr',
               'size' => 4,
-              'offset' => 0
+              'offset' => '0'
             }
           ],
           'type' => 'any'
@@ -2866,7 +2868,7 @@ to this:
       'type' => {
         'align' => 1,
         'context' => 'definitions.c(20)',
-        'pack' => 0,
+        'pack' => '0',
         'type' => 'union',
         'declarations' => [
           {
@@ -2874,7 +2876,7 @@ to this:
               {
                 'declarator' => 'abc[2]',
                 'size' => 8,
-                'offset' => 0
+                'offset' => '0'
               }
             ],
             'type' => 'int'
@@ -2884,7 +2886,7 @@ to this:
               {
                 'declarator' => 'ab[3][4]',
                 'size' => 96,
-                'offset' => 0
+                'offset' => '0'
               }
             ],
             'type' => 'struct xxx'
@@ -2894,7 +2896,7 @@ to this:
               {
                 'declarator' => 'ptr',
                 'size' => 4,
-                'offset' => 0
+                'offset' => '0'
               }
             ],
             'type' => 'any'
@@ -3094,7 +3096,7 @@ a call to L<C<struct>|/"struct"> will return
       'identifier' => 'bitfield',
       'align' => 1,
       'context' => 'bitfields.c(1)',
-      'pack' => 0,
+      'pack' => '0',
       'type' => 'struct',
       'declarations' => [
         {
@@ -3129,7 +3131,7 @@ a call to L<C<struct>|/"struct"> will return
             {
               'declarator' => 'integer',
               'size' => 4,
-              'offset' => 0
+              'offset' => '0'
             }
           ],
           'type' => 'int'

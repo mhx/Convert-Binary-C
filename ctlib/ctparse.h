@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/04/12 03:44:13 +0100 $
-* $Revision: 17 $
-* $Snapshot: /Convert-Binary-C/0.40 $
+* $Date: 2003/06/06 12:41:29 +0100 $
+* $Revision: 18 $
+* $Snapshot: /Convert-Binary-C/0.41 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
@@ -105,8 +105,9 @@ typedef struct {
 #define HAS_KEYWORD_UNSIGNED 0x00002000U
 #define HAS_KEYWORD_VOID     0x00004000U
 #define HAS_KEYWORD_VOLATILE 0x00008000U
+#define HAS_KEYWORD_ASM      0x00010000U
 
-#define HAS_ALL_KEYWORDS     0x0000FFFFU
+#define HAS_ALL_KEYWORDS     0x0001FFFFU
 
   LinkedList disabled_keywords;
   LinkedList includes;

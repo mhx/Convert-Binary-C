@@ -1,4 +1,12 @@
 ------------
+Version 0.41
+------------
+
+* added support for gcc's asm syntax
+
+* some cleanups
+
+------------
 Version 0.40
 ------------
 

@@ -5,48 +5,11 @@ What's to do?
 for future releases (in no special order):
 ------------------------------------------
 
-* more gcov, more tests
-
-* map MemAlloc => malloc / Free => free? / macro? (speed?)
-
-* optimize/cleanup tests
-
-* have a definition() method?
-  Like typedef/compound/enum, but for all of 'em?
-
-* cleanup unsafe values handling
-
-* COPY_LINE ?
-
-* maybe add DollarsInIdentifiers, AtSignsInIdentifiers?
-
-* on parse error, print parser stack?
-
-* add some warnings during parsing
-  empty arrays in structs a[]
-
-* maybe add routine with checks after parsing
-
-* add platform independent IEEE floating point support
-  (SoftFloat or sth. similar?)
-
 * support gcc's __attribute__, at least for struct packing
 
-* support (read: ignore ;) asm (and variations: asm volatile)
-
-* maybe add tests for all preprocessor warnings/errors?
-
-* maybe add a more complete preprocessor testsuite?
-
-* character arrays => strings?
-
-* support flexible array members
-
-* perhaps bless (tie) long double SV's and store binary data (?)
-
-* sourcify only specific types (pass in a list of types) (?)
-
 * support for unsigned and 64-bit integer arithmetics
+
+    use ucpp's (reentrant) arith.c?
 
 * implement cast operators
 
@@ -59,6 +22,45 @@ for future releases (in no special order):
 
     doesn't work yet. But I guess such construct is rarely
     used.
+
+* cleanup unsafe values handling
+
+* support arbitrary byte order? ( ByteOrder => '13248756' )
+
+* add platform independent IEEE floating point support
+  (SoftFloat or sth. similar?)
+
+* more gcov, more tests
+
+* map MemAlloc => malloc / Free => free? / macro? (speed?)
+
+* optimize/cleanup tests
+
+* have a definition() method?
+  Like typedef/compound/enum, but for all of 'em?
+
+* COPY_LINE ?
+
+* maybe add DollarsInIdentifiers, AtSignsInIdentifiers?
+
+* on parse error, print parser stack?
+
+* add some warnings during parsing
+  empty arrays in structs a[]
+
+* maybe add routine with checks after parsing
+
+* maybe add tests for all preprocessor warnings/errors?
+
+* maybe add a more complete preprocessor testsuite?
+
+* character arrays => strings?
+
+* support flexible array members?
+
+* perhaps bless (tie) long double SV's and store binary data (?)
+
+* sourcify only specific types (pass in a list of types) (?)
 
 * maybe add an object representing a single type?
 
@@ -87,6 +89,7 @@ for future releases (in no special order):
     describe the behaviour of different compilers
 
 * do some more optimization in the Get/SetBasicType area
+  (not necessarily), and add more checks
 
 * add even more tests
 

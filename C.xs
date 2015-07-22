@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/04/20 04:18:18 +0100 $
-* $Revision: 76 $
-* $Snapshot: /Convert-Binary-C/0.40 $
+* $Date: 2003/04/23 11:23:03 +0100 $
+* $Revision: 77 $
+* $Snapshot: /Convert-Binary-C/0.41 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -725,11 +725,15 @@ static int gs_DisableParser;
 
 #ifdef CTYPE_DEBUGGING
 
-#define INDENT for(i=0;i<level;i++) sv_catpv(buf,"  ")
+#define INDENT                             \
+        do {                               \
+          if( level > 0 )                  \
+            AddIndent( aTHX_ buf, level ); \
+        } while(0)
+
 
 static void DumpSV( pTHX_ SV *buf, int level, SV *sv )
 {
-  I32 i;
   char *str;
   svtype type = SvTYPE( sv );
 
@@ -752,6 +756,28 @@ static void DumpSV( pTHX_ SV *buf, int level, SV *sv )
     case SVt_PVIO: str = "PVIO"; break;
     default      : str = "UNKNOWN";
   }
+
+  CT_DEBUG( MAIN, (XSCLASS "::DumpSV( level=%d, sv=\"%s\" )", level, str) );
+
+#ifdef CBC_USE_MORE_MEMORY
+  /*
+   *  This speeds up dump at the cost of memory,
+   *  as it prevents a lot of realloc()s.
+   *  Actually, it was only inserted to make valgrind
+   *  run at acceptable speed... ;-)
+   */
+  {
+    STRLEN cur, len;
+    cur = SvCUR(buf) + 64;   // estimated new string length
+    if( cur > 1024 ) {       // do nothing for small strings
+      len = SvLEN(buf);      // buffer size
+      if( cur > len ) {
+        len = (len>>10)<<11; // double buffer size
+        (void) sv_grow( buf, len );
+      }
+    }
+  }
+#endif
 
   INDENT; level++;
   sv_catpvf( buf, "SV = %s @ %p (REFCNT = %d)\n", str, sv, SvREFCNT(sv) );
@@ -822,7 +848,7 @@ static void fatal( const char *f, ... )
 {
   dTHX;
   va_list l;
-  SV *sv = sv_2mortal( newSVpvn( "", 0 ) );
+  SV *sv = newSVpvn( "", 0 );
 
   va_start( l, f );
 
@@ -844,6 +870,8 @@ static void fatal( const char *f, ... )
   va_end( l );
 
   fprintf( stderr, "%s", SvPVX( sv ) );
+
+  SvREFCNT_dec( sv );
 
   abort();
 }
@@ -3292,12 +3320,12 @@ static SV *GetMemberString( pTHX_ const MemberInfo *pMI, int offset, GMSInfo *pI
   if( pInfo )
     HT_destroy( pInfo->htpad, NULL );
 
-  sv_2mortal( sv );
-
-  if( rval == GMS_NONE )
+  if( rval == GMS_NONE ) {
+    SvREFCNT_dec( sv );
     return &PL_sv_undef;
+  }
 
-  return sv;
+  return sv_2mortal( sv );
 }
 
 /*******************************************************************************

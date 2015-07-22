@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/17 13:39:07 +0100 $
-# $Revision: 13 $
-# $Snapshot: /Convert-Binary-C/0.40 $
+# $Date: 2003/04/23 11:21:22 +0100 $
+# $Revision: 14 $
+# $Snapshot: /Convert-Binary-C/0.41 $
 # $Source: /t/106_parse.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 73 }
+BEGIN { plan tests => 75 }
 
 #===================================================================
 # create object (1 tests)
@@ -354,6 +354,9 @@ eval {
     offsetof      => $p->offsetof( 'AMT', 'table[2]' ),
     member_sx     => scalar $p->member( 'AMT', 100 ),
     member_ax     => [$p->member( 'AMT', 100 )],
+
+    dependencies  => $p->dependencies,
+    sourcify      => $p->sourcify,
   );
 };
 ok($@,'',"method call failed");
@@ -363,7 +366,9 @@ $debug = Convert::Binary::C::feature( 'debug' );
 for( keys %rc ) {
   $fail = $succ = 0;
   if( $debug ) {
+    # print "# dumping $_\n";
     my $r = Convert::Binary::C::__DUMP__( $rc{$_} );
+    # print "# checking $_\n";
     while( $r =~ /REFCNT\s*=\s*(\d+)/g ) {
       if( $1 == 1 ) { $succ++ }
       else {

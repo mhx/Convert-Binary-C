@@ -75,7 +75,8 @@ my %corr = (
 );
 
 for my $k ( keys %corr ) {
-  $res->{$k}[5] *= $corr{$k};
+  exists $res->{$k} and
+    $res->{$k}[5] *= $corr{$k};
 }
 
 print '-'x72, "\n";

@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/04/17 13:39:03 +0100 $
-* $Revision: 27 $
-* $Snapshot: /Convert-Binary-C/0.40 $
+* $Date: 2003/06/10 14:34:29 +0100 $
+* $Revision: 28 $
+* $Snapshot: /Convert-Binary-C/0.41 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -65,7 +65,7 @@
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 
-static void get_path_name( char *buf, const char *dir, const char *file );
+static char *get_path_name( const char *dir, const char *file );
 static void update_struct( const CParseConfig *pCPC, Struct *pStruct );
 
 
@@ -250,23 +250,34 @@ static void update_struct( const CParseConfig *pCPC, Struct *pStruct )
 *
 *******************************************************************************/
 
-static void get_path_name( char *buf, const char *dir, const char *file )
+static char *get_path_name( const char *dir, const char *file )
 {
-  int len = 0;
+  int dirlen = 0, filelen, append_delim = 0;
+  char *buf, *b;
 
-  if( dir ) {
-    strcpy( buf, dir );
-    len = strlen( buf );
-
-    if( !IS_ANY_DIRECTORY_DELIMITER( buf[len-1] ) )
-      buf[len++] = SYSTEM_DIRECTORY_DELIMITER;
+  if( dir != NULL ) {
+    dirlen = strlen( dir );
+    if( !IS_ANY_DIRECTORY_DELIMITER( dir[dirlen-1] ) )
+      append_delim = 1;
   }
 
-  strcpy( buf+len, file );
+  filelen = strlen( file );
 
-  for( ; *buf; buf++ )
-    if( IS_NON_SYSTEM_DIR_DELIM( *buf ) )
-      *buf = SYSTEM_DIRECTORY_DELIMITER;
+  buf = (char *) Alloc( dirlen + append_delim + filelen + 1 );
+  
+  if( dir != NULL )
+    strcpy( buf, dir );
+
+  if( append_delim )
+    buf[dirlen++] = SYSTEM_DIRECTORY_DELIMITER;
+
+  strcpy( buf+dirlen, file );
+
+  for( b=buf; *b; b++ )
+    if( IS_NON_SYSTEM_DIR_DELIM( *b ) )
+      *b = SYSTEM_DIRECTORY_DELIMITER;
+
+  return buf;
 }
 
 
@@ -293,8 +304,7 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
                  const CParseConfig *pCPC, CParseInfo *pCPI )
 {
   int                rval;
-  char               file[1024];
-  char              *str;
+  char              *file, *str;
   FILE              *infile;
   struct lexer_state lexer;
   ParserState       *pState;
@@ -309,7 +319,7 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
   infile = NULL;
 
   if( filename != NULL ) {
-    get_path_name( file, NULL, filename );
+    file = get_path_name( NULL, filename );
 
     CT_DEBUG( CTLIB, ("Trying '%s'...", file) );
 
@@ -317,7 +327,9 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
 
     if( infile == NULL ) {
       LL_foreach( str, pCPC->includes ) {
-        get_path_name( file, str, filename );
+        Free( file );
+
+        file = get_path_name( str, filename );
 
         CT_DEBUG( CTLIB, ("Trying '%s'...", file) );
 
@@ -326,6 +338,7 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
       }
 
       if( infile == NULL ) {
+        Free( file );
         format_error( pCPI, "Cannot find input file '%s'", filename );
         return 0;
       }
@@ -377,8 +390,10 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
 
   init_include_path( NULL );
 
-  if( filename )
+  if( filename != NULL ) {
     set_init_filename(file, 1);
+    Free( file );
+  }
   else
     set_init_filename(BUFFER_NAME, 0);
 
@@ -1035,28 +1050,96 @@ ErrorGTI get_type_info( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDe
 *
 *******************************************************************************/
 
+#define COPY_STRING_TO_BUF( from, count )                                      \
+        do {                                                                   \
+          int _copy;                                                           \
+          if( (_copy = (count)) > 0 ) {                                        \
+            buf = (char *) ReAlloc( buf, len + _copy + 1 );                    \
+            memcpy( buf+len, from, _copy );                                    \
+            len += _copy;                                                      \
+          }                                                                    \
+        } while(0)
+
+#define COPY_FORMAT_TO_BUF( fmt, type )                                        \
+        do {                                                                   \
+          char temp[32];                                                       \
+          type val = va_arg( args, type );                                     \
+          sprintf( temp, fmt, val );                                           \
+          COPY_STRING_TO_BUF( temp, strlen( temp ) );                          \
+        } while(0)
+
+#define UNSUPPORTED_FORMAT                                                     \
+        do {                                                                   \
+          fprintf( stderr, "FATAL: unsupported format in '%s'\n", format );    \
+          abort();                                                             \
+        } while(0)
+
 void format_error( CParseInfo *pCPI, char *format, ... )
 {
   va_list args;
-  char buffer[1024];
-  int len;
+  int len = 0;
+  char *f, *buf;
+
+  buf = (char *) Alloc( len + 1 );
 
   va_start( args, format );
 
-  if( pCPI->errstr ) {
-    Free( pCPI->errstr );
-    pCPI->errstr = NULL;
-  }
+  for( f = format; *f; ++f ) {
+    if( *f == '%' ) {
+      COPY_STRING_TO_BUF( format, f - format );
 
-  len = vsprintf( buffer, format, args );
+      format = f;
 
-  if( len > 0 ) {
-    pCPI->errstr = (char *) Alloc( len+1 );
-    strcpy( pCPI->errstr, buffer );
+      switch( *++f ) {
+        case 's':
+          {
+            char *s = va_arg( args, char * );
+            COPY_STRING_TO_BUF( s, strlen( s ) );
+          }
+          break;
+
+        case 'd':
+          COPY_FORMAT_TO_BUF( "%d", int );
+          break;
+
+        case 'l':
+          switch( *++f ) {
+            case 'd':
+              COPY_FORMAT_TO_BUF( "%ld", long );
+              break;
+
+            default:
+              UNSUPPORTED_FORMAT;
+              break;
+          }
+          break;
+
+        case '%':
+          COPY_STRING_TO_BUF( "%", 1 );
+          break;
+
+        default:
+          UNSUPPORTED_FORMAT;
+          break;
+      }
+
+      format = f+1;
+    }
   }
-  else
-    pCPI->errstr = NULL;
 
   va_end( args );
+
+  COPY_STRING_TO_BUF( format, f - format );
+
+  buf[len] = '\0';
+
+  if( pCPI->errstr )
+    Free( pCPI->errstr );
+
+  pCPI->errstr = buf;
 }
+
+#undef COPY_STRING_TO_BUF
+#undef COPY_INT_TO_BUF
+#undef UNSUPPORTED_FORMAT
 

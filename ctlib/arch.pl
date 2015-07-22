@@ -12,7 +12,7 @@
 # $Author: mhx $
 # $Date: 2003/04/17 13:39:02 +0100 $
 # $Revision: 9 $
-# $Snapshot: /Convert-Binary-C/0.40 $
+# $Snapshot: /Convert-Binary-C/0.41 $
 # $Source: /ctlib/arch.pl $
 #
 ################################################################################

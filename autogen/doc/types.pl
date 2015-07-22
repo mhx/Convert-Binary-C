@@ -71,7 +71,7 @@ print "\n#-8<-\n";
 
 $member =~ s/\+\d+$//;
 $offset = $c->offsetof( 'foo', $member );
-print "'$member' is starts at offset $offset of struct foo";
+print "'$member' starts at offset $offset of struct foo";
 
 print "\n#-8<-\n";
 

@@ -531,7 +531,7 @@ used with the L<Data::Dumper|Data::Dumper> module, for example:
 
   $$configure.pl [1]$$
 
-This will print something like this:
+Which will print something like this:
 
   @@configure.pl [1]@@
 
@@ -1219,10 +1219,10 @@ This would print:
 
   @@pack.pl [2]@@
 
-If L<TYPE|/"UNDERSTANDING TYPES"> refers to a compound object, you may pack any
-member of that compound object. Simply add a member string
-to the type name, just as you would access the member in
-C:
+If L<TYPE|/"UNDERSTANDING TYPES"> refers to a compound object,
+you may pack any member of that compound object. Simply add
+a L<member expression|/"Member Expressions"> to the type
+name, just as you would access the member in C:
 
   $$pack.pl [5]$$
 
@@ -1298,10 +1298,10 @@ This would print:
 
   @@unpack.pl [1]@@
 
-If L<TYPE|/"UNDERSTANDING TYPES"> refers to a compound object, you may unpack any
-member of that compound object. Simply add a member string
-to the type name, just as you would access the member in
-C:
+If L<TYPE|/"UNDERSTANDING TYPES"> refers to a compound object,
+you may unpack any member of that compound object. Simply add
+a L<member expression|/"Member Expressions"> to the type
+name, just as you would access the member in C:
 
   $$unpack.pl [3]$$
 
@@ -1321,8 +1321,9 @@ both C<$unpack1> and C<$unpack2>:
 This method will return the size of a C type in bytes.
 If it cannot find the type, it will throw an exception.
 
-If the type defines some kind of compound object, you
-may ask for the size of a member of that compound object:
+If the type defines some kind of compound object, you may
+ask for the size of a L<member|/"Member Expressions"> of
+that compound object:
 
   $$unpack.pl [4]$$
 
@@ -1341,13 +1342,13 @@ While this only makes sense for compound types, it's legal
 to also use it for non-compound types.
 If it cannot find the type, it will throw an exception.
 
-The L<C<typeof>|/"typeof"> method can be used on any valid
-member, even on arrays or unnamed types. It will always
-return a string that holds the name (or in case of unnamed
-types only the class) of the type, optionally followed by
-a C<'*'> character to indicate it's a pointer type, and
-optionally followed by one or more array dimensions if
-it's an array type.
+The L<C<typeof>|/"typeof"> method can be used on any
+valid L<member|/"Member Expressions">, even on arrays or
+unnamed types. It will always return a string that holds
+the name (or in case of unnamed types only the class) of
+the type, optionally followed by a C<'*'> character to
+indicate it's a pointer type, and optionally followed by
+one or more array dimensions if it's an array type.
 
   $$unpack.pl [5]$$
 

@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/04/17 13:39:03 +0100 $
-* $Revision: 23 $
-* $Snapshot: /Convert-Binary-C/0.40 $
+* $Date: 2003/06/10 14:12:09 +0100 $
+* $Revision: 25 $
+* $Snapshot: /Convert-Binary-C/0.41 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -419,6 +419,7 @@ int moo(const int identifier1 (T identifier2 (int identifier3)));
 %token INLINE_TOK       RESTRICT_TOK
 
 /* special tokens */
+%token ASM_TOK
 %token SKIP_TOK
 
 /* Multi-Character operators */
@@ -552,6 +553,54 @@ string_literal_list
 	  { BINARY_OP( $$, $1, +, $2 ); }
 	;
 
+
+/********************* ASSEMBLER DIRECTIVES ***************************/
+
+asm_string
+	: ASM_TOK '(' string_literal_list ')'
+	;
+
+asm_string_opt
+	: /* nothing */
+	| asm_string
+	;
+
+asm_expr
+	: ASM_TOK '(' comma_expression ')' ';'
+	;
+
+asm_statement
+	: ASM_TOK type_qualifier_list_opt '(' comma_expression ')' ';'
+	| ASM_TOK type_qualifier_list_opt '(' comma_expression
+	                                  ':' asm_operands_opt ')' ';'
+	| ASM_TOK type_qualifier_list_opt '(' comma_expression
+	                                  ':' asm_operands_opt
+	                                  ':' asm_operands_opt ')' ';'
+	| ASM_TOK type_qualifier_list_opt '(' comma_expression
+	                                  ':' asm_operands_opt
+	                                  ':' asm_operands_opt
+	                                  ':' asm_clobbers ')' ';'
+	;
+
+asm_operands_opt
+	: /* nothing */
+	| asm_operands
+	;
+
+asm_operands
+	: asm_operand
+	| asm_operands ',' asm_operand
+	;
+
+asm_operand
+	: STRING_LITERAL '(' comma_expression ')'
+	| '[' IDENTIFIER ']' STRING_LITERAL '(' comma_expression ')'
+	;
+
+asm_clobbers
+	: string_literal_list
+	| asm_clobbers ',' string_literal_list
+	;
 
 /************************* EXPRESSIONS ********************************/
 primary_expression
@@ -800,7 +849,7 @@ declaration
     specifier must be supplied */
 
 default_declaring_list  /* Can't redeclare typedef names */
-	: declaration_qualifier_list identifier_declarator initializer_opt
+	: declaration_qualifier_list identifier_declarator asm_string_opt initializer_opt
 	  {
 	    if( IS_LOCAL ) {
 	      $$ = NULL;
@@ -822,13 +871,13 @@ default_declaring_list  /* Can't redeclare typedef names */
 	      }
 	    }
 	  }
-	| type_qualifier_list identifier_declarator initializer_opt
+	| type_qualifier_list identifier_declarator asm_string_opt initializer_opt
 	  {
 	    $$ = NULL;
 	    if( $2 )
 	      decl_delete( EX_DECL( $2 ) );
 	  }
-	| default_declaring_list ',' identifier_declarator initializer_opt
+	| default_declaring_list ',' identifier_declarator asm_string_opt initializer_opt
 	  {
 	    $$ = $1;
 	    if( $$ != NULL )
@@ -839,7 +888,7 @@ default_declaring_list  /* Can't redeclare typedef names */
 	;
 
 declaring_list
-	: declaration_specifier declarator initializer_opt
+	: declaration_specifier declarator asm_string_opt initializer_opt
 	  {
 	    if( IS_LOCAL ) {
 	      $$ = NULL;
@@ -862,13 +911,13 @@ declaring_list
 	      }
 	    }
 	  }
-	| type_specifier declarator initializer_opt
+	| type_specifier declarator asm_string_opt initializer_opt
 	  {
 	    $$ = NULL;
 	    if( $2 )
 	      decl_delete( EX_DECL( $2 ) );
 	  }
-	| declaring_list ',' declarator initializer_opt
+	| declaring_list ',' declarator asm_string_opt initializer_opt
 	  {
 	    $$ = $1;
 	    if( $$ != NULL )
@@ -911,6 +960,11 @@ declaration_qualifier_list  /* const/volatile, AND storage class */
 type_qualifier_list
 	: type_qualifier
 	| type_qualifier_list type_qualifier
+	;
+
+type_qualifier_list_opt
+	: /* nothing */
+	| type_qualifier_list
 	;
 
 declaration_qualifier
@@ -1568,6 +1622,7 @@ statement
 	| selection_statement
 	| iteration_statement
 	| jump_statement
+	| asm_statement
 	;
 
 labeled_statement
@@ -1632,6 +1687,7 @@ translation_unit
 external_definition
 	: function_definition
 	| declaration
+	| asm_expr
 	;
 
 function_definition
@@ -2207,7 +2263,7 @@ static inline void *ex_object( LinkedList list, void *object )
 
 static void parser_error( ParserState *pState, char *msg )
 {
-  format_error( pState->pCPI, "%s, line %d: %s",
+  format_error( pState->pCPI, "%s, line %ld: %s",
                 pState->pFI ? pState->pFI->name : "[unknown]",
                 pState->pLexer->ctok->line, msg );
 }
