@@ -1,4 +1,14 @@
 -------------------------
+Version 0.76 (2011-04-11)
+-------------------------
+
+* it looks like I've found the source of the test failures reported
+  in cpan #56369; this version is an attempt to fix the problem, but
+  without fully understanding it -- if a windows guru can explain to
+  me why setjmp() deadlocks if the jmp_buf structure was allocated
+  through Perl's API (New, Newz, etc), I'd really appreciate it
+
+-------------------------
 Version 0.75 (2011-04-10)
 -------------------------
 

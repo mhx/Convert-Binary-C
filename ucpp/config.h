@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2011/04/10 11:32:30 +0100 $
-* $Revision: 24 $
+* $Date: 2011/04/11 21:49:56 +0100 $
+* $Revision: 25 $
 * $Source: /ucpp/config.h $
 *
 ********************************************************************************
@@ -96,6 +96,18 @@
 
 #include <stdlib.h>
 
+/*
+ * Under some circumstances, setjmp() on Win64 does deadlock when the
+ * memory containing the jmpbuf was allocated through the Perl API.
+ *
+ * Apparently, using standard malloc/free fixes the deadlock, yet I
+ * don't have any explanation for what's really going on.
+ *
+ * I'll appreciate any enlightenment. :-)
+ */
+
+#ifndef _WIN64 
+
 extern void *CBC_malloc(size_t size);
 extern void *CBC_realloc(void *ptr, size_t size);
 extern void  CBC_free(void *ptr);
@@ -103,6 +115,8 @@ extern void  CBC_free(void *ptr);
 #define UCPP_MALLOC   CBC_malloc
 #define UCPP_REALLOC  CBC_realloc
 #define UCPP_FREE     CBC_free
+
+#endif
 
 /*-------------*/
 /* other stuff */
