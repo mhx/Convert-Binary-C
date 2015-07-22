@@ -11,13 +11,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/11/01 17:58:55 +0000 $
-* $Revision: 86 $
+* $Date: 2007/06/23 23:58:12 +0100 $
+* $Revision: 90 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -192,7 +192,7 @@ struct _parserState {
 
   CParseInfo         *pCPI;
 
-  PragmaState         pragma;
+  PragmaState        *pragma;
 
   struct CPP         *pp;
   struct lexer_state *pLexer;
@@ -1191,7 +1191,7 @@ aggregate_name
 	    else
 	    {
 	      Struct *pStruct;
-	      pStruct = struct_new(NULL, 0, $1.uval, PSTATE->pragma.pack.current, $3);
+	      pStruct = struct_new(NULL, 0, $1.uval, pragma_parser_get_pack(PSTATE->pragma), $3);
 	      pStruct->context = $1.ctx;
 	      LL_push(PSTATE->pCPI->structs, pStruct);
 	      $$.tflags = $1.uval;
@@ -1212,7 +1212,7 @@ aggregate_name
 
 	      if (pStruct == NULL)
 	      {
-	        pStruct = struct_new($2->key, $2->keylen, $1.uval, PSTATE->pragma.pack.current, $4);
+	        pStruct = struct_new($2->key, $2->keylen, $1.uval, pragma_parser_get_pack(PSTATE->pragma), $4);
 	        pStruct->context = $1.ctx;
 	        LL_push(PSTATE->pCPI->structs, pStruct);
 	        HT_storenode(PSTATE->pCPI->htStructs, $2, pStruct);
@@ -1225,7 +1225,7 @@ aggregate_name
 	        {
 	          pStruct->context      = $1.ctx;
 	          pStruct->declarations = $4;
-	          pStruct->pack         = PSTATE->pragma.pack.current;
+	          pStruct->pack         = pragma_parser_get_pack(PSTATE->pragma);
 	        }
 	        else
 	          LL_destroy($4, (LLDestroyFunc) structdecl_delete);
@@ -2210,10 +2210,11 @@ static inline int c_lex(YYSTYPE *plval, ParserState *pState)
         CT_DEBUG(CLEXER, ("token-type => PRAGMA"));
         CT_DEBUG(CLEXER, ("line %ld: <#pragma>", pLexer->line));
 
-        pState->pragma.str = pLexer->ctok->name;
-        pragma_parse( &pState->pragma );
+        pragma_parser_set_context(pState->pragma, pState->pFI ? pState->pFI->name : "unknown",
+                                                  pLexer->line - 1, pLexer->ctok->name);
+        pragma_parser_parse(pState->pragma);
 
-        CT_DEBUG(CLEXER, ("current packing: %d\n", pState->pragma.pack.current));
+        CT_DEBUG(CLEXER, ("current packing: %d\n", pragma_parser_get_pack(pState->pragma)));
         break;
 
       case NAME:
@@ -2502,15 +2503,15 @@ ParserState *c_parser_new(const CParseConfig *pCPC, CParseInfo *pCPI,
 
   AllocF(ParserState *, pState, sizeof(ParserState));
 
-  pState->pCPI                = pCPI;
-  pState->pCPC                = pCPC;
-  pState->pLexer              = pLexer;
-  pState->pp                  = aUCPP;
+  pState->pCPI = pCPI;
+  pState->pCPC = pCPC;
+  pState->pLexer = pLexer;
+  pState->pp = aUCPP;
 
-  pState->flags               = 0;
-  pState->pFI                 = NULL;
+  pState->flags = 0;
+  pState->pFI = NULL;
 
-  pragma_init(&pState->pragma);
+  pState->pragma = pragma_parser_new(pCPI);
 
   return pState;
 }
@@ -2559,7 +2560,7 @@ void c_parser_delete(ParserState *pState)
   if (pState == NULL)
     return;
 
-  pragma_free(&pState->pragma);
+  pragma_parser_delete(pState->pragma);
 
   Free(pState);
 }

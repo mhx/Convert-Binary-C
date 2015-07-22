@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/03/12 11:08:50 +0000 $
-# $Revision: 72 $
+# $Date: 2007/06/23 23:25:37 +0100 $
+# $Revision: 74 $
 # $Source: /tests/203_warnings.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -20,7 +20,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 7218 }
+BEGIN { plan tests => 7254 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -57,6 +57,27 @@ ENDC
 ENDC
   unknown => <<'ENDC',
 #foobar
+ENDC
+  pragma_pack_1 => <<'ENDC',
+#pragma pack(1)
+struct foo {
+  int x;
+};
+#pragma pack(3)
+ENDC
+  pragma_pack_2 => <<'ENDC',
+#pragma pack(push, 5)
+struct foo {
+  int x;
+};
+#pragma pack(0)
+ENDC
+  pragma_pack_3 => <<'ENDC',
+#pragma pack(1)
+struct foo {
+  int x;
+};
+#pragma pack(0)
 ENDC
 );
 
@@ -141,6 +162,10 @@ eval_test(q{
   $x = $p->unpack('signed int', $x);                            # no warning
   $x = $p->sizeof('long long');                                 # no warning
   $x = $p->typeof('long double');                               # no warning
+
+  $p->parse($code{pragma_pack_1});                              # (E) line 5: invalid argument 3 to #pragma pack 
+  $p->parse($code{pragma_pack_2});                              # (E) line 1: invalid argument 5 to #pragma pack 
+  $p->parse($code{pragma_pack_3});                              # no warning
 
   $p->parse($code{macro});                                      # (E) macro ... FOO ... redefined
   $p->parse($code{assert});                                     # (2) (warning) ... trailing garbage in #assert

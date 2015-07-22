@@ -439,7 +439,7 @@
 
 #ifndef INLINE
 
-#if __STDC__ && __STDC_VERSION__ >= 199901L
+#if defined(__STDC__) && __STDC__ && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 /* this is a C99 compiler, keep inline unchanged */
 #elif defined(__GNUC__)
 /* this is GNU gcc; modify inline. The semantics is not identical to C99

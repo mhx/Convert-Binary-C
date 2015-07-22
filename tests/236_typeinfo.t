@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/23 21:00:57 +0000 $
-# $Revision: 5 $
+# $Date: 2007/06/23 23:32:51 +0100 $
+# $Revision: 7 $
 # $Source: /tests/236_typeinfo.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -19,7 +19,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 45 }
+BEGIN { plan tests => 49 }
 
 my $c = new Convert::Binary::C;
 
@@ -40,6 +40,12 @@ union u2 { int x; };
 
 typedef unsigned short u_16;
 typedef unsigned int u_32;
+
+#pragma pack(2)
+struct pack2 { int x; };
+
+#pragma pack(0)
+struct pack0 { int x; };
 
 ENDC
 
@@ -107,4 +113,10 @@ ok($u_32->{declarator}, 'u_32');
 ok($u_32->{type}, 'unsigned int');
 
 ok(not defined $ndef);
+
+($pk0, $pk2) = $c->struct('pack0', 'pack2');
+ok(defined $pk0);
+ok(defined $pk2);
+ok($pk0->{pack}, 0);
+ok($pk2->{pack}, 2);
 

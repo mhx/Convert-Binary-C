@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/08/26 16:42:52 +0100 $
-* $Revision: 27 $
+* $Date: 2007/06/11 19:59:38 +0100 $
+* $Revision: 29 $
 * $Source: /util/hash.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of either the Artistic License or the

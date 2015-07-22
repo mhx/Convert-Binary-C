@@ -10,13 +10,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/11/02 11:57:01 +0000 $
-# $Revision: 86 $
+# $Date: 2007/06/23 23:59:02 +0100 $
+# $Revision: 88 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.67 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.68 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 $XS_VERSION = $VERSION;
 $VERSION    = eval $VERSION;
 
@@ -513,7 +513,8 @@ struct member alignment. The supported syntax is as follows:
 
 =item #pragma pack( ALIGN )
 
-Sets the new alignment to ALIGN.
+Sets the new alignment to ALIGN. If ALIGN is 0, resets the
+alignment to its original value.
 
 =item #pragma pack
 
@@ -522,7 +523,8 @@ Resets the alignment to its original value.
 =item #pragma pack( push, ALIGN )
 
 Saves the current alignment on a stack and sets the new
-alignment to ALIGN.
+alignment to ALIGN. If ALIGN is 0, sets the alignment to
+the default alignment.
 
 =item #pragma pack( pop )
 
@@ -1521,16 +1523,25 @@ as it can already handle C<AV> pointers. And this is what we get:
     'sv_any' => {
       'xnv_u' => {
         'xnv_nv' => '0',
-        'xgv_stash' => '<NULL>'
+        'xgv_stash' => '<NULL>',
+        'xpad_cop_seq' => {
+          'xlow' => 0,
+          'xhigh' => 0
+        },
+        'xbm_s' => {
+          'xbm_previous' => 0,
+          'xbm_flags' => 0,
+          'xbm_rare' => 0
+        }
       },
       'xav_fill' => 0,
       'xav_max' => 0,
       'xiv_u' => {
-        'xivu_iv' => 140312788,
-        'xivu_uv' => 140312788,
-        'xivu_p1' => 140312788,
-        'xivu_i32' => 140312788,
-        'xivu_namehek' => 140312788
+        'xivu_iv' => 140654788,
+        'xivu_uv' => 140654788,
+        'xivu_p1' => 140654788,
+        'xivu_i32' => 140654788,
+        'xivu_namehek' => 140654788
       },
       'xmg_u' => {
         'xmg_magic' => '<NULL>',
@@ -1540,7 +1551,16 @@ as it can already handle C<AV> pointers. And this is what we get:
         'sv_any' => {
           'xnv_u' => {
             'xnv_nv' => '0',
-            'xgv_stash' => '<NULL>'
+            'xgv_stash' => '<NULL>',
+            'xpad_cop_seq' => {
+              'xlow' => 0,
+              'xhigh' => 0
+            },
+            'xbm_s' => {
+              'xbm_previous' => 0,
+              'xbm_flags' => 0,
+              'xbm_rare' => 0
+            }
           },
           'xhv_fill' => 2,
           'xhv_max' => 7,
@@ -1559,7 +1579,7 @@ as it can already handle C<AV> pointers. And this is what we get:
                 'svt_set' => 0,
                 'svt_len' => 0,
                 'svt_clear' => 0,
-                'svt_free' => 136674986,
+                'svt_free' => 136797852,
                 'svt_copy' => 0,
                 'svt_dup' => 0,
                 'svt_local' => 0
@@ -1567,22 +1587,22 @@ as it can already handle C<AV> pointers. And this is what we get:
               'mg_private' => 0,
               'mg_type' => 99,
               'mg_flags' => 0,
+              'mg_len' => 12,
               'mg_obj' => 0,
-              'mg_ptr' => 139425604,
-              'mg_len' => 12
+              'mg_ptr' => 139732148
             },
             'xmg_ourstash' => {
               'sv_any' => '<NULL>',
-              'sv_refcnt' => 137217696,
+              'sv_refcnt' => 137499872,
               'sv_flags' => 6488064,
               'sv_u' => {
-                'svu_iv' => '598828409405046784',
-                'svu_uv' => '598828409405046784',
-                'svu_rv' => 0,
-                'svu_pv' => 0,
-                'svu_array' => 0,
-                'svu_hash' => 0,
-                'svu_gp' => 0
+                'svu_iv' => 12,
+                'svu_uv' => 12,
+                'svu_rv' => 12,
+                'svu_pv' => 12,
+                'svu_array' => 12,
+                'svu_hash' => 12,
+                'svu_gp' => 12
               }
             }
           },
@@ -1591,26 +1611,26 @@ as it can already handle C<AV> pointers. And this is what we get:
         'sv_refcnt' => 2,
         'sv_flags' => 578813964,
         'sv_u' => {
-          'svu_iv' => '2314885530418902580',
-          'svu_uv' => '2314885530418902580',
-          'svu_rv' => 139425332,
-          'svu_pv' => 139425332,
-          'svu_array' => 139425332,
-          'svu_hash' => 139425332,
-          'svu_gp' => 139425332
+          'svu_iv' => '8243107277089939388',
+          'svu_uv' => '8243107277089939388',
+          'svu_rv' => 140648380,
+          'svu_pv' => 140648380,
+          'svu_array' => 140648380,
+          'svu_hash' => 140648380,
+          'svu_gp' => 140648380
         }
       }
     },
     'sv_refcnt' => 1,
     'sv_flags' => 1074790411,
     'sv_u' => {
-      'svu_iv' => '3689628089976684756',
-      'svu_uv' => '3689628089976684756',
-      'svu_rv' => 140312788,
-      'svu_pv' => 140312788,
-      'svu_array' => 140312788,
-      'svu_hash' => 140312788,
-      'svu_gp' => 140312788
+      'svu_iv' => '592594608112941252',
+      'svu_uv' => '592594608112941252',
+      'svu_rv' => 140654788,
+      'svu_pv' => 140654788,
+      'svu_array' => 140654788,
+      'svu_hash' => 140654788,
+      'svu_gp' => 140654788
     }
   };
 
@@ -3917,38 +3937,38 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1159616454,
-      'mtime' => 1159616450,
+      'ctime' => 1180783212,
+      'mtime' => 1180783206,
       'size' => 11734
     },
     '/usr/include/gnu/stubs-32.h' => {
-      'ctime' => 1159616453,
-      'mtime' => 1159616450,
+      'ctime' => 1180783211,
+      'mtime' => 1180783206,
       'size' => 647
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1159616453,
-      'mtime' => 1159616450,
+      'ctime' => 1180783211,
+      'mtime' => 1180783206,
       'size' => 11339
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1159616453,
-      'mtime' => 1159616450,
+      'ctime' => 1180783211,
+      'mtime' => 1180783206,
       'size' => 315
     },
     '/usr/include/string.h' => {
-      'ctime' => 1159616454,
-      'mtime' => 1159616450,
+      'ctime' => 1180783212,
+      'mtime' => 1180783206,
       'size' => 16281
     },
     '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include/stddef.h' => {
-      'ctime' => 1158403877,
-      'mtime' => 1158403876,
+      'ctime' => 1167821862,
+      'mtime' => 1167821861,
       'size' => 12695
     },
     '/usr/include/bits/wordsize.h' => {
-      'ctime' => 1159616453,
-      'mtime' => 1159616450,
+      'ctime' => 1180783211,
+      'mtime' => 1180783206,
       'size' => 873
     }
   };
@@ -5498,7 +5518,7 @@ want to rate the module at L<http://cpanratings.perl.org/>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 

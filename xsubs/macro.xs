@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/02/26 22:06:45 +0000 $
-# $Revision: 2 $
+# $Date: 2007/06/11 19:59:33 +0100 $
+# $Revision: 3 $
 # $Source: /xsubs/macro.xs $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #

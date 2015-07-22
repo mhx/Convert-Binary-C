@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/08/26 16:42:25 +0100 $
-* $Revision: 24 $
+* $Date: 2007/06/11 19:59:56 +0100 $
+* $Revision: 26 $
 * $Source: /cbc/option.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -61,7 +61,7 @@ static const StringOption *get_string_option(pTHX_ const StringOption *options,
 static void disabled_keywords(pTHX_ LinkedList *current, SV *sv, SV **rval,
                               u_32 *pKeywordMask);
 static void keyword_map(pTHX_ HashTable *current, SV *sv, SV **rval);
-static void bitfields_option(pTHX_ BitfieldLayouter *layouter, SV *sv, SV **rval);
+static void bitfields_option(pTHX_ BitfieldLayouter *layouter, SV *sv_val, SV **rval);
 
 
 /*===== EXTERNAL VARIABLES ===================================================*/
@@ -456,20 +456,20 @@ static void keyword_map(pTHX_ HashTable *current, SV *sv, SV **rval)
           Perl_croak x;                                                        \
         } STMT_END
 
-static void bitfields_option(pTHX_ BitfieldLayouter *layouter, SV *sv, SV **rval)
+static void bitfields_option(pTHX_ BitfieldLayouter *layouter, SV *sv_val, SV **rval)
 {
   BitfieldLayouter bl_new = NULL;
   BitfieldLayouter bl = *layouter;
 
-  if(sv)
+  if(sv_val)
   {
-    if (SvROK(sv))
+    if (SvROK(sv_val))
     {
-      sv = SvRV(sv);
+      sv_val = SvRV(sv_val);
 
-      if (SvTYPE(sv) == SVt_PVHV)
+      if (SvTYPE(sv_val) == SVt_PVHV)
       {
-        HV *hv = (HV *) sv;
+        HV *hv = (HV *) sv_val;
         HE *entry;
         SV **engine = hv_fetch(hv, "Engine", 6, 0);
         int noptions;

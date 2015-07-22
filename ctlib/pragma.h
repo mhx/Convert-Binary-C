@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:06 +0000 $
-* $Revision: 9 $
+* $Date: 2007/06/23 23:58:13 +0100 $
+* $Revision: 11 $
 * $Source: /ctlib/pragma.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -29,6 +29,7 @@
 
 /*===== LOCAL INCLUDES =======================================================*/
 
+#include "ctlib/ctparse.h"
 #include "util/list.h"
 
 
@@ -36,27 +37,24 @@
 
 /*===== TYPEDEFS =============================================================*/
 
-typedef struct {
-
-  char        *str;
-
-  struct {
-    LinkedList stack;
-    unsigned   current;
-  }            pack;
-
-} PragmaState;
+typedef struct _pragmaState PragmaState;
 
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
-#define pragma_init CTlib_pragma_init
-void pragma_init( PragmaState *pPragma );
+#define pragma_parser_new CTlib_pragma_parser_new
+PragmaState *pragma_parser_new(CParseInfo *pCPI);
 
-#define pragma_free CTlib_pragma_free
-void pragma_free( PragmaState *pPragma );
+#define pragma_parser_delete CTlib_pragma_parser_delete
+void pragma_parser_delete(PragmaState *pPragma);
 
-#define pragma_parse CTlib_pragma_parse
-int pragma_parse( void *pState );
+#define pragma_parser_parse CTlib_pragma_parser_parse
+int pragma_parser_parse(PragmaState *pPragma);
+
+#define pragma_parser_set_context CTlib_pragma_parser_set_context
+void pragma_parser_set_context(PragmaState *pPragma, const char *file, long int line, const char *code);
+
+#define pragma_parser_get_pack CTlib_pragma_parser_get_pack
+unsigned pragma_parser_get_pack(PragmaState *pPragma);
 
 #endif

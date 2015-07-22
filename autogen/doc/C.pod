@@ -327,7 +327,8 @@ struct member alignment. The supported syntax is as follows:
 
 =item #pragma pack( ALIGN )
 
-Sets the new alignment to ALIGN.
+Sets the new alignment to ALIGN. If ALIGN is 0, resets the
+alignment to its original value.
 
 =item #pragma pack
 
@@ -336,7 +337,8 @@ Resets the alignment to its original value.
 =item #pragma pack( push, ALIGN )
 
 Saves the current alignment on a stack and sets the new
-alignment to ALIGN.
+alignment to ALIGN. If ALIGN is 0, sets the alignment to
+the default alignment.
 
 =item #pragma pack( pop )
 
@@ -3700,7 +3702,7 @@ want to rate the module at L<http://cpanratings.perl.org/>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 

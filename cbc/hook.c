@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/03/11 13:49:59 +0000 $
-* $Revision: 12 $
+* $Date: 2007/06/11 19:59:57 +0100 $
+* $Revision: 15 $
 * $Source: /cbc/hook.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2006 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2007 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -184,7 +184,7 @@ void single_hook_fill(pTHX_ const char *hook, const char *type, SingleHook *sth,
 
                 if (SvROK(*pSV) && sv_isa(*pSV, ARGTYPE_PACKAGE))
                 {
-                  HookArgType type = (HookArgType) SvIV(SvRV(*pSV));
+                  HookArgType argtype = (HookArgType) SvIV(SvRV(*pSV));
 
 #define CHECK_ARG_TYPE(type)                                   \
           case HOOK_ARG_ ## type:                              \
@@ -192,7 +192,7 @@ void single_hook_fill(pTHX_ const char *hook, const char *type, SingleHook *sth,
               Perl_croak(aTHX_ #type " argument not allowed"); \
             break
 
-                  switch (type)
+                  switch (argtype)
                   {
                     CHECK_ARG_TYPE(SELF);
                     CHECK_ARG_TYPE(TYPE);
