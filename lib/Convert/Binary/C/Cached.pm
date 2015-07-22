@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/18 22:32:57 +0100 $
-# $Revision: 15 $
-# $Snapshot: /Convert-Binary-C/0.43 $
+# $Date: 2003/08/03 13:20:49 +0100 $
+# $Revision: 16 $
+# $Snapshot: /Convert-Binary-C/0.44 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.43 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.44 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 my %cache;
 
@@ -305,7 +305,7 @@ sub __save_cache
 
   my $config = Data::Dumper->new( [{ $what  => $c->{$what},
                                      cfg    => $self->configure,
-                                     files  => $self->SUPER::dependencies,
+                                     files  => scalar $self->SUPER::dependencies,
                                   }], ['*'] )->Indent(1)->Dump;
   $config =~ s/[^(]*//;
   $config =~ s/^/*/gms;

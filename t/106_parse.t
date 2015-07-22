@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/07/24 16:55:37 +0100 $
-# $Revision: 16 $
-# $Snapshot: /Convert-Binary-C/0.43 $
+# $Date: 2003/08/03 13:22:12 +0100 $
+# $Revision: 17 $
+# $Snapshot: /Convert-Binary-C/0.44 $
 # $Source: /t/106_parse.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 78 }
+BEGIN { plan tests => 79 }
 
 #===================================================================
 # create object (1 tests)
@@ -318,52 +318,53 @@ ok(@fail == 0);
 
 eval {
   %rc = (
-    configure     => $p->configure,
-    include       => $p->Include,
+    configure      => $p->configure,
+    include        => $p->Include,
 
-    enums_s       => scalar $p->enum_names,
-    enums_a       => [$p->enum_names],
-    compounds_s   => scalar $p->compound_names,
-    compounds_a   => [$p->compound_names],
-    structs_s     => scalar $p->struct_names,
-    structs_a     => [$p->struct_names],
-    unions_s      => scalar $p->union_names,
-    unions_a      => [$p->union_names],
-    typedefs_s    => scalar $p->typedef_names,
-    typedefs_a    => [$p->typedef_names],
+    enums_s        => scalar $p->enum_names,
+    enums_a        => [$p->enum_names],
+    compounds_s    => scalar $p->compound_names,
+    compounds_a    => [$p->compound_names],
+    structs_s      => scalar $p->struct_names,
+    structs_a      => [$p->struct_names],
+    unions_s       => scalar $p->union_names,
+    unions_a       => [$p->union_names],
+    typedefs_s     => scalar $p->typedef_names,
+    typedefs_a     => [$p->typedef_names],
 
-    enum_s        => scalar $p->enum,
-    enum_a        => [$p->enum],
-    compound_s    => scalar $p->compound,
-    compound_a    => [$p->compound],
-    struct_s      => scalar $p->struct,
-    struct_a      => [$p->struct],
-    union_s       => scalar $p->union,
-    union_a       => [$p->union],
-    typedef_s     => scalar $p->typedef,
-    typedef_a     => [$p->typedef],
+    enum_s         => scalar $p->enum,
+    enum_a         => [$p->enum],
+    compound_s     => scalar $p->compound,
+    compound_a     => [$p->compound],
+    struct_s       => scalar $p->struct,
+    struct_a       => [$p->struct],
+    union_s        => scalar $p->union,
+    union_a        => [$p->union],
+    typedef_s      => scalar $p->typedef,
+    typedef_a      => [$p->typedef],
 
-    enum_sx       => scalar $p->enum( $p->enum_names ),
-    enum_ax       => [$p->enum( $p->enum_names )],
-    compound_sx   => scalar $p->compound( $p->compound_names ),
-    compound_ax   => [$p->compound( $p->compound_names )],
-    struct_sx     => scalar $p->struct( $p->struct_names ),
-    struct_ax     => [$p->struct( $p->struct_names )],
-    union_sx      => scalar $p->union( $p->union_names ),
-    union_ax      => [$p->union( $p->union_names )],
-    typedef_sx    => scalar $p->typedef( $p->typedef_names ),
-    typedef_ax    => [$p->typedef( $p->typedef_names )],
+    enum_sx        => scalar $p->enum( $p->enum_names ),
+    enum_ax        => [$p->enum( $p->enum_names )],
+    compound_sx    => scalar $p->compound( $p->compound_names ),
+    compound_ax    => [$p->compound( $p->compound_names )],
+    struct_sx      => scalar $p->struct( $p->struct_names ),
+    struct_ax      => [$p->struct( $p->struct_names )],
+    union_sx       => scalar $p->union( $p->union_names ),
+    union_ax       => [$p->union( $p->union_names )],
+    typedef_sx     => scalar $p->typedef( $p->typedef_names ),
+    typedef_ax     => [$p->typedef( $p->typedef_names )],
 
-    sizeof        => $p->sizeof( 'AMT' ),
-    typeof        => $p->typeof( 'AMT.table[2]' ),
-    offsetof      => $p->offsetof( 'AMT', 'table[2]' ),
-    member_sxx    => scalar $p->member( 'AMT', 100 ),
-    member_axx    => [$p->member( 'AMT', 100 )],
-    member_sx     => scalar $p->member( 'AMT' ),
-    member_ax     => [$p->member( 'AMT' )],
+    sizeof         => $p->sizeof( 'AMT' ),
+    typeof         => $p->typeof( 'AMT.table[2]' ),
+    offsetof       => $p->offsetof( 'AMT', 'table[2]' ),
+    member_sxx     => scalar $p->member( 'AMT', 100 ),
+    member_axx     => [$p->member( 'AMT', 100 )],
+    member_sx      => scalar $p->member( 'AMT' ),
+    member_ax      => [$p->member( 'AMT' )],
 
-    dependencies  => $p->dependencies,
-    sourcify      => $p->sourcify,
+    dependencies_s => scalar $p->dependencies,
+    dependencies_a => [$p->dependencies],
+    sourcify       => $p->sourcify,
   );
 };
 ok($@,'',"method call failed");

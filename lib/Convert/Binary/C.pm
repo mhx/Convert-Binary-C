@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/07/16 08:53:29 +0100 $
-# $Revision: 47 $
-# $Snapshot: /Convert-Binary-C/0.43 $
+# $Date: 2003/08/17 13:59:30 +0100 $
+# $Revision: 49 $
+# $Snapshot: /Convert-Binary-C/0.44 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.43 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.44 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -106,7 +106,7 @@ Convert::Binary::C - Binary Data Conversion using C Types
   #---------------------------------------------------
   # Add include paths and global preprocessor defines
   #---------------------------------------------------
-  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.2/include',
+  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.3/include',
                '/usr/include' )
     ->Define( qw( __USE_POSIX __USE_ISOC99=1 ) );
   
@@ -118,7 +118,7 @@ Convert::Binary::C - Binary Data Conversion using C Types
   #---------------------------------------
   # See which files the object depends on
   #---------------------------------------
-  print Dumper( [keys %{$c->dependencies}] );
+  print Dumper( [$c->dependencies] );
   
   #-----------------------------------------------------------
   # See if struct timespec is defined and dump its definition
@@ -772,7 +772,7 @@ Which will print something like this:
     'ShortSize' => 2,
     'HasMacroVAARGS' => 1,
     'Assert' => [],
-    'UnsignedChars' => '0',
+    'UnsignedChars' => 0,
     'DoubleSize' => 8,
     'EnumType' => 'Integer',
     'PointerSize' => 4,
@@ -787,7 +787,7 @@ Which will print something like this:
     'Include' => [
       '/usr/include'
     ],
-    'Warnings' => '0'
+    'Warnings' => 0
   };
 
 Since you may not always want to write a L<C<configure>|/"configure"> call
@@ -1129,7 +1129,7 @@ is fast, but may be not very useful. It is also the default.
 
   $date = {
     'weekday' => 1,
-    'month' => '0',
+    'month' => 0,
     'day' => 7,
     'year' => 2002
   };
@@ -1632,7 +1632,7 @@ This would print:
   $unpacked = {
     'uni' => {
       'word' => [
-        '0',
+        0,
         42
       ],
       'quad' => 42
@@ -1640,7 +1640,7 @@ This would print:
     'ary' => [
       1,
       2,
-      '0'
+      0
     ]
   };
 
@@ -1835,20 +1835,35 @@ unnamed types. It will always return a string that holds
 the name (or in case of unnamed types only the class) of
 the type, optionally followed by a C<'*'> character to
 indicate it's a pointer type, and optionally followed by
-one or more array dimensions if it's an array type.
+one or more array dimensions if it's an array type. If
+the type is a bitfield, the type name is followed by a
+colon and the number of bits.
 
-  for my $member ( qw( test test.uni test.uni.quad
-                       test.uni.word test.uni.word[1] ) ) {
-    printf "%-16s => '%s'\n", $member, $c->typeof( $member );
-  }
+  struct test {
+    char    ary[3];
+    union {
+      short word[2];
+      long *quad;
+    }       uni;
+    struct {
+      unsigned short six:6;
+      unsigned short ten:10;
+    }       bits;
+  };
 
-This would print:
+Given the above C code has been parsed, calls
+to L<C<typeof>|/"typeof"> would return the following
+values:
 
-  test             => 'struct test'
-  test.uni         => 'union'
-  test.uni.quad    => 'long *'
-  test.uni.word    => 'short [2]'
-  test.uni.word[1] => 'short'
+  $c->typeof('test')             => 'struct test'
+  $c->typeof('test.ary')         => 'char [3]'
+  $c->typeof('test.uni')         => 'union'
+  $c->typeof('test.uni.quad')    => 'long *'
+  $c->typeof('test.uni.word')    => 'short [2]'
+  $c->typeof('test.uni.word[1]') => 'short'
+  $c->typeof('test.bits')        => 'struct'
+  $c->typeof('test.bits.six')    => 'unsigned short :6'
+  $c->typeof('test.bits.ten')    => 'unsigned short :10'
 
 =back
 
@@ -2304,15 +2319,11 @@ the L<C<dependencies>|/"dependencies"> method can be used to
 retrieve information about all files that the object
 depends on, i.e. all files that have been parsed.
 
-The method returns a hash reference. Each key is the
-name of a file, so you could use
-
-  @files = keys %{$c->dependencies};
-
-to retrieve a list of these files. The values are
-again hash references, each of which holds the size,
-modification time (mtime), and change time (ctime)
-of the file at the moment it was parsed.
+In scalar context, the method returns a hash reference.
+Each key is the name of a file. The values are again hash
+references, each of which holds the size, modification
+time (mtime), and change time (ctime) of the file at the
+moment it was parsed.
 
   use Convert::Binary::C;
   use Data::Dumper;
@@ -2321,7 +2332,7 @@ of the file at the moment it was parsed.
   # Create object, set include path, parse 'string.h' header
   #----------------------------------------------------------
   my $c = Convert::Binary::C->new
-          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.2/include',
+          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.3/include',
                      '/usr/include' )
           ->parse_file( 'string.h' );
   
@@ -2341,38 +2352,45 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => '1048627175',
-      'mtime' => '1048627165',
-      'size' => 10999
+      'ctime' => 1058691675,
+      'mtime' => 1058691661,
+      'size' => 10723
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => '1048627172',
-      'mtime' => '1048627165',
-      'size' => 8400
+      'ctime' => 1058691672,
+      'mtime' => 1058691661,
+      'size' => 8600
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => '1048627172',
-      'mtime' => '1048627165',
-      'size' => 657
+      'ctime' => 1058691670,
+      'mtime' => 1058691661,
+      'size' => 1111
+    },
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.3/include/stddef.h' => {
+      'ctime' => 1058687450,
+      'mtime' => 1058687443,
+      'size' => 12695
     },
     '/usr/include/string.h' => {
-      'ctime' => '1048627175',
-      'mtime' => '1048627165',
+      'ctime' => 1058691675,
+      'mtime' => 1058691661,
       'size' => 14226
-    },
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.2/include/stddef.h' => {
-      'ctime' => '1046205460',
-      'mtime' => '1046205454',
-      'size' => 12695
     }
   };
   @files = (
     '/usr/include/features.h',
     '/usr/include/sys/cdefs.h',
     '/usr/include/gnu/stubs.h',
-    '/usr/include/string.h',
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.2/include/stddef.h'
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.3/include/stddef.h',
+    '/usr/include/string.h'
   );
+
+In list context, the method returns the names of all
+files that have been parsed, i.e. the following lines
+are equivalent:
+
+  @files = keys %{$c->dependencies};
+  @files = $c->dependencies;
 
 =back
 
@@ -2591,7 +2609,7 @@ similar to this:
       },
       'identifier' => '__socket_type',
       'context' => 'definitions.c(4)',
-      'sign' => '0'
+      'sign' => 0
     }
   );
 
@@ -2701,7 +2719,7 @@ to this:
       'identifier' => 'STRUCT_SV',
       'align' => 1,
       'context' => 'definitions.c(14)',
-      'pack' => '0',
+      'pack' => 0,
       'type' => 'struct',
       'declarations' => [
         {
@@ -2709,7 +2727,7 @@ to this:
             {
               'declarator' => '*sv_any',
               'size' => 4,
-              'offset' => '0'
+              'offset' => 0
             }
           ],
           'type' => 'void'
@@ -2741,7 +2759,7 @@ to this:
       'identifier' => 'xxx',
       'align' => 1,
       'context' => 'definitions.c(22)',
-      'pack' => '0',
+      'pack' => 0,
       'type' => 'struct',
       'declarations' => [
         {
@@ -2749,7 +2767,7 @@ to this:
             {
               'declarator' => 'a',
               'size' => 4,
-              'offset' => '0'
+              'offset' => 0
             }
           ],
           'type' => 'int'
@@ -2770,7 +2788,7 @@ to this:
     {
       'align' => 1,
       'context' => 'definitions.c(20)',
-      'pack' => '0',
+      'pack' => 0,
       'type' => 'union',
       'declarations' => [
         {
@@ -2778,7 +2796,7 @@ to this:
             {
               'declarator' => 'abc[2]',
               'size' => 8,
-              'offset' => '0'
+              'offset' => 0
             }
           ],
           'type' => 'int'
@@ -2788,7 +2806,7 @@ to this:
             {
               'declarator' => 'ab[3][4]',
               'size' => 96,
-              'offset' => '0'
+              'offset' => 0
             }
           ],
           'type' => 'struct xxx'
@@ -2798,7 +2816,7 @@ to this:
             {
               'declarator' => 'ptr',
               'size' => 4,
-              'offset' => '0'
+              'offset' => 0
             }
           ],
           'type' => 'any'
@@ -2998,7 +3016,7 @@ to this:
       'type' => {
         'align' => 1,
         'context' => 'definitions.c(20)',
-        'pack' => '0',
+        'pack' => 0,
         'type' => 'union',
         'declarations' => [
           {
@@ -3006,7 +3024,7 @@ to this:
               {
                 'declarator' => 'abc[2]',
                 'size' => 8,
-                'offset' => '0'
+                'offset' => 0
               }
             ],
             'type' => 'int'
@@ -3016,7 +3034,7 @@ to this:
               {
                 'declarator' => 'ab[3][4]',
                 'size' => 96,
-                'offset' => '0'
+                'offset' => 0
               }
             ],
             'type' => 'struct xxx'
@@ -3026,7 +3044,7 @@ to this:
               {
                 'declarator' => 'ptr',
                 'size' => 4,
-                'offset' => '0'
+                'offset' => 0
               }
             ],
             'type' => 'any'
@@ -3260,7 +3278,7 @@ a call to L<C<struct>|/"struct"> will return
       'identifier' => 'bitfield',
       'align' => 1,
       'context' => 'bitfields.c(1)',
-      'pack' => '0',
+      'pack' => 0,
       'type' => 'struct',
       'declarations' => [
         {
@@ -3295,7 +3313,7 @@ a call to L<C<struct>|/"struct"> will return
             {
               'declarator' => 'integer',
               'size' => 4,
-              'offset' => '0'
+              'offset' => 0
             }
           ],
           'type' => 'int'

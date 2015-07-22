@@ -9,7 +9,7 @@ ccconfig I<options> [-- compiler-options]
 
 I<options>:
 
-  -c         compiler
+  -c
   --cc       compiler    compiler executable to test
                          default: auto-determined
   
@@ -46,31 +46,31 @@ environment.
 
 =head1 OPTIONS
 
-=head2 --cc compiler
+=head2 C<--cc> compiler
 
 This option allows you to explicitly specify a compiler
 executable. This is especially useful if you don't want
 to use your system compiler.
 
-=head2 --ppout flag
+=head2 C<--ppout> flag
 
 This option tells C<ccconfig> which flag must be used to
 make the compiler write the preprocessor output to standard
 output. The default is C<-E>, which is correct for many
 compilers.
 
-=head2 --temp
+=head2 C<--temp> file
 
 Allows you to change the name of the temporary test file.
 
-=head2 --nodelete
+=head2 C<--nodelete>
 
 Don't attempt to delete temporary files that have been created
 by the compiler. Normally, C<ccconfig> will look for all files
 with the same basename as the temporary test file and delete
 them.
 
-=head2 --norun
+=head2 C<--norun>
 
 You can specify this option if the executables generated
 by your compiler cannot be run on your machine, i.e. if
@@ -83,23 +83,23 @@ algorithms are all based upon placing a special signature
 in the object file. They are less reliable that the standard
 algorithms, so you shouldn't use them unless you have to.
 
-=head2 --quiet
+=head2 C<--quiet>
 
 Don't display anything except for the final configuration.
 
-=head2 --nostatus
+=head2 C<--nostatus>
 
 Hide the status indicator. Recommended if you want to
 redirect the script output to a file:
 
   ccconfig --nostatus >config.pl 2>ccconfig.log
 
-=head2 --version
+=head2 C<--version>
 
 Writes the program name, version and path to standard
 output.
 
-=head2 --debug
+=head2 C<--debug>
 
 Generate tons of debug output. Don't use unless you know
 what you're doing.
@@ -144,4 +144,5 @@ it under the same terms as Perl itself.
 See L<Convert::Binary::C>.
 
 =cut
+
 

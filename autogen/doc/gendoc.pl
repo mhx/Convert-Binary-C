@@ -1,10 +1,17 @@
 #!/usr/bin/perl -w
 use strict;
+use Term::ANSIColor;
 
 my %files;
 my $lines = 0;
 my $errors = 0;
 my $warnings = 0;
+
+my $error   = color('bold red')."(ERROR)".color('reset');
+my $warning = color('bold red')."(WARNING)".color('reset');
+my $red     = color('red');
+my $blue    = color('blue');
+my $reset   = color('reset');
 
 while( <> ) {
   my(@lines, $pre, $file, $exec, $sec, $str);
@@ -14,7 +21,7 @@ while( <> ) {
   if( /^(.*?)\$\$(.*?)(?:\s*\[(\d+)\])?\$\$\s*$/ ) {
     ($pre, $file, $sec) = ($1, $2, $3);
     unless( -e $file ) {
-      print STDERR "\n$0: (ERROR) cannot find $file!\n";
+      print STDERR "\n$0: $error$red cannot find $file!$reset\n";
       $errors++;
       next;
     }
@@ -32,7 +39,7 @@ while( <> ) {
   elsif( /^(.*?)\@\@(\s*(\S+).*?)(?:\s*\[(\d+)\])?\@\@\s*$/ ) {
     ($pre, $exec, $file, $sec) = ($1, $2, $3, $4);
     unless( -e $file ) {
-      print STDERR "\n$0: (ERROR) cannot find $file!\n";
+      print STDERR "\n$0: $error$red cannot find $file!$reset\n";
       $errors++;
       next;
     }
@@ -56,7 +63,7 @@ while( <> ) {
 
     if( $sec > $cur ) {
       my $where = defined $exec ? " output of" : '';
-      print STDERR "\n$0: (ERROR) no section [$sec] in$where file $file\n";
+      print STDERR "\n$0: $error$red no section [$sec] in$where file $file$reset\n";
       $errors++;
       next;
     }
@@ -71,7 +78,7 @@ while( <> ) {
 
   unless( @lines ) {
     my $where = defined $exec ? " output of" : '';
-    print STDERR "\n$0: (WARNING) empty section [$sec] in$where file $file\n";
+    print STDERR "\n$0: $warning$red empty section [$sec] in$where file $file$reset\n";
     $warnings++;
     next;
   }
@@ -86,12 +93,14 @@ print STDERR "\n";
 for( grep { !$files{$_} and /\.pl$/ } keys %files ) {
   print STDERR "$0: checking script '$_'\n";
   if( system "$^X -I../../blib/lib -I../../blib/arch $_ >/dev/null 2>&1" ) {
-    print STDERR "$0: (WARNING) $_ died!\n";
+    print STDERR "$0: $warning$red $_ died!$reset\n";
     $warnings++;
   }
 }
 
-print STDERR "$0: $errors error(s), $warnings warning(s)\n";
+my $hl_err  = $errors   ? color('bold red') : color('bold green');
+my $hl_warn = $warnings ? color('bold red') : color('bold green');
+print STDERR "$0: $hl_err$errors error(s)$reset, $hl_warn$warnings warning(s)$reset\n";
 
 exit( $errors );
 

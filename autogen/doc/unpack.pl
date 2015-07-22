@@ -35,16 +35,8 @@ $unpack2 = $c->unpack( 'test.uni.word', $binary2 );
 
 print Data::Dumper->Dump( [$unpack1, $unpack2], [qw(unpack1 unpack2)] );
 
-print "#-8<-\n";
-
 #----8<------------------------------4----------------------------------
 
 $size = $c->sizeof( 'test.uni.word[1]' );
 $size == 2 or die;   #-8<-
 
-#----8<------------------------------5----------------------------------
-
-for my $member ( qw( test test.uni test.uni.quad
-                     test.uni.word test.uni.word[1] ) ) {
-  printf "%-16s => '%s'\n", $member, $c->typeof( $member );
-}

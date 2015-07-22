@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/07/22 22:15:00 +0100 $
-* $Revision: 93 $
-* $Snapshot: /Convert-Binary-C/0.43 $
+* $Date: 2003/08/17 10:03:37 +0100 $
+* $Revision: 95 $
+* $Snapshot: /Convert-Binary-C/0.44 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -4726,17 +4726,21 @@ static SV *GetTypeNameString( pTHX_ const MemberInfo *pMI )
   }
 
   if( pMI->pDecl != NULL ) {
-    if( pMI->pDecl->pointer_flag )
-      sv_catpv( sv, " *" );
+    if( pMI->pDecl->bitfield_size >= 0 )
+      sv_catpvf( sv, " :%d", pMI->pDecl->bitfield_size );
+    else {
+      if( pMI->pDecl->pointer_flag )
+        sv_catpv( sv, " *" );
 
-    if( pMI->pDecl->array ) {
-      int level = pMI->level;
-      if( level < LL_count( pMI->pDecl->array ) ) {
-        sv_catpv( sv, " " );
-        while( level < LL_count( pMI->pDecl->array ) ) {
-          sv_catpvf( sv, "[%d]", ((Value *)
-                     LL_get( pMI->pDecl->array, level ))->iv );
-          level++;
+      if( pMI->pDecl->array ) {
+        int level = pMI->level;
+        if( level < LL_count( pMI->pDecl->array ) ) {
+          sv_catpv( sv, " " );
+          while( level < LL_count( pMI->pDecl->array ) ) {
+            sv_catpvf( sv, "[%d]", ((Value *)
+                       LL_get( pMI->pDecl->array, level ))->iv );
+            level++;
+          }
         }
       }
     }
@@ -7122,45 +7126,56 @@ CBC::initializer( type, init = &PL_sv_undef )
 #
 ################################################################################
 
-SV *
+void
 CBC::dependencies()
 	PREINIT:
 		CBC_METHOD( dependencies );
 		const char *pKey;
 		FileInfo   *pFI;
-		HV         *hv;
 
-	CODE:
+	PPCODE:
 		CT_DEBUG_METHOD;
 
 		CHECK_PARSE_DATA;
 		CHECK_VOID_CONTEXT;
 
-		hv = newHV();
+		if( GIMME_V == G_SCALAR ) {
+		  HV *hv = newHV();
 
-		HT_foreach( pKey, pFI, THIS->cpi.htFiles ) {
-		  if( pFI && pFI->valid ) {
-		    SV *attr;
-		    HV *hattr = newHV();
+		  HT_foreach( pKey, pFI, THIS->cpi.htFiles ) {
+		    if( pFI && pFI->valid ) {
+		      SV *attr;
+		      HV *hattr = newHV();
 #ifdef newSVuv
-		    HV_STORE_CONST( hattr, "size",  newSVuv( pFI->size ) );
+		      HV_STORE_CONST( hattr, "size",  newSVuv( pFI->size ) );
 #else
-		    HV_STORE_CONST( hattr, "size",  newSViv( (IV) pFI->size ) );
+		      HV_STORE_CONST( hattr, "size",  newSViv( (IV) pFI->size ) );
 #endif
-		    HV_STORE_CONST( hattr, "mtime", newSViv( pFI->modify_time ) );
-		    HV_STORE_CONST( hattr, "ctime", newSViv( pFI->change_time ) );
+		      HV_STORE_CONST( hattr, "mtime", newSViv( pFI->modify_time ) );
+		      HV_STORE_CONST( hattr, "ctime", newSViv( pFI->change_time ) );
 
-		    attr = newRV_noinc( (SV *) hattr );
+		      attr = newRV_noinc( (SV *) hattr );
 
-		    if( hv_store( hv, pFI->name, strlen( pFI->name ), attr, 0 ) == NULL )
-		      SvREFCNT_dec( attr );
+		      if( hv_store( hv, pFI->name, strlen( pFI->name ), attr, 0 ) == NULL )
+		        SvREFCNT_dec( attr );
+		    }
 		  }
+
+		  XPUSHs( sv_2mortal( newRV_noinc( (SV *) hv ) ) );
+		  XSRETURN(1);
 		}
+		else {
+		  int keylen, count = 0;
 
-		RETVAL = newRV_noinc( (SV *) hv );
+		  HT_reset( THIS->cpi.htFiles );
+		  while( HT_next( THIS->cpi.htFiles, (char **)&pKey, &keylen, (void **) &pFI ) )
+		    if( pFI && pFI->valid ) {
+		      XPUSHs( sv_2mortal( newSVpvn( pKey, keylen ) ) );
+		      count++;
+		    }
 
-	OUTPUT:
-		RETVAL
+		  XSRETURN(count);
+		}
 
 ################################################################################
 #

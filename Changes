@@ -1,4 +1,15 @@
 ------------
+Version 0.44
+------------
+
+* fixed behaviour of typeof method for bitfields
+
+* dependencies method now returns plain list of files when
+  called in list context
+
+* doc fixes
+
+------------
 Version 0.43
 ------------
 

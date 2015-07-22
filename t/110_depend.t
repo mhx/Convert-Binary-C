@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/17 13:39:08 +0100 $
-# $Revision: 4 $
-# $Snapshot: /Convert-Binary-C/0.43 $
+# $Date: 2003/08/03 13:22:14 +0100 $
+# $Revision: 5 $
+# $Snapshot: /Convert-Binary-C/0.44 $
 # $Source: /t/110_depend.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 442 }
+BEGIN { plan tests => 444 }
 
 eval {
   $c1 = new Convert::Binary::C Include => ['t/include/files'];
@@ -42,11 +42,13 @@ ok($@,'',"failed to parse C-code");
 eval {
   $dep1 = $c1->dependencies;
   $dep2 = $c2->dependencies;
+  @files1a = $c1->dependencies;
+  @files2a = $c2->dependencies;
 };
 ok($@,'',"failed to retrieve dependencies");
 
-@files1 = keys %$dep1;
-@files2 = keys %$dep2;
+@files1s = keys %$dep1;
+@files2s = keys %$dep2;
 
 @incs = qw(
   t/include/files/empty.h
@@ -58,16 +60,26 @@ ok($@,'',"failed to retrieve dependencies");
 @ref1 = ( 't/include/files/files.h', @incs );
 @ref2 = @incs;
 
-s/\\/\//g for @files1, @files2;
+s/\\/\//g for @files1a, @files2a, @files1s, @files2s;
 
-print "# @files1\n";
+print "# \@files1a => @files1a\n";
 
-ok( join(',', sort @ref1), join(',', sort @files1),
+ok( join(',', sort @ref1), join(',', sort @files1a),
     "dependency names differ" );
 
-print "# @files2\n";
+print "# \@files1s => @files1s\n";
 
-ok( join(',', sort @ref2), join(',', sort @files2),
+ok( join(',', sort @ref1), join(',', sort @files1s),
+    "dependency names differ" );
+
+print "# \@files2a => @files2a\n";
+
+ok( join(',', sort @ref2), join(',', sort @files2a),
+    "dependency names differ" );
+
+print "# \@files2s => @files2s\n";
+
+ok( join(',', sort @ref2), join(',', sort @files2s),
     "dependency names differ" );
 
 eval {

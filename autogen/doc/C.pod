@@ -1352,13 +1352,17 @@ unnamed types. It will always return a string that holds
 the name (or in case of unnamed types only the class) of
 the type, optionally followed by a C<'*'> character to
 indicate it's a pointer type, and optionally followed by
-one or more array dimensions if it's an array type.
+one or more array dimensions if it's an array type. If
+the type is a bitfield, the type name is followed by a
+colon and the number of bits.
 
-  $$unpack.pl [5]$$
+  $$typeof.pl [1]$$
 
-This would print:
+Given the above C code has been parsed, calls
+to L<C<typeof>|/"typeof"> would return the following
+values:
 
-  @@unpack.pl [3]@@
+  @@typeof.pl [1]@@
 
 =back
 
@@ -1641,21 +1645,23 @@ the L<C<dependencies>|/"dependencies"> method can be used to
 retrieve information about all files that the object
 depends on, i.e. all files that have been parsed.
 
-The method returns a hash reference. Each key is the
-name of a file, so you could use
-
-  $$dependencies.pl [2]$$
-
-to retrieve a list of these files. The values are
-again hash references, each of which holds the size,
-modification time (mtime), and change time (ctime)
-of the file at the moment it was parsed.
+In scalar context, the method returns a hash reference.
+Each key is the name of a file. The values are again hash
+references, each of which holds the size, modification
+time (mtime), and change time (ctime) of the file at the
+moment it was parsed.
 
   $$dependencies.pl [1]$$
 
 The above code would print something like this:
 
   @@dependencies.pl@@
+
+In list context, the method returns the names of all
+files that have been parsed, i.e. the following lines
+are equivalent:
+
+  $$dependencies.pl [2]$$
 
 =back
 

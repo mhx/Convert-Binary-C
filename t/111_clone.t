@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/17 13:39:08 +0100 $
-# $Revision: 7 $
-# $Snapshot: /Convert-Binary-C/0.43 $
+# $Date: 2003/08/03 13:22:32 +0100 $
+# $Revision: 8 $
+# $Snapshot: /Convert-Binary-C/0.44 $
 # $Source: /t/111_clone.t $
 #
 ################################################################################
@@ -59,7 +59,7 @@ eval {
 ok($@,'',"failed to sourcify");
 ok( $dump1, $dump2, "dumps differ" );
 
-ok( reccmp($orig->dependencies, $clone->dependencies), 1, "dependencies differ" );
+ok( reccmp(scalar $orig->dependencies, scalar $clone->dependencies), 1, "dependencies differ" );
 
 ok( reccmp($orig->configure, $clone->configure), 1, "wrong configuration" );
 
