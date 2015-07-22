@@ -1,6 +1,7 @@
 /*    EXTERN.h
  *
- *    Copyright (c) 1991-2001, Larry Wall
+ *    Copyright (C) 1991, 1992, 1993, 1995, 1996, 1997, 1998, 1999,
+ *    2000, 2001, by Larry Wall and others
  *
  *    You may distribute under the terms of either the GNU General Public
  *    License or the Artistic License, as specified in the README file.
@@ -27,8 +28,8 @@
 #  define EXTCONST globalref
 #  define dEXTCONST globaldef {"$GLOBAL_RO_VARS"} readonly
 #else
-#  if defined(WIN32) && !defined(PERL_STATIC_SYMS) && !defined(PERL_OBJECT)
-#    ifdef PERLDLL
+#  if (defined(WIN32) || defined(__SYMBIAN32__)) && !defined(PERL_STATIC_SYMS)
+#    if defined(PERLDLL) || defined(__SYMBIAN32__)
 #      define EXT extern __declspec(dllexport)
 #      define dEXT 
 #      define EXTCONST extern __declspec(dllexport) const

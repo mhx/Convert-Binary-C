@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/07/30 11:13:00 +0100 $
-# $Revision: 32 $
+# $Date: 2006/11/02 11:59:00 +0000 $
+# $Revision: 33 $
 # $Source: /tests/206_parse.t $
 #
 ################################################################################
@@ -20,6 +20,8 @@ use Convert::Binary::C @ARGV;
 $^W = 1;
 
 BEGIN { plan tests => 116 }
+
+my $CCCFG = require 'tests/include/config.pl';
 
 #===================================================================
 # create object (1 tests)
@@ -54,7 +56,8 @@ ok(ref $p, 'Convert::Binary::C',
 # create object (1 tests)
 #===================================================================
 eval {
-  $p = new Convert::Binary::C EnumSize       => 0,
+  $p = new Convert::Binary::C %$CCCFG,
+                              EnumSize       => 0,
                               ShortSize      => 2,
                               IntSize        => 4,
                               LongSize       => 4,
@@ -62,9 +65,7 @@ eval {
                               PointerSize    => 4,
                               FloatSize      => 4,
                               DoubleSize     => 8,
-                              LongDoubleSize => 12,
-                              Include        => ['tests/include/perlinc',
-                                                 'tests/include/include'];
+                              LongDoubleSize => 12;
 };
 ok($@,'',"failed to create Convert::Binary::C object");
 
@@ -89,11 +90,11 @@ ok($@,'',"failed to parse C-file");
 
 $s1 = @enums; $s2 = $p->enum;
 ok($s1,$s2,"context not evaluated correctly in 'enum'");
-ok($s1,34,"incorrect number of enums");
+ok($s1,35,"incorrect number of enums");
 
 $s1 = @compounds; $s2 = $p->compound;
 ok($s1,$s2,"context not evaluated correctly in 'compound'");
-ok($s1,194,"incorrect number of compounds");
+ok($s1,287,"incorrect number of compounds");
 
 map {
   push @{$_->{type} eq 'union' ? \@r_unions : \@r_structs}, $_
@@ -103,17 +104,17 @@ $s1 = @structs; $s2 = $p->struct;
 ok($s1,$s2,"context not evaluated correctly in 'struct'");
 $s2 = @r_structs;
 ok($s1,$s2,"direct/indirect counts differ in 'struct'");
-ok($s1,175,"incorrect number of structs");
+ok($s1,200,"incorrect number of structs");
 
 $s1 = @unions; $s2 = $p->union;
 ok($s1,$s2,"context not evaluated correctly in 'union'");
 $s2 = @r_unions;
 ok($s1,$s2,"direct/indirect counts differ in 'union'");
-ok($s1,19,"incorrect number of unions");
+ok($s1,87,"incorrect number of unions");
 
 $s1 = @typedefs; $s2 = $p->typedef;
 ok($s1,$s2,"context not evaluated correctly in 'typedef'");
-ok($s1,303,"incorrect number of typedefs");
+ok($s1,334,"incorrect number of typedefs");
 
 @enum_ids     = $p->enum_names;
 @compound_ids = $p->compound_names;
@@ -127,11 +128,11 @@ ok($s1,4,"incorrect number of enum identifiers");
 
 $s1 = @compound_ids; $s2 = $p->compound_names;
 ok($s1,$s2,"context not evaluated correctly in 'compound_names'");
-ok($s1,134,"incorrect number of compound identifiers");
+ok($s1,146,"incorrect number of compound identifiers");
 
 $s1 = @struct_ids; $s2 = $p->struct_names;
 ok($s1,$s2,"context not evaluated correctly in 'struct_names'");
-ok($s1,129,"incorrect number of struct identifiers");
+ok($s1,141,"incorrect number of struct identifiers");
 
 $s1 = @union_ids; $s2 = $p->union_names;
 ok($s1,$s2,"context not evaluated correctly in 'union_names'");
@@ -139,7 +140,7 @@ ok($s1,5,"incorrect number of union identifiers");
 
 $s1 = @typedef_ids; $s2 = $p->typedef_names;
 ok($s1,$s2,"context not evaluated correctly in 'typedef_names'");
-ok($s1,301,"incorrect number of typedef identifiers");
+ok($s1,329,"incorrect number of typedef identifiers");
 
 # catch warnings
 

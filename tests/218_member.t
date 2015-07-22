@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/23 21:00:56 +0000 $
-# $Revision: 16 $
+# $Date: 2006/11/02 11:59:02 +0000 $
+# $Revision: 17 $
 # $Source: /tests/218_member.t $
 #
 ################################################################################
@@ -20,8 +20,10 @@ use Convert::Binary::C @ARGV;
 $^W = 1;
 
 BEGIN {
-  plan tests => 1777;
+  plan tests => 1907;
 }
+
+my $CCCFG = require 'tests/include/config.pl';
 
 %basic = ( char => 1, short => 1, int => 1,
            long => 1, signed => 1, unsigned => 1,
@@ -152,8 +154,7 @@ for my $off ( 0 .. $c->sizeof( 'Union' )-1 ) {
 run_tests($c);
 
 eval {
-  $c->Include( 'tests/include/perlinc', 'tests/include/include')
-    ->clean->parse_file( 'tests/include/include.c' );
+  $c->configure(%$CCCFG)->clean->parse_file( 'tests/include/include.c' );
 };
 ok($@,'',"failed to create Convert::Binary::C object");
 
@@ -266,6 +267,7 @@ sub run_tests {
       my %dup;
       for my $member ( $c->member($t) ) {
         my $ref = shift @m;
+        warn "[$t][$member]" unless defined $ref;
         if( $t.$member ne $ref ) {
           print "# '$t$member' ne '$ref'\n";
           $fail++;
@@ -297,9 +299,9 @@ sub get_types {
       if( exists $d1->{declarators} ) {
         for my $d2 ( @{$d1->{declarators}} ) {
           my($p,$n,$b,$a) = $d2->{declarator} =~ /^(\*?)(\w*)(:\d+)?((?:\[\])?(?:\[\d+\])*)$/ or die "BOO!";
-          defined $b and next;
+          defined $b and $n eq '' and next;
           my $dim = [$a =~ /\[(\d+)?\]/g];
-          get_array($r, $m, $c, "$t.$n", $d1->{type}, $p, $dim);
+          get_array($r, $m, $c, "$t.$n", $b ? "$d1->{type} $b" : $d1->{type}, $p, $dim);
         }
       }
       else {

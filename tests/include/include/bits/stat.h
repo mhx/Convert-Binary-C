@@ -1,20 +1,20 @@
-/* Copyright (C) 1992, 95, 96, 97, 98, 99, 2000 Free Software Foundation, Inc.
+/* Copyright (C) 1992, 1995-2001, 2002 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 #ifndef _SYS_STAT_H
 # error "Never include <bits/stat.h> directly; use <sys/stat.h> instead."
@@ -60,12 +60,27 @@ struct stat
 #else
     __blkcnt64_t st_blocks;		/* Number 512-byte blocks allocated. */
 #endif
+#ifdef __USE_MISC
+    /* Nanosecond resolution timestamps are stored in a format
+       equivalent to 'struct timespec'.  This is the type used
+       whenever possible but the Unix namespace rules do not allow the
+       identifier 'timespec' to appear in the <sys/stat.h> header.
+       Therefore we have to handle the use of this header in strictly
+       standard-compliant sources special.  */
+    struct timespec st_atim;		/* Time of last access.  */
+    struct timespec st_mtim;		/* Time of last modification.  */
+    struct timespec st_ctim;		/* Time of last status change.  */
+# define st_atime st_atim.tv_sec	/* Backward compatibility.  */
+# define st_mtime st_mtim.tv_sec
+# define st_ctime st_ctim.tv_sec
+#else
     __time_t st_atime;			/* Time of last access.  */
-    unsigned long int __unused1;
+    unsigned long int st_atimensec;	/* Nscecs of last access.  */
     __time_t st_mtime;			/* Time of last modification.  */
-    unsigned long int __unused2;
+    unsigned long int st_mtimensec;	/* Nsecs of last modification.  */
     __time_t st_ctime;			/* Time of last status change.  */
-    unsigned long int __unused3;
+    unsigned long int st_ctimensec;	/* Nsecs of last status change.  */
+#endif
 #ifndef __USE_FILE_OFFSET64
     unsigned long int __unused4;
     unsigned long int __unused5;
@@ -91,12 +106,24 @@ struct stat64
     __blksize_t st_blksize;		/* Optimal block size for I/O.  */
 
     __blkcnt64_t st_blocks;		/* Number 512-byte blocks allocated. */
+#ifdef __USE_MISC
+    /* Nanosecond resolution timestamps are stored in a format
+       equivalent to 'struct timespec'.  This is the type used
+       whenever possible but the Unix namespace rules do not allow the
+       identifier 'timespec' to appear in the <sys/stat.h> header.
+       Therefore we have to handle the use of this header in strictly
+       standard-compliant sources special.  */
+    struct timespec st_atim;		/* Time of last access.  */
+    struct timespec st_mtim;		/* Time of last modification.  */
+    struct timespec st_ctim;		/* Time of last status change.  */
+#else
     __time_t st_atime;			/* Time of last access.  */
-    unsigned long int __unused1;
+    unsigned long int st_atimensec;	/* Nscecs of last access.  */
     __time_t st_mtime;			/* Time of last modification.  */
-    unsigned long int __unused2;
+    unsigned long int st_mtimensec;	/* Nsecs of last modification.  */
     __time_t st_ctime;			/* Time of last status change.  */
-    unsigned long int __unused3;
+    unsigned long int st_ctimensec;	/* Nsecs of last status change.  */
+#endif
     __ino64_t st_ino;			/* File serial number.		*/
   };
 #endif
@@ -104,6 +131,8 @@ struct stat64
 /* Tell code we have these members.  */
 #define	_STATBUF_ST_BLKSIZE
 #define _STATBUF_ST_RDEV
+/* Nanosecond resolution time values are supported.  */
+#define _STATBUF_ST_NSEC
 
 /* Encoding of the file mode.  */
 
@@ -118,10 +147,11 @@ struct stat64
 #define	__S_IFLNK	0120000	/* Symbolic link.  */
 #define	__S_IFSOCK	0140000	/* Socket.  */
 
-/* POSIX.1b objects.  */
-#define __S_TYPEISMQ(buf) (0)
-#define __S_TYPEISSEM(buf) (0)
-#define __S_TYPEISSHM(buf) (0)
+/* POSIX.1b objects.  Note that these macros always evaluate to zero.  But
+   they do it by enforcing the correct use of the macros.  */
+#define __S_TYPEISMQ(buf)  ((buf)->st_mode - (buf)->st_mode)
+#define __S_TYPEISSEM(buf) ((buf)->st_mode - (buf)->st_mode)
+#define __S_TYPEISSHM(buf) ((buf)->st_mode - (buf)->st_mode)
 
 /* Protection bits.  */
 

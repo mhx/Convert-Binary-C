@@ -1,21 +1,21 @@
 /* Error constants.  Linux specific version.
-   Copyright (C) 1996, 1997, 1998, 1999 Free Software Foundation, Inc.
+   Copyright (C) 1996, 1997, 1998, 1999, 2005 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 #ifdef _ERRNO_H
 
@@ -27,21 +27,20 @@
 /* Linux has no ENOTSUP error code.  */
 # define ENOTSUP EOPNOTSUPP
 
-/* Linux also has no ECANCELED error code.  Since it is not used here
-   we define it to an invalid value.  */
-# define ECANCELED	125
+/* Older Linux versions also had no ECANCELED error code.  */
+# ifndef ECANCELED
+#  define ECANCELED	125
+# endif
+
+/* Support for error codes to support robust mutexes was added later, too.  */
+# ifndef EOWNERDEAD
+#  define EOWNERDEAD		130
+#  define ENOTRECOVERABLE	131
+# endif
 
 # ifndef __ASSEMBLER__
-/* We now need a declaration of the `errno' variable.  */
-extern int errno;
-
 /* Function to get address of global `errno' variable.  */
 extern int *__errno_location (void) __THROW __attribute__ ((__const__));
-
-#  if defined _LIBC
-/* We wouldn't need a special macro anymore but it is history.  */
-#   define __set_errno(val) (*__errno_location ()) = (val)
-#  endif /* _LIBC */
 
 #  if !defined _LIBC || defined _LIBC_REENTRANT
 /* When using threads, errno is a per-thread value.  */

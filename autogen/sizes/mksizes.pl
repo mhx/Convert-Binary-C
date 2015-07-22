@@ -2,8 +2,10 @@ use Data::Dumper;
 use Convert::Binary::C;
 use strict;
 
-my $c = new Convert::Binary::C Include => ['../../tests/include/perlinc',
-                                           '../../tests/include/include'];
+my $cfg = require '../../tests/include/config.pl';
+s!^tests!../../tests! for @{$cfg->{Include}};
+
+my $c = new Convert::Binary::C %$cfg;
 
 $c->parse_file( '../../tests/include/include.c' );
 

@@ -1,21 +1,21 @@
 /* System-specific socket constants and types.  Linux version.
-   Copyright (C) 1991,1992,1994-1999,2000,2001 Free Software Foundation, Inc.
+   Copyright (C) 1991,1992,1994-2001, 2004 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 #ifndef __BITS_SOCKET_H
 #define __BITS_SOCKET_H
@@ -87,6 +87,8 @@ enum __socket_type
 #define	PF_SNA		22	/* Linux SNA Project */
 #define	PF_IRDA		23	/* IRDA sockets.  */
 #define	PF_PPPOX	24	/* PPPoX sockets.  */
+#define	PF_WANPIPE	25	/* Wanpipe API sockets.  */
+#define	PF_BLUETOOTH	31	/* Bluetooth sockets.  */
 #define	PF_MAX		32	/* For now..  */
 
 /* Address families.  */
@@ -117,6 +119,8 @@ enum __socket_type
 #define	AF_SNA		PF_SNA
 #define	AF_IRDA		PF_IRDA
 #define	AF_PPPOX	PF_PPPOX
+#define	AF_WANPIPE	PF_WANPIPE
+#define	AF_BLUETOOTH	PF_BLUETOOTH
 #define	AF_MAX		PF_MAX
 
 /* Socket level values.  Others are defined in the appropriate headers.
@@ -199,8 +203,10 @@ enum
 #define	MSG_RST		MSG_RST
     MSG_ERRQUEUE	= 0x2000, /* Fetch message from error queue.  */
 #define	MSG_ERRQUEUE	MSG_ERRQUEUE
-    MSG_NOSIGNAL	= 0x4000  /* Do not generate SIGPIPE.  */
+    MSG_NOSIGNAL	= 0x4000, /* Do not generate SIGPIPE.  */
 #define	MSG_NOSIGNAL	MSG_NOSIGNAL
+    MSG_MORE		= 0x8000  /* Sender will send more.  */
+#define	MSG_MORE	MSG_MORE
   };
 
 
@@ -212,10 +218,10 @@ struct msghdr
     socklen_t msg_namelen;	/* Length of address data.  */
 
     struct iovec *msg_iov;	/* Vector of data to send/receive into.  */
-    int msg_iovlen;		/* Number of elements in the vector.  */
+    size_t msg_iovlen;		/* Number of elements in the vector.  */
 
     void *msg_control;		/* Ancillary data (eg BSD filedesc passing). */
-    socklen_t msg_controllen;	/* Ancillary data buffer length.  */
+    size_t msg_controllen;	/* Ancillary data buffer length.  */
 
     int msg_flags;		/* Flags on received message.  */
   };
@@ -227,12 +233,13 @@ struct cmsghdr
 				   of cmsghdr structure.  */
     int cmsg_level;		/* Originating protocol.  */
     int cmsg_type;		/* Protocol specific type.  */
+#if (!defined __STRICT_ANSI__ && __GNUC__ >= 2) || __STDC_VERSION__ >= 199901L
     __extension__ unsigned char __cmsg_data __flexarr; /* Ancillary data.  */
-    /* XXX Perhaps this should be removed.  */
+#endif
   };
 
 /* Ancillary data object manipulation macros.  */
-#if !defined __STRICT_ANSI__ && defined __GNUC__ && __GNUC__ >= 2
+#if (!defined __STRICT_ANSI__ && __GNUC__ >= 2) || __STDC_VERSION__ >= 199901L
 # define CMSG_DATA(cmsg) ((cmsg)->__cmsg_data)
 #else
 # define CMSG_DATA(cmsg) ((unsigned char *) ((struct cmsghdr *) (cmsg) + 1))
@@ -254,7 +261,7 @@ extern struct cmsghdr *__cmsg_nxthdr (struct msghdr *__mhdr,
 #  define _EXTERN_INLINE extern __inline
 # endif
 _EXTERN_INLINE struct cmsghdr *
-__cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
+__NTH (__cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg))
 {
   if ((size_t) __cmsg->cmsg_len < sizeof (struct cmsghdr))
     /* The kernel header does this so there may be a reason.  */
@@ -262,8 +269,8 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 
   __cmsg = (struct cmsghdr *) ((unsigned char *) __cmsg
 			       + CMSG_ALIGN (__cmsg->cmsg_len));
-  if ((unsigned char *) (__cmsg + 1) >= ((unsigned char *) __mhdr->msg_control
-					 + __mhdr->msg_controllen)
+  if ((unsigned char *) (__cmsg + 1) > ((unsigned char *) __mhdr->msg_control
+					+ __mhdr->msg_controllen)
       || ((unsigned char *) __cmsg + CMSG_ALIGN (__cmsg->cmsg_len)
 	  > ((unsigned char *) __mhdr->msg_control + __mhdr->msg_controllen)))
     /* No more entries.  */
@@ -276,13 +283,12 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
    <linux/socket.h>.  */
 enum
   {
-    SCM_RIGHTS = 0x01,		/* Transfer file descriptors.  */
+    SCM_RIGHTS = 0x01		/* Transfer file descriptors.  */
 #define SCM_RIGHTS SCM_RIGHTS
 #ifdef __USE_BSD
-    SCM_CREDENTIALS = 0x02,     /* Credentials passing.  */
+    , SCM_CREDENTIALS = 0x02	/* Credentials passing.  */
 # define SCM_CREDENTIALS SCM_CREDENTIALS
 #endif
-    __SCM_CONNECT = 0x03	/* Data array is `struct scm_connect'.  */
   };
 
 /* User visible structure for SCM_CREDENTIALS message */

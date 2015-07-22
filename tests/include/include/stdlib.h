@@ -1,20 +1,20 @@
-/* Copyright (C) 1991-1999, 2000, 2001 Free Software Foundation, Inc.
+/* Copyright (C) 1991-2003,2004,2005,2006 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 /*
  *	ISO C99 Standard: 7.20 General utilities	<stdlib.h>
@@ -88,8 +88,12 @@ typedef union
 # define WIFEXITED(status)	__WIFEXITED(__WAIT_INT(status))
 # define WIFSIGNALED(status)	__WIFSIGNALED(__WAIT_INT(status))
 # define WIFSTOPPED(status)	__WIFSTOPPED(__WAIT_INT(status))
+# ifdef __WIFCONTINUED
+#  define WIFCONTINUED(status)	__WIFCONTINUED(__WAIT_INT(status))
+# endif
 #endif	/* X/Open and <sys/wait.h> not included.  */
 
+__BEGIN_NAMESPACE_STD
 /* Returned by `div'.  */
 typedef struct
   {
@@ -106,8 +110,10 @@ typedef struct
   } ldiv_t;
 # define __ldiv_t_defined	1
 #endif
+__END_NAMESPACE_STD
 
 #if defined __USE_ISOC99 && !defined __lldiv_t_defined
+__BEGIN_NAMESPACE_C99
 /* Returned by `lldiv'.  */
 __extension__ typedef struct
   {
@@ -115,6 +121,7 @@ __extension__ typedef struct
     long long int rem;		/* Remainder.  */
   } lldiv_t;
 # define __lldiv_t_defined	1
+__END_NAMESPACE_C99
 #endif
 
 
@@ -130,67 +137,85 @@ __extension__ typedef struct
 
 /* Maximum length of a multibyte character in the current locale.  */
 #define	MB_CUR_MAX	(__ctype_get_mb_cur_max ())
-extern size_t __ctype_get_mb_cur_max (void) __THROW;
+extern size_t __ctype_get_mb_cur_max (void) __THROW __wur;
 
 
+__BEGIN_NAMESPACE_STD
 /* Convert a string to a floating-point number.  */
-extern double atof (__const char *__nptr) __THROW __attribute_pure__;
+extern double atof (__const char *__nptr)
+     __THROW __attribute_pure__ __nonnull ((1)) __wur;
 /* Convert a string to an integer.  */
-extern int atoi (__const char *__nptr) __THROW __attribute_pure__;
+extern int atoi (__const char *__nptr)
+     __THROW __attribute_pure__ __nonnull ((1)) __wur;
 /* Convert a string to a long integer.  */
-extern long int atol (__const char *__nptr) __THROW __attribute_pure__;
+extern long int atol (__const char *__nptr)
+     __THROW __attribute_pure__ __nonnull ((1)) __wur;
+__END_NAMESPACE_STD
 
-#if defined __USE_ISOC99 || (defined __GNUC__ && defined __USE_MISC)
+#if defined __USE_ISOC99 || (defined __GLIBC_HAVE_LONG_LONG && defined __USE_MISC)
+__BEGIN_NAMESPACE_C99
 /* Convert a string to a long long integer.  */
 __extension__ extern long long int atoll (__const char *__nptr)
-     __THROW __attribute_pure__;
+     __THROW __attribute_pure__ __nonnull ((1)) __wur;
+__END_NAMESPACE_C99
 #endif
 
+__BEGIN_NAMESPACE_STD
 /* Convert a string to a floating-point number.  */
 extern double strtod (__const char *__restrict __nptr,
-		      char **__restrict __endptr) __THROW;
+		      char **__restrict __endptr)
+     __THROW __nonnull ((1)) __wur;
+__END_NAMESPACE_STD
 
 #ifdef	__USE_ISOC99
+__BEGIN_NAMESPACE_C99
 /* Likewise for `float' and `long double' sizes of floating-point numbers.  */
 extern float strtof (__const char *__restrict __nptr,
-		     char **__restrict __endptr) __THROW;
+		     char **__restrict __endptr) __THROW __nonnull ((1)) __wur;
 
 extern long double strtold (__const char *__restrict __nptr,
-			    char **__restrict __endptr) __THROW;
+			    char **__restrict __endptr)
+     __THROW __nonnull ((1)) __wur;
+__END_NAMESPACE_C99
 #endif
 
+__BEGIN_NAMESPACE_STD
 /* Convert a string to a long integer.  */
 extern long int strtol (__const char *__restrict __nptr,
-			char **__restrict __endptr, int __base) __THROW;
+			char **__restrict __endptr, int __base)
+     __THROW __nonnull ((1)) __wur;
 /* Convert a string to an unsigned long integer.  */
 extern unsigned long int strtoul (__const char *__restrict __nptr,
 				  char **__restrict __endptr, int __base)
-     __THROW;
+     __THROW __nonnull ((1)) __wur;
+__END_NAMESPACE_STD
 
-#if defined __GNUC__ && defined __USE_BSD
+#if defined __GLIBC_HAVE_LONG_LONG && defined __USE_BSD
 /* Convert a string to a quadword integer.  */
 __extension__
 extern long long int strtoq (__const char *__restrict __nptr,
-			     char **__restrict __endptr, int __base) __THROW;
+			     char **__restrict __endptr, int __base)
+     __THROW __nonnull ((1)) __wur;
 /* Convert a string to an unsigned quadword integer.  */
 __extension__
 extern unsigned long long int strtouq (__const char *__restrict __nptr,
 				       char **__restrict __endptr, int __base)
-     __THROW;
+     __THROW __nonnull ((1)) __wur;
 #endif /* GCC and use BSD.  */
 
-#if defined __USE_ISOC99 || (defined __GNUC__ && defined __USE_MISC)
-/* These functions will part of the standard C library in ISO C99.  */
-
+#if defined __USE_ISOC99 || (defined __GLIBC_HAVE_LONG_LONG && defined __USE_MISC)
+__BEGIN_NAMESPACE_C99
 /* Convert a string to a quadword integer.  */
 __extension__
 extern long long int strtoll (__const char *__restrict __nptr,
-			      char **__restrict __endptr, int __base) __THROW;
+			      char **__restrict __endptr, int __base)
+     __THROW __nonnull ((1)) __wur;
 /* Convert a string to an unsigned quadword integer.  */
 __extension__
 extern unsigned long long int strtoull (__const char *__restrict __nptr,
 					char **__restrict __endptr, int __base)
-     __THROW;
+     __THROW __nonnull ((1)) __wur;
+__END_NAMESPACE_C99
 #endif /* ISO C99 or GCC and use MISC.  */
 
 
@@ -212,35 +237,39 @@ extern unsigned long long int strtoull (__const char *__restrict __nptr,
 
 /* Special versions of the functions above which take the locale to
    use as an additional parameter.  */
-extern long int __strtol_l (__const char *__restrict __nptr,
-			    char **__restrict __endptr, int __base,
-			    __locale_t __loc) __THROW;
+extern long int strtol_l (__const char *__restrict __nptr,
+			  char **__restrict __endptr, int __base,
+			  __locale_t __loc) __THROW __nonnull ((1, 4)) __wur;
 
-extern unsigned long int __strtoul_l (__const char *__restrict __nptr,
-				      char **__restrict __endptr,
-				      int __base, __locale_t __loc) __THROW;
-
-__extension__
-extern long long int __strtoll_l (__const char *__restrict __nptr,
-				  char **__restrict __endptr, int __base,
-				  __locale_t __loc) __THROW;
+extern unsigned long int strtoul_l (__const char *__restrict __nptr,
+				    char **__restrict __endptr,
+				    int __base, __locale_t __loc)
+     __THROW __nonnull ((1, 4)) __wur;
 
 __extension__
-extern unsigned long long int __strtoull_l (__const char *__restrict __nptr,
-					    char **__restrict __endptr,
-					    int __base, __locale_t __loc)
-     __THROW;
+extern long long int strtoll_l (__const char *__restrict __nptr,
+				char **__restrict __endptr, int __base,
+				__locale_t __loc)
+     __THROW __nonnull ((1, 4)) __wur;
 
-extern double __strtod_l (__const char *__restrict __nptr,
-			  char **__restrict __endptr, __locale_t __loc)
-     __THROW;
+__extension__
+extern unsigned long long int strtoull_l (__const char *__restrict __nptr,
+					  char **__restrict __endptr,
+					  int __base, __locale_t __loc)
+     __THROW __nonnull ((1, 4)) __wur;
 
-extern float __strtof_l (__const char *__restrict __nptr,
-			 char **__restrict __endptr, __locale_t __loc) __THROW;
+extern double strtod_l (__const char *__restrict __nptr,
+			char **__restrict __endptr, __locale_t __loc)
+     __THROW __nonnull ((1, 3)) __wur;
 
-extern long double __strtold_l (__const char *__restrict __nptr,
-				char **__restrict __endptr,
-				__locale_t __loc) __THROW;
+extern float strtof_l (__const char *__restrict __nptr,
+		       char **__restrict __endptr, __locale_t __loc)
+     __THROW __nonnull ((1, 3)) __wur;
+
+extern long double strtold_l (__const char *__restrict __nptr,
+			      char **__restrict __endptr,
+			      __locale_t __loc)
+     __THROW __nonnull ((1, 3)) __wur;
 #endif /* GNU */
 
 
@@ -249,23 +278,26 @@ extern long double __strtold_l (__const char *__restrict __nptr,
 
 extern double __strtod_internal (__const char *__restrict __nptr,
 				 char **__restrict __endptr, int __group)
-     __THROW;
+     __THROW __nonnull ((1)) __wur;
 extern float __strtof_internal (__const char *__restrict __nptr,
 				char **__restrict __endptr, int __group)
-     __THROW;
+     __THROW __nonnull ((1)) __wur;
 extern long double __strtold_internal (__const char *__restrict __nptr,
 				       char **__restrict __endptr,
-				       int __group) __THROW;
+				       int __group)
+     __THROW __nonnull ((1)) __wur;
 #ifndef __strtol_internal_defined
 extern long int __strtol_internal (__const char *__restrict __nptr,
 				   char **__restrict __endptr,
-				   int __base, int __group) __THROW;
+				   int __base, int __group)
+     __THROW __nonnull ((1)) __wur;
 # define __strtol_internal_defined	1
 #endif
 #ifndef __strtoul_internal_defined
 extern unsigned long int __strtoul_internal (__const char *__restrict __nptr,
 					     char **__restrict __endptr,
-					     int __base, int __group) __THROW;
+					     int __base, int __group)
+     __THROW __nonnull ((1)) __wur;
 # define __strtoul_internal_defined	1
 #endif
 #if defined __GNUC__ || defined __USE_ISOC99
@@ -273,7 +305,8 @@ extern unsigned long int __strtoul_internal (__const char *__restrict __nptr,
 __extension__
 extern long long int __strtoll_internal (__const char *__restrict __nptr,
 					 char **__restrict __endptr,
-					 int __base, int __group) __THROW;
+					 int __base, int __group)
+     __THROW __nonnull ((1)) __wur;
 #  define __strtoll_internal_defined	1
 # endif
 # ifndef __strtoull_internal_defined
@@ -282,98 +315,109 @@ extern unsigned long long int __strtoull_internal (__const char *
 						   __restrict __nptr,
 						   char **__restrict __endptr,
 						   int __base, int __group)
-     __THROW;
+     __THROW __nonnull ((1)) __wur;
 #  define __strtoull_internal_defined	1
 # endif
 #endif /* GCC */
 
-#if defined __OPTIMIZE__ && !defined __OPTIMIZE_SIZE__ \
-    && defined __USE_EXTERN_INLINES
+#ifdef __USE_EXTERN_INLINES
 /* Define inline functions which call the internal entry points.  */
 
+__BEGIN_NAMESPACE_STD
 extern __inline double
-strtod (__const char *__restrict __nptr, char **__restrict __endptr) __THROW
+__NTH (strtod (__const char *__restrict __nptr, char **__restrict __endptr))
 {
   return __strtod_internal (__nptr, __endptr, 0);
 }
 extern __inline long int
-strtol (__const char *__restrict __nptr, char **__restrict __endptr,
-	int __base) __THROW
+__NTH (strtol (__const char *__restrict __nptr, char **__restrict __endptr,
+	       int __base))
 {
   return __strtol_internal (__nptr, __endptr, __base, 0);
 }
 extern __inline unsigned long int
-strtoul (__const char *__restrict __nptr, char **__restrict __endptr,
-	 int __base) __THROW
+__NTH (strtoul (__const char *__restrict __nptr, char **__restrict __endptr,
+		int __base))
 {
   return __strtoul_internal (__nptr, __endptr, __base, 0);
 }
+__END_NAMESPACE_STD
 
 # ifdef __USE_ISOC99
+__BEGIN_NAMESPACE_C99
 extern __inline float
-strtof (__const char *__restrict __nptr, char **__restrict __endptr) __THROW
+__NTH (strtof (__const char *__restrict __nptr, char **__restrict __endptr))
 {
   return __strtof_internal (__nptr, __endptr, 0);
 }
+#  ifndef __LDBL_COMPAT
 extern __inline long double
-strtold (__const char *__restrict __nptr, char **__restrict __endptr) __THROW
+__NTH (strtold (__const char *__restrict __nptr, char **__restrict __endptr))
 {
   return __strtold_internal (__nptr, __endptr, 0);
 }
+#  endif
+__END_NAMESPACE_C99
 # endif
 
 # ifdef __USE_BSD
 __extension__ extern __inline long long int
-strtoq (__const char *__restrict __nptr, char **__restrict __endptr,
-	int __base) __THROW
+__NTH (strtoq (__const char *__restrict __nptr, char **__restrict __endptr,
+	       int __base))
 {
   return __strtoll_internal (__nptr, __endptr, __base, 0);
 }
 __extension__ extern __inline unsigned long long int
-strtouq (__const char *__restrict __nptr, char **__restrict __endptr,
-	 int __base) __THROW
+__NTH (strtouq (__const char *__restrict __nptr, char **__restrict __endptr,
+		int __base))
 {
   return __strtoull_internal (__nptr, __endptr, __base, 0);
 }
 # endif
 
 # if defined __USE_MISC || defined __USE_ISOC99
+__BEGIN_NAMESPACE_C99
 __extension__ extern __inline long long int
-strtoll (__const char *__restrict __nptr, char **__restrict __endptr,
-	 int __base) __THROW
+__NTH (strtoll (__const char *__restrict __nptr, char **__restrict __endptr,
+		int __base))
 {
   return __strtoll_internal (__nptr, __endptr, __base, 0);
 }
 __extension__ extern __inline unsigned long long int
-strtoull (__const char * __restrict __nptr, char **__restrict __endptr,
-	  int __base) __THROW
+__NTH (strtoull (__const char * __restrict __nptr, char **__restrict __endptr,
+		 int __base))
 {
   return __strtoull_internal (__nptr, __endptr, __base, 0);
 }
+__END_NAMESPACE_C99
 # endif
 
+__BEGIN_NAMESPACE_STD
 extern __inline double
-atof (__const char *__nptr) __THROW
+__NTH (atof (__const char *__nptr))
 {
   return strtod (__nptr, (char **) NULL);
 }
 extern __inline int
-atoi (__const char *__nptr) __THROW
+__NTH (atoi (__const char *__nptr))
 {
   return (int) strtol (__nptr, (char **) NULL, 10);
 }
 extern __inline long int
-atol (__const char *__nptr) __THROW
+__NTH (atol (__const char *__nptr))
 {
   return strtol (__nptr, (char **) NULL, 10);
 }
+__END_NAMESPACE_STD
 
 # if defined __USE_MISC || defined __USE_ISOC99
+__BEGIN_NAMESPACE_C99
 __extension__ extern __inline long long int
-atoll (__const char *__nptr) __THROW
+__NTH (atoll (__const char *__nptr))
 {
   return strtoll (__nptr, (char **) NULL, 10);
 }
+__END_NAMESPACE_C99
 # endif
 #endif /* Optimizing and Inlining.  */
 
@@ -382,12 +426,15 @@ atoll (__const char *__nptr) __THROW
 /* Convert N to base 64 using the digits "./0-9A-Za-z", least-significant
    digit first.  Returns a pointer to static storage overwritten by the
    next call.  */
-extern char *l64a (long int __n) __THROW;
+extern char *l64a (long int __n) __THROW __wur;
 
 /* Read a number from a string S in base 64 as above.  */
-extern long int a64l (__const char *__s) __THROW __attribute_pure__;
+extern long int a64l (__const char *__s)
+     __THROW __attribute_pure__ __nonnull ((1)) __wur;
 
+#endif	/* Use SVID || extended X/Open.  */
 
+#if defined __USE_SVID || defined __USE_XOPEN_EXTENDED || defined __USE_BSD
 # include <sys/types.h>	/* we need int32_t... */
 
 /* These are the functions that actually do things.  The `random', `srandom',
@@ -405,11 +452,11 @@ extern void srandom (unsigned int __seed) __THROW;
    32, 64, 128 and 256, the bigger the better; values less than 8 will
    cause an error and values greater than 256 will be rounded down.  */
 extern char *initstate (unsigned int __seed, char *__statebuf,
-			size_t __statelen) __THROW;
+			size_t __statelen) __THROW __nonnull ((2));
 
 /* Switch the random number generator to state buffer STATEBUF,
    which should have been previously initialized by `initstate'.  */
-extern char *setstate (char *__statebuf) __THROW;
+extern char *setstate (char *__statebuf) __THROW __nonnull ((1));
 
 
 # ifdef __USE_MISC
@@ -429,24 +476,29 @@ struct random_data
   };
 
 extern int random_r (struct random_data *__restrict __buf,
-		     int32_t *__restrict __result) __THROW;
+		     int32_t *__restrict __result) __THROW __nonnull ((1, 2));
 
-extern int srandom_r (unsigned int __seed, struct random_data *__buf) __THROW;
+extern int srandom_r (unsigned int __seed, struct random_data *__buf)
+     __THROW __nonnull ((2));
 
 extern int initstate_r (unsigned int __seed, char *__restrict __statebuf,
 			size_t __statelen,
-			struct random_data *__restrict __buf) __THROW;
+			struct random_data *__restrict __buf)
+     __THROW __nonnull ((2, 4));
 
 extern int setstate_r (char *__restrict __statebuf,
-		       struct random_data *__restrict __buf) __THROW;
+		       struct random_data *__restrict __buf)
+     __THROW __nonnull ((1, 2));
 # endif	/* Use misc.  */
-#endif	/* Use SVID || extended X/Open.  */
+#endif	/* Use SVID || extended X/Open || BSD. */
 
 
+__BEGIN_NAMESPACE_STD
 /* Return a random integer between 0 and RAND_MAX inclusive.  */
 extern int rand (void) __THROW;
 /* Seed the random number generator with the given number.  */
 extern void srand (unsigned int __seed) __THROW;
+__END_NAMESPACE_STD
 
 #ifdef __USE_POSIX
 /* Reentrant interface according to POSIX.1.  */
@@ -459,20 +511,23 @@ extern int rand_r (unsigned int *__seed) __THROW;
 
 /* Return non-negative, double-precision floating-point value in [0.0,1.0).  */
 extern double drand48 (void) __THROW;
-extern double erand48 (unsigned short int __xsubi[3]) __THROW;
+extern double erand48 (unsigned short int __xsubi[3]) __THROW __nonnull ((1));
 
 /* Return non-negative, long integer in [0,2^31).  */
 extern long int lrand48 (void) __THROW;
-extern long int nrand48 (unsigned short int __xsubi[3]) __THROW;
+extern long int nrand48 (unsigned short int __xsubi[3])
+     __THROW __nonnull ((1));
 
 /* Return signed, long integers in [-2^31,2^31).  */
 extern long int mrand48 (void) __THROW;
-extern long int jrand48 (unsigned short int __xsubi[3]) __THROW;
+extern long int jrand48 (unsigned short int __xsubi[3])
+     __THROW __nonnull ((1));
 
 /* Seed random number generator.  */
 extern void srand48 (long int __seedval) __THROW;
-extern unsigned short int *seed48 (unsigned short int __seed16v[3]) __THROW;
-extern void lcong48 (unsigned short int __param[7]) __THROW;
+extern unsigned short int *seed48 (unsigned short int __seed16v[3])
+     __THROW __nonnull ((1));
+extern void lcong48 (unsigned short int __param[7]) __THROW __nonnull ((1));
 
 # ifdef __USE_MISC
 /* Data structure for communication with thread safe versions.  This
@@ -489,54 +544,64 @@ struct drand48_data
 
 /* Return non-negative, double-precision floating-point value in [0.0,1.0).  */
 extern int drand48_r (struct drand48_data *__restrict __buffer,
-		      double *__restrict __result) __THROW;
+		      double *__restrict __result) __THROW __nonnull ((1, 2));
 extern int erand48_r (unsigned short int __xsubi[3],
 		      struct drand48_data *__restrict __buffer,
-		      double *__restrict __result) __THROW;
+		      double *__restrict __result) __THROW __nonnull ((1, 2));
 
 /* Return non-negative, long integer in [0,2^31).  */
 extern int lrand48_r (struct drand48_data *__restrict __buffer,
-		      long int *__restrict __result) __THROW;
+		      long int *__restrict __result)
+     __THROW __nonnull ((1, 2));
 extern int nrand48_r (unsigned short int __xsubi[3],
 		      struct drand48_data *__restrict __buffer,
-		      long int *__restrict __result) __THROW;
+		      long int *__restrict __result)
+     __THROW __nonnull ((1, 2));
 
 /* Return signed, long integers in [-2^31,2^31).  */
 extern int mrand48_r (struct drand48_data *__restrict __buffer,
-		      long int *__restrict __result) __THROW;
+		      long int *__restrict __result)
+     __THROW __nonnull ((1, 2));
 extern int jrand48_r (unsigned short int __xsubi[3],
 		      struct drand48_data *__restrict __buffer,
-		      long int *__restrict __result) __THROW;
+		      long int *__restrict __result)
+     __THROW __nonnull ((1, 2));
 
 /* Seed random number generator.  */
 extern int srand48_r (long int __seedval, struct drand48_data *__buffer)
-     __THROW;
+     __THROW __nonnull ((2));
 
 extern int seed48_r (unsigned short int __seed16v[3],
-		     struct drand48_data *__buffer) __THROW;
+		     struct drand48_data *__buffer) __THROW __nonnull ((1, 2));
 
 extern int lcong48_r (unsigned short int __param[7],
-		      struct drand48_data *__buffer) __THROW;
+		      struct drand48_data *__buffer)
+     __THROW __nonnull ((1, 2));
 # endif	/* Use misc.  */
 #endif	/* Use SVID or X/Open.  */
 
 #endif /* don't just need malloc and calloc */
 
 #ifndef __malloc_and_calloc_defined
-#define __malloc_and_calloc_defined
+# define __malloc_and_calloc_defined
+__BEGIN_NAMESPACE_STD
 /* Allocate SIZE bytes of memory.  */
-extern void *malloc (size_t __size) __THROW __attribute_malloc__;
+extern void *malloc (size_t __size) __THROW __attribute_malloc__ __wur;
 /* Allocate NMEMB elements of SIZE bytes each, all initialized to 0.  */
 extern void *calloc (size_t __nmemb, size_t __size)
-     __THROW __attribute_malloc__;
+     __THROW __attribute_malloc__ __wur;
+__END_NAMESPACE_STD
 #endif
 
 #ifndef __need_malloc_and_calloc
+__BEGIN_NAMESPACE_STD
 /* Re-allocate the previously allocated block
    in PTR, making the new block SIZE bytes long.  */
-extern void *realloc (void *__ptr, size_t __size) __THROW __attribute_malloc__;
+extern void *realloc (void *__ptr, size_t __size)
+     __THROW __attribute_malloc__ __attribute_warn_unused_result__;
 /* Free a block allocated by `malloc', `realloc' or `calloc'.  */
 extern void free (void *__ptr) __THROW;
+__END_NAMESPACE_STD
 
 #ifdef	__USE_MISC
 /* Free a block.  An alias for `free'.	(Sun Unices).  */
@@ -549,60 +614,69 @@ extern void cfree (void *__ptr) __THROW;
 
 #if defined __USE_BSD || defined __USE_XOPEN_EXTENDED
 /* Allocate SIZE bytes on a page boundary.  The storage cannot be freed.  */
-extern void *valloc (size_t __size) __THROW __attribute_malloc__;
+extern void *valloc (size_t __size) __THROW __attribute_malloc__ __wur;
 #endif
 
 #ifdef __USE_XOPEN2K
 /* Allocate memory of SIZE bytes with an alignment of ALIGNMENT.  */
 extern int posix_memalign (void **__memptr, size_t __alignment, size_t __size)
-     __THROW __attribute_malloc__;
+     __THROW __nonnull ((1)) __wur;
 #endif
 
+__BEGIN_NAMESPACE_STD
 /* Abort execution and generate a core-dump.  */
 extern void abort (void) __THROW __attribute__ ((__noreturn__));
 
 
 /* Register a function to be called when `exit' is called.  */
-extern int atexit (void (*__func) (void)) __THROW;
+extern int atexit (void (*__func) (void)) __THROW __nonnull ((1));
+__END_NAMESPACE_STD
 
 #ifdef	__USE_MISC
 /* Register a function to be called with the status
    given to `exit' and the given argument.  */
 extern int on_exit (void (*__func) (int __status, void *__arg), void *__arg)
-     __THROW;
+     __THROW __nonnull ((1));
 #endif
 
+__BEGIN_NAMESPACE_STD
 /* Call all functions registered with `atexit' and `on_exit',
    in the reverse of the order in which they were registered
    perform stdio cleanup, and terminate program execution with STATUS.  */
 extern void exit (int __status) __THROW __attribute__ ((__noreturn__));
+__END_NAMESPACE_STD
 
 #ifdef __USE_ISOC99
+__BEGIN_NAMESPACE_C99
 /* Terminate the program with STATUS without calling any of the
    functions registered with `atexit' or `on_exit'.  */
 extern void _Exit (int __status) __THROW __attribute__ ((__noreturn__));
+__END_NAMESPACE_C99
 #endif
 
 
+__BEGIN_NAMESPACE_STD
 /* Return the value of envariable NAME, or NULL if it doesn't exist.  */
-extern char *getenv (__const char *__name) __THROW;
+extern char *getenv (__const char *__name) __THROW __nonnull ((1)) __wur;
+__END_NAMESPACE_STD
 
 /* This function is similar to the above but returns NULL if the
    programs is running with SUID or SGID enabled.  */
-extern char *__secure_getenv (__const char *__name) __THROW;
+extern char *__secure_getenv (__const char *__name)
+     __THROW __nonnull ((1)) __wur;
 
 #if defined __USE_SVID || defined __USE_XOPEN
 /* The SVID says this is in <stdio.h>, but this seems a better place.	*/
 /* Put STRING, which is of the form "NAME=VALUE", in the environment.
    If there is no `=', remove NAME from the environment.  */
-extern int putenv (char *__string) __THROW;
+extern int putenv (char *__string) __THROW __nonnull ((1));
 #endif
 
 #if defined __USE_BSD || defined __USE_XOPEN2K
 /* Set NAME to VALUE in the environment.
    If REPLACE is nonzero, overwrite an existing value.  */
 extern int setenv (__const char *__name, __const char *__value, int __replace)
-     __THROW;
+     __THROW __nonnull ((2));
 
 /* Remove the variable NAME from the environment.  */
 extern int unsetenv (__const char *__name) __THROW;
@@ -621,24 +695,28 @@ extern int clearenv (void) __THROW;
    The last six characters of TEMPLATE must be "XXXXXX";
    they are replaced with a string that makes the file name unique.
    Returns TEMPLATE, or a null pointer if it cannot get a unique file name.  */
-extern char *mktemp (char *__template) __THROW;
+extern char *mktemp (char *__template) __THROW __nonnull ((1)) __wur;
 
 /* Generate a unique temporary file name from TEMPLATE.
    The last six characters of TEMPLATE must be "XXXXXX";
    they are replaced with a string that makes the filename unique.
    Returns a file descriptor open on the file for reading and writing,
-   or -1 if it cannot create a uniquely-named file.  */
+   or -1 if it cannot create a uniquely-named file.
+
+   This function is a possible cancellation points and therefore not
+   marked with __THROW.  */
 # ifndef __USE_FILE_OFFSET64
-extern int mkstemp (char *__template) __THROW;
+extern int mkstemp (char *__template) __nonnull ((1)) __wur;
 # else
 #  ifdef __REDIRECT
-extern int __REDIRECT (mkstemp, (char *__template) __THROW, mkstemp64);
+extern int __REDIRECT (mkstemp, (char *__template), mkstemp64)
+     __nonnull ((1)) __wur;
 #  else
 #   define mkstemp mkstemp64
 #  endif
 # endif
 # ifdef __USE_LARGEFILE64
-extern int mkstemp64 (char *__template) __THROW;
+extern int mkstemp64 (char *__template) __nonnull ((1)) __wur;
 # endif
 #endif
 
@@ -648,19 +726,25 @@ extern int mkstemp64 (char *__template) __THROW;
    they are replaced with a string that makes the directory name unique.
    Returns TEMPLATE, or a null pointer if it cannot get a unique name.
    The directory is created mode 700.  */
-extern char *mkdtemp (char *__template) __THROW;
+extern char *mkdtemp (char *__template) __THROW __nonnull ((1)) __wur;
 #endif
 
 
-/* Execute the given line as a shell command.  */
-extern int system (__const char *__command) __THROW;
+__BEGIN_NAMESPACE_STD
+/* Execute the given line as a shell command.
+
+   This function is a cancellation point and therefore not marked with
+   __THROW.  */
+extern int system (__const char *__command) __wur;
+__END_NAMESPACE_STD
 
 
 #ifdef	__USE_GNU
 /* Return a malloc'd string containing the canonical absolute name of the
    named file.  The last file name component need not exist, and may be a
    symlink to a nonexistent file.  */
-extern char *canonicalize_file_name (__const char *__name) __THROW;
+extern char *canonicalize_file_name (__const char *__name)
+     __THROW __nonnull ((1)) __wur;
 #endif
 
 #if defined __USE_BSD || defined __USE_XOPEN_EXTENDED
@@ -671,7 +755,7 @@ extern char *canonicalize_file_name (__const char *__name) __THROW;
    ENAMETOOLONG; if the name fits in fewer than PATH_MAX chars, returns the
    name in RESOLVED.  */
 extern char *realpath (__const char *__restrict __name,
-		       char *__restrict __resolved) __THROW;
+		       char *__restrict __resolved) __THROW __wur;
 #endif
 
 
@@ -685,37 +769,46 @@ typedef __compar_fn_t comparison_fn_t;
 # endif
 #endif
 
+__BEGIN_NAMESPACE_STD
 /* Do a binary search for KEY in BASE, which consists of NMEMB elements
    of SIZE bytes each, using COMPAR to perform the comparisons.  */
 extern void *bsearch (__const void *__key, __const void *__base,
-		      size_t __nmemb, size_t __size, __compar_fn_t __compar);
+		      size_t __nmemb, size_t __size, __compar_fn_t __compar)
+     __nonnull ((1, 2, 5)) __wur;
 
 /* Sort NMEMB elements of BASE, of SIZE bytes each,
    using COMPAR to perform the comparisons.  */
 extern void qsort (void *__base, size_t __nmemb, size_t __size,
-		   __compar_fn_t __compar);
+		   __compar_fn_t __compar) __nonnull ((1, 4));
 
 
 /* Return the absolute value of X.  */
-extern int abs (int __x) __THROW __attribute__ ((__const__));
-extern long int labs (long int __x) __THROW __attribute__ ((__const__));
+extern int abs (int __x) __THROW __attribute__ ((__const__)) __wur;
+extern long int labs (long int __x) __THROW __attribute__ ((__const__)) __wur;
+__END_NAMESPACE_STD
+
 #ifdef __USE_ISOC99
 __extension__ extern long long int llabs (long long int __x)
-     __THROW __attribute__ ((__const__));
+     __THROW __attribute__ ((__const__)) __wur;
 #endif
 
 
+__BEGIN_NAMESPACE_STD
 /* Return the `div_t', `ldiv_t' or `lldiv_t' representation
    of the value of NUMER over DENOM. */
 /* GCC may have built-ins for these someday.  */
 extern div_t div (int __numer, int __denom)
-     __THROW __attribute__ ((__const__));
+     __THROW __attribute__ ((__const__)) __wur;
 extern ldiv_t ldiv (long int __numer, long int __denom)
-     __THROW __attribute__ ((__const__));
+     __THROW __attribute__ ((__const__)) __wur;
+__END_NAMESPACE_STD
+
 #ifdef __USE_ISOC99
+__BEGIN_NAMESPACE_C99
 __extension__ extern lldiv_t lldiv (long long int __numer,
 				    long long int __denom)
-     __THROW __attribute__ ((__const__));
+     __THROW __attribute__ ((__const__)) __wur;
+__END_NAMESPACE_C99
 #endif
 
 
@@ -727,58 +820,65 @@ __extension__ extern lldiv_t lldiv (long long int __numer,
    this.  Set *DECPT with the position of the decimal character and *SIGN
    with the sign of the number.  */
 extern char *ecvt (double __value, int __ndigit, int *__restrict __decpt,
-		   int *__restrict __sign) __THROW;
+		   int *__restrict __sign) __THROW __nonnull ((3, 4)) __wur;
 
 /* Convert VALUE to a string rounded to NDIGIT decimal digits.  Set *DECPT
    with the position of the decimal character and *SIGN with the sign of
    the number.  */
 extern char *fcvt (double __value, int __ndigit, int *__restrict __decpt,
-		   int *__restrict __sign) __THROW;
+		   int *__restrict __sign) __THROW __nonnull ((3, 4)) __wur;
 
 /* If possible convert VALUE to a string with NDIGIT significant digits.
    Otherwise use exponential representation.  The resulting string will
    be written to BUF.  */
-extern char *gcvt (double __value, int __ndigit, char *__buf) __THROW;
+extern char *gcvt (double __value, int __ndigit, char *__buf)
+     __THROW __nonnull ((3)) __wur;
 
 
 # ifdef __USE_MISC
 /* Long double versions of above functions.  */
 extern char *qecvt (long double __value, int __ndigit,
-		    int *__restrict __decpt, int *__restrict __sign) __THROW;
+		    int *__restrict __decpt, int *__restrict __sign)
+     __THROW __nonnull ((3, 4)) __wur;
 extern char *qfcvt (long double __value, int __ndigit,
-		    int *__restrict __decpt, int *__restrict __sign) __THROW;
-extern char *qgcvt (long double __value, int __ndigit, char *__buf) __THROW;
+		    int *__restrict __decpt, int *__restrict __sign)
+     __THROW __nonnull ((3, 4)) __wur;
+extern char *qgcvt (long double __value, int __ndigit, char *__buf)
+     __THROW __nonnull ((3)) __wur;
 
 
 /* Reentrant version of the functions above which provide their own
    buffers.  */
 extern int ecvt_r (double __value, int __ndigit, int *__restrict __decpt,
 		   int *__restrict __sign, char *__restrict __buf,
-		   size_t __len) __THROW;
+		   size_t __len) __THROW __nonnull ((3, 4, 5));
 extern int fcvt_r (double __value, int __ndigit, int *__restrict __decpt,
 		   int *__restrict __sign, char *__restrict __buf,
-		   size_t __len) __THROW;
+		   size_t __len) __THROW __nonnull ((3, 4, 5));
 
 extern int qecvt_r (long double __value, int __ndigit,
 		    int *__restrict __decpt, int *__restrict __sign,
-		    char *__restrict __buf, size_t __len) __THROW;
+		    char *__restrict __buf, size_t __len)
+     __THROW __nonnull ((3, 4, 5));
 extern int qfcvt_r (long double __value, int __ndigit,
 		    int *__restrict __decpt, int *__restrict __sign,
-		    char *__restrict __buf, size_t __len) __THROW;
+		    char *__restrict __buf, size_t __len)
+     __THROW __nonnull ((3, 4, 5));
 # endif	/* misc */
 #endif	/* use MISC || use X/Open Unix */
 
 
+__BEGIN_NAMESPACE_STD
 /* Return the length of the multibyte character
    in S, which is no longer than N.  */
-extern int mblen (__const char *__s, size_t __n) __THROW;
+extern int mblen (__const char *__s, size_t __n) __THROW __wur;
 /* Return the length of the given multibyte character,
    putting its `wchar_t' representation in *PWC.  */
 extern int mbtowc (wchar_t *__restrict __pwc,
-		   __const char *__restrict __s, size_t __n) __THROW;
+		   __const char *__restrict __s, size_t __n) __THROW __wur;
 /* Put the multibyte character represented
    by WCHAR in S, returning its length.  */
-extern int wctomb (char *__s, wchar_t __wchar) __THROW;
+extern int wctomb (char *__s, wchar_t __wchar) __THROW __wur;
 
 
 /* Convert a multibyte string to a wide char string.  */
@@ -788,6 +888,7 @@ extern size_t mbstowcs (wchar_t *__restrict  __pwcs,
 extern size_t wcstombs (char *__restrict __s,
 			__const wchar_t *__restrict __pwcs, size_t __n)
      __THROW;
+__END_NAMESPACE_STD
 
 
 #ifdef __USE_SVID
@@ -795,7 +896,7 @@ extern size_t wcstombs (char *__restrict __s,
    or negative response expression as specified by the LC_MESSAGES category
    in the program's current locale.  Returns 1 if affirmative, 0 if
    negative, and -1 if not matching.  */
-extern int rpmatch (__const char *__response) __THROW;
+extern int rpmatch (__const char *__response) __THROW __nonnull ((1)) __wur;
 #endif
 
 
@@ -808,13 +909,14 @@ extern int rpmatch (__const char *__response) __THROW;
    token or at the terminating NUL character.  */
 extern int getsubopt (char **__restrict __optionp,
 		      char *__const *__restrict __tokens,
-		      char **__restrict __valuep) __THROW;
+		      char **__restrict __valuep)
+     __THROW __nonnull ((1, 2, 3)) __wur;
 #endif
 
 
 #ifdef __USE_XOPEN
 /* Setup DES tables according KEY.  */
-extern void setkey (__const char *__key) __THROW;
+extern void setkey (__const char *__key) __THROW __nonnull ((1));
 #endif
 
 
@@ -822,7 +924,7 @@ extern void setkey (__const char *__key) __THROW;
 
 #ifdef __USE_XOPEN2K
 /* Return a master pseudo-terminal handle.  */
-extern int posix_openpt (int __oflag) __THROW;
+extern int posix_openpt (int __oflag) __wur;
 #endif
 
 #ifdef __USE_XOPEN
@@ -839,24 +941,35 @@ extern int unlockpt (int __fd) __THROW;
 /* Return the pathname of the pseudo terminal slave assoicated with
    the master FD is open on, or NULL on errors.
    The returned storage is good until the next call to this function.  */
-extern char *ptsname (int __fd) __THROW;
+extern char *ptsname (int __fd) __THROW __wur;
 #endif
 
 #ifdef __USE_GNU
 /* Store at most BUFLEN characters of the pathname of the slave pseudo
    terminal associated with the master FD is open on in BUF.
    Return 0 on success, otherwise an error number.  */
-extern int ptsname_r (int __fd, char *__buf, size_t __buflen) __THROW;
+extern int ptsname_r (int __fd, char *__buf, size_t __buflen)
+     __THROW __nonnull ((2));
 
 /* Open a master pseudo terminal and return its file descriptor.  */
-extern int getpt (void) __THROW;
+extern int getpt (void);
 #endif
 
 #ifdef __USE_BSD
 /* Put the 1 minute, 5 minute and 15 minute load averages into the first
    NELEM elements of LOADAVG.  Return the number written (never more than
    three, but may be less than NELEM), or -1 if an error occurred.  */
-extern int getloadavg (double __loadavg[], int __nelem) __THROW;
+extern int getloadavg (double __loadavg[], int __nelem)
+     __THROW __nonnull ((1));
+#endif
+
+
+/* Define some macros helping to catch buffer overflows.  */
+#if __USE_FORTIFY_LEVEL > 0 && !defined __cplusplus
+# include <bits/stdlib.h>
+#endif
+#ifdef __LDBL_COMPAT
+# include <bits/stdlib-ldbl.h>
 #endif
 
 #endif /* don't just need malloc and calloc */

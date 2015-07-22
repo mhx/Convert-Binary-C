@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/23 21:00:56 +0000 $
-# $Revision: 13 $
+# $Date: 2006/11/02 11:59:01 +0000 $
+# $Revision: 14 $
 # $Source: /tests/210_depend.t $
 #
 ################################################################################
@@ -19,7 +19,9 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 444 }
+BEGIN { plan tests => 483 }
+
+my $CCCFG = require 'tests/include/config.pl';
 
 eval {
   $c1 = new Convert::Binary::C Include => ['tests/include/files'];
@@ -82,7 +84,7 @@ ok( join(',', sort @ref2), join(',', sort @files2s),
     "dependency names differ" );
 
 eval {
-  $c2 = new Convert::Binary::C Include => ['tests/include/include', 'tests/include/perlinc'];
+  $c2 = new Convert::Binary::C %$CCCFG;
   $c2->parse_file( 'tests/include/include.c' );
 };
 ok($@,'',"failed to create object / parse file");

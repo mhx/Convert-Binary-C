@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/08/07 07:34:30 +0100 $
-# $Revision: 1 $
+# $Date: 2006/11/02 15:10:23 +0000 $
+# $Revision: 2 $
 # $Source: /tests/243_parser.t $
 #
 ################################################################################
@@ -14,7 +14,7 @@
 #
 ################################################################################
 
-use Test::More tests => 1;
+use Test::More tests => 2;
 use Convert::Binary::C @ARGV;
 use strict;
 
@@ -25,3 +25,8 @@ my $c = new Convert::Binary::C;
 eval { $c->parse_file('tests/parser/context.c') };
 
 is($@, '', 'parse context.c');
+
+eval { $c->parse_file('tests/parser/bug1.c') };
+
+like($@, qr/syntax error/, 'parse bug1.c');
+

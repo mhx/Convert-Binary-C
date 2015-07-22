@@ -1,20 +1,21 @@
-/* Copyright (C) 1991-1994,96,97,98,99,2000,2001 Free Software Foundation, Inc.
+/* Copyright (C) 1991-1994,1996-2002,2003,2005,2006
+	Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 #ifndef _SYS_TIME_H
 #define _SYS_TIME_H	1
@@ -70,13 +71,14 @@ typedef void *__restrict __timezone_ptr_t;
    NOTE: This form of timezone information is obsolete.
    Use the functions and variables declared in <time.h> instead.  */
 extern int gettimeofday (struct timeval *__restrict __tv,
-			 __timezone_ptr_t __tz) __THROW;
+			 __timezone_ptr_t __tz) __THROW __nonnull ((1));
 
 #ifdef __USE_BSD
 /* Set the current time of day and timezone information.
    This call is restricted to the super-user.  */
 extern int settimeofday (__const struct timeval *__tv,
-			 __const struct timezone *__tz) __THROW;
+			 __const struct timezone *__tz)
+     __THROW __nonnull ((1));
 
 /* Adjust the current time of day by the amount in DELTA.
    If OLDDELTA is not NULL, it is filled in with the amount
@@ -112,7 +114,9 @@ struct itimerval
     struct timeval it_value;
   };
 
-#ifdef __USE_GNU
+#if defined __USE_GNU && !defined __cplusplus
+/* Use the nicer parameter type only in GNU mode and not for C++ since the
+   strict C++ rules prevent the automatic promotion.  */
 typedef enum __itimer_which __itimer_which_t;
 #else
 typedef int __itimer_which_t;
@@ -130,10 +134,28 @@ extern int setitimer (__itimer_which_t __which,
 		      __const struct itimerval *__restrict __new,
 		      struct itimerval *__restrict __old) __THROW;
 
-/* Change the access time of FILE to TVP[0] and
-   the modification time of FILE to TVP[1].  */
+/* Change the access time of FILE to TVP[0] and the modification time of
+   FILE to TVP[1].  If TVP is a null pointer, use the current time instead.
+   Returns 0 on success, -1 on errors.  */
 extern int utimes (__const char *__file, __const struct timeval __tvp[2])
-     __THROW;
+     __THROW __nonnull ((1));
+
+#ifdef __USE_BSD
+/* Same as `utimes', but does not follow symbolic links.  */
+extern int lutimes (__const char *__file, __const struct timeval __tvp[2])
+     __THROW __nonnull ((1));
+
+/* Same as `utimes', but takes an open file descriptor instead of a name.  */
+extern int futimes (int __fd, __const struct timeval __tvp[2]) __THROW;
+#endif
+
+#ifdef __USE_ATFILE
+/* Change the access time of FILE relative to FD to TVP[0] and the
+   modification time of FILE to TVP[1].  If TVP is a null pointer, use
+   the current time instead.  Returns 0 on success, -1 on errors.  */
+extern int futimesat (int __fd, __const char *__file,
+		      __const struct timeval __tvp[2]) __THROW;
+#endif
 
 
 #ifdef __USE_BSD

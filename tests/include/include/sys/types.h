@@ -1,20 +1,21 @@
-/* Copyright (C) 1991,92,94,95,96,97,98,99,2000 Free Software Foundation, Inc.
+/* Copyright (C) 1991,1992,1994,1995,1996,1997,1998,1999,2000,2001,2002,2006
+   	Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 /*
  *	POSIX Standard: 2.6 Primitive System Data Types	<sys/types.h>
@@ -30,6 +31,7 @@ __BEGIN_DECLS
 #include <bits/types.h>
 
 #ifdef	__USE_BSD
+# ifndef __u_char_defined
 typedef __u_char u_char;
 typedef __u_short u_short;
 typedef __u_int u_int;
@@ -37,6 +39,8 @@ typedef __u_long u_long;
 typedef __quad_t quad_t;
 typedef __u_quad_t u_quad_t;
 typedef __fsid_t fsid_t;
+#  define __u_char_defined
+# endif
 #endif
 
 typedef __loff_t loff_t;
@@ -108,8 +112,11 @@ typedef __ssize_t ssize_t;
 #endif
 
 #ifdef	__USE_BSD
+# ifndef __daddr_t_defined
 typedef __daddr_t daddr_t;
 typedef __caddr_t caddr_t;
+#  define __daddr_t_defined
+# endif
 #endif
 
 #if (defined __USE_SVID || defined __USE_XOPEN) && !defined __key_t_defined
@@ -156,7 +163,9 @@ typedef unsigned int uint;
 typedef	char int8_t;
 typedef	short int int16_t;
 typedef	int int32_t;
-#  ifdef __GNUC__
+#  if __WORDSIZE == 64
+typedef long int int64_t;
+#  elif __GLIBC_HAVE_LONG_LONG
 __extension__ typedef long long int int64_t;
 #  endif
 # endif
@@ -165,7 +174,9 @@ __extension__ typedef long long int int64_t;
 typedef	unsigned char u_int8_t;
 typedef	unsigned short int u_int16_t;
 typedef	unsigned int u_int32_t;
-# ifdef __GNUC__
+# if __WORDSIZE == 64
+typedef unsigned long int u_int64_t;
+# elif __GLIBC_HAVE_LONG_LONG
 __extension__ typedef unsigned long long int u_int64_t;
 # endif
 
@@ -251,6 +262,12 @@ typedef __fsfilcnt64_t fsfilcnt_t; /* Type to count file system inodes.  */
 typedef __blkcnt64_t blkcnt64_t;     /* Type to count number of disk blocks. */
 typedef __fsblkcnt64_t fsblkcnt64_t; /* Type to count file system blocks.  */
 typedef __fsfilcnt64_t fsfilcnt64_t; /* Type to count file system inodes.  */
+#endif
+
+
+/* Now add the thread types.  */
+#if defined __USE_POSIX199506 || defined __USE_UNIX98
+# include <bits/pthreadtypes.h>
 #endif
 
 __END_DECLS

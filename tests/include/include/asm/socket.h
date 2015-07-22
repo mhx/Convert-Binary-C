@@ -3,7 +3,7 @@
 
 #include <asm/sockios.h>
 
-/* For setsockoptions(2) */
+/* For setsockopt(2) */
 #define SOL_SOCKET	1
 
 #define SO_DEBUG	1
@@ -14,6 +14,8 @@
 #define SO_BROADCAST	6
 #define SO_SNDBUF	7
 #define SO_RCVBUF	8
+#define SO_SNDBUFFORCE	32
+#define SO_RCVBUFFORCE	33
 #define SO_KEEPALIVE	9
 #define SO_OOBINLINE	10
 #define SO_NO_CHECK	11
@@ -45,19 +47,6 @@
 
 #define SO_ACCEPTCONN		30
 
-/* Nasty libc5 fixup - bletch */
-#if defined(__KERNEL__) || !defined(__GLIBC__) || (__GLIBC__ < 2)
-/* Socket types. */
-#define SOCK_STREAM	1		/* stream (connection) socket	*/
-#define SOCK_DGRAM	2		/* datagram (conn.less) socket	*/
-#define SOCK_RAW	3		/* raw socket			*/
-#define SOCK_RDM	4		/* reliably-delivered message	*/
-#define SOCK_SEQPACKET	5		/* sequential packet socket	*/
-#define SOCK_PACKET	10		/* linux specific way of	*/
-					/* getting packets at the dev	*/
-					/* level.  For writing rarp and	*/
-					/* other similar things on the	*/
-					/* user level.			*/
-#endif
+#define SO_PEERSEC		31
 
 #endif /* _ASM_SOCKET_H */

@@ -1,26 +1,27 @@
-/* Copyright (C) 1991-1999, 2000, 2001 Free Software Foundation, Inc.
+/* Copyright (C) 1991-2001, 2003, 2004 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 #ifndef	_NETINET_IN_H
 #define	_NETINET_IN_H	1
 
 #include <features.h>
 #include <stdint.h>
+#include <sys/socket.h>
 #include <bits/types.h>
 
 
@@ -79,6 +80,8 @@ enum
 #define IPPROTO_PIM		IPPROTO_PIM
     IPPROTO_COMP = 108,	   /* Compression Header Protocol.  */
 #define IPPROTO_COMP		IPPROTO_COMP
+    IPPROTO_SCTP = 132,	   /* Stream Control Transmission Protocol.  */
+#define IPPROTO_SCTP		IPPROTO_SCTP
     IPPROTO_RAW = 255,	   /* Raw IP packets.  */
 #define IPPROTO_RAW		IPPROTO_RAW
     IPPROTO_MAX
@@ -236,7 +239,30 @@ struct sockaddr_in6
     uint32_t sin6_scope_id;	/* IPv6 scope-id */
   };
 
-/* IPv6 multicast request.  */
+
+/* IPv4 multicast request.  */
+struct ip_mreq
+  {
+    /* IP multicast address of group.  */
+    struct in_addr imr_multiaddr;
+
+    /* Local IP address of interface.  */
+    struct in_addr imr_interface;
+  };
+
+struct ip_mreq_source
+  {
+    /* IP multicast address of group.  */
+    struct in_addr imr_multiaddr;
+
+    /* IP address of source.  */
+    struct in_addr imr_interface;
+
+    /* IP address of interface.  */
+    struct in_addr imr_sourceaddr;
+  };
+
+/* Likewise, for IPv6.  */
 struct ipv6_mreq
   {
     /* IPv6 multicast address of group */
@@ -245,6 +271,75 @@ struct ipv6_mreq
     /* local interface */
     unsigned int ipv6mr_interface;
   };
+
+
+/* Multicast group request.  */
+struct group_req
+  {
+    /* Interface index.  */
+    uint32_t gr_interface;
+
+    /* Group address.  */
+    struct sockaddr_storage gr_group;
+  };
+
+struct group_source_req
+  {
+    /* Interface index.  */
+    uint32_t gsr_interface;
+
+    /* Group address.  */
+    struct sockaddr_storage gsr_group;
+
+    /* Source address.  */
+    struct sockaddr_storage gsr_source;
+  };
+
+
+/* Full-state filter operations.  */
+struct ip_msfilter
+  {
+    /* IP multicast address of group.  */
+    struct in_addr imsf_multiaddr;
+
+    /* Local IP address of interface.  */
+    struct in_addr imsf_interface;
+
+    /* Filter mode.  */
+    uint32_t imsf_fmode;
+
+    /* Number of source addresses.  */
+    uint32_t imsf_numsrc;
+    /* Source addresses.  */
+    struct in_addr imsf_slist[1];
+  };
+
+#define IP_MSFILTER_SIZE(numsrc) (sizeof (struct ip_msfilter) \
+				  - sizeof (struct in_addr)		      \
+				  + (numsrc) * sizeof (struct in_addr))
+
+struct group_filter
+  {
+    /* Interface index.  */
+    uint32_t gf_interface;
+
+    /* Group address.  */
+    struct sockaddr_storage gf_group;
+
+    /* Filter mode.  */
+    uint32_t gf_fmode;
+
+    /* Number of source addresses.  */
+    uint32_t gf_numsrc;
+    /* Source addresses.  */
+    struct sockaddr_storage gf_slist[1];
+};
+
+#define GROUP_FILTER_SIZE(numsrc) (sizeof (struct group_filter) \
+				   - sizeof (struct sockaddr_storage)	      \
+				   + ((numsrc)				      \
+				      * sizeof (struct sockaddr_storage)))
+
 
 /* Get system-specific definitions.  */
 #include <bits/in.h>
@@ -363,6 +458,54 @@ struct in6_pktinfo
     struct in6_addr	ipi6_addr;    /* src/dst IPv6 address */
     unsigned int	ipi6_ifindex; /* send/recv interface index */
   };
+
+
+#ifdef __USE_GNU
+/* Hop-by-Hop and Destination Options Processing.  */
+extern int inet6_option_space (int __nbytes) __THROW;
+extern int inet6_option_init (void *__bp, struct cmsghdr **__cmsgp,
+			      int __type) __THROW;
+extern int inet6_option_append (struct cmsghdr *__cmsg,
+				__const uint8_t *__typep, int __multx,
+				int __plusy) __THROW;
+extern uint8_t *inet6_option_alloc (struct cmsghdr *__cmsg, int __datalen,
+				    int __multx, int __plusy) __THROW;
+extern int inet6_option_next (__const struct cmsghdr *__cmsg,
+			      uint8_t **__tptrp) __THROW;
+extern int inet6_option_find (__const struct cmsghdr *__cmsg,
+			      uint8_t **__tptrp, int __type) __THROW;
+
+
+/* Multicast source filter support.  */
+
+/* Get IPv4 source filter.  */
+extern int getipv4sourcefilter (int __s, struct in_addr __interface_addr,
+				struct in_addr __group, uint32_t *__fmode,
+				uint32_t *__numsrc, struct in_addr *__slist)
+     __THROW;
+
+/* Set IPv4 source filter.  */
+extern int setipv4sourcefilter (int __s, struct in_addr __interface_addr,
+				struct in_addr __group, uint32_t __fmode,
+				uint32_t __numsrc,
+				__const struct in_addr *__slist)
+     __THROW;
+
+
+/* Get source filter.  */
+extern int getsourcefilter (int __s, uint32_t __interface_addr,
+			    __const struct sockaddr *__group,
+			    socklen_t __grouplen, uint32_t *__fmode,
+			    uint32_t *__numsrc,
+			    struct sockaddr_storage *__slist) __THROW;
+
+/* Set source filter.  */
+extern int setsourcefilter (int __s, uint32_t __interface_addr,
+			    __const struct sockaddr *__group,
+			    socklen_t __grouplen, uint32_t __fmode,
+			    uint32_t __numsrc,
+			    __const struct sockaddr_storage *__slist) __THROW;
+#endif	/* use GNU */
 
 __END_DECLS
 

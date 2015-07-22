@@ -1,20 +1,20 @@
-/* Copyright (C) 1997, 1998, 1999, 2000 Free Software Foundation, Inc.
+/* Copyright (C) 1997-2001, 2004 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 /*
  *	ISO C99: 7.8 Format conversion of integer types	<inttypes.h>
@@ -26,6 +26,20 @@
 #include <features.h>
 /* Get the type definitions.  */
 #include <stdint.h>
+
+/* Get a definition for wchar_t.  But we must not define wchar_t itself.  */
+#ifndef ____gwchar_t_defined
+# ifdef __cplusplus
+#  define __gwchar_t wchar_t
+# elif defined __WCHAR_TYPE__
+typedef __WCHAR_TYPE__ __gwchar_t;
+# else
+#  define __need_wchar_t
+#  include <stddef.h>
+typedef wchar_t __gwchar_t;
+# endif
+# define ____gwchar_t_defined	1
+#endif
 
 
 /* The ISO C99 standard specifies that these macros must only be
@@ -54,8 +68,8 @@
 # define PRIdLEAST64	__PRI64_PREFIX "d"
 
 # define PRIdFAST8	"d"
-# define PRIdFAST16	"d"
-# define PRIdFAST32	"d"
+# define PRIdFAST16	__PRIPTR_PREFIX "d"
+# define PRIdFAST32	__PRIPTR_PREFIX "d"
 # define PRIdFAST64	__PRI64_PREFIX "d"
 
 
@@ -70,8 +84,8 @@
 # define PRIiLEAST64	__PRI64_PREFIX "i"
 
 # define PRIiFAST8	"i"
-# define PRIiFAST16	"i"
-# define PRIiFAST32	"i"
+# define PRIiFAST16	__PRIPTR_PREFIX "i"
+# define PRIiFAST32	__PRIPTR_PREFIX "i"
 # define PRIiFAST64	__PRI64_PREFIX "i"
 
 /* Octal notation.  */
@@ -86,8 +100,8 @@
 # define PRIoLEAST64	__PRI64_PREFIX "o"
 
 # define PRIoFAST8	"o"
-# define PRIoFAST16	"o"
-# define PRIoFAST32	"o"
+# define PRIoFAST16	__PRIPTR_PREFIX "o"
+# define PRIoFAST32	__PRIPTR_PREFIX "o"
 # define PRIoFAST64	__PRI64_PREFIX "o"
 
 /* Unsigned integers.  */
@@ -102,8 +116,8 @@
 # define PRIuLEAST64	__PRI64_PREFIX "u"
 
 # define PRIuFAST8	"u"
-# define PRIuFAST16	"u"
-# define PRIuFAST32	"u"
+# define PRIuFAST16	__PRIPTR_PREFIX "u"
+# define PRIuFAST32	__PRIPTR_PREFIX "u"
 # define PRIuFAST64	__PRI64_PREFIX "u"
 
 /* lowercase hexadecimal notation.  */
@@ -118,8 +132,8 @@
 # define PRIxLEAST64	__PRI64_PREFIX "x"
 
 # define PRIxFAST8	"x"
-# define PRIxFAST16	"x"
-# define PRIxFAST32	"x"
+# define PRIxFAST16	__PRIPTR_PREFIX "x"
+# define PRIxFAST32	__PRIPTR_PREFIX "x"
 # define PRIxFAST64	__PRI64_PREFIX "x"
 
 /* UPPERCASE hexadecimal notation.  */
@@ -134,8 +148,8 @@
 # define PRIXLEAST64	__PRI64_PREFIX "X"
 
 # define PRIXFAST8	"X"
-# define PRIXFAST16	"X"
-# define PRIXFAST32	"X"
+# define PRIXFAST16	__PRIPTR_PREFIX "X"
+# define PRIXFAST32	__PRIPTR_PREFIX "X"
 # define PRIXFAST64	__PRI64_PREFIX "X"
 
 
@@ -292,16 +306,18 @@ extern intmax_t strtoimax (__const char *__restrict __nptr,
 			   char **__restrict __endptr, int __base) __THROW;
 
 /* Like `strtoul' but convert to `uintmax_t'.  */
-extern uintmax_t strtoumax (__const char * __restrict __nptr,
+extern uintmax_t strtoumax (__const char *__restrict __nptr,
 			    char ** __restrict __endptr, int __base) __THROW;
 
 /* Like `wcstol' but convert to `intmax_t'.  */
-extern intmax_t wcstoimax (__const wchar_t * __restrict __nptr,
-			   wchar_t **__restrict __endptr, int __base) __THROW;
+extern intmax_t wcstoimax (__const __gwchar_t *__restrict __nptr,
+			   __gwchar_t **__restrict __endptr, int __base)
+     __THROW;
 
 /* Like `wcstoul' but convert to `uintmax_t'.  */
-extern uintmax_t wcstoumax (__const wchar_t * __restrict __nptr,
-			    wchar_t ** __restrict __endptr, int __base) __THROW;
+extern uintmax_t wcstoumax (__const __gwchar_t *__restrict __nptr,
+			    __gwchar_t ** __restrict __endptr, int __base)
+     __THROW;
 
 #ifdef __USE_EXTERN_INLINES
 
@@ -315,8 +331,8 @@ extern long int __strtol_internal (__const char *__restrict __nptr,
 #   define __strtol_internal_defined	1
 #  endif
 extern __inline intmax_t
-strtoimax (__const char *__restrict nptr, char **__restrict endptr,
-	   int base) __THROW
+__NTH (strtoimax (__const char *__restrict nptr, char **__restrict endptr,
+		  int base))
 {
   return __strtol_internal (nptr, endptr, base, 0);
 }
@@ -330,22 +346,22 @@ extern unsigned long int __strtoul_internal (__const char *
 #   define __strtoul_internal_defined	1
 #  endif
 extern __inline uintmax_t
-strtoumax (__const char *__restrict nptr, char **__restrict endptr,
-	   int base) __THROW
+__NTH (strtoumax (__const char *__restrict nptr, char **__restrict endptr,
+		  int base))
 {
   return __strtoul_internal (nptr, endptr, base, 0);
 }
 
 /* Like `wcstol' but convert to `intmax_t'.  */
 #  ifndef __wcstol_internal_defined
-extern long int __wcstol_internal (__const wchar_t * __restrict __nptr,
-				   wchar_t **__restrict __endptr,
+extern long int __wcstol_internal (__const __gwchar_t * __restrict __nptr,
+				   __gwchar_t **__restrict __endptr,
 				   int __base, int __group) __THROW;
 #   define __wcstol_internal_defined	1
 #  endif
 extern __inline intmax_t
-wcstoimax (__const wchar_t *__restrict nptr, wchar_t **__restrict endptr,
-	   int base) __THROW
+__NTH (wcstoimax (__const __gwchar_t *__restrict nptr,
+		  __gwchar_t **__restrict endptr, int base))
 {
   return __wcstol_internal (nptr, endptr, base, 0);
 }
@@ -353,16 +369,16 @@ wcstoimax (__const wchar_t *__restrict nptr, wchar_t **__restrict endptr,
 
 /* Like `wcstoul' but convert to `uintmax_t'.  */
 #  ifndef __wcstoul_internal_defined
-extern unsigned long int __wcstoul_internal (__const wchar_t *
+extern unsigned long int __wcstoul_internal (__const __gwchar_t *
 					     __restrict __nptr,
-					     wchar_t **
+					     __gwchar_t **
 					     __restrict __endptr,
 					     int __base, int __group) __THROW;
 #   define __wcstoul_internal_defined	1
 #  endif
 extern __inline uintmax_t
-wcstoumax (__const wchar_t *__restrict nptr, wchar_t **__restrict endptr,
-	   int base) __THROW
+__NTH (wcstoumax (__const __gwchar_t *__restrict nptr,
+		  __gwchar_t **__restrict endptr, int base))
 {
   return __wcstoul_internal (nptr, endptr, base, 0);
 }
@@ -378,8 +394,8 @@ extern long long int __strtoll_internal (__const char *__restrict __nptr,
 #   define __strtoll_internal_defined	1
 #  endif
 extern __inline intmax_t
-strtoimax (__const char *__restrict nptr, char **__restrict endptr,
-	   int base) __THROW
+__NTH (strtoimax (__const char *__restrict nptr, char **__restrict endptr,
+		  int base))
 {
   return __strtoll_internal (nptr, endptr, base, 0);
 }
@@ -396,8 +412,8 @@ extern unsigned long long int __strtoull_internal (__const char *
 #   define __strtoull_internal_defined	1
 #  endif
 extern __inline uintmax_t
-strtoumax (__const char *__restrict nptr, char **__restrict endptr,
-	   int base) __THROW
+__NTH (strtoumax (__const char *__restrict nptr, char **__restrict endptr,
+		  int base))
 {
   return __strtoull_internal (nptr, endptr, base, 0);
 }
@@ -405,15 +421,15 @@ strtoumax (__const char *__restrict nptr, char **__restrict endptr,
 /* Like `wcstol' but convert to `intmax_t'.  */
 #  ifndef __wcstoll_internal_defined
 __extension__
-extern long long int __wcstoll_internal (__const wchar_t *
+extern long long int __wcstoll_internal (__const __gwchar_t *
 					 __restrict __nptr,
-					 wchar_t **__restrict __endptr,
+					 __gwchar_t **__restrict __endptr,
 					 int __base, int __group) __THROW;
 #   define __wcstoll_internal_defined	1
 #  endif
 extern __inline intmax_t
-wcstoimax (__const wchar_t *__restrict nptr, wchar_t **__restrict endptr,
-	   int base) __THROW
+__NTH (wcstoimax (__const __gwchar_t *__restrict nptr,
+		  __gwchar_t **__restrict endptr, int base))
 {
   return __wcstoll_internal (nptr, endptr, base, 0);
 }
@@ -422,17 +438,17 @@ wcstoimax (__const wchar_t *__restrict nptr, wchar_t **__restrict endptr,
 /* Like `wcstoul' but convert to `uintmax_t'.  */
 #  ifndef __wcstoull_internal_defined
 __extension__
-extern unsigned long long int __wcstoull_internal (__const wchar_t *
+extern unsigned long long int __wcstoull_internal (__const __gwchar_t *
 						   __restrict __nptr,
-						   wchar_t **
+						   __gwchar_t **
 						   __restrict __endptr,
 						   int __base,
 						   int __group) __THROW;
 #   define __wcstoull_internal_defined	1
 #  endif
 extern __inline uintmax_t
-wcstoumax (__const wchar_t *__restrict nptr, wchar_t **__restrict endptr,
-	   int base) __THROW
+__NTH (wcstoumax (__const __gwchar_t *__restrict nptr,
+		  __gwchar_t **__restrict endptr, int base))
 {
   return __wcstoull_internal (nptr, endptr, base, 0);
 }

@@ -11,8 +11,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/08/26 12:33:44 +0100 $
-* $Revision: 64 $
+* $Date: 2006/11/01 17:58:55 +0000 $
+* $Revision: 86 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -454,6 +454,7 @@ static        void  parser_error(ParserState *pState, const char *msg);
                      su_type_specifier
                      sut_type_specifier
                      sue_type_specifier
+                     enum_type_specifier
                      typedef_type_specifier
                      aggregate_name
                      enum_name
@@ -1109,15 +1110,20 @@ sue_declaration_specifier        /* Storage Class + struct/union/enum */
 	;
 
 sue_type_specifier               /* struct/union/enum */
-	: elaborated_type_name
-	| type_qualifier_list elaborated_type_name   { $$ = $2; } /* we don't care about */
-	| sue_type_specifier type_qualifier          { $$ = $1; } /* type qualifiers     */
+	: su_type_specifier
+	| enum_type_specifier
+	;
+
+enum_type_specifier              /* enum */
+	: enum_name
+	| type_qualifier_list enum_name              { $$ = $2; } /* we don't care about */
+	| enum_type_specifier type_qualifier         { $$ = $1; } /* type qualifiers     */
 	;
 
 su_type_specifier                /* struct/union */
 	: aggregate_name
 	| type_qualifier_list aggregate_name         { $$ = $2; } /* we don't care about */
-	| sue_type_specifier type_qualifier          { $$ = $1; } /* type qualifiers     */
+	| su_type_specifier type_qualifier           { $$ = $1; } /* type qualifiers     */
 	;
 
 sut_type_specifier               /* struct/union/typedef */

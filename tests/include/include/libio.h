@@ -1,28 +1,30 @@
-/* Copyright (C) 1991,92,93,94,95,97,98,99,2000 Free Software Foundation, Inc.
-   This file is part of the GNU IO Library.
+/* Copyright (C) 1991-1995,1997-2005,2006 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
    Written by Per Bothner <bothner@cygnus.com>.
 
-   This library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU General Public License as
-   published by the Free Software Foundation; either version 2, or (at
-   your option) any later version.
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
-   This library is distributed in the hope that it will be useful, but
-   WITHOUT ANY WARRANTY; without even the implied warranty of
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with this library; see the file COPYING.  If not, write to
-   the Free Software Foundation, 59 Temple Place - Suite 330, Boston,
-   MA 02111-1307, USA.
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.
 
-   As a special exception, if you link this library with files
-   compiled with a GNU compiler to produce an executable, this does
-   not cause the resulting executable to be covered by the GNU General
-   Public License.  This exception does not however invalidate any
-   other reasons why the executable file might be covered by the GNU
-   General Public License.  */
+   As a special exception, if you link the code in this file with
+   files compiled with a GNU compiler to produce an executable,
+   that does not cause the resulting executable to be covered by
+   the GNU Lesser General Public License.  This exception does not
+   however invalidate any other reasons why the executable file
+   might be covered by the GNU Lesser General Public License.
+   This exception applies to code released by its copyright holders
+   in files containing the exception.  */
 
 #ifndef _IO_STDIO_H
 #define _IO_STDIO_H
@@ -134,6 +136,12 @@
 #define _IO_IS_FILEBUF 0x2000
 #define _IO_BAD_SEEN 0x4000
 #define _IO_USER_LOCK 0x8000
+
+#define _IO_FLAGS2_MMAP 1
+#define _IO_FLAGS2_NOTCANCEL 2
+#ifdef _LIBC
+# define _IO_FLAGS2_FORTIFY 4
+#endif
 
 /* These are "formatting flags" matching the iostream fmtflags enum values. */
 #define _IO_SKIPWS 01
@@ -252,7 +260,7 @@ struct _IO_wide_data
 
   wchar_t _shortbuf[1];
 
-  struct _IO_jump_t *_wide_vtable;
+  const struct _IO_jump_t *_wide_vtable;
 };
 #endif
 
@@ -280,7 +288,11 @@ struct _IO_FILE {
   struct _IO_FILE *_chain;
 
   int _fileno;
+#if 0
   int _blksize;
+#else
+  int _flags2;
+#endif
   _IO_off_t _old_offset; /* This used to be _offset but it's too small.  */
 
 #define __HAVE_COLUMN /* temporary */
@@ -305,13 +317,19 @@ struct _IO_FILE_complete
   /* Wide character stream stuff.  */
   struct _IO_codecvt *_codecvt;
   struct _IO_wide_data *_wide_data;
+  struct _IO_FILE *_freeres_list;
+  void *_freeres_buf;
+  size_t _freeres_size;
 # else
   void *__pad1;
   void *__pad2;
+  void *__pad3;
+  void *__pad4;
+  size_t __pad5;
 # endif
   int _mode;
   /* Make sure we don't get into trouble again.  */
-  char _unused2[15 * sizeof (int) - 2 * sizeof (void *)];
+  char _unused2[15 * sizeof (int) - 4 * sizeof (void *) - sizeof (size_t)];
 #endif
 };
 
@@ -329,9 +347,9 @@ extern struct _IO_FILE_plus _IO_2_1_stderr_;
 #define _IO_stdout ((_IO_FILE*)(&_IO_2_1_stdout_))
 #define _IO_stderr ((_IO_FILE*)(&_IO_2_1_stderr_))
 #else
-extern _IO_FILE *_IO_stdin;
-extern _IO_FILE *_IO_stdout;
-extern _IO_FILE *_IO_stderr;
+extern _IO_FILE *_IO_stdin attribute_hidden;
+extern _IO_FILE *_IO_stdout attribute_hidden;
+extern _IO_FILE *_IO_stderr attribute_hidden;
 #endif
 
 
@@ -398,23 +416,31 @@ extern _IO_wint_t __wunderflow (_IO_FILE *) __THROW;
 extern _IO_wint_t __wuflow (_IO_FILE *) __THROW;
 extern _IO_wint_t __woverflow (_IO_FILE *, _IO_wint_t) __THROW;
 
+#if  __GNUC__ >= 3
+# define _IO_BE(expr, res) __builtin_expect ((expr), res)
+#else
+# define _IO_BE(expr, res) (expr)
+#endif
+
 #define _IO_getc_unlocked(_fp) \
-       ((_fp)->_IO_read_ptr >= (_fp)->_IO_read_end ? __uflow (_fp) \
-	: *(unsigned char *) (_fp)->_IO_read_ptr++)
+       (_IO_BE ((_fp)->_IO_read_ptr >= (_fp)->_IO_read_end, 0) \
+	? __uflow (_fp) : *(unsigned char *) (_fp)->_IO_read_ptr++)
 #define _IO_peekc_unlocked(_fp) \
-       ((_fp)->_IO_read_ptr >= (_fp)->_IO_read_end \
+       (_IO_BE ((_fp)->_IO_read_ptr >= (_fp)->_IO_read_end, 0) \
 	  && __underflow (_fp) == EOF ? EOF \
 	: *(unsigned char *) (_fp)->_IO_read_ptr)
 #define _IO_putc_unlocked(_ch, _fp) \
-   (((_fp)->_IO_write_ptr >= (_fp)->_IO_write_end) \
+   (_IO_BE ((_fp)->_IO_write_ptr >= (_fp)->_IO_write_end, 0) \
     ? __overflow (_fp, (unsigned char) (_ch)) \
     : (unsigned char) (*(_fp)->_IO_write_ptr++ = (_ch)))
 
 #define _IO_getwc_unlocked(_fp) \
-  ((_fp)->_wide_data->_IO_read_ptr >= (_fp)->_wide_data->_IO_read_end \
+  (_IO_BE ((_fp)->_wide_data->_IO_read_ptr >= (_fp)->_wide_data->_IO_read_end,\
+	   0) \
    ? __wuflow (_fp) : (_IO_wint_t) *(_fp)->_wide_data->_IO_read_ptr++)
 #define _IO_putwc_unlocked(_wch, _fp) \
-  ((_fp)->_wide_data->_IO_write_ptr >= (_fp)->_wide_data->_IO_write_end \
+  (_IO_BE ((_fp)->_wide_data->_IO_write_ptr \
+	   >= (_fp)->_wide_data->_IO_write_end, 0) \
    ? __woverflow (_fp, _wch) \
    : (_IO_wint_t) (*(_fp)->_wide_data->_IO_write_ptr++ = (_wch)))
 
@@ -452,9 +478,9 @@ extern int _IO_ftrylockfile (_IO_FILE *) __THROW;
 #endif /* !_IO_MTSAFE_IO */
 
 extern int _IO_vfscanf (_IO_FILE * __restrict, const char * __restrict,
-			_IO_va_list, int *__restrict) __THROW;
+			_IO_va_list, int *__restrict);
 extern int _IO_vfprintf (_IO_FILE *__restrict, const char *__restrict,
-			 _IO_va_list) __THROW;
+			 _IO_va_list);
 extern _IO_ssize_t _IO_padn (_IO_FILE *, int, _IO_ssize_t) __THROW;
 extern _IO_size_t _IO_sgetn (_IO_FILE *, void *, _IO_size_t) __THROW;
 
@@ -493,17 +519,23 @@ weak_extern (_IO_stdin_used);
 	   (__fp)->_mode = -1;						      \
 	 __result = (__fp)->_mode;					      \
        }								      \
+     else if (__builtin_constant_p (__mode) && (__mode) == 0)		      \
+       __result = _IO_fwide_maybe_incompatible ? -1 : (__fp)->_mode;	      \
      else								      \
        __result = _IO_fwide (__fp, __result);				      \
      __result; })
 # endif
 
 extern int _IO_vfwscanf (_IO_FILE * __restrict, const wchar_t * __restrict,
-			 _IO_va_list, int *__restrict) __THROW;
+			 _IO_va_list, int *__restrict);
 extern int _IO_vfwprintf (_IO_FILE *__restrict, const wchar_t *__restrict,
-			  _IO_va_list) __THROW;
+			  _IO_va_list);
 extern _IO_ssize_t _IO_wpadn (_IO_FILE *, wint_t, _IO_ssize_t) __THROW;
 extern void _IO_free_wbackup_area (_IO_FILE *) __THROW;
+#endif
+
+#ifdef __LDBL_COMPAT
+# include <bits/libio-ldbl.h>
 #endif
 
 #ifdef __cplusplus

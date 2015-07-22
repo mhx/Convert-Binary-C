@@ -1,21 +1,22 @@
-/* Bit values & structures for resource limits.  Linux/x86 version.
-   Copyright (C) 1994,1996,1997,1998,1999,2000 Free Software Foundation, Inc.
+/* Bit values & structures for resource limits.  Linux version.
+   Copyright (C) 1994, 1996, 1997, 1998, 1999, 2000, 2004, 2005
+   Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 #ifndef _SYS_RESOURCE_H
 # error "Never use <bits/resource.h> directly; include <sys/resource.h> instead."
@@ -55,35 +56,54 @@ enum __rlimit_resource
      This affects swapping; processes that are exceeding their
      resident set size will be more likely to have physical memory
      taken from them.  */
-  RLIMIT_RSS = 5,
-#define	RLIMIT_RSS RLIMIT_RSS
+  __RLIMIT_RSS = 5,
+#define	RLIMIT_RSS __RLIMIT_RSS
 
   /* Number of open files.  */
   RLIMIT_NOFILE = 7,
-  RLIMIT_OFILE = RLIMIT_NOFILE, /* BSD name for same.  */
+  __RLIMIT_OFILE = RLIMIT_NOFILE, /* BSD name for same.  */
 #define RLIMIT_NOFILE RLIMIT_NOFILE
-#define RLIMIT_OFILE RLIMIT_OFILE
+#define RLIMIT_OFILE __RLIMIT_OFILE
 
   /* Address space limit.  */
   RLIMIT_AS = 9,
 #define RLIMIT_AS RLIMIT_AS
 
   /* Number of processes.  */
-  RLIMIT_NPROC = 6,
-#define RLIMIT_NPROC RLIMIT_NPROC
+  __RLIMIT_NPROC = 6,
+#define RLIMIT_NPROC __RLIMIT_NPROC
 
   /* Locked-in-memory address space.  */
-  RLIMIT_MEMLOCK = 8,
-#define RLIMIT_MEMLOCK RLIMIT_MEMLOCK
+  __RLIMIT_MEMLOCK = 8,
+#define RLIMIT_MEMLOCK __RLIMIT_MEMLOCK
 
   /* Maximum number of file locks.  */
-  RLIMIT_LOCKS = 10,
-#define RLIMIT_LOCKS RLIMIT_LOCKS
+  __RLIMIT_LOCKS = 10,
+#define RLIMIT_LOCKS __RLIMIT_LOCKS
 
-  RLIMIT_NLIMITS = 11,
-  RLIM_NLIMITS = RLIMIT_NLIMITS
-#define RLIMIT_NLIMITS RLIMIT_NLIMITS
-#define RLIM_NLIMITS RLIM_NLIMITS
+  /* Maximum number of pending signals.  */
+  __RLIMIT_SIGPENDING = 11,
+#define RLIMIT_SIGPENDING __RLIMIT_SIGPENDING
+
+  /* Maximum bytes in POSIX message queues.  */
+  __RLIMIT_MSGQUEUE = 12,
+#define RLIMIT_MSGQUEUE __RLIMIT_MSGQUEUE
+
+  /* Maximum nice priority allowed to raise to.
+     Nice levels 19 .. -20 correspond to 0 .. 39
+     values of this resource limit.  */
+  __RLIMIT_NICE = 13,
+#define RLIMIT_NICE __RLIMIT_NICE
+
+  /* Maximum realtime priority allowed for non-priviledged
+     processes.  */
+  __RLIMIT_RTPRIO = 14,
+#define RLIMIT_RTPRIO __RLIMIT_RTPRIO
+
+  __RLIMIT_NLIMITS = 15,
+  __RLIM_NLIMITS = __RLIMIT_NLIMITS
+#define RLIMIT_NLIMITS __RLIMIT_NLIMITS
+#define RLIM_NLIMITS __RLIM_NLIMITS
 };
 
 /* Value to indicate that there is no limit.  */
@@ -138,12 +158,8 @@ enum __rusage_who
 #define RUSAGE_SELF RUSAGE_SELF
 
   /* All of its terminated child processes.  */
-  RUSAGE_CHILDREN = -1,
+  RUSAGE_CHILDREN = -1
 #define RUSAGE_CHILDREN RUSAGE_CHILDREN
-
-  /* Both.  */
-  RUSAGE_BOTH = -2
-#define RUSAGE_BOTH RUSAGE_BOTH
 };
 
 #define __need_timeval

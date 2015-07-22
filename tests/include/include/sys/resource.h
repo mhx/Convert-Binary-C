@@ -1,20 +1,20 @@
-/* Copyright (C) 1992, 94, 96, 97, 98, 99, 2000 Free Software Foundation, Inc.
+/* Copyright (C) 1992,94,1996-2000,2002,2004 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 #ifndef	_SYS_RESOURCE_H
 #define	_SYS_RESOURCE_H	1
@@ -35,7 +35,7 @@ __BEGIN_DECLS
    `int' as the type for the first argument.  When we are compiling with
    GNU extensions we change this slightly to provide better error
    checking.  */
-#ifdef __USE_GNU
+#if defined __USE_GNU && !defined __cplusplus
 typedef enum __rlimit_resource __rlimit_resource_t;
 typedef enum __rusage_who __rusage_who_t;
 typedef enum __priority_which __priority_which_t;
@@ -51,10 +51,9 @@ typedef int __priority_which_t;
 extern int getrlimit (__rlimit_resource_t __resource,
 		      struct rlimit *__rlimits) __THROW;
 #else
-# ifdef __REDIRECT
-extern int __REDIRECT (getrlimit, (__rlimit_resource_t __resource,
-				   struct rlimit *__rlimits) __THROW,
-		       getrlimit64);
+# ifdef __REDIRECT_NTH
+extern int __REDIRECT_NTH (getrlimit, (__rlimit_resource_t __resource,
+				       struct rlimit *__rlimits), getrlimit64);
 # else
 #  define getrlimit getrlimit64
 # endif
@@ -71,10 +70,10 @@ extern int getrlimit64 (__rlimit_resource_t __resource,
 extern int setrlimit (__rlimit_resource_t __resource,
 		      __const struct rlimit *__rlimits) __THROW;
 #else
-# ifdef __REDIRECT
-extern int __REDIRECT (setrlimit, (__rlimit_resource_t __resource,
-				   __const struct rlimit *__rlimits) __THROW,
-		       setrlimit64);
+# ifdef __REDIRECT_NTH
+extern int __REDIRECT_NTH (setrlimit, (__rlimit_resource_t __resource,
+				       __const struct rlimit *__rlimits),
+			   setrlimit64);
 # else
 #  define setrlimit setrlimit64
 # endif

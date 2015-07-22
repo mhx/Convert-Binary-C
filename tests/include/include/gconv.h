@@ -1,20 +1,20 @@
-/* Copyright (C) 1997, 1998, 1999, 2000 Free Software Foundation, Inc.
+/* Copyright (C) 1997-1999, 2000-2002 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 /* This header provides no interface for a user to the internals of
    the gconv implementation in the libc.  Therefore there is no use
@@ -27,6 +27,7 @@
 #define __need_mbstate_t
 #include <wchar.h>
 #define __need_size_t
+#define __need_wchar_t
 #include <stddef.h>
 
 /* ISO 10646 value used to signal invalid value.  */
@@ -69,6 +70,9 @@ struct __gconv_trans_data;
 typedef int (*__gconv_fct) (struct __gconv_step *, struct __gconv_step_data *,
 			    __const unsigned char **, __const unsigned char *,
 			    unsigned char **, size_t *, int, int);
+
+/* Type of a specialized conversion function for a single byte to INTERNAL.  */
+typedef wint_t (*__gconv_btowc_fct) (struct __gconv_step *, unsigned char);
 
 /* Constructor and destructor for local data for conversion step.  */
 typedef int (*__gconv_init_fct) (struct __gconv_step *);
@@ -119,6 +123,7 @@ struct __gconv_step
   char *__to_name;
 
   __gconv_fct __fct;
+  __gconv_btowc_fct __btowc_fct;
   __gconv_init_fct __init_fct;
   __gconv_end_fct __end_fct;
 

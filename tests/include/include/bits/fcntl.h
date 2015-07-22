@@ -1,21 +1,22 @@
 /* O_*, F_*, FD_* bit values for Linux.
-   Copyright (C) 1995, 1996, 1997, 1998, 2000 Free Software Foundation, Inc.
+   Copyright (C) 1995, 1996, 1997, 1998, 2000, 2004
+   Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
-   Library General Public License for more details.
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.	*/
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 #ifndef	_FCNTL_H
 # error "Never use <bits/fcntl.h> directly; include <fcntl.h> instead."
@@ -45,6 +46,7 @@
 # define O_DIRECT	 040000	/* Direct disk access.	*/
 # define O_DIRECTORY	0200000	/* Must be a directory.	 */
 # define O_NOFOLLOW	0400000	/* Do not follow links.	 */
+# define O_NOATIME     01000000 /* Do not set atime.  */
 #endif
 
 /* For now Linux has synchronisity options for data and read operations.
@@ -78,7 +80,7 @@
 #define F_SETLK64	13	/* Set record locking info (non-blocking).  */
 #define F_SETLKW64	14	/* Set record locking info (blocking).	*/
 
-#if defined __USE_BSD || defined __USE_XOPEN2K
+#if defined __USE_BSD || defined __USE_UNIX98
 # define F_SETOWN	8	/* Get owner of socket (receiver of SIGIO).  */
 # define F_GETOWN	9	/* Set owner of socket (receiver of SIGIO).  */
 #endif
@@ -177,3 +179,11 @@ struct flock64
 # define POSIX_FADV_DONTNEED	4 /* Don't need these pages.  */
 # define POSIX_FADV_NOREUSE	5 /* Data will be accessed once.  */
 #endif
+
+__BEGIN_DECLS
+
+/* Provide kernel hint to read ahead.  */
+extern ssize_t readahead (int __fd, __off64_t __offset, size_t __count)
+    __THROW;
+
+__END_DECLS

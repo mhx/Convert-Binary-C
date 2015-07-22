@@ -9,8 +9,8 @@ print OUT <<'!NO!SUBS!';
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/01 09:37:56 +0000 $
-# $Revision: 13 $
+# $Date: 2006/11/02 11:44:38 +0000 $
+# $Revision: 14 $
 # $Source: /bin/perltypes.PL $
 #
 ################################################################################
@@ -38,11 +38,12 @@ Please run this script from either the 'examples' directory
 or the distribution base directory.
 MSG
 
-#----------------------------------------
-# Create an object, set the include path.
-#----------------------------------------
+#-------------------------------------
+# Create an object, set configuration.
+#-------------------------------------
 
-my $c = new Convert::Binary::C Include => ["$base/perlinc", "$base/include"];
+my $cfg = require "$base/config.pl";
+my $c = new Convert::Binary::C %$cfg;
 
 #------------------
 # Parse the C file.

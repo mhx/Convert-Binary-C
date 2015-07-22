@@ -1,21 +1,21 @@
-/* System-dependent timing definitions.  Linux/x86 version.
-   Copyright (C) 1996, 1997, 1999, 2000, 2001 Free Software Foundation, Inc.
+/* System-dependent timing definitions.  Generic version.
+   Copyright (C) 1996,1997,1999-2002,2003 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 /*
  * Never include this file directly; use <time.h> instead.
@@ -44,6 +44,8 @@ extern long int __sysconf (int);
 #  ifdef __USE_POSIX199309
 /* Identifier for system-wide realtime clock.  */
 #   define CLOCK_REALTIME		0
+/* Monotonic system-wide clock.  */
+#   define CLOCK_MONOTONIC		1
 /* High-resolution timer from the CPU.  */
 #   define CLOCK_PROCESS_CPUTIME_ID	2
 /* Thread-specific CPU-time clock.  */

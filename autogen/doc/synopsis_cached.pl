@@ -6,12 +6,15 @@ use Data::Dumper;
 #------------------------
 $c = Convert::Binary::C::Cached->new(
        Cache   => '/tmp/cache.c',
-       Include => ['include']
+       Include => [
+         '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include',
+         '/usr/include',
+       ],
      );
 
-#-------------------------------------------------
-# Parse 'stdio.h' and dump the definition of FILE
-#-------------------------------------------------
-$c->parse_file('stdio.h');
+#----------------------------------------------------
+# Parse 'time.h' and dump the definition of timespec
+#----------------------------------------------------
+$c->parse_file('time.h');
 
-print Dumper($c->typedef('FILE'));
+print Dumper($c->struct('timespec'));

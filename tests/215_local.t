@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/23 21:00:56 +0000 $
-# $Revision: 11 $
+# $Date: 2006/11/02 11:59:02 +0000 $
+# $Revision: 12 $
 # $Source: /tests/215_local.t $
 #
 ################################################################################
@@ -22,6 +22,8 @@ $^W = 1;
 BEGIN {
   plan tests => 10;
 }
+
+my $CCCFG = require 'tests/include/config.pl';
 
 eval {
   $c = new Convert::Binary::C;
@@ -108,8 +110,7 @@ ok( $type[0]{declarator}, "u_32" );
 
 # this file has some local types, just check if it parses correctly
 eval {
-  $c->clean->Include(qw( tests/include/perlinc tests/include/include ))
-    ->parse_file('tests/include/util.c');
+  $c->clean->configure(%$CCCFG)->parse_file('tests/include/util.c');
 };
 ok($@,'',"failed to parse file");
 

@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/02/05 22:05:06 +0000 $
-# $Revision: 28 $
+# $Date: 2006/11/02 11:59:02 +0000 $
+# $Revision: 29 $
 # $Source: /tests/602_threads.t $
 #
 ################################################################################
@@ -24,6 +24,8 @@ $^W = 1;
 BEGIN {
   plan tests => NUM_THREADS
 }
+
+my $CCCFG = require 'tests/include/config.pl';
 
 #===================================================================
 # load appropriate threads module and start a couple of threads
@@ -62,7 +64,8 @@ sub task
   my $p;
 
   eval {
-    $p = new Convert::Binary::C EnumSize       => 0,
+    $p = new Convert::Binary::C %$CCCFG,
+                                EnumSize       => 0,
                                 ShortSize      => 2,
                                 IntSize        => 4,
                                 LongSize       => 4,
@@ -70,9 +73,7 @@ sub task
                                 PointerSize    => 4,
                                 FloatSize      => 4,
                                 DoubleSize     => 8,
-                                LongDoubleSize => 12,
-                                Include        => ['tests/include/perlinc',
-                                                   'tests/include/include'];
+                                LongDoubleSize => 12;
     if ($arg % 2) {
       print "# parse_file ($arg) called\n";
       $p->parse_file('tests/include/include.c');
@@ -99,10 +100,10 @@ END
   my @typedef_ids  = $p->typedef_names;
 
   @enum_ids     ==   4 or return "incorrect number of enum identifiers";
-  @compound_ids == 134 or return "incorrect number of compound identifiers";
-  @struct_ids   == 129 or return "incorrect number of struct identifiers";
+  @compound_ids == 146 or return "incorrect number of compound identifiers";
+  @struct_ids   == 141 or return "incorrect number of struct identifiers";
   @union_ids    ==   5 or return "incorrect number of union identifiers";
-  @typedef_ids  == 301 or return "incorrect number of typedef identifiers";
+  @typedef_ids  == 329 or return "incorrect number of typedef identifiers";
 
   my @enums     = $p->enum;
   my @compounds = $p->compound;
@@ -110,11 +111,11 @@ END
   my @unions    = $p->union;
   my @typedefs  = $p->typedef;
 
-  @enums      ==  34 or return "incorrect number of enums";
-  @compounds  == 194 or return "incorrect number of compounds";
-  @structs    == 175 or return "incorrect number of structs";
-  @unions     ==  19 or return "incorrect number of unions";
-  @typedefs   == 303 or return "incorrect number of typedefs";
+  @enums      ==  35 or return "incorrect number of enums";
+  @compounds  == 287 or return "incorrect number of compounds";
+  @structs    == 200 or return "incorrect number of structs";
+  @unions     ==  87 or return "incorrect number of unions";
+  @typedefs   == 334 or return "incorrect number of typedefs";
 
   my %size = do { local (@ARGV, $/) = ('tests/include/sizeof.pl'); eval <> };
   my $max_size = 0;

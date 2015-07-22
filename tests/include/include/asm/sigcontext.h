@@ -1,6 +1,8 @@
 #ifndef _ASMi386_SIGCONTEXT_H
 #define _ASMi386_SIGCONTEXT_H
 
+#include <linux/compiler.h>
+
 /*
  * As documented in the iBCS2 standard..
  *
@@ -11,7 +13,7 @@
  * Pentium III FXSR, SSE support
  *	Gareth Hughes <gareth@valinux.com>, May 2000
  *
- * The FPU state data structure has had to grow to accomodate the
+ * The FPU state data structure has had to grow to accommodate the
  * extended FPU state required by the Streaming SIMD Extensions.
  * There is no documented standard to accomplish this at the moment.
  */
@@ -74,7 +76,7 @@ struct sigcontext {
 	unsigned long eflags;
 	unsigned long esp_at_signal;
 	unsigned short ss, __ssh;
-	struct _fpstate * fpstate;
+	struct _fpstate __user * fpstate;
 	unsigned long oldmask;
 	unsigned long cr2;
 };

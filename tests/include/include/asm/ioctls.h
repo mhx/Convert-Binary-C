@@ -6,7 +6,7 @@
 /* 0x54 is just a magic number to make these relatively unique ('T') */
 
 #define TCGETS		0x5401
-#define TCSETS		0x5402
+#define TCSETS		0x5402 /* Clashes with SNDCTL_TMR_START sound ioctl */
 #define TCSETSW		0x5403
 #define TCSETSF		0x5404
 #define TCGETA		0x5405
@@ -43,15 +43,14 @@
 #define TIOCSETD	0x5423
 #define TIOCGETD	0x5424
 #define TCSBRKP		0x5425	/* Needed for POSIX tcsendbreak() */
-#define TIOCTTYGSTRUCT	0x5426  /* For debugging only */
+/* #define TIOCTTYGSTRUCT 0x5426 - Former debugging-only ioctl */
 #define TIOCSBRK	0x5427  /* BSD compatibility */
 #define TIOCCBRK	0x5428  /* BSD compatibility */
 #define TIOCGSID	0x5429  /* Return the session ID of FD */
 #define TIOCGPTN	_IOR('T',0x30, unsigned int) /* Get Pty Number (of pty-mux device) */
 #define TIOCSPTLCK	_IOW('T',0x31, int)  /* Lock/unlock Pty */
-#define TIOCGDEV	_IOR('T',0x32, unsigned int) /* Get real dev no below /dev/console */
 
-#define FIONCLEX	0x5450  /* these numbers need to be adjusted. */
+#define FIONCLEX	0x5450
 #define FIOCLEX		0x5451
 #define FIOASYNC	0x5452
 #define TIOCSERCONFIG	0x5453
@@ -65,9 +64,10 @@
 #define TIOCSERSETMULTI 0x545B /* Set multiport config */
 
 #define TIOCMIWAIT	0x545C	/* wait for a change on serial input line(s) */
-#define TIOCGICOUNT	0x545D	/* read serial port inline interrupt counts */
+#define TIOCGICOUNT	0x545D	/* read serial port __inline__ interrupt counts */
 #define TIOCGHAYESESP   0x545E  /* Get Hayes ESP configuration */
 #define TIOCSHAYESESP   0x545F  /* Set Hayes ESP configuration */
+#define FIOQSIZE	0x5460
 
 /* Used for packet mode */
 #define TIOCPKT_DATA		 0

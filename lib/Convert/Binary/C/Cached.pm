@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/03/11 17:26:20 +0000 $
-# $Revision: 30 $
+# $Date: 2006/11/02 11:54:57 +0000 $
+# $Revision: 31 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.65 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.66 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 $VERSION = eval $VERSION;
 
 sub new
@@ -372,15 +372,18 @@ Convert::Binary::C::Cached - Caching for Convert::Binary::C
   #------------------------
   $c = Convert::Binary::C::Cached->new(
          Cache   => '/tmp/cache.c',
-         Include => ['include']
+         Include => [
+           '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include',
+           '/usr/include',
+         ],
        );
   
-  #-------------------------------------------------
-  # Parse 'stdio.h' and dump the definition of FILE
-  #-------------------------------------------------
-  $c->parse_file('stdio.h');
+  #----------------------------------------------------
+  # Parse 'time.h' and dump the definition of timespec
+  #----------------------------------------------------
+  $c->parse_file('time.h');
   
-  print Dumper($c->typedef('FILE'));
+  print Dumper($c->struct('timespec'));
 
 =head1 DESCRIPTION
 

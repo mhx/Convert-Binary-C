@@ -1,20 +1,20 @@
-/* Copyright (C) 1995, 1996, 1997, 2000, 2001 Free Software Foundation, Inc.
+/* Copyright (C) 1995,1996,1997,2000,2001,2003 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 #ifndef _SYS_PARAM_H
 #define _SYS_PARAM_H	1
@@ -49,10 +49,16 @@
 
 /* Macros for counting and rounding.  */
 #ifndef howmany
-# define howmany(x, y)	(((x)+((y)-1))/(y))
+# define howmany(x, y)	(((x) + ((y) - 1)) / (y))
 #endif
-#define	roundup(x, y)	((((x)+((y)-1))/(y))*(y))
-#define powerof2(x)	((((x)-1)&(x))==0)
+#ifdef __GNUC__
+# define roundup(x, y)	(__builtin_constant_p (y) && powerof2 (y)	      \
+			 ? (((x) + (y) - 1) & ~((y) - 1))		      \
+			 : ((((x) + ((y) - 1)) / (y)) * (y)))
+#else
+# define roundup(x, y)	((((x) + ((y) - 1)) / (y)) * (y))
+#endif
+#define powerof2(x)	((((x) - 1) & (x)) == 0)
 
 /* Macros for min/max.  */
 #define	MIN(a,b) (((a)<(b))?(a):(b))

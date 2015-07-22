@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/02/05 22:05:06 +0000 $
-# $Revision: 13 $
+# $Date: 2006/11/02 11:59:02 +0000 $
+# $Revision: 14 $
 # $Source: /tests/601_speed.t $
 #
 ################################################################################
@@ -23,6 +23,8 @@ $^W = 1;
 BEGIN {
   plan tests => 11;
 }
+
+my $CCCFG = require 'tests/include/config.pl';
 
 eval { require Data::Dumper }; $Data_Dumper = $@;
 eval { require IO::File };     $IO_File = $@;
@@ -72,7 +74,7 @@ $start_time = mytime();
 $fail = 0;
 do {
   eval {
-    $c = new Convert::Binary::C Include => ['tests/include/include', 'tests/include/perlinc'];
+    $c = new Convert::Binary::C %$CCCFG;
     $c->parse_file( 'tests/include/include.c' );
   };
   $@ and $fail = 1 and last;
@@ -95,8 +97,8 @@ print "# uncached: $iterations iterations in $elapsed_time seconds\n";
 
 # create cache file
 eval {
-  $c = new Convert::Binary::C::Cached Cache   => $cache,
-                                      Include => ['tests/include/include', 'tests/include/perlinc'];
+  $c = new Convert::Binary::C::Cached Cache => $cache, %$CCCFG;
+                                      
   $c->parse_file( 'tests/include/include.c' );
 };
 ok($@,'',"failed to create cache file for speed test");
@@ -108,8 +110,7 @@ ok( -e $cache );
 $start_time = mytime();
 eval {
   for( 1 .. $iterations ) {
-    $c = new Convert::Binary::C::Cached Cache   => $cache,
-                                        Include => ['tests/include/include', 'tests/include/perlinc'];
+    $c = new Convert::Binary::C::Cached Cache => $cache, %$CCCFG;
     $c->parse_file( 'tests/include/include.c' );
   }
 };

@@ -1,20 +1,21 @@
-/* Copyright (C) 1991,92,93,95,96,97,98,99, 2000 Free Software Foundation, Inc.
+/* Copyright (C) 1991,1992,1993,1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006
+	Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
 #ifndef	_FEATURES_H
 #define	_FEATURES_H	1
@@ -27,7 +28,8 @@
    _POSIX_SOURCE	IEEE Std 1003.1.
    _POSIX_C_SOURCE	If ==1, like _POSIX_SOURCE; if >=2 add IEEE Std 1003.2;
 			if >=199309L, add IEEE Std 1003.1b-1993;
-			if >=199506L, add IEEE Std 1003.1c-1995
+			if >=199506L, add IEEE Std 1003.1c-1995;
+			if >=200112L, all of IEEE 1003.1-2004
    _XOPEN_SOURCE	Includes POSIX and XPG things.  Set to 500 if
 			Single Unix conformance is wanted, to 600 for the
 			upcoming sixth revision.
@@ -37,9 +39,12 @@
    _FILE_OFFSET_BITS=N	Select default filesystem interface.
    _BSD_SOURCE		ISO C, POSIX, and 4.3BSD things.
    _SVID_SOURCE		ISO C, POSIX, and SVID things.
+   _ATFILE_SOURCE	Additional *at interfaces.
    _GNU_SOURCE		All of the above, plus GNU extensions.
    _REENTRANT		Select additionally reentrant object.
    _THREAD_SAFE		Same as _REENTRANT, often used by other systems.
+   _FORTIFY_SOURCE	If set to numeric value > 0 additional security
+			measures are defined, according to level.
 
    The `-ansi' switch to the GNU C compiler defines __STRICT_ANSI__.
    If none of these are defined, the default is to have _SVID_SOURCE,
@@ -66,8 +71,10 @@
    __USE_BSD		Define 4.3BSD things.
    __USE_SVID		Define SVID things.
    __USE_MISC		Define things common to BSD and System V Unix.
+   __USE_ATFILE		Define *at interfaces and AT_* constants for them.
    __USE_GNU		Define GNU extensions.
    __USE_REENTRANT	Define reentrant/thread-safe *_r functions.
+   __USE_FORTIFY_LEVEL	Additional security measures used, according to level.
    __FAVOR_BSD		Favor 4.3BSD things in cases of conflict.
 
    The macros `__GNU_LIBRARY__', `__GLIBC__', and `__GLIBC_MINOR__' are
@@ -98,8 +105,10 @@
 #undef	__USE_BSD
 #undef	__USE_SVID
 #undef	__USE_MISC
+#undef	__USE_ATFILE
 #undef	__USE_GNU
 #undef	__USE_REENTRANT
+#undef	__USE_FORTIFY_LEVEL
 #undef	__FAVOR_BSD
 #undef	__KERNEL_STRICT_NAMES
 
@@ -111,6 +120,20 @@
 
 /* Always use ISO C things.  */
 #define	__USE_ANSI	1
+
+/* Convenience macros to test the versions of glibc and gcc.
+   Use them like this:
+   #if __GNUC_PREREQ (2,8)
+   ... code requiring gcc 2.8 or later ...
+   #endif
+   Note - they won't work for gcc1 or glibc1, since the _MINOR macros
+   were not defined then.  */
+#if defined __GNUC__ && defined __GNUC_MINOR__
+# define __GNUC_PREREQ(maj, min) \
+	((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
+#else
+# define __GNUC_PREREQ(maj, min) 0
+#endif
 
 
 /* If _BSD_SOURCE was defined by the user, favor BSD over POSIX.  */
@@ -139,6 +162,8 @@
 # define _BSD_SOURCE	1
 # undef  _SVID_SOURCE
 # define _SVID_SOURCE	1
+# undef  _ATFILE_SOURCE
+# define _ATFILE_SOURCE	1
 #endif
 
 /* If nothing (other than _GNU_SOURCE) is defined,
@@ -162,13 +187,15 @@
 
 /* If none of the ANSI/POSIX macros are defined, use POSIX.1 and POSIX.2
    (and IEEE Std 1003.1b-1993 unless _XOPEN_SOURCE is defined).  */
-#if (!defined __STRICT_ANSI__ && !defined _POSIX_SOURCE && \
-     !defined _POSIX_C_SOURCE)
+#if ((!defined __STRICT_ANSI__ || (_XOPEN_SOURCE - 0) >= 500) && \
+     !defined _POSIX_SOURCE && !defined _POSIX_C_SOURCE)
 # define _POSIX_SOURCE	1
 # if defined _XOPEN_SOURCE && (_XOPEN_SOURCE - 0) < 500
 #  define _POSIX_C_SOURCE	2
-# else
+# elif defined _XOPEN_SOURCE && (_XOPEN_SOURCE - 0) < 600
 #  define _POSIX_C_SOURCE	199506L
+# else
+#  define _POSIX_C_SOURCE	200112L
 # endif
 #endif
 
@@ -186,6 +213,10 @@
 
 #if (_POSIX_C_SOURCE - 0) >= 199506L
 # define __USE_POSIX199506	1
+#endif
+
+#if (_POSIX_C_SOURCE - 0) >= 200112L
+# define __USE_XOPEN2K		1
 #endif
 
 #ifdef	_XOPEN_SOURCE
@@ -231,6 +262,10 @@
 # define __USE_SVID	1
 #endif
 
+#ifdef	_ATFILE_SOURCE
+# define __USE_ATFILE	1
+#endif
+
 #ifdef	_GNU_SOURCE
 # define __USE_GNU	1
 #endif
@@ -239,11 +274,22 @@
 # define __USE_REENTRANT	1
 #endif
 
+#if defined _FORTIFY_SOURCE && _FORTIFY_SOURCE > 0 \
+    && __GNUC_PREREQ (4, 1) && defined __OPTIMIZE__ && __OPTIMIZE__ > 0
+# if _FORTIFY_SOURCE > 1
+#  define __USE_FORTIFY_LEVEL 2
+# else
+#  define __USE_FORTIFY_LEVEL 1
+# endif
+#else
+# define __USE_FORTIFY_LEVEL 0
+#endif
+
 /* We do support the IEC 559 math functionality, real and complex.  */
 #define __STDC_IEC_559__		1
 #define __STDC_IEC_559_COMPLEX__	1
 
-/* wchar_t uses ISO 10646-1 (2nd ed., published 2000-09-15) / Unicode 3.0.  */
+/* wchar_t uses ISO 10646-1 (2nd ed., published 2000-09-15) / Unicode 3.1.  */
 #define __STDC_ISO_10646__		200009L
 
 /* This macro indicates that the installed library is the GNU C Library.
@@ -258,30 +304,24 @@
 /* Major and minor version number of the GNU C library package.  Use
    these macros to test for features in specific releases.  */
 #define	__GLIBC__	2
-#define	__GLIBC_MINOR__	2
-
-/* Convenience macros to test the versions of glibc and gcc.
-   Use them like this:
-   #if __GNUC_PREREQ (2,8)
-   ... code requiring gcc 2.8 or later ...
-   #endif
-   Note - they won't work for gcc1 or glibc1, since the _MINOR macros
-   were not defined then.  */
-#if defined __GNUC__ && defined __GNUC_MINOR__
-# define __GNUC_PREREQ(maj, min) \
-	((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
-#else
-# define __GNUC_PREREQ(maj, min) 0
-#endif
+#define	__GLIBC_MINOR__	4
 
 #define __GLIBC_PREREQ(maj, min) \
 	((__GLIBC__ << 16) + __GLIBC_MINOR__ >= ((maj) << 16) + (min))
 
+/* Decide whether a compiler supports the long long datatypes.  */
+#if defined __GNUC__ \
+    || (defined __PGI && defined __i386__ ) \
+    || (defined __INTEL_COMPILER && (defined __i386__ || defined __ia64__)) \
+    || (defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L)
+# define __GLIBC_HAVE_LONG_LONG	1
+#endif
+
 /* This is here only because every header file already includes this one.  */
 #ifndef __ASSEMBLER__
-#ifndef _SYS_CDEFS_H
-# include <sys/cdefs.h>
-#endif
+# ifndef _SYS_CDEFS_H
+#  include <sys/cdefs.h>
+# endif
 
 /* If we don't have __REDIRECT, prototypes will be missing if
    __USE_FILE_OFFSET64 but not __USE_LARGEFILE[64]. */
@@ -293,22 +333,17 @@
 #endif	/* !ASSEMBLER */
 
 /* Decide whether we can define 'extern inline' functions in headers.  */
-#if __GNUC_PREREQ (2, 7) && defined __OPTIMIZE__ && !defined __OPTIMIZE_SIZE__
+#if __GNUC_PREREQ (2, 7) && defined __OPTIMIZE__ \
+    && !defined __OPTIMIZE_SIZE__ && !defined __NO_INLINE__
 # define __USE_EXTERN_INLINES	1
 #endif
 
-/* This is here only because every header file already includes this one.  */
-#ifndef _LIBC
-/* Get the definitions of all the appropriate `__stub_FUNCTION' symbols.
+
+/* This is here only because every header file already includes this one.
+   Get the definitions of all the appropriate `__stub_FUNCTION' symbols.
    <gnu/stubs.h> contains `#define __stub_FUNCTION' when FUNCTION is a stub
-   which will always return failure (and set errno to ENOSYS).
+   that will always return failure (and set errno to ENOSYS).  */
+#include <gnu/stubs.h>
 
-   We avoid including <gnu/stubs.h> when compiling the C library itself to
-   avoid a dependency loop.  stubs.h depends on every object file.  If
-   this #include were done for the library source code, then every object
-   file would depend on stubs.h.  */
-
-# include <gnu/stubs.h>
-#endif
 
 #endif	/* features.h  */

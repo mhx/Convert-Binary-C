@@ -5,6 +5,13 @@ What's to do?
 for future releases (in no special order):
 ------------------------------------------
 
+* encapsulate internal types better:
+
+    e.g. struct:
+
+      struct_push_declaration(struct, declaration);  /* real function call */
+      struct_size(struct);  /* as macro */
+
 * make Dimension tag influence offset during pack / unpack, but only if the
   Dimtag is _not_ '*'. So the following is possible:
 

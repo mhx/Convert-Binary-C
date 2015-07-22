@@ -1,4 +1,14 @@
 -------------------------
+Version 0.66 (2006-11-02)
+-------------------------
+
+* fix a bug in the parser that accidentially allowed
+  qualified enum specifiers as unnamed compound members
+
+* update test suite for better coverage of recent
+  compiler features and bitfields
+
+-------------------------
 Version 0.65 (2006-08-27)
 -------------------------
 

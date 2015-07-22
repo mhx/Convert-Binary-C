@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/02/25 11:00:23 +0000 $
-# $Revision: 19 $
+# $Date: 2006/11/02 11:59:01 +0000 $
+# $Revision: 20 $
 # $Source: /tests/209_sourcify.t $
 #
 ################################################################################
@@ -21,10 +21,11 @@ $^W = 1;
 
 BEGIN { plan tests => 98 }
 
+my $CCCFG = require 'tests/include/config.pl';
+
 eval {
-  $orig  = new Convert::Binary::C Include => ['tests/include/perlinc',
-                                              'tests/include/include'];
-  @clone = map { new Convert::Binary::C } 1 .. 2;
+  $orig  = new Convert::Binary::C %$CCCFG;
+  @clone = map { new Convert::Binary::C %$CCCFG } 1 .. 2;
 };
 ok($@,'',"failed to create Convert::Binary::C objects");
 

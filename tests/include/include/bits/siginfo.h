@@ -1,31 +1,33 @@
-/* siginfo_t, sigevent and constants.  Linux/SPARC version.
-   Copyright (C) 1997, 1998, 1999, 2000, 2001 Free Software Foundation, Inc.
+/* siginfo_t, sigevent and constants.  Linux version.
+   Copyright (C) 1997-2002, 2003 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+   Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Library General Public
-   License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
 
-#if !defined _SIGNAL_H && !defined __need_siginfo_t
+#if !defined _SIGNAL_H && !defined __need_siginfo_t \
+    && !defined __need_sigevent_t
 # error "Never include this file directly.  Use <signal.h> instead"
 #endif
 
 #include <bits/wordsize.h>
 
-#if (!defined __have_siginfo_t \
-     && (defined _SIGNAL_H || defined __need_siginfo_t))
-# define __have_siginfo_t	1
+#if (!defined __have_sigval_t \
+     && (defined _SIGNAL_H || defined __need_siginfo_t \
+	 || defined __need_sigevent_t))
+# define __have_sigval_t	1
 
 /* Type for data associated with a signal.  */
 typedef union sigval
@@ -33,6 +35,11 @@ typedef union sigval
     int sival_int;
     void *sival_ptr;
   } sigval_t;
+#endif
+
+#if (!defined __have_siginfo_t \
+     && (defined _SIGNAL_H || defined __need_siginfo_t))
+# define __have_siginfo_t	1
 
 # define __SI_MAX_SIZE     128
 # if __WORDSIZE == 64
@@ -62,8 +69,9 @@ typedef struct siginfo
 	/* POSIX.1b timers.  */
 	struct
 	  {
-	    unsigned int _timer1;
-	    unsigned int _timer2;
+	    int si_tid;		/* Timer ID.  */
+	    int si_overrun;	/* Overrun count.  */
+	    sigval_t si_sigval;	/* Signal value.  */
 	  } _timer;
 
 	/* POSIX.1b signals.  */
@@ -103,8 +111,8 @@ typedef struct siginfo
 /* X/Open requires some more fields with fixed names.  */
 # define si_pid		_sifields._kill.si_pid
 # define si_uid		_sifields._kill.si_uid
-# define si_timer1	_sifields._timer._timer1
-# define si_timer2	_sifields._timer._timer2
+# define si_timerid	_sifields._timer.si_tid
+# define si_overrun	_sifields._timer.si_overrun
 # define si_status	_sifields._sigchld.si_status
 # define si_utime	_sifields._sigchld.si_utime
 # define si_stime	_sifields._sigchld.si_stime
@@ -120,7 +128,11 @@ typedef struct siginfo
    signals.  */
 enum
 {
-  SI_SIGIO = -5,		/* Sent by queued SIGIO. */
+  SI_ASYNCNL = -60,		/* Sent by asynch name lookup completion.  */
+# define SI_ASYNCNL	SI_ASYNCNL
+  SI_TKILL = -6,		/* Sent by tkill.  */
+# define SI_TKILL	SI_TKILL
+  SI_SIGIO,			/* Sent by queued SIGIO. */
 # define SI_SIGIO	SI_SIGIO
   SI_ASYNCIO,			/* Sent by AIO completion.  */
 # define SI_ASYNCIO	SI_ASYNCIO
@@ -246,7 +258,8 @@ enum
 #endif	/* !have siginfo_t && (have _SIGNAL_H || need siginfo_t).  */
 
 
-#if defined _SIGNAL_H && !defined __have_sigevent_t
+#if (defined _SIGNAL_H || defined __need_sigevent_t) \
+    && !defined __have_sigevent_t
 # define __have_sigevent_t	1
 
 /* Structure to transport application-defined values with signals.  */
@@ -256,9 +269,6 @@ enum
 # else
 #  define __SIGEV_PAD_SIZE	((__SIGEV_MAX_SIZE / sizeof (int)) - 3)
 # endif
-
-/* Forward declaration of the `pthread_attr_t' type.  */
-struct __pthread_attr_s;
 
 typedef struct sigevent
   {
@@ -270,10 +280,14 @@ typedef struct sigevent
       {
 	int _pad[__SIGEV_PAD_SIZE];
 
+	/* When SIGEV_SIGNAL and SIGEV_THREAD_ID set, LWP ID of the
+	   thread to receive the signal.  */
+	__pid_t _tid;
+
 	struct
 	  {
-	    void (*_function) (sigval_t);	  /* Function to start.  */
-	    struct __pthread_attr_s *_attribute;  /* Really pthread_attr_t.  */
+	    void (*_function) (sigval_t);	/* Function to start.  */
+	    void *_attribute;			/* Really pthread_attr_t.  */
 	  } _sigev_thread;
       } _sigev_un;
   } sigevent_t;
@@ -289,8 +303,11 @@ enum
 # define SIGEV_SIGNAL	SIGEV_SIGNAL
   SIGEV_NONE,			/* Other notification: meaningless.  */
 # define SIGEV_NONE	SIGEV_NONE
-  SIGEV_THREAD			/* Deliver via thread creation.  */
+  SIGEV_THREAD,			/* Deliver via thread creation.  */
 # define SIGEV_THREAD	SIGEV_THREAD
+
+  SIGEV_THREAD_ID = 4		/* Send signal to specific thread.  */
+#define SIGEV_THREAD_ID	SIGEV_THREAD_ID
 };
 
 #endif	/* have _SIGNAL_H.  */
