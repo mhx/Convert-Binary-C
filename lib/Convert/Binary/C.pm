@@ -10,14 +10,14 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/11/24 11:27:01 +0000 $
-# $Revision: 56 $
-# $Snapshot: /Convert-Binary-C/0.49 $
+# $Date: 2004/03/22 19:38:00 +0000 $
+# $Revision: 59 $
+# $Snapshot: /Convert-Binary-C/0.50 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.49 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.50 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -117,7 +117,7 @@ Convert::Binary::C - Binary Data Conversion using C Types
   #---------------------------------------------------
   # Add include paths and global preprocessor defines
   #---------------------------------------------------
-  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.3/include',
+  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.2/include',
                '/usr/include' )
     ->Define( qw( __USE_POSIX __USE_ISOC99=1 ) );
   
@@ -706,6 +706,178 @@ you just have to remove the suffix:
 This would then print:
 
   '.array[9].y' starts at offset 42 of struct foo
+
+=head1 USING HOOKS
+
+Hooks are a new feature and in this early state are considered
+experimental. That means that both interface and behaviour may
+be subject to incompatible changes. Nevertheless hooks are quite
+interesting and can be extremely useful, so read on!
+
+Using hooks, you can easily override the
+way L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> handle data.
+If you define hooks for a certain data type, each time this
+data type is processed the corresponding hook will be called
+to allow you to modify the data.
+
+Here's an example. Let's assume the following C code has been
+parsed:
+
+  typedef unsigned long u_32;
+  typedef u_32 ProtoId;
+  typedef ProtoId MyProtoId;
+  
+  struct MsgHeader {
+    MyProtoId id;
+    u_32      len;
+  };
+  
+  struct String {
+    u_32 len;
+    char buf[];
+  };
+
+You could now use the types above and, for example, unpack
+binary data representing a C<MsgHeader> like this:
+
+  $msg_header = $c->unpack('MsgHeader', $data);
+
+This would give you:
+
+  $msg_header = {
+    'len' => 13,
+    'id' => 42
+  };
+
+Instead of dealing with C<ProtoId>'s as integers, you would
+rather like to have them as clear text. You could provide
+subroutines to convert between clear text and integers:
+
+  %proto = (
+    CATS      =>    1,
+    DOGS      =>   42,
+    HEDGEHOGS => 4711,
+  );
+  
+  %rproto = reverse %proto;
+  
+  sub ProtoId_unpack {
+    $rproto{$_[0]} || 'unknown protocol'
+  }
+  
+  sub ProtoId_pack {
+    $proto{$_[0]} or die 'unknown protocol'
+  }
+
+The hooks feature allows you to register these subroutines
+using the L<C<add_hooks>|/"add_hooks"> method:
+
+  $c->add_hooks(ProtoId => { pack   => \&ProtoId_pack,
+                             unpack => \&ProtoId_unpack });
+
+Doing exactly the same unpack on C<MsgHeader> again would
+now return:
+
+  $msg_header = {
+    'len' => 13,
+    'id' => 'DOGS'
+  };
+
+Actually, if you don't need the reverse operation, you don't even
+have to register a C<pack> hook. Or, even better, you can have a
+more intelligent C<unpack> hook that creates a dual-typed variable:
+
+  use Scalar::Util qw(dualvar);
+  
+  sub ProtoId_unpack2 {
+    dualvar $_[0], $rproto{$_[0]} || 'unknown protocol'
+  }
+  
+  $c->add_hooks(ProtoId => { unpack => \&ProtoId_unpack2 });
+  
+  $msg_header = $c->unpack('MsgHeader', $data);
+
+Just as before, this would print
+
+  $msg_header = {
+    'len' => 13,
+    'id' => 'DOGS'
+  };
+
+but without requiring a C<pack> hook for packing, at least as
+long as you keep the variable dual-typed.
+
+Hooks are called with exactly one argument, which is the data
+that should be processed. They are called in scalar context and
+expected to return the processed data.
+
+To get rid of registered hooks, you can use either
+
+  $c->delete_hooks('ProtoId');
+
+or:
+
+  $c->delete_all_hooks;
+
+Of course, hooks are not restricted to handling integer values.
+You could just as well add hooks for the C<String> struct from
+the code above. A useful example would be to have these hooks:
+
+  sub string_unpack {
+    my $s = shift;
+    pack "c$s->{len}", @{$s->{buf}};
+  }
+  
+  sub string_pack {
+    my $s = shift;
+    return {
+      len => length $s,
+      buf => [ unpack 'c*', $s ],
+    }
+  }
+
+While you would normally get the following output when unpacking
+a C<String>
+
+  $string = {
+    'len' => 12,
+    'buf' => [
+      72,
+      101,
+      108,
+      108,
+      111,
+      32,
+      87,
+      111,
+      114,
+      108,
+      100,
+      33
+    ]
+  };
+
+you could just register the hooks using
+
+  $c->add_hooks(String => { pack   => \&string_pack,
+                            unpack => \&string_unpack });
+
+and you would get a nice human-readable string:
+
+  $string = 'Hello World!';
+
+Packing a string turns out to be just as easy:
+
+  use Data::Hexdumper;
+  
+  $data = $c->pack('String', 'Just another Perl hacker,');
+  
+  print hexdump(data => $data);
+
+This would print:
+
+    0x0000 : 00 00 00 19 4A 75 73 74 20 61 6E 6F 74 68 65 72 : ....Just.another
+    0x0010 : 20 50 65 72 6C 20 68 61 63 6B 65 72 2C          : .Perl.hacker,
 
 =head1 METHODS
 
@@ -2450,7 +2622,7 @@ moment it was parsed.
   # Create object, set include path, parse 'string.h' header
   #----------------------------------------------------------
   my $c = Convert::Binary::C->new
-          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.3/include',
+          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.2/include',
                      '/usr/include' )
           ->parse_file( 'string.h' );
   
@@ -2470,36 +2642,36 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1069106991,
-      'mtime' => 1069106973,
-      'size' => 10723
+      'ctime' => 1075114449,
+      'mtime' => 1075114440,
+      'size' => 10792
+    },
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.2/include/stddef.h' => {
+      'ctime' => 1076362098,
+      'mtime' => 1076362094,
+      'size' => 12695
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1069106986,
-      'mtime' => 1069106973,
+      'ctime' => 1075114448,
+      'mtime' => 1075114440,
       'size' => 8600
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1069106986,
-      'mtime' => 1069106973,
-      'size' => 1111
-    },
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.3/include/stddef.h' => {
-      'ctime' => 1065452957,
-      'mtime' => 1065452944,
-      'size' => 12695
+      'ctime' => 1075114447,
+      'mtime' => 1075114440,
+      'size' => 733
     },
     '/usr/include/string.h' => {
-      'ctime' => 1069106990,
-      'mtime' => 1069106973,
+      'ctime' => 1075114449,
+      'mtime' => 1075114440,
       'size' => 14226
     }
   };
   @files = (
     '/usr/include/features.h',
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.2/include/stddef.h',
     '/usr/include/sys/cdefs.h',
     '/usr/include/gnu/stubs.h',
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.3/include/stddef.h',
     '/usr/include/string.h'
   );
 
@@ -3247,6 +3419,70 @@ a description on how to interpret this hash.
 
 =back
 
+=head2 add_hooks
+
+=over 8
+
+=item C<add_hooks> TYPE =E<gt> { HOOK =E<gt> SUB, ... }, ...
+
+This method allows you to register subroutines as hooks.
+Hooks are called whenever a certain C<TYPE> is packed or
+unpacked. Hooks are currently considered an experimental
+feature.
+
+You can register hooks for all types except for basic types.
+This means you cannot register a hook for C<int>. C<TYPE> is
+the type you want to register a hook for. C<HOOK> is
+either C<'pack'> or C<'unpack'>. C<SUB> is a reference to
+a subroutine that takes on input argument, processes it and
+returns one output argument.
+
+You can register hooks for as many types as you like with
+one call to L<C<add_hooks>|/"add_hooks">:
+
+  $c->add_hooks(ObjectType => { pack   => \&obj_pack,
+                                unpack => \&obj_unpack },
+                ProtocolId => { unpack => sub {
+                                            $protos[$_[0]]
+                                          } });
+
+To remove registered hooks, use
+either L<C<delete_hooks>|/"delete_hooks"> or L<C<delete_all_hooks>|/"delete_all_hooks">.
+
+You can also use L<C<add_hooks>|/"add_hooks"> to update
+hooks for types already registered. To remove only a single
+subroutine, pass C<undef> instead of a subroutine reference.
+
+  $c->add_hooks(ObjectType => { pack => undef });
+
+If all subroutines are removed, the whole hook is removed.
+
+See L<TYPE|/"USING HOOKS"> for examples on how to use hooks.
+
+=back
+
+=head2 delete_hooks
+
+=over 8
+
+=item C<delete_hooks> LIST
+
+Deletes the hooks for all types passed in.
+
+  $c->delete_hooks(qw(ObjectType ProtocolId));
+
+=back
+
+=head2 delete_all_hooks
+
+=over 8
+
+=item C<delete_all_hooks>
+
+Removes all registered hooks.
+
+=back
+
 =head1 FUNCTIONS
 
 =head2 Convert::Binary::C::feature
@@ -3395,6 +3631,92 @@ which means that no information is collected from the file
 or code that is parsed. However, the preprocessor will run,
 which is useful for benchmarking the preprocessor.
 
+=head1 FLEXIBLE ARRAY MEMBERS AND INCOMPLETE TYPES
+
+Flexible array members are a feature introduced with ISO-C99.
+It's a common problem that you have a variable length data
+field at the end of a structure, for example an array of
+characters at the end of a message struct. ISO-C99 allows
+you to write this as:
+
+  struct message {
+    long header;
+    char data[];
+  };
+
+The advantage is that you clearly indicate that the size
+of the appended data is variable, and that the C<data> member
+doesn't contribute to the size of the C<message> structure.
+
+When packing or unpacking data, Convert::Binary::C deals with
+flexible array members as if their length was adjustable. For
+example, L<C<unpack>|/"unpack"> will adapt the length of the
+array depending on the input string:
+
+  $msg1 = $c->unpack('message', 'abcdefg');
+  $msg2 = $c->unpack('message', 'abcdefghijkl');
+
+The following data is unpacked:
+
+  $msg1 = {
+    'data' => [
+      101,
+      102,
+      103
+    ],
+    'header' => 1633837924
+  };
+  $msg2 = {
+    'data' => [
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108
+    ],
+    'header' => 1633837924
+  };
+
+Similarly, pack will adjust the length of the output string
+according to the data you feed in:
+
+  use Data::Hexdumper;
+  
+  $msg = {
+    header => 4711,
+    data   => [0x10, 0x20, 0x30, 0x40, 0x77..0x88],
+  };
+  
+  $data = $c->pack('message', $msg);
+  
+  print hexdump(data => $data);
+
+This would print:
+
+    0x0000 : 00 00 12 67 10 20 30 40 77 78 79 7A 7B 7C 7D 7E : ...g..0@wxyz{|}~
+    0x0010 : 7F 80 81 82 83 84 85 86 87 88                   : ..........
+
+Incomplete types such as
+
+  typedef unsigned long array[];
+
+are handled in exactly the same way. Thus, you can easily
+
+  $array = $c->unpack('array', '?'x20);
+
+which will unpack the following array:
+
+  $array = [
+    1061109567,
+    1061109567,
+    1061109567,
+    1061109567,
+    1061109567
+  ];
+
 =head1 FLOATING POINT VALUES
 
 When using Convert::Binary::C to handle floating point values,
@@ -3517,11 +3839,103 @@ of a structure yet.
 
 Convert::Binary::C was designed to be thread-safe.
 
-Since the used preprocessor unfortunately isn't
-re-entrant, source code parsing using
-the L<C<parse>|/"parse"> and L<C<parse_file>|/"parse_file"> methods
-is locked, so don't expect these routines to run in parallel
-on multithreaded perls.
+=head1 PORTABILITY
+
+Convert::Binary::C should build and run on most of the
+platforms that Perl runs on:
+
+=over 4
+
+=item *
+
+Various Linux systems
+
+=item *
+
+Various BSD systems
+
+=item *
+
+HP-UX
+
+=item *
+
+Compaq/HP Tru64 Unix
+
+=item *
+
+Mac-OS X
+
+=item *
+
+Cygwin
+
+=item *
+
+Windows 98/NT/2000/XP
+
+=back
+
+Also, many architectures are supported:
+
+=over 4
+
+=item *
+
+Various Intel Pentium and Itanium systems
+
+=item *
+
+Various Alpha systems
+
+=item *
+
+HP PA-RISC
+
+=item *
+
+Power-PC
+
+=item *
+
+StrongARM
+
+=back
+
+The module should build with any perl binary from 5.5.3
+up to the latest development version.
+
+=head1 COMPARISON WITH SIMILAR MODULES
+
+Most of the time when you're really looking for
+Convert::Binary::C you'll actually end up finding
+one of the following modules. Some of them have
+different goals, so it's probably worth pointing
+out the differences.
+
+=head2 C::Include
+
+Like Convert::Binary::C, this module aims at doing
+conversion from an to binary data based on C types.
+However, its configurability is very limited compared
+to Convert::Binary::C. Also, it does not parse all C
+code correctly. It's slower than Convert::Binary::C,
+doesn't have a preprocessor. On the plus side, it's
+written in pure Perl.
+
+=head2 C::DynaLib::Struct
+
+This module doesn't allow you to reuse your C source
+code. One main goal of Convert::Binary::C was to avoid
+code duplication or, even worse, having to maintain
+different representations of your data structures.
+Like C::Include, C::DynaLib::Struct is rather limited
+in its configurability.
+
+=head2 Win32::API::Struct
+
+This module has a special purpose. It aims at building
+structs for interfacing Perl code with Windows API code.
 
 =head1 CREDITS
 
@@ -3536,6 +3950,11 @@ joy and last but not least for proofreading the documentation.
 
 Alain Barbet E<lt>alian@cpan.orgE<gt> for testing and debugging
 support.
+
+=item *
+
+Mitchell N. Charity for giving me pointers into various
+interesting directions.
 
 =item *
 
@@ -3619,7 +4038,7 @@ want to rate the module at L<http://cpanratings.perl.org/>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
@@ -3635,8 +4054,9 @@ linked to the source code of this module in any other way.
 
 =head1 SEE ALSO
 
-See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar> and L<Data::Dumper>.
+See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
+
 
 

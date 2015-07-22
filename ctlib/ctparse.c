@@ -10,14 +10,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/11/21 12:50:37 +0000 $
-* $Revision: 32 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 19:37:56 +0000 $
+* $Revision: 37 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -47,6 +47,8 @@
 #include "ucpp/mem.h" /* for report_leaks() */
 #endif
 
+#include "cppreent.h"
+
 
 /*===== DEFINES ==============================================================*/
 
@@ -74,7 +76,9 @@ static void update_struct( const CParseConfig *pCPC, Struct *pStruct );
 
 /*===== GLOBAL VARIABLES =====================================================*/
 
+#ifndef UCPP_REENTRANT
 CParseInfo *g_current_cpi;
+#endif
 
 
 /*===== STATIC VARIABLES =====================================================*/
@@ -312,11 +316,16 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
   FILE              *infile;
   struct lexer_state lexer;
   ParserState       *pState;
+#ifdef UCPP_REENTRANT
+  struct CPP        *cpp;
+#endif
 
   CT_DEBUG( CTLIB, ("ctparse::parse_buffer( %s, %p, %p, %p )",
             filename ? filename : BUFFER_NAME, pBuf, pCPI, pCPC) );
 
+#ifndef UCPP_REENTRANT
   g_current_cpi = pCPI;
+#endif
 
   /*----------------------------------*/
   /* Initialize parse info structures */
@@ -375,7 +384,9 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
       if( infile == NULL ) {
         Free( file );
         push_error( pCPI, "Cannot find input file '%s'", filename );
+#ifndef UCPP_REENTRANT
         g_current_cpi = NULL;
+#endif
         return 0;
       }
     }
@@ -387,25 +398,36 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
 
   CT_DEBUG( CTLIB, ("initializing preprocessor") );
 
-  init_cpp();
+#ifdef UCPP_REENTRANT
+  cpp = new_cpp();
+#endif
 
-  no_special_macros = 0;
-  emit_defines      = 0;
-  emit_assertions   = 0;
-  emit_dependencies = 0;
+  init_cpp(aUCPP);
 
-  init_tables( 1 );
+#ifdef UCPP_REENTRANT
+  cpp->ucpp_ouch    = my_ucpp_ouch;
+  cpp->ucpp_error   = my_ucpp_error;
+  cpp->ucpp_warning = my_ucpp_warning;
+  cpp->callback_arg = (void *) pCPI;
+#endif
+
+  r_no_special_macros = 0;
+  r_emit_defines      = 0;
+  r_emit_assertions   = 0;
+  r_emit_dependencies = 0;
+
+  init_tables( aUCPP_ 1 );
 
   CT_DEBUG( CTLIB, ("configuring preprocessor") );
 
-  init_include_path( NULL );
+  init_include_path( aUCPP_ NULL );
 
   if( filename != NULL ) {
-    set_init_filename(file, 1);
+    set_init_filename( aUCPP_ file, 1 );
     Free( file );
   }
   else
-    set_init_filename(BUFFER_NAME, 0);
+    set_init_filename( aUCPP_ BUFFER_NAME, 0 );
 
   init_lexer_state( &lexer );
   init_lexer_mode( &lexer );
@@ -440,30 +462,30 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
 
   LL_foreach( str, pCPC->includes ) {
     CT_DEBUG( CTLIB, ("adding include path '%s'", str) );
-    add_incpath( str );
+    add_incpath( aUCPP_ str );
   }
 
   /* Make defines */
 
   LL_foreach( str, pCPC->defines ) {
     CT_DEBUG( CTLIB, ("defining macro '%s'", str) );
-    (void) define_macro( &lexer, str );
+    (void) define_macro( aUCPP_ &lexer, str );
   }
 
   /* Make assertions */
 
   LL_foreach( str, pCPC->assertions ) {
     CT_DEBUG( CTLIB, ("making assertion '%s'", str) );
-    (void) make_assertion( str );
+    (void) make_assertion( aUCPP_ str );
   }
 
-  enter_file( &lexer, lexer.flags );
+  enter_file( aUCPP_ &lexer, lexer.flags );
 
   /*---------------------*/
   /* Create the C parser */
   /*---------------------*/
 
-  pState = c_parser_new( pCPC, pCPI, &lexer );
+  pState = c_parser_new( pCPC, pCPI, aUCPP_ &lexer );
 
   /*-----------------*/
   /* Parse the input */
@@ -484,10 +506,14 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
   /*-------------------------------*/
 
   if( rval || (pCPC->flags & DISABLE_PARSER) )
-    while( lex( &lexer ) < CPPERR_EOF );
+    while( lex( aUCPP_ &lexer ) < CPPERR_EOF );
 
   free_lexer_state( &lexer );
-  wipeout();
+  wipeout( aUCPP );
+
+#ifdef UCPP_REENTRANT
+  del_cpp( cpp );
+#endif
 
 #ifdef MEM_DEBUG
   report_leaks();
@@ -514,7 +540,10 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
   }
 #endif
 
+#ifndef UCPP_REENTRANT
   g_current_cpi = NULL;
+#endif
+
   return rval ? 0 : 1;
 }
 
@@ -895,9 +924,9 @@ void clone_parse_info( CParseInfo *pDest, CParseInfo *pSrc )
 *
 *******************************************************************************/
 
-ErrorGTI get_type_info( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
-                        unsigned *pSize, unsigned *pAlign, unsigned *pItemSize,
-                        u_32 *pFlags )
+ErrorGTI get_type_info( const CParseConfig *pCPC, const TypeSpec *pTS,
+                        const Declarator *pDecl, unsigned *pSize,
+                        unsigned *pAlign, unsigned *pItemSize, u_32 *pFlags )
 {
   u_32 flags = pTS->tflags;
   void *tptr = pTS->ptr;
@@ -1019,21 +1048,22 @@ ErrorGTI get_type_info( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDe
   if( pItemSize )
     *pItemSize = size;
 
-  if( pDecl && pDecl->array ) {
-    Value *pValue;
+  if( pSize ) {
+    if( pDecl && pDecl->array ) {
+      Value *pValue;
 
-    CT_DEBUG( CTLIB, ("processing array [%p]", pDecl->array) );
+      CT_DEBUG( CTLIB, ("processing array [%p]", pDecl->array) );
 
-    LL_foreach( pValue, pDecl->array ) {
-      CT_DEBUG( CTLIB, ("[%ld]", pValue->iv) );
-      size *= pValue->iv;
-      if( pFlags && IS_UNSAFE_VAL( *pValue ) )
-        *pFlags |= T_UNSAFE_VAL;
+      LL_foreach( pValue, pDecl->array ) {
+        CT_DEBUG( CTLIB, ("[%ld]", pValue->iv) );
+        size *= pValue->iv;
+        if( pFlags && IS_UNSAFE_VAL( *pValue ) )
+          *pFlags |= T_UNSAFE_VAL;
+      }
     }
-  }
 
-  if( pSize )
     *pSize = size;
+  }
 
   CT_DEBUG( CTLIB, ("ctparse::get_type_info( size(%p)=%d, align(%p)=%d, "
                     "item(%p)=%d, flags(%p)=0x%08lX ) finished",

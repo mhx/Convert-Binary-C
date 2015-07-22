@@ -1,4 +1,24 @@
 ------------
+Version 0.50
+------------
+
+* added support for flexible array members and incomplete
+  types
+
+* added support for registering pack/unpack hooks to allow
+  user-defined packing/unpacking
+
+* ucpp is now reentrant, thus there's no more locking of
+  parse/parse_file
+
+* fixed a memory leak when using OrderMembers => 1
+
+* improved ccconfig's detection of ability to compile
+  object/executable files
+
+* lots of minor bugfixes and code cleanups
+
+------------
 Version 0.49
 ------------
 

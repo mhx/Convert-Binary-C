@@ -217,12 +217,13 @@
 
 /* operations on the unsigned type */
 
-ARITH_DECL_MONO_S_U(to_u) { return (arith_u)x; }
-ARITH_DECL_MONO_I_U(fromint) { return (arith_u)x; }
-ARITH_DECL_MONO_L_U(fromulong) { return (arith_u)x; }
+ARITH_DECL_MONO_S_U(to_u) { useARI; return (arith_u)x; }
+ARITH_DECL_MONO_I_U(fromint) { useARI; return (arith_u)x; }
+ARITH_DECL_MONO_L_U(fromulong) { useARI; return (arith_u)x; }
 
 ARITH_DECL_MONO_U_I(toint)
 {
+	useARI;
 #if NATIVE_UNSIGNED_MAX > INT_MAX
 	if (x > (arith_u)INT_MAX) return INT_MAX;
 #endif
@@ -231,32 +232,34 @@ ARITH_DECL_MONO_U_I(toint)
 
 ARITH_DECL_MONO_U_L(toulong)
 {
+	useARI;
 #if NATIVE_UNSIGNED_MAX > LONG_MAX
 	if (x > (arith_u)LONG_MAX) return LONG_MAX;
 #endif
 	return (long)x;
 }
 
-ARITH_DECL_MONO_U_U(neg) { return -x; }
-ARITH_DECL_MONO_U_U(not) { return ~x; }
-ARITH_DECL_MONO_U_I(lnot) { return !x; }
-ARITH_DECL_MONO_U_I(lval) { return x != 0; }
+ARITH_DECL_MONO_U_U(neg) { useARI; return -x; }
+ARITH_DECL_MONO_U_U(not) { useARI; return ~x; }
+ARITH_DECL_MONO_U_I(lnot) { useARI; return !x; }
+ARITH_DECL_MONO_U_I(lval) { useARI; return x != 0; }
 
-ARITH_DECL_BI_UU_U(plus) { return x + y; }
-ARITH_DECL_BI_UU_U(minus) { return x - y; }
-ARITH_DECL_BI_UU_I(lt) { return x < y; }
-ARITH_DECL_BI_UU_I(leq) { return x <= y; }
-ARITH_DECL_BI_UU_I(gt) { return x > y; }
-ARITH_DECL_BI_UU_I(geq) { return x >= y; }
-ARITH_DECL_BI_UU_I(same) { return x == y; }
-ARITH_DECL_BI_UU_I(neq) { return x != y; }
-ARITH_DECL_BI_UU_U(and) { return x & y; }
-ARITH_DECL_BI_UU_U(xor) { return x ^ y; }
-ARITH_DECL_BI_UU_U(or) { return x | y; }
-ARITH_DECL_BI_UU_U(star) { return x * y; }
+ARITH_DECL_BI_UU_U(plus) { useARI; return x + y; }
+ARITH_DECL_BI_UU_U(minus) { useARI; return x - y; }
+ARITH_DECL_BI_UU_I(lt) { useARI; return x < y; }
+ARITH_DECL_BI_UU_I(leq) { useARI; return x <= y; }
+ARITH_DECL_BI_UU_I(gt) { useARI; return x > y; }
+ARITH_DECL_BI_UU_I(geq) { useARI; return x >= y; }
+ARITH_DECL_BI_UU_I(same) { useARI; return x == y; }
+ARITH_DECL_BI_UU_I(neq) { useARI; return x != y; }
+ARITH_DECL_BI_UU_U(and) { useARI; return x & y; }
+ARITH_DECL_BI_UU_U(xor) { useARI; return x ^ y; }
+ARITH_DECL_BI_UU_U(or) { useARI; return x | y; }
+ARITH_DECL_BI_UU_U(star) { useARI; return x * y; }
 
 ARITH_DECL_BI_UI_U(lsh)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 	if (y >= NATIVE_UNSIGNED_BITS)
 		ARITH_WARNING(ARITH_EXCEP_LSH_W);
@@ -268,6 +271,7 @@ ARITH_DECL_BI_UI_U(lsh)
 
 ARITH_DECL_BI_UI_U(rsh)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 	if (y >= NATIVE_UNSIGNED_BITS)
 		ARITH_WARNING(ARITH_EXCEP_RSH_W);
@@ -279,12 +283,14 @@ ARITH_DECL_BI_UI_U(rsh)
 
 ARITH_DECL_BI_UU_U(slash)
 {
+	useARI;
 	if (y == 0) ARITH_ERROR(ARITH_EXCEP_SLASH_D);
 	return x / y;
 }
 
 ARITH_DECL_BI_UU_U(pct)
 {
+	useARI;
 	if (y == 0) ARITH_ERROR(ARITH_EXCEP_PCT_D);
 	return x % y;
 }
@@ -293,6 +299,7 @@ ARITH_DECL_BI_UU_U(pct)
 
 ARITH_DECL_MONO_U_S(to_s)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 #if !SIGNED_IS_BIGGER
 	if (x > (arith_u)NATIVE_SIGNED_MAX)
@@ -302,11 +309,12 @@ ARITH_DECL_MONO_U_S(to_s)
 	return (arith_s)x;
 }
 
-ARITH_DECL_MONO_I_S(fromint) { return (arith_s)x; }
-ARITH_DECL_MONO_L_S(fromlong) { return (arith_s)x; }
+ARITH_DECL_MONO_I_S(fromint) { useARI; return (arith_s)x; }
+ARITH_DECL_MONO_L_S(fromlong) { useARI; return (arith_s)x; }
 
 ARITH_DECL_MONO_S_I(toint)
 {
+	useARI;
 #if NATIVE_SIGNED_MIN < INT_MIN
 	if (x < (arith_s)INT_MIN) return INT_MIN;
 #endif
@@ -318,6 +326,7 @@ ARITH_DECL_MONO_S_I(toint)
 
 ARITH_DECL_MONO_S_L(tolong)
 {
+	useARI;
 #if NATIVE_SIGNED_MIN < LONG_MIN
 	if (x < (arith_s)LONG_MIN) return LONG_MIN;
 #endif
@@ -329,6 +338,7 @@ ARITH_DECL_MONO_S_L(tolong)
 
 ARITH_DECL_MONO_S_S(neg)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 #if NEGATIVE_IS_BIGGER
 	if (x == NATIVE_SIGNED_MIN)
@@ -340,6 +350,7 @@ ARITH_DECL_MONO_S_S(neg)
 
 ARITH_DECL_MONO_S_S(not)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 #if TRAP_REPRESENTATION
 	if (
@@ -356,8 +367,8 @@ ARITH_DECL_MONO_S_S(not)
 	return ~x;
 }
 
-ARITH_DECL_MONO_S_I(lnot) { return !x; }
-ARITH_DECL_MONO_S_I(lval) { return x != 0; }
+ARITH_DECL_MONO_S_I(lnot) { useARI; return !x; }
+ARITH_DECL_MONO_S_I(lval) { useARI; return x != 0; }
 
 /*
  * Addition of signed values:
@@ -384,6 +395,7 @@ ARITH_DECL_MONO_S_I(lval) { return x != 0; }
  */
 ARITH_DECL_BI_SS_S(plus)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 	if (x > 0 && y > 0 && (
 #if SIGNED_IS_BIGGER
@@ -433,6 +445,7 @@ ARITH_DECL_BI_SS_S(plus)
  */
 ARITH_DECL_BI_SS_S(minus)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 	if (x > 0 && y < 0 && (
 #if NEGATIVE_IS_BIGGER
@@ -466,12 +479,12 @@ ARITH_DECL_BI_SS_S(minus)
 	return x - y;
 }
 
-ARITH_DECL_BI_SS_I(lt) { return x < y; }
-ARITH_DECL_BI_SS_I(leq) { return x <= y; }
-ARITH_DECL_BI_SS_I(gt) { return x > y; }
-ARITH_DECL_BI_SS_I(geq) { return x >= y; }
-ARITH_DECL_BI_SS_I(same) { return x == y; }
-ARITH_DECL_BI_SS_I(neq) { return x != y; }
+ARITH_DECL_BI_SS_I(lt) { useARI; return x < y; }
+ARITH_DECL_BI_SS_I(leq) { useARI; return x <= y; }
+ARITH_DECL_BI_SS_I(gt) { useARI; return x > y; }
+ARITH_DECL_BI_SS_I(geq) { useARI; return x >= y; }
+ARITH_DECL_BI_SS_I(same) { useARI; return x == y; }
+ARITH_DECL_BI_SS_I(neq) { useARI; return x != y; }
 
 /*
  * Provided neither x nor y is a trap representation:
@@ -483,6 +496,7 @@ ARITH_DECL_BI_SS_I(neq) { return x != y; }
  */
 ARITH_DECL_BI_SS_S(and)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 #if TRAP_REPRESENTATION && !ONES_COMPLEMENT
 	if (x < 0 && y < 0 && ((-x) & (-y)) == 0)
@@ -500,6 +514,7 @@ ARITH_DECL_BI_SS_S(and)
  */
 ARITH_DECL_BI_SS_S(xor)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 #if TRAP_REPRESENTATION
 	if (
@@ -524,6 +539,7 @@ ARITH_DECL_BI_SS_S(xor)
  */
 ARITH_DECL_BI_SS_S(or)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 #if TRAP_REPRESENTATION
 #if ONES_COMPLEMENT
@@ -548,6 +564,7 @@ ARITH_DECL_BI_SS_S(or)
  */
 ARITH_DECL_BI_SI_S(lsh)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 	if (y < 0) ARITH_WARNING(ARITH_EXCEP_LSH_C);
 	else if (
@@ -574,6 +591,7 @@ ARITH_DECL_BI_SI_S(lsh)
  */
 ARITH_DECL_BI_SI_S(rsh)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 	if (y < 0) ARITH_WARNING(ARITH_EXCEP_RSH_C);
 	else if (
@@ -599,6 +617,7 @@ ARITH_DECL_BI_SI_S(rsh)
  */
 ARITH_DECL_BI_SS_S(star)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 	if (x == 0 || y == 0) return 0;
 	if (x > 0 && y > 0) {
@@ -814,13 +833,13 @@ static arith_u SIMUL_ONE = { 0, 1 };
  * not maintained in the value structure itself. This is a job for
  * the programmer / compiler.
  */
-ARITH_DECL_MONO_S_U(to_u) { return x; }
+ARITH_DECL_MONO_S_U(to_u) { useARI; return x; }
 
 ARITH_DECL_MONO_I_U(fromint)
 {
 	arith_u z;
 
-	if (x < 0) return arith_op_u(neg)(arith_op_u(fromint)(-x));
+	if (x < 0) return arith_op_u(neg)(aARI_ arith_op_u(fromint)(aARI_ -x));
 	/*
 	 * This code works because types smaller than int are promoted
 	 * by the C compiler before evaluating the >> operator.
@@ -833,6 +852,7 @@ ARITH_DECL_MONO_I_U(fromint)
 ARITH_DECL_MONO_L_U(fromulong)
 {
 	arith_u z;
+	useARI;
 
 #if (ULONG_MAX >> (SIMUL_LSW_WIDTH - 1)) >> 1 == 0
 	z.msw = 0;
@@ -846,6 +866,7 @@ ARITH_DECL_MONO_L_U(fromulong)
 
 ARITH_DECL_MONO_U_I(toint)
 {
+	useARI;
 #if ((INT_MAX >> (SIMUL_LSW_WIDTH - 1)) >> 1) == 0
 	if (x.msw != 0 || x.lsw > (SIMUL_ARITH_SUBTYPE)INT_MAX)
 		return INT_MAX;
@@ -861,6 +882,7 @@ ARITH_DECL_MONO_U_I(toint)
 
 ARITH_DECL_MONO_U_L(toulong)
 {
+	useARI;
 #if ((ULONG_MAX >> (SIMUL_LSW_WIDTH - 1)) >> 1) == 0
 	if (x.msw != 0 || x.lsw > (SIMUL_ARITH_SUBTYPE)ULONG_MAX)
 		return ULONG_MAX;
@@ -876,12 +898,13 @@ ARITH_DECL_MONO_U_L(toulong)
 
 ARITH_DECL_MONO_U_U(neg)
 {
-	x = arith_op_u(not)(x);
-	return arith_op_u(plus)(x, SIMUL_ONE);
+	x = arith_op_u(not)(aARI_ x);
+	return arith_op_u(plus)(aARI_ x, SIMUL_ONE);
 }
 
 ARITH_DECL_MONO_U_U(not)
 {
+	useARI;
 	x.msw = TMSW(~x.msw);
 	x.lsw = TLSW(~x.lsw);
 	return x;
@@ -889,16 +912,19 @@ ARITH_DECL_MONO_U_U(not)
 
 ARITH_DECL_MONO_U_I(lnot)
 {
+	useARI;
 	return x.msw == 0 && x.lsw == 0;
 }
 
 ARITH_DECL_MONO_U_I(lval)
 {
+	useARI;
 	return x.msw != 0 || x.lsw != 0;
 }
 
 ARITH_DECL_BI_UU_U(plus)
 {
+	useARI;
 	x.lsw = TLSW(x.lsw + y.lsw);
 	x.msw = TMSW(x.msw + y.msw);
 	if (x.lsw < y.lsw) x.msw = TMSW(x.msw + 1);
@@ -907,11 +933,12 @@ ARITH_DECL_BI_UU_U(plus)
 
 ARITH_DECL_BI_UU_U(minus)
 {
-	return arith_op_u(plus)(x, arith_op_u(neg)(y));
+	return arith_op_u(plus)(aARI_ x, arith_op_u(neg)(aARI_ y));
 }
 
 ARITH_DECL_BI_UI_U(lsh)
 {
+	useARI;
 	if (y == 0) return x;
 #ifdef ARITHMETIC_CHECKS
 	if (y < 0) ARITH_WARNING(ARITH_EXCEP_LSH_C);
@@ -934,6 +961,7 @@ ARITH_DECL_BI_UI_U(lsh)
 
 ARITH_DECL_BI_UI_U(rsh)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 	if (y < 0) ARITH_WARNING(ARITH_EXCEP_RSH_C);
 	else if (y >= SIMUL_NUMBITS) ARITH_WARNING(ARITH_EXCEP_RSH_W);
@@ -951,36 +979,40 @@ ARITH_DECL_BI_UI_U(rsh)
 
 ARITH_DECL_BI_UU_I(lt)
 {
+	useARI;
 	return x.msw < y.msw || (x.msw == y.msw && x.lsw < y.lsw);
 }
 
 ARITH_DECL_BI_UU_I(leq)
 {
+	useARI;
 	return x.msw < y.msw || (x.msw == y.msw && x.lsw <= y.lsw);
 }
 
 ARITH_DECL_BI_UU_I(gt)
 {
-	return arith_op_u(lt)(y, x);
+	return arith_op_u(lt)(aARI_ y, x);
 }
 
 ARITH_DECL_BI_UU_I(geq)
 {
-	return arith_op_u(leq)(y, x);
+	return arith_op_u(leq)(aARI_ y, x);
 }
 
 ARITH_DECL_BI_UU_I(same)
 {
+	useARI;
 	return x.msw == y.msw && x.lsw == y.lsw;
 }
 
 ARITH_DECL_BI_UU_I(neq)
 {
-	return !arith_op_u(same)(x, y);
+	return !arith_op_u(same)(aARI_ x, y);
 }
 
 ARITH_DECL_BI_UU_U(and)
 {
+	useARI;
 	x.msw &= y.msw;
 	x.lsw &= y.lsw;
 	return x;
@@ -988,6 +1020,7 @@ ARITH_DECL_BI_UU_U(and)
 
 ARITH_DECL_BI_UU_U(xor)
 {
+	useARI;
 	x.msw ^= y.msw;
 	x.lsw ^= y.lsw;
 	return x;
@@ -995,6 +1028,7 @@ ARITH_DECL_BI_UU_U(xor)
 
 ARITH_DECL_BI_UU_U(or)
 {
+	useARI;
 	x.msw |= y.msw;
 	x.lsw |= y.lsw;
 	return x;
@@ -1017,6 +1051,7 @@ ARITH_DECL_BI_UU_U(star)
 
 	b &= ~(SIMUL_ONE_TMP << (SIMUL_LSW_WIDTH - 1));
 #endif
+	useARI;
 
 	t00 = (a & SIMUL_LSW_HALFMASK) * (b & SIMUL_LSW_HALFMASK);
 	t01 = (a & SIMUL_LSW_HALFMASK) * (b >> SIMUL_LSW_HALFLEN);
@@ -1049,7 +1084,7 @@ ARITH_DECL_BI_UU_U(star)
  * This function calculates the unsigned integer division, yielding
  * both quotient and remainder. The divider (y) MUST be non-zero.
  */
-static void arith_op_u(udiv)(arith_u x, arith_u y, arith_u *q, arith_u *r)
+static void arith_op_u(udiv)(pARI_ arith_u x, arith_u y, arith_u *q, arith_u *r)
 {
 	int i, j;
 	arith_u a;
@@ -1062,20 +1097,20 @@ static void arith_op_u(udiv)(arith_u x, arith_u y, arith_u *q, arith_u *r)
 		if (i < (int)SIMUL_LSW_WIDTH && (y.lsw & (SIMUL_ONE_TMP << i)))
 			break;
 	}
-	a = arith_op_u(lsh)(y, SIMUL_NUMBITS - 1 - i);
+	a = arith_op_u(lsh)(aARI_ y, SIMUL_NUMBITS - 1 - i);
 	for (j = SIMUL_NUMBITS - 1 - i; j >= SIMUL_LSW_WIDTH; j --) {
-		if (arith_op_u(leq)(a, x)) {
-			x = arith_op_u(minus)(x, a);
+		if (arith_op_u(leq)(aARI_ a, x)) {
+			x = arith_op_u(minus)(aARI_ x, a);
 			q->msw |= SIMUL_ONE_TMP << (j - SIMUL_LSW_WIDTH);
 		}
-		a = arith_op_u(rsh)(a, 1);
+		a = arith_op_u(rsh)(aARI_ a, 1);
 	}
 	for (; j >= 0; j --) {
-		if (arith_op_u(leq)(a, x)) {
-			x = arith_op_u(minus)(x, a);
+		if (arith_op_u(leq)(aARI_ a, x)) {
+			x = arith_op_u(minus)(aARI_ x, a);
 			q->lsw |= SIMUL_ONE_TMP << j;
 		}
-		a = arith_op_u(rsh)(a, 1);
+		a = arith_op_u(rsh)(aARI_ a, 1);
 	}
 	*r = x;
 }
@@ -1084,9 +1119,9 @@ ARITH_DECL_BI_UU_U(slash)
 {
 	arith_u q, r;
 
-	if (arith_op_u(same)(y, SIMUL_ZERO))
+	if (arith_op_u(same)(aARI_ y, SIMUL_ZERO))
 		ARITH_ERROR(ARITH_EXCEP_SLASH_D);
-	arith_op_u(udiv)(x, y, &q, &r);
+	arith_op_u(udiv)(aARI_ x, y, &q, &r);
 	return q;
 }
 
@@ -1094,9 +1129,9 @@ ARITH_DECL_BI_UU_U(pct)
 {
 	arith_u q, r;
 
-	if (arith_op_u(same)(y, SIMUL_ZERO))
+	if (arith_op_u(same)(aARI_ y, SIMUL_ZERO))
 		ARITH_ERROR(ARITH_EXCEP_PCT_D);
-	arith_op_u(udiv)(x, y, &q, &r);
+	arith_op_u(udiv)(aARI_ x, y, &q, &r);
 	return r;
 }
 
@@ -1107,31 +1142,32 @@ ARITH_DECL_BI_UU_U(pct)
 
 ARITH_DECL_MONO_U_S(to_s)
 {
+	useARI;
 #ifdef ARITHMETIC_CHECKS
 	if (x.msw & SIMUL_TRAP) ARITH_WARNING(ARITH_EXCEP_CONV_O);
 #endif
 	return x;
 }
 
-ARITH_DECL_MONO_I_S(fromint) { return arith_op_u(fromint)(x); }
+ARITH_DECL_MONO_I_S(fromint) { return arith_op_u(fromint)(aARI_ x); }
 ARITH_DECL_MONO_L_S(fromlong)
 {
-	if (x < 0) return arith_op_u(neg)(
-		arith_op_u(fromulong)((unsigned long)(-x)));
-	return arith_op_u(fromulong)((unsigned long)x);
+	if (x < 0) return arith_op_u(neg)(aARI_
+		arith_op_u(fromulong)(aARI_ (unsigned long)(-x)));
+	return arith_op_u(fromulong)(aARI_ (unsigned long)x);
 }
 
 ARITH_DECL_MONO_S_I(toint)
 {
-	if (x.msw & SIMUL_TRAP) return -arith_op_u(toint)(arith_op_u(neg)(x));
-	return arith_op_u(toint)(x);
+	if (x.msw & SIMUL_TRAP) return -arith_op_u(toint)(aARI_ arith_op_u(neg)(aARI_ x));
+	return arith_op_u(toint)(aARI_ x);
 }
 
 ARITH_DECL_MONO_S_L(tolong)
 {
 	if (x.msw & SIMUL_TRAP)
-		return -(long)arith_op_u(toulong)(arith_op_u(neg)(x));
-	return (long)arith_op_u(toulong)(x);
+		return -(long)arith_op_u(toulong)(aARI_ arith_op_u(neg)(aARI_ x));
+	return (long)arith_op_u(toulong)(aARI_ x);
 }
 
 ARITH_DECL_MONO_S_S(neg)
@@ -1140,16 +1176,16 @@ ARITH_DECL_MONO_S_S(neg)
 	if (x.lsw == 0 && x.msw == SIMUL_TRAP)
 		ARITH_WARNING(ARITH_EXCEP_NEG_O);
 #endif
-	return arith_op_u(neg)(x);
+	return arith_op_u(neg)(aARI_ x);
 }
 
-ARITH_DECL_MONO_S_S(not) { return arith_op_u(not)(x); }
-ARITH_DECL_MONO_S_I(lnot) { return arith_op_u(lnot)(x); }
-ARITH_DECL_MONO_S_I(lval) { return arith_op_u(lval)(x); }
+ARITH_DECL_MONO_S_S(not) { return arith_op_u(not)(aARI_ x); }
+ARITH_DECL_MONO_S_I(lnot) { return arith_op_u(lnot)(aARI_ x); }
+ARITH_DECL_MONO_S_I(lval) { return arith_op_u(lval)(aARI_ x); }
 
 ARITH_DECL_BI_SS_S(plus)
 {
-	arith_u z = arith_op_u(plus)(x, y);
+	arith_u z = arith_op_u(plus)(aARI_ x, y);
 
 #ifdef ARITHMETIC_CHECKS
 	if (x.msw & y.msw & ~z.msw & SIMUL_TRAP)
@@ -1162,7 +1198,7 @@ ARITH_DECL_BI_SS_S(plus)
 
 ARITH_DECL_BI_SS_S(minus)
 {
-	arith_s z = arith_op_u(minus)(x, y);
+	arith_s z = arith_op_u(minus)(aARI_ x, y);
 
 #ifdef ARITHMETIC_CHECKS
 	if (x.msw & ~y.msw & ~z.msw & SIMUL_TRAP)
@@ -1180,7 +1216,7 @@ ARITH_DECL_BI_SS_S(minus)
  */
 ARITH_DECL_BI_SI_S(lsh)
 {
-	arith_s z = arith_op_u(lsh)(x, y);
+	arith_s z = arith_op_u(lsh)(aARI_ x, y);
 
 #ifdef ARITHMETIC_CHECKS
 	if (x.msw & SIMUL_TRAP) ARITH_WARNING(ARITH_EXCEP_LSH_U);
@@ -1192,7 +1228,7 @@ ARITH_DECL_BI_SI_S(lsh)
 		 * could have been untruncated but yet affet the sign bit,
 		 * so we must test this explicitly.
 		 */
-		arith_s w = arith_op_u(rsh)(z, (unsigned)y % SIMUL_NUMBITS);
+		arith_s w = arith_op_u(rsh)(aARI_ z, (unsigned)y % SIMUL_NUMBITS);
 
 		if ((z.msw & SIMUL_TRAP) || w.msw != x.msw || w.lsw != x.lsw)
 			ARITH_WARNING(ARITH_EXCEP_LSH_O);
@@ -1209,7 +1245,7 @@ ARITH_DECL_BI_SI_S(lsh)
 ARITH_DECL_BI_SI_S(rsh)
 {
 	int xn = (x.msw & SIMUL_TRAP) != 0;
-	arith_s z = arith_op_u(rsh)(x, y);
+	arith_s z = arith_op_u(rsh)(aARI_ x, y);
 	int gy = (unsigned)y % SIMUL_NUMBITS;
 
 #ifdef ARITHMETIC_CHECKS
@@ -1231,6 +1267,7 @@ ARITH_DECL_BI_SS_I(lt)
 {
 	int xn = (x.msw & SIMUL_TRAP) != 0;
 	int yn = (y.msw & SIMUL_TRAP) != 0;
+	useARI;
 
 	if (xn == yn) {
 		return x.msw < y.msw || (x.msw == y.msw && x.lsw < y.lsw);
@@ -1243,6 +1280,7 @@ ARITH_DECL_BI_SS_I(leq)
 {
 	int xn = (x.msw & SIMUL_TRAP) != 0;
 	int yn = (y.msw & SIMUL_TRAP) != 0;
+	useARI;
 
 	if (xn == yn) {
 		return x.msw < y.msw || (x.msw == y.msw && x.lsw <= y.lsw);
@@ -1253,53 +1291,54 @@ ARITH_DECL_BI_SS_I(leq)
 
 ARITH_DECL_BI_SS_I(gt)
 {
-	return arith_op_s(lt)(y, x);
+	return arith_op_s(lt)(aARI_ y, x);
 }
 
 ARITH_DECL_BI_SS_I(geq)
 {
-	return arith_op_s(leq)(y, x);
+	return arith_op_s(leq)(aARI_ y, x);
 }
 
 ARITH_DECL_BI_SS_I(same)
 {
+	useARI;
 	return x.msw == y.msw && x.lsw == y.lsw;
 }
 
 ARITH_DECL_BI_SS_I(neq)
 {
-	return !arith_op_s(same)(x, y);
+	return !arith_op_s(same)(aARI_ x, y);
 }
 
 ARITH_DECL_BI_SS_S(and)
 {
-	return arith_op_u(and)(x, y);
+	return arith_op_u(and)(aARI_ x, y);
 }
 
 ARITH_DECL_BI_SS_S(xor)
 {
-	return arith_op_u(xor)(x, y);
+	return arith_op_u(xor)(aARI_ x, y);
 }
 
 ARITH_DECL_BI_SS_S(or)
 {
-	return arith_op_u(or)(x, y);
+	return arith_op_u(or)(aARI_ x, y);
 }
 
 /*
  * This function calculates the signed integer division, yielding
  * both quotient and remainder. The divider (y) MUST be non-zero.
  */
-static void arith_op_s(sdiv)(arith_s x, arith_s y, arith_s *q, arith_s *r)
+static void arith_op_s(sdiv)(pARI_ arith_s x, arith_s y, arith_s *q, arith_s *r)
 {
 	arith_u a = x, b = y, c, d;
 	int xn = 0, yn = 0;
 
-	if (x.msw & SIMUL_TRAP) { a = arith_op_u(neg)(x); xn = 1; }
-	if (y.msw & SIMUL_TRAP) { b = arith_op_u(neg)(y); yn = 1; }
-	arith_op_u(udiv)(a, b, &c, &d);
-	if (xn != yn) *q = arith_op_u(neg)(c); else *q = c;
-	if (xn != yn) *r = arith_op_u(neg)(d); else *r = d;
+	if (x.msw & SIMUL_TRAP) { a = arith_op_u(neg)(aARI_ x); xn = 1; }
+	if (y.msw & SIMUL_TRAP) { b = arith_op_u(neg)(aARI_ y); yn = 1; }
+	arith_op_u(udiv)(aARI_ a, b, &c, &d);
+	if (xn != yn) *q = arith_op_u(neg)(aARI_ c); else *q = c;
+	if (xn != yn) *r = arith_op_u(neg)(aARI_ d); else *r = d;
 }
 
 /*
@@ -1311,7 +1350,7 @@ static void arith_op_s(sdiv)(arith_s x, arith_s y, arith_s *q, arith_s *r)
 ARITH_DECL_BI_SS_S(star)
 {
 #ifdef ARITHMETIC_CHECKS
-	arith_s z = arith_op_u(star)(x, y);
+	arith_s z = arith_op_u(star)(aARI_ x, y);
 	int warn = 0;
 
 	if (x.msw > 0) {
@@ -1332,14 +1371,14 @@ ARITH_DECL_BI_SS_S(star)
 		if (x.msw == SIMUL_MSW_MASK && x.lsw == SIMUL_LSW_MASK) {
 			if (y.msw == SIMUL_TRAP && y.lsw == 0) warn = 1;
 		} else if (!(x.msw == 0 && x.lsw == 0)
-			&& !arith_op_s(same)(arith_op_s(slash)(z, x), y)) {
+			&& !arith_op_s(same)(aARI_ arith_op_s(slash)(aARI_ z, x), y)) {
 		} warn = 1;
 	}
 	if (warn) ARITH_WARNING(((x.msw ^ y.msw) & SIMUL_TRAP)
 		? ARITH_EXCEP_STAR_U : ARITH_EXCEP_STAR_O);
 	return z;
 #else
-	return arith_op_u(star)(x, y);
+	return arith_op_u(star)(aARI_ x, y);
 #endif
 }
 
@@ -1347,12 +1386,12 @@ ARITH_DECL_BI_SS_S(slash)
 {
 	arith_s q, r;
 
-	if (arith_op_s(same)(y, SIMUL_ZERO))
+	if (arith_op_s(same)(aARI_ y, SIMUL_ZERO))
 		ARITH_ERROR(ARITH_EXCEP_SLASH_D);
 	else if (x.msw == SIMUL_TRAP && x.lsw == 0
 		&& y.msw == SIMUL_MSW_MASK && y.lsw == SIMUL_LSW_MASK)
 		ARITH_ERROR(ARITH_EXCEP_SLASH_O);
-	arith_op_s(sdiv)(x, y, &q, &r);
+	arith_op_s(sdiv)(aARI_ x, y, &q, &r);
 	return q;
 }
 
@@ -1360,9 +1399,9 @@ ARITH_DECL_BI_SS_S(pct)
 {
 	arith_s q, r;
 
-	if (arith_op_s(same)(y, SIMUL_ZERO))
+	if (arith_op_s(same)(aARI_ y, SIMUL_ZERO))
 		ARITH_ERROR(ARITH_EXCEP_PCT_D);
-	arith_op_s(sdiv)(x, y, &q, &r);
+	arith_op_s(sdiv)(aARI_ x, y, &q, &r);
 	return r;
 }
 
@@ -1374,7 +1413,7 @@ ARITH_DECL_MONO_ST_US(octconst)
 		unsigned w = ARITH_OVAL(*c);
 		if (z.msw > (SIMUL_MSW_MASK / 8))
 			ARITH_ERROR(ARITH_EXCEP_CONST_O);
-		z = arith_op_u(lsh)(z, 3);
+		z = arith_op_u(lsh)(aARI_ z, 3);
 		z.lsw |= w;
 	}
 	*ru = z;
@@ -1410,8 +1449,8 @@ ARITH_DECL_MONO_ST_US(decconst)
 			+ ((SIMUL_TRAPL % 5) * ARITH_ALPHA_A) / 5)
 #endif
 			)) ARITH_ERROR(ARITH_EXCEP_CONST_O);
-		z = arith_op_u(plus)(arith_op_u(lsh)(z, 3),
-			arith_op_u(lsh)(z, 1));
+		z = arith_op_u(plus)(aARI_ arith_op_u(lsh)(aARI_ z, 3),
+			arith_op_u(lsh)(aARI_ z, 1));
 		t = TLSW(z.lsw + w);
 		if (t < z.lsw) z.msw ++;
 		z.lsw = t;
@@ -1439,7 +1478,7 @@ ARITH_DECL_MONO_ST_US(hexconst)
 		unsigned w = ARITH_HVAL(*c);
 		if (z.msw > (SIMUL_MSW_MASK / 16))
 			ARITH_ERROR(ARITH_EXCEP_CONST_O);
-		z = arith_op_u(lsh)(z, 4);
+		z = arith_op_u(lsh)(aARI_ z, 4);
 		z.lsw |= w;
 	}
 	*ru = z;

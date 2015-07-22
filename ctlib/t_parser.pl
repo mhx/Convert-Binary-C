@@ -10,14 +10,14 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/06/15 14:43:23 +0100 $
-# $Revision: 9 $
-# $Snapshot: /Convert-Binary-C/0.49 $
+# $Date: 2004/03/22 19:37:58 +0000 $
+# $Revision: 10 $
+# $Snapshot: /Convert-Binary-C/0.50 $
 # $Source: /ctlib/t_parser.pl $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #

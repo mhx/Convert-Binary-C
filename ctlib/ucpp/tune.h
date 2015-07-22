@@ -348,8 +348,48 @@
  */
 /* #define SEMPER_FIDELIS */
 
+/*
+ * If you're using ucpp as a library you can modify the global symbol
+ * names using the following macros.
+ */
+#define UCPP_PUBLIC_PREFIX	ucpp_public_
+#define UCPP_PUBLIC_SUFFIX
+#define UCPP_PRIVATE_PREFIX	ucpp_private_
+#define UCPP_PRIVATE_SUFFIX
+
+/*
+ * If you don't want to export "true" functions for memory management
+ * macros, use this define.
+ */
+#define MEM_DEBUG_NO_TRUE_FUNC
+
 #endif
 /* End of options overridable by UCPP_CONFIG and config.h */
+
+#define _func_strc_(x, y)	x ## y
+#define _func_strc(x, y)	_func_strc_(x, y)
+
+#if defined UCPP_PUBLIC_PREFIX && defined UCPP_PUBLIC_SUFFIX
+#define UCPP_PUBLIC(func)	_func_strc(UCPP_PUBLIC_PREFIX, \
+				_func_strc(func, UCPP_PUBLIC_SUFFIX))
+#elif defined UCPP_PUBLIC_PREFIX
+#define UCPP_PUBLIC(func)	_func_strc(UCPP_PUBLIC_PREFIX, func)
+#elif defined UCPP_PUBLIC_SUFFIX
+#define UCPP_PUBLIC(func)	_func_strc(func, UCPP_PUBLIC_SUFFIX)
+#else
+#define UCPP_PUBLIC(func)	func
+#endif
+
+#if defined UCPP_PRIVATE_PREFIX && defined UCPP_PRIVATE_SUFFIX
+#define UCPP_PRIVATE(func)	_func_strc(UCPP_PRIVATE_PREFIX, \
+				_func_strc(func, UCPP_PRIVATE_SUFFIX))
+#elif defined UCPP_PRIVATE_PREFIX
+#define UCPP_PRIVATE(func)	_func_strc(UCPP_PRIVATE_PREFIX, func)
+#elif defined UCPP_PRIVATE_SUFFIX
+#define UCPP_PRIVATE(func)	_func_strc(func, UCPP_PRIVATE_SUFFIX)
+#else
+#define UCPP_PRIVATE(func)	func
+#endif
 
 /* ====================================================================== */
 /*
@@ -413,6 +453,16 @@
 /* INLINE has been set, use its value */
 #undef inline
 #define inline INLINE
+#endif
+
+#ifdef POSIX_JMP
+#define JMP_BUF	sigjmp_buf
+#define catch(x)	sigsetjmp((x), 0)
+#define throw(x)	siglongjmp((x), 1)
+#else
+#define JMP_BUF	jmp_buf
+#define catch(x)	setjmp((x))
+#define throw(x)	longjmp((x), 1)
 #endif
 
 #endif

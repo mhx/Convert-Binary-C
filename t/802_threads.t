@@ -2,14 +2,14 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/07/24 17:08:02 +0100 $
-# $Revision: 17 $
-# $Snapshot: /Convert-Binary-C/0.49 $
+# $Date: 2004/03/22 19:38:04 +0000 $
+# $Revision: 19 $
+# $Snapshot: /Convert-Binary-C/0.50 $
 # $Source: /t/802_threads.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -204,9 +204,14 @@ sub chkpack
   my($orig, $pack) = @_;
 
   for( my $i = 0; $i < length $pack; ++$i ) {
-    my $o = ord substr $orig, $i, 1;
     my $p = ord substr $pack, $i, 1;
-    return 0 unless $p == $o or $p == 0;
+    if ($i < length $orig) {
+      my $o = ord substr $orig, $i, 1;
+      return 0 unless $p == $o or $p == 0;
+    }
+    else {
+      return 0 unless $p == 0;
+    }
   }
 
   return 1;

@@ -10,14 +10,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/09/28 21:08:53 +0100 $
-* $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 20:46:47 +0000 $
+* $Revision: 6 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /ctlib/fileinfo.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -81,8 +81,10 @@ FileInfo *fileinfo_new( FILE *file, char *name, size_t name_len )
 
   AllocF( FileInfo *, pFileInfo, offsetof( FileInfo, name ) + name_len + 1 );
 
-  if( name != NULL )
-    strcpy( pFileInfo->name, name );
+  if( name != NULL ) {
+    strncpy( pFileInfo->name, name, name_len );
+    pFileInfo->name[name_len] = '\0';
+  }
   else
     pFileInfo->name[0] = '\0';
 

@@ -2,14 +2,14 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/09/09 19:44:13 +0100 $
-# $Revision: 13 $
-# $Snapshot: /Convert-Binary-C/0.49 $
+# $Date: 2004/03/22 19:38:01 +0000 $
+# $Revision: 15 $
+# $Snapshot: /Convert-Binary-C/0.50 $
 # $Source: /t/105_pack.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -334,12 +334,10 @@ chkwarn();
 #===================================================================
 
 ok($p->pack('zero', {}), '', 'pack on zero size type (bug #3753)');
-chkwarn( qr/Bitfields are unsupported in pack\('zero'\)/,
-         qr/Zero-sized type 'zero' used in pack/ );
+chkwarn( qr/Bitfields are unsupported in pack\('zero'\)/ );
 
 ok(reccmp_keys({}, $p->unpack('zero', '')), '', 'unpack on zero size type');
-chkwarn( qr/Bitfields are unsupported in pack\('zero'\)/,
-         qr/Zero-sized type 'zero' used in unpack/ );
+chkwarn( qr/Bitfields are unsupported in pack\('zero'\)/ );
 
 
 sub rec_write

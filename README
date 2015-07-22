@@ -136,7 +136,7 @@ I have tested it on:
   - Compaq/HP Tru64 Unix
   - Mac-OS X
   - Cygwin
-  - Windows 98/NT/2000
+  - Windows 98/NT/2000/XP
 
 Also, most architectures should be supported. Tests were done on:
 
@@ -146,7 +146,8 @@ Also, most architectures should be supported. Tests were done on:
   - Power-PC
   - StrongARM (the module worked fine on an IPAQ system)
 
-The module should build with any perl from 5.005_03 up to 5.9.0.
+The module should build with any perl from 5.005_03 up to the
+latest development version.
 
 Multithreaded perl binaries are explicitly supported, as the module
 is intended to be thread-safe.
@@ -193,7 +194,7 @@ Makefile.PL, like
 8. COPYRIGHT
 ------------
 
-Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 

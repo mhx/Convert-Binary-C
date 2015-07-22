@@ -30,6 +30,8 @@
 #ifndef UCPP__NHASH__
 #define UCPP__NHASH__
 
+#include "tune.h"
+
 /*
  * Each item stored in the hash table should be a structure beginning
  * with the following header.
@@ -81,6 +83,7 @@ typedef struct {
  * that item (except the hash_item_header contents, which are handled
  * internally).
  */
+#define HTT_init	UCPP_PRIVATE(HTT_init)
 void HTT_init(HTT *htt, void (*deldata)(void *));
 
 /*
@@ -90,18 +93,21 @@ void HTT_init(HTT *htt, void (*deldata)(void *));
  * table and NULL is returned. The object pointed to by `item' is
  * linked from the table, but not the string pointed to by `name'.
  */
+#define HTT_put		UCPP_PRIVATE(HTT_put)
 void *HTT_put(HTT *htt, void *item, char *name);
 
 /*
  * Retrieve an item by name from the hash table. NULL is returned if
  * the object is not found.
  */
+#define HTT_get		UCPP_PRIVATE(HTT_get)
 void *HTT_get(HTT *htt, char *name);
 
 /*
  * Remove an item from the hash table. 1 is returned if the item was
  * removed, 0 if it was not found.
  */
+#define HTT_del		UCPP_PRIVATE(HTT_del)
 int HTT_del(HTT *htt, char *name);
 
 /*
@@ -110,23 +116,35 @@ int HTT_del(HTT *htt, char *name);
  * scan by performing a longjmp() to a context encapsulating the
  * call to that function.
  */
+#define HTT_scan	UCPP_PRIVATE(HTT_scan)
+#define HTT_scan_arg	UCPP_PRIVATE(HTT_scan_arg)
 void HTT_scan(HTT *htt, void (*action)(void *));
+void HTT_scan_arg(HTT *htt, void (*action)(void *, void *), void *arg);
 
 /*
  * Release the whole table contents. After a call to this function,
  * the table is ready to accept new items.
  */
+#define HTT_kill	UCPP_PRIVATE(HTT_kill)
 void HTT_kill(HTT *htt);
 
 /*
  * The following functions are identical to the HTT_*() functions, except
  * that they operate on the reduced HTT2 tables.
  */
+#define HTT2_init	UCPP_PRIVATE(HTT2_init)
+#define HTT2_put	UCPP_PRIVATE(HTT2_put)
+#define HTT2_get	UCPP_PRIVATE(HTT2_get)
+#define HTT2_del	UCPP_PRIVATE(HTT2_del)
+#define HTT2_scan	UCPP_PRIVATE(HTT2_scan)
+#define HTT2_scan_arg	UCPP_PRIVATE(HTT2_scan_arg)
+#define HTT2_kill	UCPP_PRIVATE(HTT2_kill)
 void HTT2_init(HTT2 *htt, void (*deldata)(void *));
 void *HTT2_put(HTT2 *htt, void *item, char *name);
 void *HTT2_get(HTT2 *htt, char *name);
 int HTT2_del(HTT2 *htt, char *name);
 void HTT2_scan(HTT2 *htt, void (*action)(void *));
+void HTT2_scan_arg(HTT2 *htt, void (*action)(void *, void *), void *);
 void HTT2_kill(HTT2 *htt);
 
 #endif

@@ -57,7 +57,7 @@
 
 # for gcc
 CC = gcc
-FLAGS = -g -W -Wall -ansi -DAUDIT -DMEM_DEBUG
+FLAGS = -g -W -Wall -ansi -DAUDIT -DMEM_DEBUG -DUCPP_REENTRANT
 #FLAGS = -O3 -mcpu=pentiumpro -fomit-frame-pointer -W -Wall -ansi -DMEM_CHECK
 #FLAGS = -O -pg -W -Wall -ansi -DMEM_CHECK
 #LDFLAGS = -pg

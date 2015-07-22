@@ -10,14 +10,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/09/26 11:57:03 +0100 $
-* $Revision: 8 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 19:37:59 +0000 $
+* $Revision: 9 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /ctlib/util/list.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of either the Artistic License or the

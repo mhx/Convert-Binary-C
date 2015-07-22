@@ -10,14 +10,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/09/27 12:11:52 +0100 $
-* $Revision: 9 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 19:37:57 +0000 $
+* $Revision: 11 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /ctlib/parser.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -31,6 +31,7 @@
 /*===== LOCAL INCLUDES =======================================================*/
 
 #include "ctparse.h"
+#include "cppreent.h"
 
 
 /*===== DEFINES ==============================================================*/
@@ -45,6 +46,9 @@ typedef struct {
 } CKeywordToken;
 
 struct lexer_state;
+#ifdef UCPP_REENTRANT
+struct CPP;
+#endif
 
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
@@ -57,7 +61,7 @@ const CKeywordToken *get_skip_token( void );
 
 #define c_parser_new CTlib_c_parser_new
 ParserState *c_parser_new( const CParseConfig *pCPC, CParseInfo *pCPI,
-                           struct lexer_state *pLexer );
+                           pUCPP_ struct lexer_state *pLexer );
 
 #define c_parser_run CTlib_c_parser_run
 int  c_parser_run( ParserState *pState );

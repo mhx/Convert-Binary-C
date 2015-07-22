@@ -188,6 +188,7 @@ char *(sdup)(char *src)
  * Define "true" functions for applications that need pointers
  * to such functions.
  */
+#ifndef MEM_DEBUG_NO_TRUE_FUNC
 void *(getmem)(size_t n)
 {
 	return getmem(n);
@@ -207,6 +208,7 @@ char *(sdup)(char *s)
 {
 	return sdup(s);
 }
+#endif
 
 static long current_serial = 0L;
 

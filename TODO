@@ -2,16 +2,20 @@
 What's to do?
 =============
 
-
 for future releases (in no special order):
 ------------------------------------------
 
-* patch ucpp to only warn about missing newline
-  termination
+* make byteorder.[ch] work with "binary" strings (0b01001)
 
-* check if there's a need for additional SvGETMAGIC's
+* improve hooks documentation
 
-* reentrant ucpp
+* finish work on flexible array members
+
+  - make member() work better
+  - make complex.t introduce fams
+
+* is T_ALREADY_DUMPED thread-safe, or should we
+  rather use a hash to memorize the dumped types.
 
 * support for unsigned and 64-bit integer arithmetics
 
@@ -19,7 +23,12 @@ for future releases (in no special order):
 
 * make cast operators work
 
-* support flexible array members?
+* on parse error, print parser stack?
+
+* patch ucpp to only warn about missing newline
+  termination
+
+* check if there's a need for additional SvGETMAGIC's
 
 * have an eval method that allows to evaluate a
   constant C expression (including preprocessor
@@ -96,8 +105,6 @@ for future releases (in no special order):
 * COPY_LINE ?
 
 * maybe add DollarsInIdentifiers, AtSignsInIdentifiers?
-
-* on parse error, print parser stack?
 
 * add some warnings during parsing
   empty arrays in structs a[]

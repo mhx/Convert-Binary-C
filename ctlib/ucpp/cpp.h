@@ -237,64 +237,125 @@ struct lexer_state {
  * Public function prototypes
  */
 
+#include "reent.h"
+
+#ifdef UCPP_REENTRANT
+#define new_cpp			UCPP_PUBLIC(new_cpp)
+#define del_cpp			UCPP_PUBLIC(del_cpp)
+struct CPP *new_cpp(void);
+void del_cpp(struct CPP *c);
+#endif /* UCPP_REENTRANT */
+
 #ifndef NO_UCPP_BUF
-void flush_output(struct lexer_state *);
+#define flush_output		UCPP_PUBLIC(flush_output)
+void flush_output(pCPP_ struct lexer_state *);
 #endif
 
-void init_assertions(void);
-int make_assertion(char *);
-int destroy_assertion(char *);
-void print_assertions(void);
+#define init_assertions		UCPP_PUBLIC(init_assertions)
+#define make_assertion		UCPP_PUBLIC(make_assertion)
+#define destroy_assertion	UCPP_PUBLIC(destroy_assertion)
+#define print_assertions	UCPP_PUBLIC(print_assertions)
+void init_assertions(pCPP);
+int make_assertion(pCPP_ char *);
+int destroy_assertion(pCPP_ char *);
+void print_assertions(pCPP);
 
-void init_macros(void);
-int define_macro(struct lexer_state *, char *);
-int undef_macro(struct lexer_state *, char *);
-void print_defines(void);
+#define init_macros		UCPP_PUBLIC(init_macros)
+#define define_macro		UCPP_PUBLIC(define_macro)
+#define undef_macro		UCPP_PUBLIC(undef_macro)
+#define print_defines		UCPP_PUBLIC(print_defines)
+void init_macros(pCPP);
+int define_macro(pCPP_ struct lexer_state *, char *);
+int undef_macro(pCPP_ struct lexer_state *, char *);
+void print_defines(pCPP);
 
-void set_init_filename(char *, int);
-void init_cpp(void);
-void init_include_path(char *[]);
+#define set_init_filename	UCPP_PUBLIC(set_init_filename)
+#define init_cpp		UCPP_PUBLIC(init_cpp)
+#define init_include_path	UCPP_PUBLIC(init_include_path)
+#define init_lexer_state	UCPP_PUBLIC(init_lexer_state)
+#define init_lexer_mode		UCPP_PUBLIC(init_lexer_mode)
+#define free_lexer_state	UCPP_PUBLIC(free_lexer_state)
+#define wipeout			UCPP_PUBLIC(wipeout)
+#define lex			UCPP_PUBLIC(lex)
+#define check_cpp_errors	UCPP_PUBLIC(check_cpp_errors)
+#define add_incpath		UCPP_PUBLIC(add_incpath)
+#define init_tables		UCPP_PUBLIC(init_tables)
+#define enter_file		UCPP_PUBLIC(enter_file)
+#define cpp			UCPP_PUBLIC(cpp)
+#define set_identifier_char	UCPP_PUBLIC(set_identifier_char)
+#define unset_identifier_char	UCPP_PUBLIC(unset_identifier_char)
+void set_init_filename(pCPP_ char *, int);
+void init_cpp(pCPP);
+void init_include_path(pCPP_ char *[]);
 void init_lexer_state(struct lexer_state *);
 void init_lexer_mode(struct lexer_state *);
 void free_lexer_state(struct lexer_state *);
-void wipeout(void);
-int lex(struct lexer_state *);
-int check_cpp_errors(struct lexer_state *);
-void add_incpath(char *);
-void init_tables(int);
-int enter_file(struct lexer_state *, unsigned long);
-int cpp(struct lexer_state *);
-void set_identifier_char(int c);
-void unset_identifier_char(int c);
+void wipeout(pCPP);
+int lex(pCPP_ struct lexer_state *);
+int check_cpp_errors(pCPP_ struct lexer_state *);
+void add_incpath(pCPP_ char *);
+void init_tables(pCPP_ int);
+int enter_file(pCPP_ struct lexer_state *, unsigned long);
+int cpp(pCPP_ struct lexer_state *);
+void set_identifier_char(pCPP_ int c);
+void unset_identifier_char(pCPP_ int c);
 
 #ifdef UCPP_MMAP
-FILE *fopen_mmap_file(char *);
-void set_input_file(struct lexer_state *, FILE *);
+#define fopen_mmap_file		UCPP_PUBLIC(fopen_mmap_file)
+#define set_input_file		UCPP_PUBLIC(set_input_file)
+FILE *fopen_mmap_file(pCPP_ char *);
+void set_input_file(pCPP_ struct lexer_state *, FILE *);
 #endif
 
 struct stack_context {
 	char *long_name, *name;
 	long line;
 };
-struct stack_context *report_context(void);
+#define report_context		UCPP_PUBLIC(report_context)
+struct stack_context *report_context(pCPP);
 
-extern int no_special_macros, system_macros,
+#ifndef UCPP_REENTRANT
+#define no_special_macros	UCPP_PUBLIC(no_special_macros)
+#define emit_dependencies	UCPP_PUBLIC(emit_dependencies)
+#define emit_defines		UCPP_PUBLIC(emit_defines)
+#define emit_assertions		UCPP_PUBLIC(emit_assertions)
+#define c99_compliant		UCPP_PUBLIC(c99_compliant)
+#define c99_hosted		UCPP_PUBLIC(c99_hosted)
+#define emit_output		UCPP_PUBLIC(emit_output)
+#define current_filename	UCPP_PUBLIC(current_filename)
+#define current_long_filename	UCPP_PUBLIC(current_long_filename)
+extern int no_special_macros,
 	emit_dependencies, emit_defines, emit_assertions;
 extern int c99_compliant, c99_hosted;
 extern FILE *emit_output;
 extern char *current_filename, *current_long_filename;
+#endif
+
+#define operators_name		UCPP_PUBLIC(operators_name)
 extern char *operators_name[];
+
+#ifndef UCPP_REENTRANT
+#define protect_detect		UCPP_PUBLIC(protect_detect)
 extern struct protect {
 	char *macro;
 	int state;
 	struct found_file *ff;
 } protect_detect;
+#endif
 
+#ifndef UCPP_REENTRANT
+#define ucpp_ouch		UCPP_PUBLIC(ucpp_ouch)
+#define ucpp_error		UCPP_PUBLIC(ucpp_error)
+#define ucpp_warning		UCPP_PUBLIC(ucpp_warning)
 void ucpp_ouch(char *, ...);
 void ucpp_error(long, char *, ...);
 void ucpp_warning(long, char *, ...);
+#endif
 
+#ifndef UCPP_REENTRANT
+#define transient_characters	UCPP_PUBLIC(transient_characters)
 extern int *transient_characters;
+#endif
 
 /*
  * Errors from CPPERR_EOF and above are not real erros, only show-stoppers.

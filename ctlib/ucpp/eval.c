@@ -35,15 +35,25 @@
 #include "ucppi.h"
 #include "mem.h"
 
+#ifdef UCPP_REENTRANT
+
+#define emit_eval_warnings	(REENTR->_eval.emit_eval_warnings)
+
+#else
+
 JMP_BUF eval_exception;
 long eval_line;
 static int emit_eval_warnings;
+
+#endif
 
 /*
  * If you want to hardcode a conversion table, define a static array
  * of 256 int, and make transient_characters point to it.
  */
+#ifndef UCPP_REENTRANT
 int *transient_characters = 0;
+#endif
 
 #define OCTAL(x)       ((x) >= '0' && (x) <= '7')
 #define DECIM(x)       ((x) >= '0' && (x) <= '9')
@@ -64,106 +74,111 @@ int *transient_characters = 0;
 #define ARITH_TYPENAME             big
 #define ARITH_FUNCTION_HEADER      static inline
 
-#define ARITH_ERROR(type)          z_error(type)
-static void z_error(int type);
+#ifdef UCPP_REENTRANT
+#define pARI	pCPP
+#define aARI	aCPP
+#endif
+
+#define ARITH_ERROR(type)          z_error(aCPP_ type)
+static void z_error(pCPP_ int type);
 
 #ifdef ARITHMETIC_CHECKS
-#define ARITH_WARNING(type)        z_warn(type)
-static void z_warn(int type);
+#define ARITH_WARNING(type)        z_warn(aCPP_ type)
+static void z_warn(pCPP_ int type);
 #endif
 
 #include "arith.c"
 
-static void z_error(int type)
+static void z_error(pCPP_ int type)
 {
 	switch (type) {
 	case ARITH_EXCEP_SLASH_D:
-		error(eval_line, "division by 0");
+		error(aCPP_ eval_line, "division by 0");
 		break;
 	case ARITH_EXCEP_SLASH_O:
-		error(eval_line, "overflow on division");
+		error(aCPP_ eval_line, "overflow on division");
 		break;
 	case ARITH_EXCEP_PCT_D:
-		error(eval_line, "division by 0 on modulus operator");
+		error(aCPP_ eval_line, "division by 0 on modulus operator");
 		break;
 	case ARITH_EXCEP_CONST_O:
-		error(eval_line, "constant too large for destination type");
+		error(aCPP_ eval_line, "constant too large for destination type");
 		break;
 #ifdef AUDIT
 	default:
-		ouch("erroneous integer error: %d", type);
+		ouch(aCPP_ "erroneous integer error: %d", type);
 #endif
 	}
 	throw(eval_exception);
 }
 
 #ifdef ARITHMETIC_CHECKS
-static void z_warn(int type)
+static void z_warn(pCPP_ int type)
 {
 	switch (type) {
 	case ARITH_EXCEP_CONV_O:
-		warning(eval_line, "overflow on integer conversion");
+		warning(aCPP_ eval_line, "overflow on integer conversion");
 		break;
 	case ARITH_EXCEP_NEG_O:
-		warning(eval_line, "overflow on unary minus");
+		warning(aCPP_ eval_line, "overflow on unary minus");
 		break;
 	case ARITH_EXCEP_NOT_T:
-		warning(eval_line,
+		warning(aCPP_ eval_line,
 			"bitwise inversion yields trap representation");
 		break;
 	case ARITH_EXCEP_PLUS_O:
-		warning(eval_line, "overflow on addition");
+		warning(aCPP_ eval_line, "overflow on addition");
 		break;
 	case ARITH_EXCEP_PLUS_U:
-		warning(eval_line, "underflow on addition");
+		warning(aCPP_ eval_line, "underflow on addition");
 		break;
 	case ARITH_EXCEP_MINUS_O:
-		warning(eval_line, "overflow on subtraction");
+		warning(aCPP_ eval_line, "overflow on subtraction");
 		break;
 	case ARITH_EXCEP_MINUS_U:
-		warning(eval_line, "underflow on subtraction");
+		warning(aCPP_ eval_line, "underflow on subtraction");
 		break;
 	case ARITH_EXCEP_AND_T:
-		warning(eval_line,
+		warning(aCPP_ eval_line,
 			"bitwise AND yields trap representation");
 		break;
 	case ARITH_EXCEP_XOR_T:
-		warning(eval_line,
+		warning(aCPP_ eval_line,
 			"bitwise XOR yields trap representation");
 		break;
 	case ARITH_EXCEP_OR_T:
-		warning(eval_line,
+		warning(aCPP_ eval_line,
 			"bitwise OR yields trap representation");
 		break;
 	case ARITH_EXCEP_LSH_W:
-		warning(eval_line, "left shift count greater than "
+		warning(aCPP_ eval_line, "left shift count greater than "
 			"or equal to type width");
 		break;
 	case ARITH_EXCEP_LSH_C:
-		warning(eval_line, "left shift count negative");
+		warning(aCPP_ eval_line, "left shift count negative");
 		break;
 	case ARITH_EXCEP_LSH_O:
-		warning(eval_line, "overflow on left shift");
+		warning(aCPP_ eval_line, "overflow on left shift");
 		break;
 	case ARITH_EXCEP_RSH_W:
-		warning(eval_line, "right shift count greater than "
+		warning(aCPP_ eval_line, "right shift count greater than "
 			"or equal to type width");
 		break;
 	case ARITH_EXCEP_RSH_C:
-		warning(eval_line, "right shift count negative");
+		warning(aCPP_ eval_line, "right shift count negative");
 		break;
 	case ARITH_EXCEP_RSH_N:
-		warning(eval_line, "right shift of negative value");
+		warning(aCPP_ eval_line, "right shift of negative value");
 		break;
 	case ARITH_EXCEP_STAR_O:
-		warning(eval_line, "overflow on multiplication");
+		warning(aCPP_ eval_line, "overflow on multiplication");
 		break;
 	case ARITH_EXCEP_STAR_U:
-		warning(eval_line, "underflow on multiplication");
+		warning(aCPP_ eval_line, "underflow on multiplication");
 		break;
 #ifdef AUDIT
 	default:
-		ouch("erroneous integer warning: %d", type);
+		ouch(aCPP_ "erroneous integer warning: %d", type);
 #endif
 	}
 }
@@ -177,9 +192,9 @@ typedef struct {
 	} u;
 } ppval;
 
-static int boolval(ppval x)
+static int boolval(pCPP_ ppval x)
 {
-	return x.sign ? big_s_lval(x.u.sv) : big_u_lval(x.u.uv);
+	return x.sign ? big_s_lval(aCPP_ x.u.sv) : big_u_lval(aCPP_ x.u.uv);
 }
 
 #if !defined(WCHAR_SIGNEDNESS)
@@ -196,7 +211,7 @@ static int boolval(ppval x)
  * unsigned: u U ul uL Ul UL lu Lu lU LU ull uLL Ull ULL llu LLu llU LLU
  * signed: l L ll LL
  */
-static int pp_suffix(char *d, char *refc)
+static int pp_suffix(pCPP_ char *d, char *refc)
 {
 	if (!*d) return 1;
 	if (*d == 'u' || *d == 'U') {
@@ -223,12 +238,12 @@ static int pp_suffix(char *d, char *refc)
 		goto suffix_error;
 	}
 suffix_error:
-	error(eval_line, "invalid integer constant '%s'", refc);
+	error(aCPP_ eval_line, "invalid integer constant '%s'", refc);
 	throw(eval_exception);
 	return 666;
 }
 
-static unsigned long pp_char(char *c, char *refc)
+static unsigned long pp_char(pCPP_ char *c, char *refc)
 {
 	unsigned long r = 0;
 
@@ -254,7 +269,7 @@ static unsigned long pp_char(char *c, char *refc)
 				r = (r * 16) + HVAL(*c);
 			}
 			if (i != 4) {
-				error(eval_line, "malformed UCN in %s", refc);
+				error(aCPP_ eval_line, "malformed UCN in %s", refc);
 				throw(eval_exception);
 			}
 			break;
@@ -263,7 +278,7 @@ static unsigned long pp_char(char *c, char *refc)
 				r = (r * 16) + HVAL(*c);
 			}
 			if (i != 8) {
-				error(eval_line, "malformed UCN in %s", refc);
+				error(aCPP_ eval_line, "malformed UCN in %s", refc);
 				throw(eval_exception);
 			}
 			break;
@@ -276,13 +291,13 @@ static unsigned long pp_char(char *c, char *refc)
 				if (OCTAL(*c)) r = (r * 8) + OVAL(*(c ++));
 				if (OCTAL(*c)) r = (r * 8) + OVAL(*(c ++));
 			} else {
-				error(eval_line, "invalid escape sequence "
+				error(aCPP_ eval_line, "invalid escape sequence "
 					"'\\%c'", *c);
 				throw(eval_exception);
 			}
 		}
 	} else if (*c == '\'') {
-		error(eval_line, "empty character constant");
+		error(aCPP_ eval_line, "empty character constant");
 		throw(eval_exception);
 	} else {
 		r = *((unsigned char *)(c ++));
@@ -293,12 +308,12 @@ static unsigned long pp_char(char *c, char *refc)
 	}
 
 	if (*c != '\'' && emit_eval_warnings) {
-		warning(eval_line, "multicharacter constant");
+		warning(aCPP_ eval_line, "multicharacter constant");
 	}
 	return r;
 }
 
-static ppval pp_strtoconst(char *refc)
+static ppval pp_strtoconst(pCPP_ char *refc)
 {
 	ppval q;
 	char *c = refc, *d;
@@ -309,14 +324,14 @@ static ppval pp_strtoconst(char *refc)
 	if (*c == '\'' || *c == 'L') {
 		q.sign = (*c == 'L') ? WCHAR_SIGNEDNESS : 1;
 		if (*c == 'L' && *(++ c) != '\'') {
-			error(eval_line,
+			error(aCPP_ eval_line,
 				"invalid wide character constant: %s", refc);
 			throw(eval_exception);
 		}
 		if (q.sign) {
-			q.u.sv = big_s_fromlong(pp_char(c, refc));
+			q.u.sv = big_s_fromlong(aCPP_ pp_char(aCPP_ c, refc));
 		} else {
-			q.u.uv = big_u_fromulong(pp_char(c, refc));
+			q.u.uv = big_u_fromulong(aCPP_ pp_char(aCPP_ c, refc));
 		}
 		return q;
 	}
@@ -326,23 +341,23 @@ static ppval pp_strtoconst(char *refc)
 		c ++;
 		if (*c == 'x' || *c == 'X') {
 			c ++;
-			d = big_u_hexconst(c, &ru, &rs, &sp);
+			d = big_u_hexconst(aCPP_ c, &ru, &rs, &sp);
 		} else {
-			d = big_u_octconst(c, &ru, &rs, &sp);
+			d = big_u_octconst(aCPP_ c, &ru, &rs, &sp);
 		}
 	} else {
 		dec = 1;
-		d = big_u_decconst(c, &ru, &rs, &sp);
+		d = big_u_decconst(aCPP_ c, &ru, &rs, &sp);
 	}
-	q.sign = pp_suffix(d, refc);
+	q.sign = pp_suffix(aCPP_ d, refc);
 	if (q.sign) {
 		if (!sp) {
 			if (dec) {
-				error(eval_line, "constant too large "
+				error(aCPP_ eval_line, "constant too large "
 					"for destination type");
 				throw(eval_exception);
 			} else {
-				warning(eval_line, "constant is so large "
+				warning(aCPP_ eval_line, "constant is so large "
 					"that it is unsigned");
 			}
 			q.u.uv = ru;
@@ -360,35 +375,35 @@ static ppval pp_strtoconst(char *refc)
  * Used by #line directives -- anything beyond what can be put in an
  * unsigned long, is considered absurd.
  */
-unsigned long strtoconst(char *c)
+unsigned long strtoconst(pCPP_ char *c)
 {
-	ppval q = pp_strtoconst(c);
+	ppval q = pp_strtoconst(aCPP_ c);
 
-	if (q.sign) q.u.uv = big_s_to_u(q.u.sv);
-	return big_u_toulong(q.u.uv);
+	if (q.sign) q.u.uv = big_s_to_u(aCPP_ q.u.sv);
+	return big_u_toulong(aCPP_ q.u.uv);
 }
 
 #define OP_UN(x)	((x) == LNOT || (x) == NOT || (x) == UPLUS \
 			|| (x) == UMINUS)
 
-static ppval eval_opun(int op, ppval v)
+static ppval eval_opun(pCPP_ int op, ppval v)
 {
 	if (op == LNOT) {
 		v.sign = 1;
-		v.u.sv = big_s_fromint(big_s_lnot(v.u.sv));
+		v.u.sv = big_s_fromint(aCPP_ big_s_lnot(aCPP_ v.u.sv));
 		return v;
 	}
 	if (v.sign) {
 		switch (op) {
-		case NOT: v.u.sv = big_s_not(v.u.sv); break;
+		case NOT: v.u.sv = big_s_not(aCPP_ v.u.sv); break;
 		case UPLUS: break;
-		case UMINUS: v.u.sv = big_s_neg(v.u.sv); break;
+		case UMINUS: v.u.sv = big_s_neg(aCPP_ v.u.sv); break;
 		}
 	} else {
 		switch (op) {
-		case NOT: v.u.uv = big_u_not(v.u.uv); break;
+		case NOT: v.u.uv = big_u_not(aCPP_ v.u.uv); break;
 		case UPLUS: break;
-		case UMINUS: v.u.uv = big_u_neg(v.u.uv); break;
+		case UMINUS: v.u.uv = big_u_neg(aCPP_ v.u.uv); break;
 		}
 	}
 	return v;
@@ -402,7 +417,7 @@ static ppval eval_opun(int op, ppval v)
                        || (x) == OR || (x) == LAND || (x) == LOR \
                        || (x) == COMMA)
 
-static ppval eval_opbin(int op, ppval v1, ppval v2)
+static ppval eval_opbin(pCPP_ int op, ppval v1, ppval v2)
 {
 	ppval r;
 	int iv2 = 0;
@@ -414,10 +429,10 @@ static ppval eval_opbin(int op, ppval v1, ppval v2)
 		/* promote operands, adjust signedness of result */
 		if (!v1.sign || !v2.sign) {
 			if (v1.sign) {
-				v1.u.uv = big_s_to_u(v1.u.sv);
+				v1.u.uv = big_s_to_u(aCPP_ v1.u.sv);
 				v1.sign = 0;
 			} else if (v2.sign) {
-				v2.u.uv = big_s_to_u(v2.u.sv);
+				v2.u.uv = big_s_to_u(aCPP_ v2.u.sv);
 				v2.sign = 0;
 			}
 			r.sign = 0;
@@ -430,10 +445,10 @@ static ppval eval_opbin(int op, ppval v1, ppval v2)
 		/* promote operands */
 		if (!v1.sign || !v2.sign) {
 			if (v1.sign) {
-				v1.u.uv = big_s_to_u(v1.u.sv);
+				v1.u.uv = big_s_to_u(aCPP_ v1.u.sv);
 				v1.sign = 0;
 			} else if (v2.sign) {
-				v2.u.uv = big_s_to_u(v2.u.sv);
+				v2.u.uv = big_s_to_u(aCPP_ v2.u.sv);
 				v2.sign = 0;
 			}
 		}
@@ -449,37 +464,37 @@ static ppval eval_opbin(int op, ppval v1, ppval v2)
 		   operand to int */
 		r.sign = v1.sign;
 		if (v2.sign) {
-			iv2 = big_s_toint(v2.u.sv);
+			iv2 = big_s_toint(aCPP_ v2.u.sv);
 		} else {
-			iv2 = big_u_toint(v2.u.uv);
+			iv2 = big_u_toint(aCPP_ v2.u.uv);
 		}
 		break;
 	case COMMA:
 		if (emit_eval_warnings) {
-			warning(eval_line, "ISO C forbids evaluated comma "
+			warning(aCPP_ eval_line, "ISO C forbids evaluated comma "
 				"operators in #if expressions");
 		}
 		r.sign = v2.sign;
 		break;
 #ifdef AUDIT
-	default: ouch("a good operator is a dead operator");
+	default: ouch(aCPP_ "a good operator is a dead operator");
 #endif
 	}
 
-#define SBINOP(x)	if (r.sign) r.u.sv = big_s_ ## x (v1.u.sv, v2.u.sv); \
-			else r.u.uv = big_u_ ## x (v1.u.uv, v2.u.uv);
+#define SBINOP(x)	if (r.sign) r.u.sv = big_s_ ## x (aCPP_ v1.u.sv, v2.u.sv); \
+			else r.u.uv = big_u_ ## x (aCPP_ v1.u.uv, v2.u.uv);
 
-#define NSSBINOP(x)	if (v1.sign) r.u.sv = big_s_fromint(big_s_ ## x \
-			(v1.u.sv, v2.u.sv)); else r.u.sv = big_s_fromint( \
-			big_u_ ## x (v1.u.uv, v2.u.uv));
+#define NSSBINOP(x)	if (v1.sign) r.u.sv = big_s_fromint(aCPP_ big_s_ ## x \
+			(aCPP_ v1.u.sv, v2.u.sv)); else r.u.sv = big_s_fromint( \
+			aCPP_ big_u_ ## x (aCPP_ v1.u.uv, v2.u.uv));
 
-#define LBINOP(x)	if (v1.sign) r.u.sv = big_s_fromint( \
-			big_s_lval(v1.u.sv) x big_s_lval(v2.u.sv)); \
-			else r.u.sv = big_s_fromint( \
-			big_u_lval(v1.u.uv) x big_u_lval(v2.u.uv));
+#define LBINOP(x)	if (v1.sign) r.u.sv = big_s_fromint(aCPP_ \
+			big_s_lval(aCPP_ v1.u.sv) x big_s_lval(aCPP_ v2.u.sv)); \
+			else r.u.sv = big_s_fromint(aCPP_ \
+			big_u_lval(aCPP_ v1.u.uv) x big_u_lval(aCPP_ v2.u.uv));
 
-#define ABINOP(x)	if (r.sign) r.u.sv = big_s_ ## x (v1.u.sv, iv2); \
-			else r.u.uv = big_u_ ## x (v1.u.uv, iv2);
+#define ABINOP(x)	if (r.sign) r.u.sv = big_s_ ## x (aCPP_ v1.u.sv, iv2); \
+			else r.u.uv = big_u_ ## x (aCPP_ v1.u.uv, iv2);
 
 	switch (op) {
 	case STAR: SBINOP(star); break;
@@ -507,7 +522,7 @@ static ppval eval_opbin(int op, ppval v1, ppval v2)
 
 #define ttOP(x)		(OP_UN(x) || OP_BIN(x) || (x) == QUEST || (x) == COLON)
 
-static int op_prec(int op)
+static int op_prec(pCPP_ int op)
 {
 	switch (op) {
 	case LNOT:
@@ -549,7 +564,9 @@ static int op_prec(int op)
 		return 1;
 	}
 #ifdef AUDIT
-	ouch("an unknown species should have a higher precedence");
+	ouch(aCPP_ "an unknown species should have a higher precedence");
+#else
+	useCPP;
 #endif
 	return 666;
 }
@@ -566,7 +583,7 @@ static int op_prec(int op)
  * If do_eval is 0, the evaluation of operators is not done. This is
  * for sequence point operators (&&, || and ?:).
  */
-static ppval eval_shrd(struct token_fifo *tf, int minprec, int do_eval)
+static ppval eval_shrd(pCPP_ struct token_fifo *tf, int minprec, int do_eval)
 {
 	ppval top;
 	struct token *ct;
@@ -575,18 +592,18 @@ static ppval eval_shrd(struct token_fifo *tf, int minprec, int do_eval)
 	if (tf->art == tf->nt) goto trunc_err;
 	ct = tf->t + (tf->art ++);
 	if (ct->type == LPAR) {
-		top = eval_shrd(tf, 0, do_eval);
+		top = eval_shrd(aCPP_ tf, 0, do_eval);
 		if (tf->art == tf->nt) goto trunc_err;
 		ct = tf->t + (tf->art ++);
 		if (ct->type != RPAR) {
-			error(eval_line, "a right parenthesis was expected");
+			error(aCPP_ eval_line, "a right parenthesis was expected");
 			throw(eval_exception);
 		}
 	} else if (ct->type == NUMBER || ct->type == CHAR) {
-		top = pp_strtoconst(ct->name);
+		top = pp_strtoconst(aCPP_ ct->name);
 	} else if (OP_UN(ct->type)) {
-		top = eval_opun(ct->type, eval_shrd(tf,
-			op_prec(ct->type), do_eval));
+		top = eval_opun(aCPP_ ct->type, eval_shrd(aCPP_ tf,
+			op_prec(aCPP_ ct->type), do_eval));
 		goto eval_loop;
 	} else if (ttOP(ct->type)) goto rogue_op_err;
 	else {
@@ -599,43 +616,43 @@ eval_loop:
 	}
 	ct = tf->t + (tf->art ++);
 	if (OP_BIN(ct->type)) {
-		int bp = op_prec(ct->type);
+		int bp = op_prec(aCPP_ ct->type);
 
 		if (bp > minprec) {
 			ppval tr;
 
-			if ((ct->type == LOR && boolval(top))
-				|| (ct->type == LAND && !boolval(top))) {
-				tr = eval_shrd(tf, bp, 0);
+			if ((ct->type == LOR && boolval(aCPP_ top))
+				|| (ct->type == LAND && !boolval(aCPP_ top))) {
+				tr = eval_shrd(aCPP_ tf, bp, 0);
 				if (do_eval) {
 					top.sign = 1;
 					if (ct->type == LOR)
-						top.u.sv = big_s_fromint(1);
+						top.u.sv = big_s_fromint(aCPP_ 1);
 					if (ct->type == LAND)
-						top.u.sv = big_s_fromint(0);
+						top.u.sv = big_s_fromint(aCPP_ 0);
 				}
 			} else {
-				tr = eval_shrd(tf, bp, do_eval);
+				tr = eval_shrd(aCPP_ tf, bp, do_eval);
 				if (do_eval)
-					top = eval_opbin(ct->type, top, tr);
+					top = eval_opbin(aCPP_ ct->type, top, tr);
 			}
 			goto eval_loop;
 		}
 	} else if (ct->type == QUEST) {
-		int bp = op_prec(QUEST);
+		int bp = op_prec(aCPP_ QUEST);
 		ppval r1, r2;
 
 		if (bp >= minprec) {
-			int qv = boolval(top);
+			int qv = boolval(aCPP_ top);
 
-			r1 = eval_shrd(tf, bp, qv ? do_eval : 0);
+			r1 = eval_shrd(aCPP_ tf, bp, qv ? do_eval : 0);
 			if (tf->art == tf->nt) goto trunc_err;
 			ct = tf->t + (tf->art ++);
 			if (ct->type != COLON) {
-				error(eval_line, "a colon was expected");
+				error(aCPP_ eval_line, "a colon was expected");
 				throw(eval_exception);
 			}
-			r2 = eval_shrd(tf, bp, qv ? 0 : do_eval);
+			r2 = eval_shrd(aCPP_ tf, bp, qv ? 0 : do_eval);
 			if (do_eval) {
 				if (qv) top = r1; else top = r2;
 			}
@@ -646,14 +663,14 @@ eval_loop:
 	return top;
 
 trunc_err:
-	error(eval_line, "truncated constant integral expression");
+	error(aCPP_ eval_line, "truncated constant integral expression");
 	throw(eval_exception);
 rogue_op_err:
-	error(eval_line, "rogue operator '%s' in constant integral "
+	error(aCPP_ eval_line, "rogue operator '%s' in constant integral "
 		"expression", operators_name[ct->type]);
 	throw(eval_exception);
 invalid_token_err:
-	error(eval_line, "invalid token in constant integral expression");
+	error(aCPP_ eval_line, "invalid token in constant integral expression");
 	throw(eval_exception);
 }
 
@@ -667,7 +684,7 @@ invalid_token_err:
  * counterparts using the Fortran way: a + or a - is considered unary
  * if it does not follow a constant, an identifier or a right parenthesis.
  */
-unsigned long eval_expr(struct token_fifo *tf, int *ret, int ew)
+unsigned long eval_expr(pCPP_ struct token_fifo *tf, int *ret, int ew)
 {
 	size_t sart;
 	ppval r;
@@ -685,14 +702,14 @@ unsigned long eval_expr(struct token_fifo *tf, int *ret, int ew)
 		}
 	}
 	tf->art = sart;
-	r = eval_shrd(tf, 0, 1);
+	r = eval_shrd(aCPP_ tf, 0, 1);
 	if (tf->art < tf->nt) {
-		error(eval_line, "trailing garbage in constant integral "
+		error(aCPP_ eval_line, "trailing garbage in constant integral "
 			"expression");
 		goto eval_err;
 	}
 	*ret = 0;
-	return boolval(r);
+	return boolval(aCPP_ r);
 eval_err:
 	*ret = 1;
 	return 0;

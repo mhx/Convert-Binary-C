@@ -11,14 +11,14 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/09/24 21:30:29 +0100 $
-# $Revision: 48 $
-# $Snapshot: /Convert-Binary-C/0.49 $
+# $Date: 2004/03/22 19:37:53 +0000 $
+# $Revision: 51 $
+# $Snapshot: /Convert-Binary-C/0.50 $
 # $Source: /bin/ccconfig $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -30,7 +30,7 @@ use Data::Dumper;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = ('$Snapshot: /Convert-Binary-C/0.49 $' =~ /([^\/\s]+)\s*\$$/)[0];
+my $VERSION = ('$Snapshot: /Convert-Binary-C/0.50 $' =~ /([^\/\s]+)\s*\$$/)[0];
 my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT;
 
@@ -52,7 +52,7 @@ unless( GetOptions( \%OPT, qw(
 if( $OPT{version} ) {
   print <<VERSION;
 $MESSAGE
-Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
@@ -184,45 +184,45 @@ sub _preset_names
     LARGEFILE64_SOURCE LARGEFILE_SOURCE LD64 LDBL LE370 LFS64_LARGEFILE
     LFS_LARGEFILE lint Linux LITTLE_ENDIAN LITTLE_ENDIAN_DATA LONG64
     LONG_DOUBLE LONG_DOUBLE_128 LONG_DOUBLE_64 LONG_LONG LONG_LONG_MAX
-    LONG_MAX LONGDOUBLE LONGLONG LP64 luna luna88k Lynx M210 M32R M32RX
-    M340 m68 M68000 m68020 m68030 m68040 m68332 m68k m88000 m88100 m88110
-    m88k M88KBCS_TARGET M_ALPHA M_BITFIELDS M_COFF M_I186 M_I286 M_I386
-    M_I8086 M_I86 M_I86SM M_INTERNAT M_IX86 M_SDATA M_STEXT M_SYS3 M_SYS5
-    M_SYSIII M_SYSV M_UNIX M_WORDSWAP M_XENIX MACH machine MachTen macII
-    MASSCOMP MATH_HAS_NO_SIDE_EFFECTS MAVERICK MBCS mc300 mc500 mc68000
-    mc68010 mc68020 mc68030 mc68040 mc68060 MC6811 MC6812 mc68302 mc68332
-    mc68881 mc68hc11 mc68hc12 mc68hc1x mc68hcs12 mc68k mc68k32 mc700
-    mc88000 mc88100 mc88110 mcf5200 MCORE MCORE__ALIGN_4 MCORE_ALIGN_8
-    MCOREBE MCORELE mcpu32 merlin mert MINGW32 MiNT mips mips16 mips64
-    mips_eabi mips_fpr MIPS_FPSET MIPS_ISA MIPS_SIM mips_single_float
-    mips_soft_float MIPS_SZINT MIPS_SZLONG MIPS_SZPTR MIPSEB MIPSEL MMIX
-    MMIX_ABI_GNU MMIX_ABI_MMIXWARE MMX MN10200 MN10300 MODERN_C moss
-    motorola mpc505 mpc604 mpc750 mpc821 mpc860 mpeix MSC_VER MSDOS MSVCRT
-    MT MTXINU MULTIMAX MULTITHREADED mvs n16 NATURAL_ALIGNMENT ncl_el
-    ncl_mr NetBSD netware news1500 news1700 news1800 news1900 news3700
-    news700 news800 news900 NeXT NEXT_SOURCE NLS NO_INLINE NO_INLINE_MATH
-    NO_INLINE_STDLIB NO_INTERRUPTS NO_LEADING_UNDERSCORES NO_PROTOTYPE
-    NO_UNDERSCORES NODE nofp nonstopux ns16000 ns32000 ns32016 ns32332
-    ns32532 ns32k nsc32000 OCS88 OEMVS OPEN_NAMESPACE OpenBSD openedition
-    OPENNT OPTIMIZE OS OS2 OS390 OSF OSF1 OSF_SOURCE pa_risc PA_RISC1_1
-    PA_RISC2_0 PARAGON PARISC PC532 pdp11 pe pentium pentium2 pentium3
-    pentium4 pentium__mmx pentiumpro PGC pic PIC_ pj plexus PORTAR POSIX
-    POSIX1B_SOURCE POSIX2_SOURCE POSIX4_SOURCE POSIX_C_SOURCE POSIX_SOURCE
-    POSIX_THREADS POWER PowerPC powerpc64 ppc ppc403 ppc601 ppc602 ppc603
-    ppc603e PPC64 PPC64_ PPC_ PRAGMA_REDEFINE_EXTNAME pro PROTOTYPES ps2
-    psos PTHREAD_USE_D4 PTHREADS PTRDIFF_TYPE PWB pyr QNX R3000 R4000
-    REENTRANT REGPARM RELOCATABLE RES REVARGV Rhapsody rios RISC6000
-    riscbsd riscix riscos ROSE rs6000 RT rtasim rtems s390 s390x s64_t
-    SA110 SCO SCO_C_DIALECT SCO_COFF SCO_DS SCO_ELF SCO_ODS_30 SCO_XPG_VERS
-    scs semi sequent SEQUENT_ sgi SGI_SOURCE sh sh1 sh2 sh3 SH3E SH4
-    SH4_NOFPU SH4_SINGLE SH4_SINGLE_ONLY SH5 SHARED SHMEDIA SHRT_MAX
-    simulator sinix SIZE_INT SIZE_LONG SIZE_PTR SIZE_TYPE SNI SOCKET_SOURCE
-    SOCKETS_SOURCE SOFT_FLOAT SOFTFP SOLARIS_THREADS sony sony_news
-    sonyrisc sparc sparc64 sparc_v8 sparc_v9 sparclet sparclite
+    LONG_MAX LONGDOUBLE LONGLONG LP64 luna luna88k Lynx M210 M32R m32r2
+    m32rx M340 m68 M68000 m68020 m68030 m68040 m68332 m68k m88000 m88100
+    m88110 m88k M88KBCS_TARGET M_ALPHA M_BITFIELDS M_COFF M_I186 M_I286
+    M_I386 M_I8086 M_I86 M_I86SM M_INTERNAT M_IX86 M_SDATA M_STEXT M_SYS3
+    M_SYS5 M_SYSIII M_SYSV M_UNIX M_WORDSWAP M_XENIX MACH machine MachTen
+    macII MASSCOMP MATH_HAS_NO_SIDE_EFFECTS MAVERICK MBCS mc300 mc500
+    mc68000 mc68010 mc68020 mc68030 mc68040 mc68060 MC6811 MC6812 mc68302
+    mc68332 mc68881 mc68hc11 mc68hc12 mc68hc1x mc68hcs12 mc68k mc68k32
+    mc700 mc88000 mc88100 mc88110 mcf5200 MCORE MCORE__ALIGN_4
+    MCORE_ALIGN_8 MCOREBE MCORELE mcpu32 merlin mert MINGW32 MiNT mips
+    mips16 mips64 mips_eabi mips_fpr MIPS_FPSET MIPS_ISA MIPS_SIM
+    mips_single_float mips_soft_float MIPS_SZINT MIPS_SZLONG MIPS_SZPTR
+    MIPSEB MIPSEL MMIX MMIX_ABI_GNU MMIX_ABI_MMIXWARE MMX MN10200 MN10300
+    MODERN_C moss motorola mpc505 mpc604 mpc750 mpc821 mpc860 mpeix MSC_VER
+    MSDOS MSVCRT MT MTXINU MULTIMAX MULTITHREADED mvs n16 NATURAL_ALIGNMENT
+    ncl_el ncl_mr NetBSD netware news1500 news1700 news1800 news1900
+    news3700 news700 news800 news900 NeXT NEXT_SOURCE NLS NO_INLINE
+    NO_INLINE_MATH NO_INLINE_STDLIB NO_INTERRUPTS NO_LEADING_UNDERSCORES
+    NO_PROTOTYPE NO_UNDERSCORES NODE nofp nonstopux ns16000 ns32000 ns32016
+    ns32332 ns32532 ns32k nsc32000 OCS88 OEMVS OPEN_NAMESPACE OpenBSD
+    openedition OPENNT OPTIMIZE OS OS2 OS390 osf OSF1 OSF_SOURCE pa_risc
+    PA_RISC1_1 PA_RISC2_0 PARAGON PARISC PC532 pdp11 pe pentium pentium2
+    pentium3 pentium4 pentium__mmx pentiumpro PGC pic PIC_ pj plexus PORTAR
+    POSIX POSIX1B_SOURCE POSIX2_SOURCE POSIX4_SOURCE POSIX_C_SOURCE
+    POSIX_SOURCE POSIX_THREADS POWER PowerPC powerpc64 PPC ppc403 ppc601
+    ppc602 ppc603 ppc603e PPC64 PPC64_ PPC_ PRAGMA_REDEFINE_EXTNAME pro
+    PROTOTYPES ps2 psos PTHREAD_USE_D4 PTHREADS PTRDIFF_TYPE PWB pyr QNX
+    R3000 R4000 REENTRANT REGPARM RELOCATABLE RES REVARGV Rhapsody rios
+    RISC6000 riscbsd riscix riscos ROSE rs6000 RT rtasim rtems s390 s390x
+    s64_t SA110 SCO SCO_C_DIALECT SCO_COFF SCO_DS SCO_ELF SCO_ODS_30
+    SCO_XPG_VERS scs semi sequent SEQUENT_ sgi SGI_SOURCE sh sh1 sh2 sh3
+    SH3E SH4 SH4_NOFPU SH4_SINGLE SH4_SINGLE_ONLY SH5 SHARED SHMEDIA
+    SHRT_MAX simulator sinix SIZE_INT SIZE_LONG SIZE_PTR SIZE_TYPE SNI
+    SOCKET_SOURCE SOCKETS_SOURCE SOFT_FLOAT SOFTFP SOLARIS_THREADS sony
+    sony_news sonyrisc sparc sparc64 sparc_v8 sparc_v9 sparclet sparclite
     sparclite86x sparcv9 spectrum spur SSE SSE2 stardent STATIC
     STD_INCLUDE_DIR STDC STDC_EXT stdcall STDCPP stratos STRICT_ANSI
     STRICT_BSD STRICT_NAMES sun sun3 sun386 Sun386i supersparc SVID SVR3
-    svr4 SVR4_2 SVR4_ABI SVR4_SOURCE svr5 SX system SYSTYPE_BSD
+    SVR4 SVR4_2 SVR4_ABI SVR4_SOURCE svr5 SX system SYSTYPE_BSD
     SYSTYPE_BSD43 SYSTYPE_BSD44 SYSTYPE_SVR4 SYSTYPE_SVR5 SYSTYPE_SYSV SYSV
     SYSV3 SYSV4 SYSV5 sysV68 sysV88 SYSV_SOURCE tahoe Tek4132 Tek4300
     THREAD_SAFE thumb THUMB_INTERWORK THUMBEB THUMBEL titan TM3200 TM5400
@@ -240,10 +240,10 @@ sub _preset_names
     USE_XOPEN_EXTENDED USES_INITFINI USG USGr4 USGr4_2 UTek Utek UTS UWIN
     uxpm uxps v20 v33 v850 v850e v850e1 v850ea v851 vax venix VMESA VMS
     VSTA vxworks vxworks_5 wchar_t WCHAR_TYPE we32000 WIN32 WINNT WINT_TYPE
-    X86_ x86_64 X_FLOAT xenix Xenix286 XOPEN_C XOPEN_SOURCE
-    XOPEN_SOURCE_EXTENDED XPG2 XPG2_EXTENDED XPG3 XPG3_EXTENDED XPG4
-    XPG4_EXTENDED XSCALE xstormy16 XTENSA XTENSA_EB XTENSA_EL
-    XTENSA_SOFT_FLOAT z8000
+    WRS_R3K_EXC_SUPPORT X86_ x86_64 X_FLOAT xenix Xenix286 XOPEN_C
+    XOPEN_SOURCE XOPEN_SOURCE_EXTENDED XPG2 XPG2_EXTENDED XPG3
+    XPG3_EXTENDED XPG4 XPG4_EXTENDED XSCALE xstormy16 XTENSA XTENSA_EB
+    XTENSA_EL XTENSA_SOFT_FLOAT z8000
   )
 }
 
@@ -2073,16 +2073,13 @@ TEMP
   $res = $self->_compile_temp;
 
   $self->{can_compile} = $res->{didnotrun} == 0 && $res->{status} == 0;
+  $self->{can_build}   = 0;
+  $self->{can_run}     = 0;
 
   if( $self->{can_compile} ) {
     $self->_msg("I can compile object files with $self->{cc}.");
-  }
-  else {
-    $self->_msg("I cannot compile object files.");
-  }
-
-  if( $self->{run} ) {
-    $self->_temp( <<TEMP );
+    if( $self->{run} ) {
+      $self->_temp( <<TEMP );
 #include <stdio.h>
 int main()
 {
@@ -2091,37 +2088,34 @@ int main()
 }
 TEMP
 
-    $res = $self->_build_temp;
-
-    $self->{can_build} = -e $self->{exe} && $res->{didnotrun} == 0 && $res->{status} == 0;
-
-    if( $self->{can_build} ) {
-      $self->_msg("I can build executable files.");
-    }
-    else {
-      $self->_msg("But I cannot build executable files.");
-    }
-
-    if( $self->{can_build} ) {
-      $res = $self->_run_temp;
-
-      $self->{can_run} = $res->{didnotrun} == 0 && $res->{status} == 0
-                         && grep /Hello World/, @{$res->{stdout}};
-
-      if( $self->{can_run} ) {
-        $self->_msg("I can also run the executables.");
+      $res = $self->_build_temp;
+  
+      $self->{can_build} = -e $self->{exe} && $res->{didnotrun} == 0 && $res->{status} == 0;
+  
+      if( $self->{can_build} ) {
+        $self->_msg("I can also build executable files.");
+        $res = $self->_run_temp;
+  
+        $self->{can_run} = $res->{didnotrun} == 0 && $res->{status} == 0
+                           && grep /Hello World/, @{$res->{stdout}};
+  
+        if( $self->{can_run} ) {
+          $self->_msg("And I can run the executables. Great!");
+        }
+        else {
+          $self->_msg("But I cannot run the executables. That should be fine, too.");
+        }
       }
       else {
-        $self->_msg("But I cannot run the executables.");
+        $self->_msg("But I cannot build executable files. No big deal.");
       }
     }
     else {
-      $self->{can_run} = 0;
+      $self->_msg("No need to check if I can build executables.");
     }
   }
   else {
-    $self->{can_build} = 0;
-    $self->{can_run}   = 0;
+    $self->_msg("I cannot compile object files.");
   }
 }
 
@@ -2585,7 +2579,7 @@ or
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 

@@ -2,14 +2,14 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/07/24 17:08:20 +0100 $
-# $Revision: 6 $
-# $Snapshot: /Convert-Binary-C/0.49 $
+# $Date: 2004/03/22 19:38:05 +0000 $
+# $Revision: 8 $
+# $Snapshot: /Convert-Binary-C/0.50 $
 # $Source: /t/include/sizeof.pl $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -506,7 +506,7 @@
 	'PMOP.op_sibling'	=>	  4,
 	'PMOP.op_targ'	=>	  4,
 	'PMOP.op_type'	=>	  2,
-	'PPADDR_t'	=>	  4,
+	'PPADDR_t'	=>	  0,
 	'PTR_TBL_ENT_t'	=>	 12,
 	'PTR_TBL_ENT_t.newval'	=>	  4,
 	'PTR_TBL_ENT_t.next'	=>	  4,
@@ -827,46 +827,12 @@
 	'_G_fpos_t.__state.__value.__wchb[1]'	=>	  1,
 	'_G_fpos_t.__state.__value.__wchb[2]'	=>	  1,
 	'_G_fpos_t.__state.__value.__wchb[3]'	=>	  1,
-	'_G_iconv_t'	=>	 80,
-	'_G_iconv_t.__cd'	=>	 44,
-	'_G_iconv_t.__cd.__data'	=>	 36,
-	'_G_iconv_t.__cd.__data.__flags'	=>	  4,
-	'_G_iconv_t.__cd.__data.__internal_use'	=>	  4,
-	'_G_iconv_t.__cd.__data.__invocation_counter'	=>	  4,
-	'_G_iconv_t.__cd.__data.__outbuf'	=>	  4,
-	'_G_iconv_t.__cd.__data.__outbufend'	=>	  4,
-	'_G_iconv_t.__cd.__data.__state'	=>	  8,
-	'_G_iconv_t.__cd.__data.__state.__count'	=>	  4,
-	'_G_iconv_t.__cd.__data.__state.__value'	=>	  4,
-	'_G_iconv_t.__cd.__data.__state.__value.__wch'	=>	  4,
-	'_G_iconv_t.__cd.__data.__state.__value.__wchb'	=>	  4,
-	'_G_iconv_t.__cd.__data.__state.__value.__wchb[0]'	=>	  1,
-	'_G_iconv_t.__cd.__data.__state.__value.__wchb[1]'	=>	  1,
-	'_G_iconv_t.__cd.__data.__state.__value.__wchb[2]'	=>	  1,
-	'_G_iconv_t.__cd.__data.__state.__value.__wchb[3]'	=>	  1,
-	'_G_iconv_t.__cd.__data.__statep'	=>	  4,
-	'_G_iconv_t.__cd.__data.__trans'	=>	  4,
+	'_G_iconv_t'	=>	 44,
+	'_G_iconv_t.__cd'	=>	  8,
 	'_G_iconv_t.__cd.__nsteps'	=>	  4,
 	'_G_iconv_t.__cd.__steps'	=>	  4,
-	'_G_iconv_t.__combined'	=>	 80,
-	'_G_iconv_t.__combined.__cd'	=>	 44,
-	'_G_iconv_t.__combined.__cd.__data'	=>	 36,
-	'_G_iconv_t.__combined.__cd.__data.__flags'	=>	  4,
-	'_G_iconv_t.__combined.__cd.__data.__internal_use'	=>	  4,
-	'_G_iconv_t.__combined.__cd.__data.__invocation_counter'	=>	  4,
-	'_G_iconv_t.__combined.__cd.__data.__outbuf'	=>	  4,
-	'_G_iconv_t.__combined.__cd.__data.__outbufend'	=>	  4,
-	'_G_iconv_t.__combined.__cd.__data.__state'	=>	  8,
-	'_G_iconv_t.__combined.__cd.__data.__state.__count'	=>	  4,
-	'_G_iconv_t.__combined.__cd.__data.__state.__value'	=>	  4,
-	'_G_iconv_t.__combined.__cd.__data.__state.__value.__wch'	=>	  4,
-	'_G_iconv_t.__combined.__cd.__data.__state.__value.__wchb'	=>	  4,
-	'_G_iconv_t.__combined.__cd.__data.__state.__value.__wchb[0]'	=>	  1,
-	'_G_iconv_t.__combined.__cd.__data.__state.__value.__wchb[1]'	=>	  1,
-	'_G_iconv_t.__combined.__cd.__data.__state.__value.__wchb[2]'	=>	  1,
-	'_G_iconv_t.__combined.__cd.__data.__state.__value.__wchb[3]'	=>	  1,
-	'_G_iconv_t.__combined.__cd.__data.__statep'	=>	  4,
-	'_G_iconv_t.__combined.__cd.__data.__trans'	=>	  4,
+	'_G_iconv_t.__combined'	=>	 44,
+	'_G_iconv_t.__combined.__cd'	=>	  8,
 	'_G_iconv_t.__combined.__cd.__nsteps'	=>	  4,
 	'_G_iconv_t.__combined.__cd.__steps'	=>	  4,
 	'_G_iconv_t.__combined.__data'	=>	 36,
@@ -1106,24 +1072,7 @@
 	'__fsid_t.__val[1]'	=>	  4,
 	'__gconv_end_fct'	=>	  4,
 	'__gconv_fct'	=>	  4,
-	'__gconv_info'	=>	 44,
-	'__gconv_info.__data'	=>	 36,
-	'__gconv_info.__data.__flags'	=>	  4,
-	'__gconv_info.__data.__internal_use'	=>	  4,
-	'__gconv_info.__data.__invocation_counter'	=>	  4,
-	'__gconv_info.__data.__outbuf'	=>	  4,
-	'__gconv_info.__data.__outbufend'	=>	  4,
-	'__gconv_info.__data.__state'	=>	  8,
-	'__gconv_info.__data.__state.__count'	=>	  4,
-	'__gconv_info.__data.__state.__value'	=>	  4,
-	'__gconv_info.__data.__state.__value.__wch'	=>	  4,
-	'__gconv_info.__data.__state.__value.__wchb'	=>	  4,
-	'__gconv_info.__data.__state.__value.__wchb[0]'	=>	  1,
-	'__gconv_info.__data.__state.__value.__wchb[1]'	=>	  1,
-	'__gconv_info.__data.__state.__value.__wchb[2]'	=>	  1,
-	'__gconv_info.__data.__state.__value.__wchb[3]'	=>	  1,
-	'__gconv_info.__data.__statep'	=>	  4,
-	'__gconv_info.__data.__trans'	=>	  4,
+	'__gconv_info'	=>	  8,
 	'__gconv_info.__nsteps'	=>	  4,
 	'__gconv_info.__steps'	=>	  4,
 	'__gconv_init_fct'	=>	  4,
@@ -1930,8 +1879,7 @@
 	'caddr_t'	=>	  4,
 	'clock_t'	=>	  4,
 	'clockid_t'	=>	  4,
-	'cmsghdr'	=>	 13,
-	'cmsghdr.__cmsg_data'	=>	  1,
+	'cmsghdr'	=>	 12,
 	'cmsghdr.cmsg_len'	=>	  4,
 	'cmsghdr.cmsg_level'	=>	  4,
 	'cmsghdr.cmsg_type'	=>	  4,

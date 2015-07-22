@@ -10,14 +10,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/10/02 09:56:01 +0100 $
-* $Revision: 12 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 19:37:59 +0000 $
+* $Revision: 16 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /ctlib/util/memalloc.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of either the Artistic License or the
@@ -96,12 +96,12 @@
 #define DB_MEMALLOC_ASSERT   0x00000002
 
 #ifdef DEBUG_MEMALLOC
-void *_memAlloc( size_t size, char *file, int line );
-void *_memCAlloc( size_t nobj, size_t size, char *file, int line );
-void *_memReAlloc( void *p, size_t size, char *file, int line );
-void  _memFree( void *p, char *file, int line );
-void  _assertValidPtr( void *p, char *file, int line );
-void  _assertValidBlock( void *p, size_t size, char *file, int line );
+void *_memAlloc( size_t size, const char *file, int line );
+void *_memCAlloc( size_t nobj, size_t size, const char *file, int line );
+void *_memReAlloc( void *p, size_t size, const char *file, int line );
+void  _memFree( void *p, const char *file, int line );
+void  _assertValidPtr( void *p, const char *file, int line );
+void  _assertValidBlock( void *p, size_t size, const char *file, int line );
 int    SetDebugMemAlloc( void (*dbfunc)(const char *, ...), unsigned long dbflags );
 #else
 void *_memAlloc( size_t size );
@@ -117,10 +117,11 @@ void  _memFree( void *p );
 #ifdef DOXYGEN
 
 /**
- *  Make Alloc(), CAlloc() and ReAlloc() abort when out of memory
+ *  Make memory allocation routines abort when out of memory
  *
  *  Set this preprocessor flag if you want the Alloc(), CAlloc()
- *  and ReAlloc() functions to abort if the system runs out of
+ *  and ReAlloc() functions as well as the fast macros AllocF(),
+ *  CAllocF() and ReAllocF() to abort if the system runs out of
  *  memory.
  */
 
@@ -147,8 +148,16 @@ void  _memFree( void *p );
  *
  *  If an assertion fails, the program will usually abort.
  *  You can choose not to abort the program by setting
- *  MEMALLOC_SOFT_ASSERT to a nonzero value in your
+ *  MEMALLOC_SOFT_ASSERT to a non-zero value in your
  *  environment.
+ *
+ *  If you want the memory allocator to keep information about
+ *  freed blocks, set MEMALLOC_CHECK_FREED to a non-zero value.
+ *  This can give more detailed trace output at the cost of
+ *  slower execution.
+ *
+ *  If you like to see hex dumps of non-freed memory blocks,
+ *  you can set MEMALLOC_SHOW_DUMPS to a non-zero value.
  *
  *  Only works if DEBUG_MEMALLOC is also defined.
  */
@@ -340,7 +349,7 @@ int SetDebugMemAlloc( void (*dbfunc)(char *, ...), unsigned long dbflags );
           }                                                                    \
         } while(0)
 #else
-# define abortMEMALLOC( call, size, expr )  do { expr; } while(0)
+# define abortMEMALLOC( call, size, expr )  do { (void) (expr); } while(0)
 #endif
 
 #ifdef DEBUG_MEMALLOC

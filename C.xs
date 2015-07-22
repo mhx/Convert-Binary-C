@@ -10,14 +10,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/11/24 07:54:18 +0000 $
-* $Revision: 110 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 19:38:00 +0000 $
+* $Revision: 116 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /C.xs $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -217,6 +217,10 @@ static void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 #define sv_catpvn_nomg sv_catpvn
 #endif
 
+#ifndef call_sv
+#define call_sv(a,b) perl_call_sv(a,b)
+#endif
+
 #ifdef IVdf
 # define IVdf_cast
 #else
@@ -248,11 +252,11 @@ static void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 /* macros for buffer manipulation */
 /*--------------------------------*/
 
-#define ALIGN_BUFFER( align )                                                  \
+#define ALIGN_BUFFER(align)                                                    \
           do {                                                                 \
             unsigned _align = (unsigned)(align) > PACK->alignment              \
                             ? PACK->alignment : (align);                       \
-            if( PACK->align_base % _align ) {                                  \
+            if (PACK->align_base % _align) {                                   \
               _align -= PACK->align_base % _align;                             \
               PACK->align_base += _align;                                      \
               PACK->buf.pos    += _align;                                      \
@@ -260,17 +264,32 @@ static void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
             }                                                                  \
           } while(0)
 
-#define CHECK_BUFFER( size )                                                   \
+#define CHECK_BUFFER(size)                                                     \
           do {                                                                 \
-            if( PACK->buf.pos + (size) > PACK->buf.length ) {                  \
-              PACK->dataTooShortFlag = 1;                                      \
+            if (PACK->buf.pos + (size) > PACK->buf.length) {                   \
               PACK->buf.pos = PACK->buf.length;                                \
               return newSV(0);                                                 \
             }                                                                  \
           } while(0)
 
-#define INC_BUFFER( size )                                                     \
+#define GROW_BUFFER(size, reason)                                              \
           do {                                                                 \
+            unsigned long _required_ = PACK->buf.pos + (size);                 \
+            if (_required_ > PACK->buf.length) {                               \
+              CT_DEBUG(MAIN, ("Growing output SV from %ld to %ld bytes due "   \
+                              "to %s", PACK->buf.length, _required_, reason)); \
+              PACK->buf.buffer = SvGROW(PACK->bufsv, _required_);              \
+              SvCUR_set(PACK->bufsv, _required_);                              \
+              Zero(PACK->buf.buffer + PACK->buf.length,                        \
+                   _required_ - PACK->buf.length, char);                       \
+              PACK->buf.length = _required_;                                   \
+              PACK->bufptr     = PACK->buf.buffer + PACK->buf.pos;             \
+            }                                                                  \
+          } while(0)
+
+#define INC_BUFFER(size)                                                       \
+          do {                                                                 \
+            assert(PACK->buf.pos + (size) <= PACK->buf.length);                \
             PACK->align_base += size;                                          \
             PACK->buf.pos    += size;                                          \
             PACK->bufptr     += size;                                          \
@@ -408,6 +427,20 @@ static void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 /*----------------------------*/
 
 #define DEFINED( sv ) ( (sv) != NULL && SvOK(sv) )
+
+/*-------------------------*/
+/* if present, call a hook */
+/*-------------------------*/
+
+#define HOOK_CALL(type, hook, identifier, sv, mortal)                         \
+        do {                                                                  \
+          register TypeHook *_hook_;                                          \
+          register const char *_id_ = identifier;                             \
+          CT_DEBUG(MAIN, ("HOOK_CALL: id='%s'", _id_));                       \
+          if (_id_[0] && (_hook_ = HT_get(THIS->type##_hooks, _id_, 0, 0)) && \
+              _hook_->hook != NULL)                                           \
+            sv = hook_call(aTHX_ _hook_->hook, sv, mortal);                   \
+        } while(0)
 
 /*---------------*/
 /* other defines */
@@ -584,10 +617,15 @@ typedef struct {
   char         *bufptr;
   unsigned      alignment;
   unsigned      align_base;
-  int           dataTooShortFlag;
   Buffer        buf;
   IDList        idl;
+  SV           *bufsv;
 } PackInfo;
+
+typedef struct {
+  SV *pack;
+  SV *unpack;
+} TypeHook;
 
 typedef struct {
 
@@ -604,6 +642,10 @@ typedef struct {
 #define CBC_ORDER_MEMBERS    0x00000001U
 
   const char   *ixhash;
+
+  HashTable     enum_hooks;
+  HashTable     struct_hooks;
+  HashTable     typedef_hooks;
 
 } CBC;
 
@@ -646,6 +688,11 @@ static char *string_new_fromSV( pTHX_ SV *sv );
 static void string_delete( char *sv );
 
 static HV *newHV_indexed( pTHX_ const CBC *THIS );
+
+static TypeHook *hook_new(const TypeHook *h);
+static void hook_update(TypeHook *dst, const TypeHook *src);
+static void hook_delete(TypeHook *h);
+static SV *hook_call(pTHX_ SV *hook, SV *in, int mortal);
 
 static void CroakGTI( pTHX_ ErrorGTI error, const char *name, int warnOnly );
 
@@ -736,8 +783,8 @@ static SV *GetMemberString( pTHX_ const MemberInfo *pMI, int offset,
 
 static int  SearchStructMember( Struct *pStruct, const char *elem,
                                 StructDeclaration **ppSD, Declarator **ppD );
-static int  GetMember( pTHX_ const MemberInfo *pMI, const char *member,
-                             MemberInfo *pMIout,
+static int  GetMember( pTHX_ CBC *THIS, const MemberInfo *pMI,
+                             const char *member, MemberInfo *pMIout,
                              int accept_dotless_member, int dont_croak );
 
 static void *GetTypePointer( CBC *THIS, const char *name, const char **pEOS );
@@ -781,13 +828,22 @@ static void HandleParseErrors( pTHX_ LinkedList stack );
 static DebugStream gs_DB_stream;
 #endif
 
-#ifdef CBC_THREAD_SAFE
+#if defined(CBC_THREAD_SAFE) && !defined(UCPP_REENTRANT)
 static perl_mutex gs_parse_mutex;
 #endif
 
 static int gs_DisableParser;
 static int gs_OrderMembers;
 static const char *gs_IndexHashMod;
+
+/* Do NOT change the order between TypeHookS and TypeHook (see above)! */
+static struct {
+  const char *str;
+  STRLEN      len;
+} gs_TypeHookS[] = {
+  { "pack",   4 }, 
+  { "unpack", 6 }
+};
 
 /*===== STATIC FUNCTIONS =====================================================*/
 
@@ -856,11 +912,11 @@ static void DumpSV( pTHX_ SV *buf, int level, SV *sv )
    */
   {
     STRLEN cur, len;
-    cur = SvCUR(buf) + 64;   // estimated new string length
-    if( cur > 1024 ) {       // do nothing for small strings
-      len = SvLEN(buf);      // buffer size
+    cur = SvCUR(buf) + 64;   /* estimated new string length  */
+    if( cur > 1024 ) {       /* do nothing for small strings */
+      len = SvLEN(buf);      /* buffer size                  */
       if( cur > len ) {
-        len = (len>>10)<<11; // double buffer size
+        len = (len>>10)<<11; /* double buffer size           */
         (void) sv_grow( buf, len );
       }
     }
@@ -1129,25 +1185,31 @@ static void string_delete( char *str )
 static HV *newHV_indexed( pTHX_ const CBC *THIS )
 {
   dSP;
-  HV *hv;
+  HV *hv, *stash;
+  GV *gv;
   SV *sv;
+  int count;
 
   hv = newHV();
+
   sv = newSVpv(CONST_CHAR(THIS->ixhash), 0);
+  stash = gv_stashpv(CONST_CHAR(THIS->ixhash), 0);
+  gv = gv_fetchmethod(stash, "TIEHASH");
  
   ENTER;
   SAVETMPS;
  
   PUSHMARK(SP);
-  XPUSHs(sv_mortalcopy(sv));
+  XPUSHs(sv_2mortal(sv));
   PUTBACK;
  
-  sv_catpv( sv, "::TIEHASH" );
-  (void) call_sv(sv, G_SCALAR);
+  count = call_sv((SV*)GvCV(gv), G_SCALAR);
 
-  SvREFCNT_dec(sv);
- 
   SPAGAIN;
+
+  if (count != 1)
+    fatal("%s::TIEHASH returned %d elements instead of 1",
+          THIS->ixhash, count);
  
   sv = POPs;
  
@@ -1159,6 +1221,176 @@ static HV *newHV_indexed( pTHX_ const CBC *THIS )
   LEAVE;
 
   return hv;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: hook_new
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2004
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static TypeHook *hook_new(const TypeHook *h)
+{
+  dTHX;
+  TypeHook *r;
+  SV **src, **dst;
+  int i;
+
+  New(0, r, 1, TypeHook);
+
+  src = (SV **) h;
+  dst = (SV **) r;
+
+  for (i = 0; i < sizeof(TypeHook)/sizeof(SV *); i++, src++, dst++) {
+    *dst = *src;
+    if (*src)
+      SvREFCNT_inc(*src);
+  }
+
+  return r;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: hook_update
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2004
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void hook_update(TypeHook *dst, const TypeHook *src)
+{
+  dTHX;
+  SV **sv_dst = (SV **) dst;
+  SV **sv_src = (SV **) src;
+  int i;
+
+  assert(src != NULL);
+  assert(dst != NULL);
+
+  for (i = 0; i < sizeof(TypeHook)/sizeof(SV *); i++, sv_dst++, sv_src++) {
+    if (*sv_dst == *sv_src)
+      continue;
+    if (*sv_src);
+      SvREFCNT_inc(*sv_src);
+    if (*sv_dst)
+      SvREFCNT_dec(*sv_dst);
+    *sv_dst = *sv_src;
+  }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: hook_delete
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2004
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void hook_delete(TypeHook *h)
+{
+  if (h) {
+    dTHX;
+    SV **sv = (SV **) h;
+    int i;
+
+    for (i = 0; i < sizeof(TypeHook)/sizeof(SV *); i++, sv++)
+      if (*sv)
+        SvREFCNT_dec(*sv);
+
+    Safefree(h);
+  }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: hook_call
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2004
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static SV *hook_call(pTHX_ SV *hook, SV *in, int mortal)
+{
+  dSP;
+  int count;
+  SV *out;
+
+  CT_DEBUG( MAIN, ("hook_call(hook=%p(%d), in=%p(%d), mortal=%d)",
+                   hook, SvREFCNT(hook), in, SvREFCNT(in), mortal) );
+
+  ENTER;
+  SAVETMPS;
+
+  PUSHMARK(SP);
+  XPUSHs(in);
+  PUTBACK;
+
+  count = call_sv(hook, G_SCALAR);
+
+  SPAGAIN;
+
+  if (count != 1)
+    fatal("Hook returned %d elements instead of 1", count);
+
+  out = POPs;
+
+  CT_DEBUG( MAIN, ("hook_call: in=%p(%d), out=%p(%d)",
+                   in, SvREFCNT(in), out, SvREFCNT(out)) );
+
+  if (!mortal)
+    SvREFCNT_dec(in);
+  SvREFCNT_inc(out);
+
+  PUTBACK;
+  FREETMPS;
+  LEAVE;
+
+  if (mortal)
+    sv_2mortal(out);
+
+  CT_DEBUG( MAIN, ("hook_call: out=%p(%d)",
+                   out, SvREFCNT(out)) );
+
+  return out;
 }
 
 /*******************************************************************************
@@ -1548,8 +1780,8 @@ static void StoreIntSV( pPACKARGS, unsigned size, unsigned sign, SV *sv )
 
   iv.sign   = sign;
 
-  if( SvPOK( sv ) )
-    iv.string = SvPVX( sv );
+  if (SvPOK(sv) && string_is_integer(SvPVX(sv)))
+    iv.string = SvPVX(sv);
   else {
     iv.string = NULL;
 
@@ -1668,6 +1900,7 @@ static void SetPointer( pPACKARGS, SV *sv )
   CT_DEBUG( MAIN, (XSCLASS "::SetPointer( THIS=%p, sv=%p )", THIS, sv) );
 
   ALIGN_BUFFER( size );
+  GROW_BUFFER( size, "insufficient space" );
 
   if( DEFINED( sv ) && ! SvROK( sv ) )
     StoreIntSV( aPACKARGS, size, 0, sv );
@@ -1696,16 +1929,16 @@ static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv )
 {
   StructDeclaration *pStructDecl;
   Declarator        *pDecl;
-  char              *bufptr;
   long               pos;
   unsigned           old_align, old_base;
 
   CT_DEBUG( MAIN, (XSCLASS "::SetStruct( THIS=%p, pStruct=%p, sv=%p )",
             THIS, pStruct, sv) );
 
+  HOOK_CALL(struct, pack, pStruct->identifier, sv, 1);
+
   ALIGN_BUFFER( pStruct->align );
 
-  bufptr           = PACK->bufptr;
   pos              = PACK->buf.pos;
   old_align        = PACK->alignment;
   old_base         = PACK->align_base;
@@ -1737,7 +1970,7 @@ static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv )
             }
 
             if( pStruct->tflags & T_UNION ) {
-              PACK->bufptr  = bufptr;
+              PACK->bufptr  = PACK->buf.buffer + pos;
               PACK->buf.pos = pos;
               PACK->align_base = 0;
             }
@@ -1755,7 +1988,7 @@ static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv )
           IDLP_PUSH( ID );
 
           if( pStruct->tflags & T_UNION ) {
-            PACK->bufptr     = bufptr;
+            PACK->bufptr     = PACK->buf.buffer + pos;
             PACK->buf.pos    = pos;
             PACK->align_base = 0;
           }
@@ -1771,8 +2004,8 @@ static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv )
 
   PACK->alignment  = old_align;
   PACK->align_base = old_base + pStruct->size;
-  PACK->bufptr     = bufptr   + pStruct->size;
-  PACK->buf.pos    = pos      + pStruct->size;
+  PACK->buf.pos    = pos + pStruct->size;
+  PACK->bufptr     = PACK->buf.buffer + PACK->buf.pos;
 }
 
 /*******************************************************************************
@@ -1802,7 +2035,10 @@ static void SetEnum( pPACKARGS, EnumSpecifier *pEnumSpec, SV *sv )
 
   /* TODO: add some checks (range, perhaps even value) */
 
+  HOOK_CALL(enum, pack, pEnumSpec->identifier, sv, 1);
+
   ALIGN_BUFFER( size );
+  GROW_BUFFER( size, "insufficient space" );
 
   if( DEFINED( sv ) && ! SvROK( sv ) ) {
     IntValue iv;
@@ -1898,6 +2134,7 @@ static void SetBasicType( pPACKARGS, u_32 flags, SV *sv )
 #undef LOAD_SIZE
 
   ALIGN_BUFFER( size );
+  GROW_BUFFER( size, "insufficient space" );
 
   if( DEFINED( sv ) && ! SvROK( sv ) ) {
     if( flags & (T_DOUBLE | T_FLOAT) )
@@ -1937,8 +2174,34 @@ static void SetType( pPACKARGS, TypeSpec *pTS, Declarator *pDecl,
     SV *ary;
 
     if( DEFINED(sv) && SvROK(sv) && SvTYPE( ary = SvRV(sv) ) == SVt_PVAV ) {
-      long i, s = ((Value *) LL_get( pDecl->array, dimension ))->iv;
+      Value *v = (Value *) LL_get( pDecl->array, dimension );
+      long i, s;
       AV *a = (AV *) ary;
+
+      if (v->flags & V_IS_UNDEF) {
+        unsigned size, align;
+        int dim;
+        ErrorGTI err;
+
+        s = av_len(a)+1;
+
+        /* eventually we need to grow the SV buffer */
+
+        err = get_type_info( &THIS->cfg, pTS, pDecl, NULL, &align, &size, NULL );
+        if( err != GTI_NO_ERROR )
+          CroakGTI( aTHX_ err, IDListToStr(aTHX_ &(PACK->idl)), 1 );
+
+        ALIGN_BUFFER(align);
+
+        dim = LL_count( pDecl->array );
+
+        while( dim-- > dimension+1 )
+          size *= ((Value *) LL_get( pDecl->array, dim ))->iv;
+
+        GROW_BUFFER(s*size, "incomplete array type");
+      }
+      else
+        s = v->iv;
 
       IDLP_PUSH( IX );
 
@@ -1964,7 +2227,7 @@ static void SetType( pPACKARGS, TypeSpec *pTS, Declarator *pDecl,
         WARN((aTHX_ "'%s' should be an array reference",
                     IDListToStr(aTHX_ &(PACK->idl))));
 
-      err = get_type_info( &THIS->cfg, pTS, NULL, &size, &align, NULL, NULL );
+      err = get_type_info( &THIS->cfg, pTS, pDecl, NULL, &align, &size, NULL );
       if( err != GTI_NO_ERROR )
         CroakGTI( aTHX_ err, IDListToStr(aTHX_ &(PACK->idl)), 1 );
 
@@ -1972,9 +2235,11 @@ static void SetType( pPACKARGS, TypeSpec *pTS, Declarator *pDecl,
 
       dim = LL_count( pDecl->array );
 
+      /* this is safe with flexible array members */
       while( dim-- > dimension )
         size *= ((Value *) LL_get( pDecl->array, dim ))->iv;
 
+      GROW_BUFFER( size, "insufficient space" );
       INC_BUFFER( size );
     }
   }
@@ -1990,6 +2255,7 @@ static void SetType( pPACKARGS, TypeSpec *pTS, Declarator *pDecl,
     }
     else if( pTS->tflags & T_TYPE ) {
       Typedef *pTD = pTS->ptr;
+      HOOK_CALL(typedef, pack, pTD->pDecl->identifier, sv, 1);
       SetType( aPACKARGS, pTD->pType, pTD->pDecl, 0, sv );
     }
     else if( pTS->tflags & (T_STRUCT|T_UNION) ) {
@@ -2071,7 +2337,6 @@ static SV *GetStruct( pPACKARGS, Struct *pStruct, HV *hash )
   StructDeclaration *pStructDecl;
   Declarator        *pDecl;
   HV                *h = hash;
-  char              *bufptr;
   long               pos;
   int                ordered;
   unsigned           old_align, old_base;
@@ -2086,7 +2351,6 @@ static SV *GetStruct( pPACKARGS, Struct *pStruct, HV *hash )
 
   ALIGN_BUFFER( pStruct->align );
 
-  bufptr           = PACK->bufptr;
   pos              = PACK->buf.pos;
   old_align        = PACK->alignment;
   old_base         = PACK->align_base;
@@ -2109,18 +2373,17 @@ static SV *GetStruct( pPACKARGS, Struct *pStruct, HV *hash )
                   pStruct->context.pFI->name, pStruct->context.line));
           }
           else {
-            SV *value = GetType( aPACKARGS, &pStructDecl->type, pDecl, 0 );
-            if(   hv_store( h, pDecl->identifier, klen, value, 0 ) == NULL
-               && !ordered
-              )
-              SvREFCNT_dec( value );
-            else
-              SvSETMAGIC( value );
+            SV *value = GetType(aPACKARGS, &pStructDecl->type, pDecl, 0);
+            SV **didstore = hv_store(h, pDecl->identifier, klen, value, 0);
+            if (ordered)
+              SvSETMAGIC(value);
+            if (!didstore)
+              SvREFCNT_dec(value);
           }
         }
 
         if( pStruct->tflags & T_UNION ) {
-          PACK->bufptr     = bufptr;
+          PACK->bufptr     = PACK->buf.buffer + pos;
           PACK->buf.pos    = pos;
           PACK->align_base = 0;
         }
@@ -2134,7 +2397,7 @@ static SV *GetStruct( pPACKARGS, Struct *pStruct, HV *hash )
       (void) GetStruct( aPACKARGS, (Struct *) pTS->ptr, h );
 
       if( pStruct->tflags & T_UNION ) {
-        PACK->bufptr     = bufptr;
+        PACK->bufptr     = PACK->buf.buffer + pos;
         PACK->buf.pos    = pos;
         PACK->align_base = 0;
       }
@@ -2143,10 +2406,16 @@ static SV *GetStruct( pPACKARGS, Struct *pStruct, HV *hash )
 
   PACK->alignment  = old_align;
   PACK->align_base = old_base + pStruct->size;
-  PACK->bufptr     = bufptr   + pStruct->size;
-  PACK->buf.pos    = pos      + pStruct->size;
+  PACK->buf.pos    = pos + pStruct->size;
+  PACK->bufptr     = PACK->buf.buffer + PACK->buf.pos;
 
-  return hash ? NULL : newRV_noinc( (SV *) h );
+  if (hash)
+    return NULL;
+  else {
+    SV *rv = newRV_noinc((SV*)h);
+    HOOK_CALL(struct, unpack, pStruct->identifier, rv, 0);
+    return rv;
+  }
 }
 
 /*******************************************************************************
@@ -2203,41 +2472,44 @@ static SV *GetEnum( pPACKARGS, EnumSpecifier *pEnumSpec )
   INC_BUFFER( size );
 
   if( THIS->enumType == ET_INTEGER )
-    return newSViv( value );
+    sv = newSViv( value );
+  else {
+    LL_foreach( pEnum, pEnumSpec->enumerators )
+      if( pEnum->value.iv == value )
+        break;
 
-  LL_foreach( pEnum, pEnumSpec->enumerators )
-    if( pEnum->value.iv == value )
-      break;
+    if( pEnumSpec->tflags & T_UNSAFE_VAL ) {
+      if( pEnumSpec->identifier[0] != '\0' )
+        WARN((aTHX_ "Enumeration '%s' contains unsafe values",
+                    pEnumSpec->identifier));
+      else
+        WARN((aTHX_ "Enumeration contains unsafe values"));
+    }
 
-  if( pEnumSpec->tflags & T_UNSAFE_VAL ) {
-    if( pEnumSpec->identifier[0] != '\0' )
-      WARN((aTHX_ "Enumeration '%s' contains unsafe values",
-                  pEnumSpec->identifier));
-    else
-      WARN((aTHX_ "Enumeration contains unsafe values"));
+    switch( THIS->enumType ) {
+      case ET_BOTH:
+        sv = newSViv( value );
+        if( pEnum )
+          sv_setpv( sv, pEnum->identifier );
+        else
+          sv_setpvf( sv, "<ENUM:%" IVdf ">", IVdf_cast value );
+        SvIOK_on( sv );
+        break;
+
+      case ET_STRING:
+        if( pEnum )
+          sv = newSVpv( pEnum->identifier, 0 );
+        else
+          sv = newSVpvf( "<ENUM:%" IVdf ">", IVdf_cast value );
+        break;
+
+      default:
+        fatal( "Invalid enum type (%d) in GetEnum()!", THIS->enumType );
+        break;
+    }
   }
 
-  switch( THIS->enumType ) {
-    case ET_BOTH:
-      sv = newSViv( value );
-      if( pEnum )
-        sv_setpv( sv, pEnum->identifier );
-      else
-        sv_setpvf( sv, "<ENUM:%" IVdf ">", IVdf_cast value );
-      SvIOK_on( sv );
-      break;
-
-    case ET_STRING:
-      if( pEnum )
-        sv = newSVpv( pEnum->identifier, 0 );
-      else
-        sv = newSVpvf( "<ENUM:%" IVdf ">", IVdf_cast value );
-      break;
-
-    default:
-      fatal( "Invalid enum type (%d) in GetEnum()!", THIS->enumType );
-      break;
-  }
+  HOOK_CALL(enum, unpack, pEnumSpec->identifier, sv, 0);
 
   return sv;
 }
@@ -2330,7 +2602,32 @@ static SV *GetType( pPACKARGS, TypeSpec *pTS, Declarator *pDecl, int dimension )
 
   if( pDecl && dimension < LL_count( pDecl->array ) ) {
     AV *a = newAV();
-    long i, s = ((Value *) LL_get( pDecl->array, dimension ))->iv;
+    Value *v = (Value *) LL_get( pDecl->array, dimension );
+    long i, s;
+
+    if (v->flags & V_IS_UNDEF) {
+      unsigned size, align;
+      int dim;
+      ErrorGTI err;
+
+      err = get_type_info( &THIS->cfg, pTS, pDecl, NULL, &align, &size, NULL );
+      if( err != GTI_NO_ERROR )
+        CroakGTI( aTHX_ err, IDListToStr(aTHX_ &(PACK->idl)), 1 );
+
+      ALIGN_BUFFER(align);
+
+      dim = LL_count( pDecl->array );
+
+      while( dim-- > dimension+1 )
+        size *= ((Value *) LL_get( pDecl->array, dim ))->iv;
+
+      s = ((PACK->buf.length - PACK->buf.pos) + (size - 1)) / size;
+
+      CT_DEBUG( MAIN, ("s=%ld (buf.length=%ld, buf.pos=%ld, size=%ld)",
+                       s, PACK->buf.length, PACK->buf.pos, size) );
+    }
+    else
+      s = v->iv;
 
     av_extend( a, s-1 );
 
@@ -2344,7 +2641,9 @@ static SV *GetType( pPACKARGS, TypeSpec *pTS, Declarator *pDecl, int dimension )
     if( pDecl && pDecl->bitfield_size >= 0 ) return newSV(0);  /* unsupported */
     if( pTS->tflags & T_TYPE ) {
       Typedef *pTD = pTS->ptr;
-      return GetType( aPACKARGS, pTD->pType, pTD->pDecl, 0 );
+      SV *rv = GetType( aPACKARGS, pTD->pType, pTD->pDecl, 0 );
+      HOOK_CALL(typedef, unpack, pTD->pDecl->identifier, rv, 0);
+      return rv;
     }
     if( pTS->tflags & (T_STRUCT|T_UNION) ) {
       Struct *pStruct = pTS->ptr;
@@ -3217,6 +3516,11 @@ static void GetInitStrStruct( pTHX_ CBC *THIS, Struct *pStruct, SV *init,
         if( pDecl->bitfield_size >= 0 && pDecl->identifier[0] == '\0' )
           continue;
 
+        /* skip flexible array members */
+        if (pDecl->bitfield_size < 0 && pDecl->size == 0 &&
+            LL_count(pDecl->array))
+          continue;
+
         id_len = strlen(pDecl->identifier);
         e = hash ? hv_fetch( hash, pDecl->identifier, id_len, 0 ) : NULL;
         if( e )
@@ -3460,33 +3764,36 @@ static void GetAMSType( pTHX_ TypeSpec *pTS, Declarator *pDecl, int dimension,
             name ? SvPV_nolen(name) : "", level, info) );
 
   if( pDecl && dimension < LL_count( pDecl->array ) ) {
-    long i, ix, s = ((Value *) LL_get( pDecl->array, dimension ))->iv;
-    STRLEN len;
-    char ixstr[MAX_IXSTR+1];
-    int  ixlen;
+    Value *pValue = (Value *) LL_get(pDecl->array, dimension);
+    if ((pValue->flags & V_IS_UNDEF) == 0) {
+      long i, ix, s = pValue->iv;
+      STRLEN len;
+      char ixstr[MAX_IXSTR+1];
+      int  ixlen;
 
-    if( name ) {
-      len = SvCUR( name );
-      sv_catpvn_nomg( name, "[", 1 );
-      ixstr[MAX_IXSTR-1] = ']';
-      ixstr[MAX_IXSTR]   = '\0';
-    }
-
-    for( i = 0; i < s; ++i ) {
       if( name ) {
-        SvCUR_set( name, len+1 );
-        for( ix=i, ixlen=2; ixlen < MAX_IXSTR; ix /= 10, ixlen++ ) {
-          ixstr[MAX_IXSTR-ixlen] = (char)('0'+(ix%10));
-          if( ix < 10 ) break;
-        }
-        sv_catpvn_nomg( name, ixstr+MAX_IXSTR-ixlen, ixlen );
+        len = SvCUR( name );
+        sv_catpvn_nomg( name, "[", 1 );
+        ixstr[MAX_IXSTR-1] = ']';
+        ixstr[MAX_IXSTR]   = '\0';
       }
 
-      GetAMSType( aTHX_ pTS, pDecl, dimension+1, name, level+1, info );
-    }
+      for( i = 0; i < s; ++i ) {
+        if( name ) {
+          SvCUR_set( name, len+1 );
+          for( ix=i, ixlen=2; ixlen < MAX_IXSTR; ix /= 10, ixlen++ ) {
+            ixstr[MAX_IXSTR-ixlen] = (char)('0'+(ix%10));
+            if( ix < 10 ) break;
+          }
+          sv_catpvn_nomg( name, ixstr+MAX_IXSTR-ixlen, ixlen );
+        }
 
-    if( name )
-      SvCUR_set( name, len );
+        GetAMSType( aTHX_ pTS, pDecl, dimension+1, name, level+1, info );
+      }
+
+      if( name )
+        SvCUR_set( name, len );
+    }
   }
   else {
     if( pDecl && pDecl->pointer_flag )
@@ -3637,7 +3944,10 @@ static SV *GetTypedefDef( pTHX_ Typedef *pTypedef )
                              pDecl->identifier );
 
   LL_foreach( pValue, pDecl->array )
-    sv_catpvf( sv, "[%ld]", pValue->iv );
+    if (pValue->flags & V_IS_UNDEF)
+      sv_catpvn( sv, "[]", 2 );
+    else
+      sv_catpvf( sv, "[%ld]", pValue->iv );
 
   HV_STORE_CONST( hv, "declarator", sv );
   HV_STORE_CONST( hv, "type", GetTypeSpecDef( aTHX_ pTypedef->pType ) );
@@ -3750,7 +4060,10 @@ static SV *GetDeclaratorsDef( pTHX_ LinkedList declarators )
                                  pDecl->identifier );
 
       LL_foreach( pValue, pDecl->array )
-        sv_catpvf( sv, "[%ld]", pValue->iv );
+        if (pValue->flags & V_IS_UNDEF)
+          sv_catpvn( sv, "[]", 2 );
+        else
+          sv_catpvf( sv, "[%ld]", pValue->iv );
 
       HV_STORE_CONST( hv, "declarator", sv );
       HV_STORE_CONST( hv, "offset", newSViv( pDecl->offset ) );
@@ -4271,8 +4584,8 @@ static int SearchStructMember( Struct *pStruct, const char *elem,
             pMIout->flags |= (from) & (T_HASBITFIELD | T_UNSAFE_VAL);          \
         } while(0)
 
-static int GetMember( pTHX_ const MemberInfo *pMI, const char *member,
-                            MemberInfo *pMIout,
+static int GetMember( pTHX_ CBC *THIS, const MemberInfo *pMI,
+                            const char *member, MemberInfo *pMIout,
                             int accept_dotless_member, int dont_croak )
 {
   const TypeSpec    *pType;
@@ -4291,6 +4604,15 @@ static int GetMember( pTHX_ const MemberInfo *pMI, const char *member,
     ST_FINISH_INDEX,
     ST_SEARCH
   }                  state;
+
+#ifdef CTYPE_DEBUGGING
+  static const char *Sstate[] = {
+    "ST_MEMBER",
+    "ST_INDEX",
+    "ST_FINISH_INDEX",
+    "ST_SEARCH"
+  };
+#endif
 
   Newz( 0, elem, strlen(member)+1, char );
 
@@ -4326,7 +4648,8 @@ static int GetMember( pTHX_ const MemberInfo *pMI, const char *member,
   }
 
   for(;;) {
-    CT_DEBUG( MAIN, ("state = %d \"%s\"", state, c) );
+    CT_DEBUG( MAIN, ("state = %s (%d) \"%s\" (offset=%"UVuf", level=%d, size=%d)",
+                     Sstate[state], state, c, offset, level, size) );
 
     while( *c && isSPACE( *c ) ) c++;
 
@@ -4392,24 +4715,45 @@ static int GetMember( pTHX_ const MemberInfo *pMI, const char *member,
           goto error;
         }
         else {
+          Value *pValue;
           int index, dim;
 
-          index = atoi( ixstr );
-          dim   = ((Value *) LL_get( pDecl->array, level ))->iv;
+          pValue = (Value *) LL_get(pDecl->array, level);
+          index  = atoi(ixstr);
 
           CT_DEBUG( MAIN, ("INDEX: \"%d\"", index) );
 
-          if( index >= dim ) {
-            (void) sprintf( err = errbuf,
-                            "Cannot use index %d into array of size %d",
-                            index, dim );
-            goto error;
+          if (pValue->flags & V_IS_UNDEF) {
+            ErrorGTI err;
+            unsigned esize;
+
+            err = get_type_info( &THIS->cfg, pType, pDecl, NULL, NULL, &esize, NULL );
+            if( err != GTI_NO_ERROR )
+              CroakGTI( aTHX_ err, member, 1 );
+
+            dim = LL_count(pDecl->array);
+
+            while (dim-- > level+1)
+              esize *= ((Value *) LL_get( pDecl->array, dim ))->iv;
+
+            size = (int)esize;
+          }
+          else {
+            dim = pValue->iv;
+
+            if( index >= dim ) {
+              (void) sprintf( err = errbuf,
+                              "Cannot use index %d into array of size %d",
+                              index, dim );
+              goto error;
+            }
+
+            if( size < 0 )
+              fatal( "size is not initialized in GetMember()" );
+
+            size /= dim;
           }
 
-          if( size < 0 )
-            fatal( "size is not initialized in GetMember()" );
-
-          size   /= dim;
           offset += index * size;
           level++;
         }
@@ -4817,7 +5161,7 @@ static int GetMemberInfo( pTHX_ CBC *THIS, const char *name, MemberInfo *pMI )
     if( member && *member ) {
       mi.pDecl = NULL;
       mi.level = 0;
-      (void) GetMember( aTHX_ &mi, member, pMI, 0, 0 );
+      (void) GetMember( aTHX_ THIS, &mi, member, pMI, 0, 0 );
     }
     else if( mi.type.ptr == NULL ) {
       ErrorGTI err;
@@ -4946,8 +5290,11 @@ static SV *GetTypeNameString( pTHX_ const MemberInfo *pMI )
         if( level < LL_count( pMI->pDecl->array ) ) {
           sv_catpv( sv, " " );
           while( level < LL_count( pMI->pDecl->array ) ) {
-            sv_catpvf( sv, "[%d]", ((Value *)
-                       LL_get( pMI->pDecl->array, level ))->iv );
+            Value *pValue = LL_get( pMI->pDecl->array, level );
+            if (pValue->flags & V_IS_UNDEF)
+              sv_catpvn(sv, "[]", 2);
+            else
+              sv_catpvf(sv, "[%d]", pValue->iv);
             level++;
           }
         }
@@ -6027,15 +6374,15 @@ static void CheckAllowedTypes( pTHX_ const MemberInfo *pMI, const char *method,
     level = pMI->level;
 
   if( pDecl != NULL ) {
-    if( pDecl->pointer_flag ) {
-      if( (allowedTypes & ALLOW_POINTERS) == 0 )
-        Perl_croak(aTHX_ "Cannot use %s on a pointer type", method);
-      return;
-    }
-
     if( pDecl->array && level < LL_count( pDecl->array ) ) {
       if( (allowedTypes & ALLOW_ARRAYS) == 0 )
         Perl_croak(aTHX_ "Cannot use %s on an array type", method);
+      return;
+    }
+
+    if( pDecl->pointer_flag ) {
+      if( (allowedTypes & ALLOW_POINTERS) == 0 )
+        Perl_croak(aTHX_ "Cannot use %s on a pointer type", method);
       return;
     }
   }
@@ -6157,6 +6504,9 @@ CBC::new( ... )
 		  THIS->enumType              = DEFAULT_ENUMTYPE;
 		  THIS->ixhash                = NULL;
 		  THIS->flags                 = 0;
+		  THIS->enum_hooks            = HT_new_ex(1, HT_AUTOGROW);
+		  THIS->struct_hooks          = HT_new_ex(1, HT_AUTOGROW);
+		  THIS->typedef_hooks         = HT_new_ex(1, HT_AUTOGROW);
 
 		  THIS->cfg.includes          = LL_new();
 		  THIS->cfg.defines           = LL_new();
@@ -6234,6 +6584,13 @@ CBC::DESTROY()
 		LL_destroy( THIS->cfg.disabled_keywords,
 		            (LLDestroyFunc) string_delete );
 
+		HT_destroy( THIS->enum_hooks,
+		            (HTDestroyFunc) hook_delete );
+		HT_destroy( THIS->struct_hooks,
+		            (HTDestroyFunc) hook_delete );
+		HT_destroy( THIS->typedef_hooks,
+		            (HTDestroyFunc) hook_delete );
+
 		HT_destroy( THIS->cfg.keyword_map, NULL );
 
 		Safefree( THIS );
@@ -6279,6 +6636,13 @@ CBC::clone()
 		clone->cfg.disabled_keywords =
 		           CloneStringList( THIS->cfg.disabled_keywords );
 
+		clone->enum_hooks    = HT_clone(THIS->enum_hooks,
+		                                (HTCloneFunc) hook_new);
+		clone->struct_hooks  = HT_clone(THIS->struct_hooks,
+		                                (HTCloneFunc) hook_new);
+		clone->typedef_hooks = HT_clone(THIS->typedef_hooks,
+		                                (HTCloneFunc) hook_new);
+
 		clone->cfg.keyword_map = HT_clone(THIS->cfg.keyword_map, NULL);
 
 		init_parse_info( &clone->cpi );
@@ -6316,6 +6680,10 @@ CBC::clean()
 		CT_DEBUG_METHOD;
 
 		free_parse_info( &THIS->cpi );
+
+		HT_flush( THIS->enum_hooks,    (HTDestroyFunc) hook_delete );
+		HT_flush( THIS->struct_hooks,  (HTDestroyFunc) hook_delete );
+		HT_flush( THIS->typedef_hooks, (HTDestroyFunc) hook_delete );
 
 		if( GIMME_V != G_VOID )
 		  XSRETURN(1);
@@ -6490,11 +6858,11 @@ CBC::parse( code )
 
 		buf.length = len;
 		buf.pos    = 0;
-#ifdef CBC_THREAD_SAFE
+#if defined(CBC_THREAD_SAFE) && !defined(UCPP_REENTRANT)
 		MUTEX_LOCK( &gs_parse_mutex );
 #endif
 		(void) parse_buffer( NULL, &buf, &THIS->cfg, &THIS->cpi );
-#ifdef CBC_THREAD_SAFE
+#if defined(CBC_THREAD_SAFE) && !defined(UCPP_REENTRANT)
 		MUTEX_UNLOCK( &gs_parse_mutex );
 #endif
 		if( temp )
@@ -6533,11 +6901,11 @@ CBC::parse_file( file )
 
 	CODE:
 		CT_DEBUG_METHOD1( "'%s'", file );
-#ifdef CBC_THREAD_SAFE
+#if defined(CBC_THREAD_SAFE) && !defined(UCPP_REENTRANT)
 		MUTEX_LOCK( &gs_parse_mutex );
 #endif
 		(void) parse_buffer( file, NULL, &THIS->cfg, &THIS->cpi );
-#ifdef CBC_THREAD_SAFE
+#if defined(CBC_THREAD_SAFE) && !defined(UCPP_REENTRANT)
 		MUTEX_UNLOCK( &gs_parse_mutex );
 #endif
 		HandleParseErrors( aTHX_ THIS->cpi.errorStack );
@@ -6612,7 +6980,7 @@ CBC::def( type )
 		  if( member && *member != '\0' && *RETVAL != '\0' ) {
 		    mi.pDecl = NULL;
 		    mi.level = 0;
-		    RETVAL   = GetMember( aTHX_ &mi, member, NULL, 0, 1 )
+		    RETVAL   = GetMember( aTHX_ THIS, &mi, member, NULL, 0, 1 )
 		               ? "member" : "";
 		  }
 		}
@@ -6671,9 +7039,6 @@ CBC::pack( type, data = &PL_sv_undef, string = NULL )
 		if( mi.flags )
 		  WARN_FLAGS( type, mi.flags );
 
-		if( mi.size == 0 )
-		  WARN((aTHX_ "Zero-sized type '%s' used in pack", type));
-
 		if( string == NULL ) {
 		  RETVAL = newSV( mi.size );
 		  /* force RETVAL into a PV when mi.size is zero (bug #3753) */
@@ -6704,6 +7069,9 @@ CBC::pack( type, data = &PL_sv_undef, string = NULL )
 		  if( mi.size > len )
 		    Zero( buffer+len, mi.size-len, char );
 		}
+
+		/* may be used to grow the buffer */
+		pack.bufsv      = RETVAL;
 
 		pack.bufptr     =
 		pack.buf.buffer = buffer;
@@ -6769,9 +7137,6 @@ CBC::unpack( type, string )
 		if( mi.flags )
 		  WARN_FLAGS( type, mi.flags );
 
-		if( mi.size == 0 )
-		  WARN((aTHX_ "Zero-sized type '%s' used in unpack", type));
-
 		pack.bufptr           =
 		pack.buf.buffer       = SvPV( string, len );
 		pack.buf.pos          = 0;
@@ -6780,13 +7145,11 @@ CBC::unpack( type, string )
 		pack.align_base       = 0;
 		pack.alignment        = THIS->cfg.alignment;
 
-		pack.dataTooShortFlag = 0;
+		if (mi.size > len)
+		  WARN((aTHX_ "Data too short"));
 
 		RETVAL = GetType( aTHX_ THIS, &pack, &mi.type,
 		                        mi.pDecl, mi.level );
-
-		if( pack.dataTooShortFlag )
-		  WARN((aTHX_ "Data too short"));
 
 	OUTPUT:
 		RETVAL
@@ -6916,7 +7279,7 @@ CBC::offsetof( type, member )
 		if( !GetMemberInfo( aTHX_ THIS, type, &mi ) )
 		  Perl_croak(aTHX_ "Cannot find '%s'", type);
 
-		(void) GetMember( aTHX_ &mi, member, &mi2, 1, 0 );
+		(void) GetMember( aTHX_ THIS, &mi, member, &mi2, 1, 0 );
 
 		if( mi2.pDecl && mi2.pDecl->bitfield_size >= 0 )
 		  Perl_croak(aTHX_ "Cannot use %s on bitfields", method);
@@ -7661,6 +8024,246 @@ CBC::dependencies()
 		  XSRETURN(count);
 		}
 
+
+################################################################################
+#
+#   METHOD: add_hooks
+#
+#   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2004
+#   CHANGED BY:                                   ON:
+#
+################################################################################
+#
+# DESCRIPTION:
+#
+#   ARGUMENTS:
+#
+#     RETURNS:
+#
+################################################################################
+
+void
+CBC::add_hooks(...)
+	PREINIT:
+		CBC_METHOD(add_hooks);
+
+	PPCODE:
+		CT_DEBUG_METHOD;
+
+		if (items % 2 == 0)
+		  Perl_croak(aTHX_ "Number of arguments "
+		                   "to %s must be even", method);
+		else {
+		  int i, num_hooks = 0;
+
+		  for (i = 1; i < items; i += 2) {
+		    const char *type, *key, *member = NULL;
+		    HashTable ht;
+		    STRLEN len;
+		    SV *hooksv = ST(i+1);
+		    HV *hooks;
+		    TypeHook typehook, *old;
+		    TypeSpec ts;
+		    SV **cur = (SV **) &typehook;
+		    int j;
+
+		    type = SvPV(ST(i), len);
+
+		    if (GetTypeSpec(THIS, type, &member, &ts) == 0)
+		      Perl_croak(aTHX_ "Cannot find '%s'", type);
+
+		    if (member && *member != '\0')
+		      Perl_croak(aTHX_ "No member expressions ('%s') allowed "
+		                       "in %s", type, method);
+
+		    if (ts.ptr == NULL)
+		      Perl_croak(aTHX_ "No basic types ('%s') allowed in %s",
+		                       type, method);
+
+		    switch (GET_CTYPE(ts.ptr)) {
+		      case TYP_TYPEDEF:
+		        key = &((Typedef *)ts.ptr)->pDecl->identifier[0];
+		        ht = THIS->typedef_hooks;
+		        CT_DEBUG(MAIN, ("adding typedef hook for '%s' [%s]",
+		                        type, key));
+		        break;
+		      case TYP_STRUCT:
+		        key = &((Struct *)ts.ptr)->identifier[0];
+		        ht = THIS->struct_hooks;
+		        CT_DEBUG(MAIN, ("adding struct hook for '%s' [%s]",
+		                        type, key));
+		        break;
+		      case TYP_ENUM:
+		        key = &((EnumSpecifier *)ts.ptr)->identifier[0];
+		        ht = THIS->enum_hooks;
+		        CT_DEBUG(MAIN, ("adding enum hook for '%s' [%s]",
+		                        type, key));
+		        break;
+		      default:
+		        fatal("GetTypePointer returned an invalid type (%d) in "
+		              XSCLASS "::%s()", GET_CTYPE(ts.ptr), method);
+		        break;
+		    }
+
+		    assert(*key);
+
+		    if (!(SvROK(hooksv) &&
+		          SvTYPE(hooks=(HV *)SvRV(hooksv)) == SVt_PVHV))
+		      Perl_croak(aTHX_ "Need a hash reference to define "
+		                       "hooks for '%s'", type);
+
+		    if ((old = HT_get(ht, key, 0, 0)) != NULL)
+		      typehook = *old;
+		    else
+		      Zero(&typehook, 1, TypeHook);
+
+		    for (j = 0; j < sizeof(TypeHook)/sizeof(SV *); j++, cur++) {
+		      const char *hook = gs_TypeHookS[j].str;
+		      SV **sub = hv_fetch(hooks, CONST_CHAR(hook),
+		                          gs_TypeHookS[j].len, 0);
+
+		      CT_DEBUG(MAIN, ("add_hooks: [%s] sub=%p, *sub=%p, "
+		                      "DEFINED(*sub)=%d, SvROK(*sub)=%d",
+		                      hook, sub, sub ? *sub : NULL,
+		                      sub ? DEFINED(*sub) : 0,
+		                      sub && DEFINED(*sub) ? SvROK(*sub) : 0));
+
+		      if (sub != NULL) {
+		        if (!DEFINED(*sub))
+		          *cur = NULL;
+		        else if (!(SvROK(*sub) &&
+		                   SvTYPE(*cur = SvRV(*sub)) == SVt_PVCV))
+		          Perl_croak(aTHX_ "%s hook defined for '%s' is not "
+		                           "a code reference", hook, type);
+		      }
+
+		      if (*cur)
+		        num_hooks++;
+		    }
+
+		    if (num_hooks > 0) {
+		      if (old != NULL)
+		        hook_update(old, &typehook);
+		      else {
+		        if (HT_store(ht, key, 0, 0, hook_new(&typehook)) == 0)
+		          fatal("Cannot store new hooks to hash table in "
+		                XSCLASS "::%s()", method);
+		      }
+		    }
+		    else if (old != NULL) {
+		      if (old != HT_fetch(ht, key, 0, 0))
+		        fatal("Inconsistent hash table in "
+		              XSCLASS "::%s()", method);
+		      hook_delete(old);
+		    }
+		  }
+		}
+
+
+################################################################################
+#
+#   METHOD: delete_hooks
+#
+#   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2004
+#   CHANGED BY:                                   ON:
+#
+################################################################################
+#
+# DESCRIPTION:
+#
+#   ARGUMENTS:
+#
+#     RETURNS:
+#
+################################################################################
+
+void
+CBC::delete_hooks(...)
+	PREINIT:
+		CBC_METHOD(delete_hooks);
+		int i;
+
+	PPCODE:
+		CT_DEBUG_METHOD;
+
+		for (i = 1; i < items; i++) {
+		  const char *type, *key, *member = NULL;
+		  HashTable ht;
+		  STRLEN len;
+		  TypeHook *old;
+		  TypeSpec ts;
+
+		  type = SvPV(ST(i), len);
+
+		  if (GetTypeSpec(THIS, type, &member, &ts) == 0)
+		    Perl_croak(aTHX_ "Cannot find '%s'", type);
+
+		  if (member && *member != '\0')
+		    Perl_croak(aTHX_ "No member expressions ('%s') allowed "
+		                     "in %s", type, method);
+
+		  if (ts.ptr == NULL)
+		    Perl_croak(aTHX_ "No basic types ('%s') allowed in %s",
+		                     type, method);
+
+		  switch (GET_CTYPE(ts.ptr)) {
+		    case TYP_TYPEDEF:
+		      key = &((Typedef *)ts.ptr)->pDecl->identifier[0];
+		      ht = THIS->typedef_hooks;
+		      break;
+		    case TYP_STRUCT:
+		      key = &((Struct *)ts.ptr)->identifier[0];
+		      ht = THIS->struct_hooks;
+		      break;
+		    case TYP_ENUM:
+		      key = &((EnumSpecifier *)ts.ptr)->identifier[0];
+		      ht = THIS->enum_hooks;
+		      break;
+		    default:
+		      fatal("GetTypePointer returned an invalid type (%d) in "
+		            XSCLASS "::%s()", GET_CTYPE(ts.ptr), method);
+		      break;
+		  }
+
+		  assert(*key);
+
+		  if ((old = HT_fetch(ht, key, 0, 0)) != NULL)
+		    hook_delete(old);
+		  else
+		    WARN((aTHX_ "No hooks defined for '%s'", type));
+		}
+
+
+################################################################################
+#
+#   METHOD: delete_all_hooks
+#
+#   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2004
+#   CHANGED BY:                                   ON:
+#
+################################################################################
+#
+# DESCRIPTION:
+#
+#   ARGUMENTS:
+#
+#     RETURNS:
+#
+################################################################################
+
+void
+CBC::delete_all_hooks()
+	PREINIT:
+		CBC_METHOD(delete_all_hooks);
+
+	PPCODE:
+		CT_DEBUG_METHOD;
+
+		HT_flush(THIS->enum_hooks,    (HTDestroyFunc) hook_delete);
+		HT_flush(THIS->struct_hooks,  (HTDestroyFunc) hook_delete);
+		HT_flush(THIS->typedef_hooks, (HTDestroyFunc) hook_delete);
+
+
 ################################################################################
 #
 #   FUNCTION: import
@@ -7829,7 +8432,7 @@ BOOT:
 		  f.cstring = ct_cstring;
 		  f.fatal   = ct_fatal;
 		  set_print_functions( &f );
-#ifdef CBC_THREAD_SAFE
+#if defined(CBC_THREAD_SAFE) && !defined(UCPP_REENTRANT)
 		  MUTEX_INIT( &gs_parse_mutex );
 #endif
 #ifdef CTYPE_DEBUGGING

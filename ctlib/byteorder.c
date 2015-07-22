@@ -10,14 +10,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/04/17 13:39:02 +0100 $
-* $Revision: 5 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 19:37:55 +0000 $
+* $Revision: 7 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /ctlib/byteorder.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -740,6 +740,65 @@ static void string2integer( IntValue *pInt )
   }
 
 #endif
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: string_is_integer
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2004
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Decide if a string contains a dec/hex/oct integer.
+*
+*   ARGUMENTS:
+*
+*     RETURNS: Zero if the string doesn't hold an interpretable number.
+*              The base (i.e. 8, 10 or 16) if the string is a number.
+*
+*******************************************************************************/
+
+int string_is_integer(const char *pStr)
+{
+  int rval;
+
+  /* ignore leading whitespace */
+  while (isspace(*pStr))
+    pStr++;
+
+  switch (*pStr) {
+    default : break;
+    case '-':
+    case '+': while (isspace(*++pStr));
+  }
+
+  if (*pStr == '0') {  /* seems to be hex or octal */
+    pStr++;
+    if (*pStr == 'x') {  /* must be hex */
+      pStr++;
+      while (isxdigit(*pStr))
+        pStr++;
+      rval = 16;
+    }
+    else {  /* must be octal */
+      while (isdigit(*pStr) && *pStr != '8' && *pStr != '9')
+        pStr++;
+      rval = 8;
+    }
+  }
+  else {  /* must be decimal */
+    while (isdigit(*pStr))
+      pStr++;
+    rval = 10;
+  }
+
+  /* ignore trailing whitespace */
+  while (isspace(*pStr))
+    pStr++;
+
+  return *pStr ? 0 : rval;
 }
 
 /*******************************************************************************

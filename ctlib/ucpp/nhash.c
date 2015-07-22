@@ -415,13 +415,17 @@ int HTT2_del(HTT2 *htt, char *name)
  * parameter `node'. If `wipe' is non-zero, the nodes are removed
  * from memory.
  */
-static void scan_node(hash_item_header *node, void (*action)(void *), int wipe)
+
+#define SCAN_FLAG_WIPE   0x1
+#define SCAN_FLAG_ARG    0x2
+
+static void scan_node(hash_item_header *node, void (*action)(), void *arg, unsigned flags)
 {
 	unsigned v;
 
 	if (node == NULL) return;
-	scan_node(node->left, action, wipe);
-	scan_node(node->right, action, wipe);
+	scan_node(node->left, action, arg, flags);
+	scan_node(node->right, action, arg, flags);
 	v = *(unsigned *)(node->ident);
 	if ((v & 1U) != 0) {
 		hash_item_header *pnode, *nnode;
@@ -431,18 +435,27 @@ static void scan_node(hash_item_header *node, void (*action)(void *), int wipe)
 			char *tmp = pnode->ident;
 
 			nnode = pnode->left;
-			action(pnode);
-			if (wipe) freemem(tmp);
+
+			if (flags & SCAN_FLAG_ARG)
+				action(arg, pnode);
+			else
+				action(pnode);
+
+			if (flags & SCAN_FLAG_WIPE) freemem(tmp);
 		}
-		if (wipe) {
+		if (flags & SCAN_FLAG_WIPE) {
 			freemem(node->ident);
 			freemem(node);
 		}
 	} else {
 		char *tmp = node->ident;
 
-		action(node);
-		if (wipe) freemem(tmp);
+		if (flags & SCAN_FLAG_ARG)
+			action(arg, node);
+		else
+			action(node);
+
+		if (flags & SCAN_FLAG_WIPE) freemem(tmp);
 	}
 }
 
@@ -452,15 +465,30 @@ void HTT_scan(HTT *htt, void (*action)(void *))
 	unsigned u;
 
 	for (u = 0; u < HTT_NUM_TREES; u ++) {
-		scan_node(htt->tree[u], action, 0);
+		scan_node(htt->tree[u], action, NULL, 0);
+	}
+}
+
+void HTT_scan_arg(HTT *htt, void (*action)(void *, void *), void *arg)
+{
+	unsigned u;
+
+	for (u = 0; u < HTT_NUM_TREES; u ++) {
+		scan_node(htt->tree[u], action, arg, SCAN_FLAG_ARG);
 	}
 }
 
 /* see nhash.h */
 void HTT2_scan(HTT2 *htt, void (*action)(void *))
 {
-	scan_node(htt->tree[0], action, 0);
-	scan_node(htt->tree[1], action, 0);
+	scan_node(htt->tree[0], action, NULL, 0);
+	scan_node(htt->tree[1], action, NULL, 0);
+}
+
+void HTT2_scan_arg(HTT2 *htt, void (*action)(void *, void *), void *arg)
+{
+	scan_node(htt->tree[0], action, arg, SCAN_FLAG_ARG);
+	scan_node(htt->tree[1], action, arg, SCAN_FLAG_ARG);
 }
 
 /* see nhash.h */
@@ -469,13 +497,13 @@ void HTT_kill(HTT *htt)
 	unsigned u;
 
 	for (u = 0; u < HTT_NUM_TREES; u ++) {
-		scan_node(htt->tree[u], htt->deldata, 1);
+		scan_node(htt->tree[u], htt->deldata, NULL, SCAN_FLAG_WIPE);
 	}
 }
 
 /* see nhash.h */
 void HTT2_kill(HTT2 *htt)
 {
-	scan_node(htt->tree[0], htt->deldata, 1);
-	scan_node(htt->tree[1], htt->deldata, 1);
+	scan_node(htt->tree[0], htt->deldata, NULL, SCAN_FLAG_WIPE);
+	scan_node(htt->tree[1], htt->deldata, NULL, SCAN_FLAG_WIPE);
 }

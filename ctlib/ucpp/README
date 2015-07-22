@@ -477,6 +477,63 @@ in the same macro replacement, is not reliable).
 
 
 
+REENTRANT API
+-------------
+
+You can build ucpp with UCPP_REENTRANT defined if you plan to use
+the ucpp lexer in a multithreaded application.
+
+See the file 'sample_r.c' for an example.
+
+When using the reentrant API, you can create multiple preprocessor
+objects. A new object is created using new_cpp(). It should finally
+be destroyed using del_cpp(). Furthermore, most API functions expect
+a pointer to valid preprocessor object as their first argument.
+These functions are:
+
+	add_incpath()
+	check_cpp_errors()
+	cpp()
+	destroy_assertion()
+	enter_file()
+	flush_output()
+	fopen_mmap_file()
+	init_assertions()
+	init_cpp()
+	init_include_path()
+	init_tables()
+	int define_macro()
+	int undef_macro()
+	lex()
+	make_assertion()
+	print_assertions()
+	report_context()
+	set_identifier_char()
+	set_init_filename()
+	set_input_file()
+	unset_identifier_char()
+	void init_macros()
+	void print_defines()
+	wipeout(pCPP)
+
+Additionally, ucpp_ouch(), ucpp_error() and ucpp_warning() are no
+longer global functions. They can also be defined separately for
+each preprocessor object:
+
+	struct CPP cpp;
+	cpp = new_cpp();
+	cpp->ucpp_ouch = my_ouch_func;
+	/* ... */
+	del_cpp(cpp);
+
+Each of these functions receives a pointer to the corresponding
+preprocessor object as its first parameter. There is also a
+callback_arg member defined in the preprocessor object structure
+which can be used to pass an additional pointer to the callback
+function.
+
+
+
 COMPATIBILITY NOTES
 -------------------
 

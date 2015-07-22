@@ -10,14 +10,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/09/28 21:08:52 +0100 $
-* $Revision: 14 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 20:46:46 +0000 $
+* $Revision: 16 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /ctlib/cttype.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -57,8 +57,10 @@
   if( identifier && id_len == 0 )                                              \
     id_len = strlen( identifier );                                             \
   AllocF( type *, name, offsetof( type, identifier ) + id_len + 1 );           \
-  if( identifier )                                                             \
-    strcpy( name->identifier, identifier );                                    \
+  if( identifier ) {                                                           \
+    strncpy( name->identifier, identifier, id_len );                           \
+    name->identifier[id_len] = '\0';                                           \
+  }                                                                            \
   else                                                                         \
     name->identifier[0] = '\0'
 

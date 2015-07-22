@@ -10,14 +10,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/11/21 12:46:32 +0000 $
-* $Revision: 19 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 19:37:57 +0000 $
+* $Revision: 21 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -160,8 +160,8 @@ void update_parse_info( CParseInfo *pCPI, const CParseConfig *pCPC );
 void clone_parse_info( CParseInfo *pDest, CParseInfo *pSrc );
 
 #define get_type_info CTlib_get_type_info
-ErrorGTI get_type_info( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
-                        unsigned *pSize, unsigned *pAlign, unsigned *pItemSize,
-                        u_32 *pFlags );
+ErrorGTI get_type_info( const CParseConfig *pCPC, const TypeSpec *pTS,
+                        const Declarator *pDecl, unsigned *pSize,
+                        unsigned *pAlign, unsigned *pItemSize, u_32 *pFlags );
 
 #endif

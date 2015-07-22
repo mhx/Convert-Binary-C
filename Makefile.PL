@@ -2,14 +2,14 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/11/21 12:50:38 +0000 $
-# $Revision: 53 $
-# $Snapshot: /Convert-Binary-C/0.49 $
+# $Date: 2004/03/22 19:38:00 +0000 $
+# $Revision: 55 $
+# $Snapshot: /Convert-Binary-C/0.50 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
 # 
-# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 # 
@@ -114,6 +114,7 @@ unshift @OBJECT, $MODULE =~ /([^:]+)$/;
   ABORT_IF_NO_MEM
   NO_SLOW_MEMALLOC_CALLS
   UCPP_CONFIG
+  UCPP_REENTRANT
 );
 
 # On AIX systems, this should be defined for ucpp

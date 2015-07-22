@@ -11,14 +11,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/11/21 12:50:37 +0000 $
-* $Revision: 32 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 19:37:57 +0000 $
+* $Revision: 35 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -101,6 +101,8 @@ colleagues include: Bruce Blodgett, and Mark Langley.
 #include "util/memalloc.h"
 
 #include "ucpp/cpp.h"
+
+#include "cppreent.h"
 
 
 /*===== DEFINES ==============================================================*/
@@ -214,6 +216,9 @@ struct _parserState {
 
   PragmaState         pragma;
 
+#ifdef UCPP_REENTRANT
+  struct CPP         *cpp;
+#endif
   struct lexer_state *pLexer;
 
   FileInfo           *pFI;
@@ -1940,7 +1945,20 @@ postfixing_abstract_declarator
 	;
 
 array_abstract_declarator
-	: '[' ']' { $$ = NULL; }
+	: '[' ']'
+	  {
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = LL_new();
+	      LL_unshift( PSTATE->arrayList, $$ );
+	      CT_DEBUG( PARSER, ("unshifting array (%p) (count=%d)",
+	                         $$, LL_count(PSTATE->arrayList)) );
+	      LL_push( $$, value_new( 0, V_IS_UNDEF ) );
+	      CT_DEBUG( PARSER, ("array dimension => flexible array member") );
+	    }
+	  }
 	| '[' assignment_expression ']'
 	  {
 	    if( IS_LOCAL ) {
@@ -1955,20 +1973,7 @@ array_abstract_declarator
 	      CT_DEBUG( PARSER, ("array dimension => %ld", $2.iv) );
 	    }
 	  }
-	| '[' '*' ']'
-	  {
-	    if( IS_LOCAL ) {
-	      $$ = NULL;
-	    }
-	    else {
-	      $$ = LL_new();
-	      LL_unshift( PSTATE->arrayList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting array (%p) (count=%d)",
-	                         $$, LL_count(PSTATE->arrayList)) );
-	      LL_push( $$, value_new( 0, 0 ) );
-	      CT_DEBUG( PARSER, ("array dimension => *") );
-	    }
-	  }
+	| '[' '*' ']' { $$ = NULL; }
 	| array_abstract_declarator '[' assignment_expression ']'
 	  {
 	    if( IS_LOCAL ) {
@@ -2081,10 +2086,11 @@ static inline int c_lex( void *pYYLVAL, ParserState *pState )
   YYSTYPE *plval = (YYSTYPE *) pYYLVAL;
   int rval, token;
   struct lexer_state *pLexer = pState->pLexer;
+  dUCPP(pState->cpp);
 
   CT_DEBUG( CLEXER, ("parser.y::c_lex()") );
 
-  while( (rval = lex( pLexer )) < CPPERR_EOF ) {
+  while( (rval = lex( aUCPP_ pLexer )) < CPPERR_EOF ) {
     if( rval ) {
       CT_DEBUG( CLEXER, ("lex() returned %d", rval) );
       continue;
@@ -2490,7 +2496,7 @@ const CKeywordToken *get_skip_token( void )
 *******************************************************************************/
 
 ParserState *c_parser_new( const CParseConfig *pCPC, CParseInfo *pCPI,
-                           struct lexer_state *pLexer )
+                           pUCPP_ struct lexer_state *pLexer )
 {
   ParserState *pState;
 
@@ -2509,6 +2515,9 @@ ParserState *c_parser_new( const CParseConfig *pCPC, CParseInfo *pCPI,
   pState->pCPI                = pCPI;
   pState->pCPC                = pCPC;
   pState->pLexer              = pLexer;
+#ifdef UCPP_REENTRANT
+  pState->cpp                 = cpp;
+#endif
 
   pState->flags               = 0;
   pState->pFI                 = NULL;

@@ -10,14 +10,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/09/28 21:08:54 +0100 $
-* $Revision: 20 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 19:37:59 +0000 $
+* $Revision: 22 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /ctlib/util/hash.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of either the Artistic License or the
@@ -134,14 +134,122 @@ static unsigned long gs_dbflags             = 0;
               ht_shrink( table, table->size-1 );                       \
         } while(0)
 
-/* static function prototypes */
-static inline void ht_grow( HashTable table, int size );
-static inline void ht_shrink( HashTable table, int size );
+/* static functions */
 
 #if defined(DEBUG_HASH) && defined(UTIL_FORMAT_CHECK)
-static void debug_check( char *str, ... )
-            __attribute__(( __format__( __printf__, 1, 2 ), __noreturn__ ));
+static void debug_check( char *str __attribute__(( __unused__ )), ... )
+            __attribute__(( __format__( __printf__, 1, 2 ), __noreturn__ ))
+{
+  fprintf( stderr, "compiled with UTIL_FORMAT_CHECK, please don't run\n" );
+  abort();
+}
 #endif
+
+static inline void ht_grow( HashTable table, int size )
+{
+  HashNode *pNode, *pOld, *pNew;
+  int old_size, buckets;
+  unsigned long mask;
+
+  old_size = table->size;
+  buckets  = 1<<size;
+
+  /* grow hash table */
+  ReAllocF( HashNode *, table->root, buckets * sizeof( HashNode ) );
+  table->size  = size;
+  table->bmask = (unsigned long) (buckets-1);
+
+  /* initialize new buckets */
+  pNode    = &table->root[1<<old_size];
+  buckets -= 1<<old_size;
+  while( buckets-- )
+    *pNode++ = NULL;
+
+  /* distribute hash elements */
+  mask    = ((1 << (size-old_size)) - 1) << old_size;
+  pNode   = &table->root[0];
+  buckets = 1<<old_size;
+
+  while( buckets-- ) {
+    DEBUG( MAIN, ("growing, buckets to go: %d\n", buckets+1) );
+
+    pOld = pNode++;
+
+    while( *pOld ) {
+      if( (*pOld)->hash & mask ) {
+        DEBUG( MAIN, ("pOld=%p *pOld=%p (key=[%s] len=%d hash=0x%08lX)\n",
+                     pOld, *pOld, (*pOld)->key, (*pOld)->keylen, (*pOld)->hash) );
+
+        pNew = &table->root[(*pOld)->hash & table->bmask];
+        while( *pNew )
+          pNew = &(*pNew)->next;
+
+        *pNew = *pOld;
+        *pOld = (*pNew)->next;
+        (*pNew)->next = NULL;
+      }
+      else
+        pOld = &(*pOld)->next;
+    }
+  }
+
+  DEBUG( MAIN, ("hash table @ %p grown to %d buckets\n", table, 1<<size) );
+}
+
+static inline void ht_shrink( HashTable table, int size )
+{
+  HashNode *pNode, *pNew, old, node;
+  int old_size, buckets, cmp;
+
+  old_size     = table->size;
+  buckets      = 1<<size;
+  table->size  = size;
+  table->bmask = (unsigned long) (buckets-1);
+
+  /* distribute hash elements */
+  pNode    = &table->root[buckets];
+  buckets  = (1<<old_size) - buckets;
+
+  while( buckets-- ) {
+    DEBUG( MAIN, ("shrinking, buckets to go: %d\n", buckets+1) );
+
+    old = *pNode++;
+
+    while( old ) {
+      DEBUG( MAIN, ("old=%p (key=[%s] len=%d hash=0x%08lX)\n",
+                   old, old->key, old->keylen, old->hash) );
+      node = old;
+      old  = old->next;
+      pNew = &table->root[node->hash & table->bmask];
+
+      while( *pNew ) {
+        DEBUG( MAIN, ("pNew=%p *pNew=%p (key=[%s] len=%d hash=0x%08lX)\n",
+                     pNew, *pNew, (*pNew)->key, (*pNew)->keylen, (*pNew)->hash) );
+
+        (void) ENTRY_FOUND_NODE( *pNew );
+
+        DEBUG( MAIN, ("cmp: %d\n", cmp) );
+
+        if( cmp < 0 ) {
+          DEBUG( MAIN, ("postition to insert new element found\n") );
+          break;
+        }
+
+        DEBUG( MAIN, ("advancing to next hash element\n") );
+        pNew = &(*pNew)->next;
+      }
+
+      node->next = *pNew;
+      *pNew      = node;
+    }
+  }
+
+  /* shrink hash table */
+  buckets = 1<<size;
+  ReAllocF( HashNode *, table->root, buckets * sizeof( HashNode ) );
+
+  DEBUG( MAIN, ("hash table @ %p shrunk to %d buckets\n", table, buckets) );
+}
 
 /************************************************************
 *
@@ -435,112 +543,6 @@ int HT_resize( HashTable table, int size )
     ht_shrink( table, size );
 
   return 1;
-}
-
-static inline void ht_grow( HashTable table, int size )
-{
-  HashNode *pNode, *pOld, *pNew;
-  int old_size, buckets;
-  unsigned long mask;
-
-  old_size = table->size;
-  buckets  = 1<<size;
-
-  /* grow hash table */
-  ReAllocF( HashNode *, table->root, buckets * sizeof( HashNode ) );
-  table->size  = size;
-  table->bmask = (unsigned long) (buckets-1);
-
-  /* initialize new buckets */
-  pNode    = &table->root[1<<old_size];
-  buckets -= 1<<old_size;
-  while( buckets-- )
-    *pNode++ = NULL;
-
-  /* distribute hash elements */
-  mask    = ((1 << (size-old_size)) - 1) << old_size;
-  pNode   = &table->root[0];
-  buckets = 1<<old_size;
-
-  while( buckets-- ) {
-    DEBUG( MAIN, ("growing, buckets to go: %d\n", buckets+1) );
-
-    pOld = pNode++;
-
-    while( *pOld ) {
-      if( (*pOld)->hash & mask ) {
-        DEBUG( MAIN, ("pOld=%p *pOld=%p (key=[%s] len=%d hash=0x%08lX)\n",
-                     pOld, *pOld, (*pOld)->key, (*pOld)->keylen, (*pOld)->hash) );
-
-        pNew = &table->root[(*pOld)->hash & table->bmask];
-        while( *pNew )
-          pNew = &(*pNew)->next;
-
-        *pNew = *pOld;
-        *pOld = (*pNew)->next;
-        (*pNew)->next = NULL;
-      }
-      else
-        pOld = &(*pOld)->next;
-    }
-  }
-
-  DEBUG( MAIN, ("hash table @ %p grown to %d buckets\n", table, 1<<size) );
-}
-
-static inline void ht_shrink( HashTable table, int size )
-{
-  HashNode *pNode, *pNew, old, node;
-  int old_size, buckets, cmp;
-
-  old_size     = table->size;
-  buckets      = 1<<size;
-  table->size  = size;
-  table->bmask = (unsigned long) (buckets-1);
-
-  /* distribute hash elements */
-  pNode    = &table->root[buckets];
-  buckets  = (1<<old_size) - buckets;
-
-  while( buckets-- ) {
-    DEBUG( MAIN, ("shrinking, buckets to go: %d\n", buckets+1) );
-
-    old = *pNode++;
-
-    while( old ) {
-      DEBUG( MAIN, ("old=%p (key=[%s] len=%d hash=0x%08lX)\n",
-                   old, old->key, old->keylen, old->hash) );
-      node = old;
-      old  = old->next;
-      pNew = &table->root[node->hash & table->bmask];
-
-      while( *pNew ) {
-        DEBUG( MAIN, ("pNew=%p *pNew=%p (key=[%s] len=%d hash=0x%08lX)\n",
-                     pNew, *pNew, (*pNew)->key, (*pNew)->keylen, (*pNew)->hash) );
-
-        (void) ENTRY_FOUND_NODE( *pNew );
-
-        DEBUG( MAIN, ("cmp: %d\n", cmp) );
-
-        if( cmp < 0 ) {
-          DEBUG( MAIN, ("postition to insert new element found\n") );
-          break;
-        }
-
-        DEBUG( MAIN, ("advancing to next hash element\n") );
-        pNew = &(*pNew)->next;
-      }
-
-      node->next = *pNew;
-      *pNew      = node;
-    }
-  }
-
-  /* shrink hash table */
-  buckets = 1<<size;
-  ReAllocF( HashNode *, table->root, buckets * sizeof( HashNode ) );
-
-  DEBUG( MAIN, ("hash table @ %p shrunk to %d buckets\n", table, buckets) );
 }
 
 #ifdef DEBUG_HASH
@@ -1357,15 +1359,6 @@ int HT_next( const HashTable table, char **ppKey, int *pKeylen, void **ppObj )
 }
 
 #ifdef DEBUG_HASH
-
-#ifdef UTIL_FORMAT_CHECK
-static void debug_check( char *str __attribute__(( __unused__ )), ... )
-{
-  fprintf( stderr, "compiled with UTIL_FORMAT_CHECK, please don't run\n" );
-  abort();
-}
-#endif
-
 int SetDebugHash( void (*dbfunc)(const char *, ...), unsigned long dbflags )
 {
   gs_dbfunc  = dbfunc;

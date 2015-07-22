@@ -10,14 +10,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/11/24 07:53:54 +0000 $
-* $Revision: 11 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 20:23:28 +0000 $
+* $Revision: 15 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /ctlib/cterror.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 
 /*===== LOCAL INCLUDES =======================================================*/
 
@@ -36,6 +37,8 @@
 
 #include "ucpp/cpp.h"
 #include "ucpp/mem.h"
+
+#include "cppreent.h"
 
 
 /*===== DEFINES ==============================================================*/
@@ -60,7 +63,13 @@ static void push_verror( CParseInfo *pCPI, enum CTErrorSeverity severity,
 
 /*===== EXTERNAL VARIABLES ===================================================*/
 
+#ifndef UCPP_REENTRANT
 extern CParseInfo *g_current_cpi;
+
+#define my_ucpp_ouch    ucpp_ouch
+#define my_ucpp_error   ucpp_error
+#define my_ucpp_warning ucpp_warning
+#endif
 
 /*===== GLOBAL VARIABLES =====================================================*/
 
@@ -98,7 +107,8 @@ static CTLibError *error_new( enum CTErrorSeverity severity, void *str )
   AllocF( CTLibError *, perr, sizeof(CTLibError) );
   AllocF( char *, perr->string, len+1 );
   perr->severity = severity;
-  strcpy( perr->string, string );
+  strncpy( perr->string, string, len );
+  perr->string[len] = '\0';
 
   return perr;
 }
@@ -322,7 +332,7 @@ void fatal_error( const char *fmt, ... )
 
 /*******************************************************************************
 *
-*   ROUTINE: ucpp_ouch
+*   ROUTINE: my_ucpp_ouch
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2002
 *   CHANGED BY:                                   ON:
@@ -337,7 +347,7 @@ void fatal_error( const char *fmt, ... )
 *
 *******************************************************************************/
 
-void ucpp_ouch( char *fmt, ... )
+void my_ucpp_ouch( pUCPP_ char *fmt, ... )
 {
   va_list ap;
   void *str;
@@ -346,7 +356,7 @@ void ucpp_ouch( char *fmt, ... )
 
   va_start( ap, fmt );
   str = F.newstr();
-  F.scatf( str, "%s: (FATAL) ", current_filename );
+  F.scatf( str, "%s: (FATAL) ", r_current_filename );
   F.vscatf( str, fmt, &ap );
   va_end( ap );
 
@@ -355,7 +365,7 @@ void ucpp_ouch( char *fmt, ... )
 
 /*******************************************************************************
 *
-*   ROUTINE: ucpp_error
+*   ROUTINE: my_ucpp_error
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2002
 *   CHANGED BY:                                   ON:
@@ -370,7 +380,7 @@ void ucpp_ouch( char *fmt, ... )
 *
 *******************************************************************************/
 
-void ucpp_error( long line, char *fmt, ... )
+void my_ucpp_error( pUCPP_ long line, char *fmt, ... )
 {
   va_list ap;
   void *str;
@@ -382,14 +392,14 @@ void ucpp_error( long line, char *fmt, ... )
   str = F.newstr();
 
   if( line > 0 )
-    F.scatf( str, "%s, line %ld: ", current_filename, line );
+    F.scatf( str, "%s, line %ld: ", r_current_filename, line );
   else if( line == 0 )
-    F.scatf( str, "%s: ", current_filename );
+    F.scatf( str, "%s: ", r_current_filename );
 
   F.vscatf( str, fmt, &ap );
 
   if( line >= 0 ) {
-    struct stack_context *sc = report_context();
+    struct stack_context *sc = report_context( aUCPP );
     size_t i;
 
     for( i = 0; sc[i].line >= 0; i++ )
@@ -402,14 +412,18 @@ void ucpp_error( long line, char *fmt, ... )
 
   va_end( ap );
 
+#ifdef UCPP_REENTRANT
+  push_str( cpp->callback_arg, CTES_ERROR, str );
+#else
   push_str( g_current_cpi, CTES_ERROR, str );
+#endif
 
   F.destroy( str );
 }
 
 /*******************************************************************************
 *
-*   ROUTINE: ucpp_warning
+*   ROUTINE: my_ucpp_warning
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2002
 *   CHANGED BY:                                   ON:
@@ -424,7 +438,7 @@ void ucpp_error( long line, char *fmt, ... )
 *
 *******************************************************************************/
 
-void ucpp_warning( long line, char *fmt, ... )
+void my_ucpp_warning( pUCPP_ long line, char *fmt, ... )
 {
   va_list ap;
   void *str;
@@ -437,16 +451,16 @@ void ucpp_warning( long line, char *fmt, ... )
 
   if( line > 0 )
     F.scatf( str, "%s, line %ld: (warning) ",
-             current_filename, line);
+             r_current_filename, line);
   else if (line == 0)
-    F.scatf( str, "%s: (warning) ", current_filename);
+    F.scatf( str, "%s: (warning) ", r_current_filename);
   else
     F.scatf( str, "(warning) ");
 
   F.vscatf( str, fmt, &ap );
 
   if( line >= 0 ) {
-    struct stack_context *sc = report_context();
+    struct stack_context *sc = report_context( aUCPP );
     size_t i;
 
     for( i = 0; sc[i].line >= 0; i++ )
@@ -458,7 +472,11 @@ void ucpp_warning( long line, char *fmt, ... )
 
   va_end( ap );
 
+#ifdef UCPP_REENTRANT
+  push_str( cpp->callback_arg, CTES_WARNING, str );
+#else
   push_str( g_current_cpi, CTES_WARNING, str );
+#endif
 
   F.destroy( str );
 }

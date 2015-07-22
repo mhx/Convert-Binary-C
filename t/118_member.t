@@ -2,14 +2,14 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/07/15 22:06:31 +0100 $
-# $Revision: 6 $
-# $Snapshot: /Convert-Binary-C/0.49 $
+# $Date: 2004/03/22 19:38:03 +0000 $
+# $Revision: 8 $
+# $Snapshot: /Convert-Binary-C/0.50 $
 # $Source: /t/118_member.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -256,7 +256,7 @@ sub run_tests {
     while( my($k,$v) = each %h ) {
       my $to = $c->typeof($k);
       unless( $to eq $v ) {
-        print "# typeof mismatch for $meth <$k>\n";
+        print "# typeof mismatch for $meth <$k> ('$to' != '$v')\n";
         $fail++;
       }
       else { $success++ }
@@ -290,8 +290,8 @@ sub run_tests {
 sub get_types {
   my($r, $m, $c, $t, $d) = @_;
   if( exists $d->{declarator} ) {
-    my($p,$n,$a) = $d->{declarator} =~ /^(\*?)(\w+)((?:\[\d+\])*)$/ or die "BOO!";
-    my $dim = [$a =~ /\[(\d+)\]/g];
+    my($p,$n,$a) = $d->{declarator} =~ /^(\*?)(\w+)((?:\[\])?(?:\[\d+\])*)$/ or die "BOO!";
+    my $dim = [$a =~ /\[(\d+)?\]/g];
     get_array($r, $m, $c, $t, $d->{type}, $p, $dim);
   }
   elsif( exists $d->{declarations} ) {
@@ -299,9 +299,9 @@ sub get_types {
     for my $d1 ( @{$d->{declarations}} ) {
       if( exists $d1->{declarators} ) {
         for my $d2 ( @{$d1->{declarators}} ) {
-          my($p,$n,$b,$a) = $d2->{declarator} =~ /^(\*?)(\w*)(:\d+)?((?:\[\d+\])*)$/ or die "BOO!";
+          my($p,$n,$b,$a) = $d2->{declarator} =~ /^(\*?)(\w*)(:\d+)?((?:\[\])?(?:\[\d+\])*)$/ or die "BOO!";
           defined $b and next;
-          my $dim = [$a =~ /\[(\d+)\]/g];
+          my $dim = [$a =~ /\[(\d+)?\]/g];
           get_array($r, $m, $c, "$t.$n", $d1->{type}, $p, $dim);
         }
       }
@@ -330,7 +330,7 @@ sub get_array {
   }
   else { $rt = $d }
 
-  my $a = join '', map "[$_]", @$dim;
+  my $a = join '', map { defined $_ ? "[$_]" : '[]' } @$dim;
 
   $p and $rt .= " $p";
   $a and $rt .= " $a";
@@ -340,6 +340,7 @@ sub get_array {
   if( @$dim ) {
     my @dim = @$dim;
     my $cd = shift @dim;
+    defined $cd or return; # don't add incomplete types
     for my $i ( 0 .. $cd-1 ) {
       get_array($r, $m, $c, $t."[$i]", $d, $p, \@dim);
     }

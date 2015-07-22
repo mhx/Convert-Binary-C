@@ -14,60 +14,48 @@ my $HOMEDIR = '/house/mhx';
 my $PROMPT = '/spe\d{3}(?:\.testdrive\.(?:hp|compaq)\.com)?> $/';
 
 my @hosts = (
-  # { ip => '192.233.54.140', prompt => $PROMPT },  # not reachable
-  # { ip => '192.233.54.141', prompt => $PROMPT },  # broken libgcc?
-  { ip => '192.233.54.142', prompt => $PROMPT },
-  { ip => '192.233.54.143', prompt => $PROMPT },
-  { ip => '192.233.54.144', prompt => $PROMPT },
-  { ip => '192.233.54.145', prompt => $PROMPT },
-  { ip => '192.233.54.147', prompt => $PROMPT },
-  { ip => '192.233.54.148', prompt => $PROMPT },
-  { ip => '192.233.54.149', prompt => $PROMPT },
+  # { ip => '192.233.54.140', prompt => $PROMPT },
+  # { ip => '192.233.54.141', prompt => $PROMPT }, # broken libgcc?
+  { ip => '192.233.54.142', prompt => $PROMPT },        # 5.6.1 alpha-linux
+  { ip => '192.233.54.143', prompt => $PROMPT },        # 5.8.0 i386-netbsd
+  # { ip => '192.233.54.144', prompt => $PROMPT },        # 5.6.1 alpha-linux
+  { ip => '192.233.54.145', prompt => $PROMPT },        # 5.6.1 alpha-dec_osf
+  { ip => '192.233.54.147', prompt => $PROMPT },        # 5.8.0 alpha-dec_osf
+  # { ip => '192.233.54.148', prompt => $PROMPT },        # 5.6.1 alpha-linux
+  { ip => '192.233.54.149', prompt => $PROMPT },        # 5.6.1 alpha-freebsd
 
-  # { ip => '192.233.54.150', prompt => $PROMPT },  # no C compiler... ;-)
-  { ip => '192.233.54.151', prompt => $PROMPT },
-  { ip => '192.233.54.153', prompt => $PROMPT },
-  { ip => '192.233.54.154', prompt => $PROMPT },
-  { ip => '192.233.54.155', prompt => $PROMPT },
-  { ip => '192.233.54.156', prompt => $PROMPT },
-  { ip => '192.233.54.158', prompt => $PROMPT },
+  { ip => '192.233.54.150', prompt => $PROMPT },        # 5.8.0 i586-linux-thread-multi
+  { ip => '192.233.54.151', prompt => $PROMPT },        # 5.005_03 i386-freebsd
+  { ip => '192.233.54.156', prompt => $PROMPT },        # 5.6.1 ia64-linux
 
-  { ip => '192.233.54.160', prompt => $PROMPT },
-  { ip => '192.233.54.161', prompt => $PROMPT },
-  # { ip => '192.233.54.163', prompt => $PROMPT },  # not reachable
-  { ip => '192.233.54.164', prompt => $PROMPT },
-  { ip => '192.233.54.165', prompt => '/mgtnode> $/' },
-  { ip => '192.233.54.166', prompt => $PROMPT },
-  { ip => '192.233.54.167', prompt => $PROMPT },
-  # { ip => '192.233.54.169', prompt => $PROMPT },  # only perl 5.5.2
+  { ip => '192.233.54.160', prompt => $PROMPT },        # 5.8.0 i486-linux
+  { ip => '192.233.54.161', prompt => $PROMPT },        # 5.6.1 alpha-linux
+  { ip => '192.233.54.165', prompt => '/mgtnode> $/' }, # 5.6.0 alpha-linux
+  # { ip => '192.233.54.167', prompt => $PROMPT },        # 5.8.0 alpha-dec_osf
 
-  # { ip => '192.233.54.170', prompt => $PROMPT },  # HPPA-Linux, make test problems
-  { ip => '192.233.54.171', prompt => $PROMPT },
-  # { ip => '192.233.54.172', prompt => $PROMPT },  # no login
-  { ip => '192.233.54.174', prompt => $PROMPT },
+  { ip => '192.233.54.170', prompt => $PROMPT },        # 5.6.1 hppa-linux
+  # { ip => '192.233.54.174', prompt => $PROMPT },        # 5.6.1 ia64-linux
   # { ip => '192.233.54.175', prompt => $PROMPT },  # broken perl installation
   # { ip => '192.233.54.176', prompt => $PROMPT },  # broken perl installation
-  { ip => '192.233.54.177', prompt => $PROMPT },
-  { ip => '192.233.54.178', prompt => $PROMPT },
+  # { ip => '192.233.54.177', prompt => $PROMPT },        # 5.6.1 ia64-linux
+  # { ip => '192.233.54.178', prompt => $PROMPT },        # 5.6.1 ia64-linux
 
-  # { ip => '192.233.54.180', prompt => $PROMPT },  # VMS
-  # { ip => '192.233.54.188', prompt => $PROMPT },  # too slow
+  { ip => '192.233.54.188', prompt => $PROMPT },        # 5.8.1 i386-linux-thread-multi
 
-  # { ip => '192.233.54.202', prompt => $PROMPT },  # VMS
-  { ip => '192.233.54.206', prompt => $PROMPT },
-  { ip => '192.233.54.207', prompt => $PROMPT },
+  # { ip => '192.233.54.191', prompt => $PROMPT },  # 
+  # { ip => '192.233.54.192', prompt => $PROMPT },  # 
 
-  # { ip => '192.233.54.216', prompt => '/ipaq> $/' },  # doesn't compile module
+  # { ip => '192.233.54.206', prompt => $PROMPT },        # 5.8.0 alpha-dec_osf
+  # { ip => '192.233.54.207', prompt => $PROMPT },        # 5.8.0 alpha-dec_osf
 
-  { ip => '192.233.54.222', prompt => '/\[mhx\@spe222 \~\]\$ $/' },
-  { ip => '192.233.54.223', prompt => '/\[mhx\@spe223 \~\]\$ $/' },
-
-  # { ip => '192.233.54.237', prompt => $PROMPT },  # broken system headers
+  # { ip => '192.233.54.222', prompt => $PROMPT },        # 5.6.1 i386-linux
+  # { ip => '192.233.54.223', prompt => $PROMPT },        # 5.6.1 i386-linux
 );
 
 my $file = shift;
 
 upload_file( $hosts[0], $file );
+remove_reports( $hosts[0] );
 
 my @t = map { new threads
  \&test_compile, $_, $file
@@ -75,6 +63,9 @@ my @t = map { new threads
 } @hosts;
 
 $_->join for @t;
+
+collect_reports( $hosts[0] );
+download_file( $hosts[0], 'reports.tar.gz' );
 
 sub upload_file
 {
@@ -88,6 +79,42 @@ sub upload_file
   $ftp->put( $file );
   $ftp->quit;
   print STDERR "done\n";
+}
+
+sub download_file
+{
+  my($host, $file) = @_;
+
+  print STDERR "downloading $file from $host->{ip}...";
+  my $ftp = Net::FTP->new( $host->{ip}, Passive => 1 );
+  $ftp->login( USER, PASS );
+  $ftp->cwd( $HOMEDIR );
+  $ftp->binary;
+  $ftp->get( $file );
+  $ftp->quit;
+  print STDERR "done\n";
+}
+
+sub collect_reports
+{
+  my($host) = @_;
+  print "collecting reports on $host->{ip}...";
+  run_script( $host, 20, <<END );
+tar cf - reports | gzip > reports.tar.gz
+rm -f reports/*
+END
+  print "done\n"
+}
+
+sub remove_reports
+{
+  my($host) = @_;
+  print "removing existing reports on $host->{ip}...";
+  run_script( $host, 20, <<END );
+rm -rf reports reports.tar.gz
+mkdir reports
+END
+  print "done\n"
 }
 
 sub version
@@ -111,41 +138,43 @@ END
 sub test_compile
 {
   my($host, $file) = @_;
-  my($dir) = $file =~ /([^\/]+)\.tar\.gz$/;
+  my($dist) = $file =~ /([^\/]+)\.tar\.gz$/;
 
   print "compiling $file on $host->{ip}\n";
 
   my @lines = run_script( $host, 1800, <<END );
 cd /tmp
-rm -rf $dir
+rm -rf $dist
 gzip -dc $HOMEDIR/$file | tar xvf -
-cd $dir
+cd $dist
 uname -a
 perl -v
 perl -V
 touch Makefile.PL
 perl Makefile.PL
 make
-make test
+make test HARNESS_NOTTY=1 && perl -I$HOMEDIR/lib -MTest::Reporter -e'Test::Reporter->new(grade=>"pass", distribution=>"$dist", dir=>"$HOMEDIR/reports")->write'
 perl -Mblib bin/ccconfig --nostatus
 perl -Mblib bin/ccconfig --nostatus --norun
 make realclean
-perl Makefile.PL enable-debug
-make
-make test
-make realclean
-perl Makefile.PL enable-debug
-CBC_USELONGLONG=0 CBC_USE64BIT=0 make
-make test
-make realclean
+# perl Makefile.PL enable-debug
+# make
+# make test HARNESS_NOTTY=1
+# make realclean
+# perl Makefile.PL enable-debug
+# CBC_USELONGLONG=0 CBC_USE64BIT=0 make
+# make test HARNESS_NOTTY=1
+# make realclean
 cd ..
-rm -rf $dir
+rm -rf $dist
 END
 
   my $f = new IO::File;
   $f->open( ">testdrive-$host->{ip}.log" );
   $f->print( @lines );
   $f->close;
+
+  print "finished $file on $host->{ip}\n";
 }
 
 sub run_script
@@ -164,9 +193,10 @@ sub run_script
   $t->print( PASS );
   push @lines, $t->waitfor($host->{prompt}) or return @lines;
 
-  my @cmds = grep /\S/, split $/, $script;
+  my @cmds = grep !/^\s*#/, grep /\S/, split $/, $script;
 
   for my $cmd ( @cmds ) {
+    print "[$host->{ip}: $cmd]\n";
     $t->print($cmd);
     push @lines, $t->waitfor($host->{prompt}) or return @lines;
   }

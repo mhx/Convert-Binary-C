@@ -2,14 +2,14 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/11/24 07:54:54 +0000 $
-# $Revision: 34 $
-# $Snapshot: /Convert-Binary-C/0.49 $
+# $Date: 2004/03/22 19:38:01 +0000 $
+# $Revision: 38 $
+# $Snapshot: /Convert-Binary-C/0.50 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -21,7 +21,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 4878 }
+BEGIN { plan tests => 5166 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -210,7 +210,6 @@ eval_test(q{
   $x = $p->pack( 'fp_unsupp', 42 );                        # (1) Unsupported floating point type 'short float' in pack
 
   $x = $p->pack( 'hasbf.bf', {} );                         # (1) Bitfields are unsupported in pack('hasbf.bf')
-                                                           # (1) Zero-sized type 'hasbf.bf' used in pack
 
   $p->unpack( 'test', $data );                             # (1) Useless use of unpack in void context
   $x = $p->unpack( '', $data );                            # (E) Cannot find ''
@@ -234,7 +233,6 @@ eval_test(q{
   $x = $p->unpack( 'fp_unsupp', 'x'x100 );                 # (1) Unsupported floating point type 'short float' in unpack
 
   $x = $p->unpack( 'hasbf.bf', '' );                       # (1) Bitfields are unsupported in unpack('hasbf.bf')
-                                                           # (1) Zero-sized type 'hasbf.bf' used in unpack
 
   $p->initializer( 'test' );                               # (1) Useless use of initializer in void context
   $p->initializer( 'test', $data );                        # (1) Useless use of initializer in void context
@@ -487,7 +485,39 @@ eval_test(q{
   $p->EnumType( 'Both' );
   $x = $p->unpack( 'e_unsafe_noname', $data );             # (1) Enumeration contains unsafe values
 
+  $p->add_hooks();                                         # no warning
+  $p->delete_hooks();                                      # no warning
+  $p->delete_all_hooks();                                  # no warning
+  $p->add_hooks('noway');                                  # (E) Number of arguments to add_hooks must be even
+  $p->add_hooks('noway', 'foo');                           # (E) Cannot find 'noway'
+  $p->add_hooks('test.bar', 'foo');                        # (E) No member expressions ('test.bar') allowed in add_hooks
+  $p->add_hooks('int', 'foo');                             # (E) No basic types ('int') allowed in add_hooks
+  $p->add_hooks('test', 'foo');                            # (E) Need a hash reference to define hooks for 'test'
+  $p->add_hooks('test', {pack => 42});                     # (E) pack hook defined for 'test' is not a code reference
+  $p->add_hooks('test', {pack => sub {$_[0]}});            # no warning
+  $p->add_hooks('test', {pack => \&id, unpack => \&id });  # no warning
+
+  $p->delete_hooks('noway');                               # (E) Cannot find 'noway'
+  $p->delete_hooks('test.bar');                            # (E) No member expressions ('test.bar') allowed in delete_hooks
+  $p->delete_hooks('int');                                 # (E) No basic types ('int') allowed in delete_hooks
+  $p->delete_hooks('enumtype');                            # (1) No hooks defined for 'enumtype'
+  $p->delete_hooks('test');                                # no warning
+
+  $p->delete_all_hooks;                                    # no warning
+
+  $p->add_hooks('test', {pack => \&id, unpack => \&id });  # no warning
+  $p->add_hooks('struct test', {});                        # no warning
+  $p->add_hooks('test', {pack => undef});                  # no warning
+  $p->delete_hooks('struct test');                         # no warning
+  $p->add_hooks('test', {unpack => \&id });                # no warning
+  $p->add_hooks('struct test', {unpack => undef});         # no warning
+  $p->delete_hooks('test');                                # (1) No hooks defined for 'test'
+
 }, [0 .. 2], [qw( Convert::Binary::C Convert::Binary::C::Cached )]);
+
+sub id { $_[0] }
+sub rv0 { return () }
+sub rv2 { return ($_[0], 42) }
 
 sub eval_test
 {

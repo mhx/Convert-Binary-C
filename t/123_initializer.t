@@ -2,14 +2,14 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/06/26 11:56:22 +0100 $
-# $Revision: 2 $
-# $Snapshot: /Convert-Binary-C/0.49 $
+# $Date: 2004/03/22 19:38:04 +0000 $
+# $Revision: 5 $
+# $Snapshot: /Convert-Binary-C/0.50 $
 # $Source: /t/123_initializer.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 15 }
+BEGIN { plan tests => 17 }
 
 $c = eval { new Convert::Binary::C Include => ['t/include/perlinc',
                                                't/include/include'] };
@@ -32,6 +32,7 @@ ok($@,'',"failed to parse C-file");
 $full = $zero = $c->sourcify;
 
 for( $c->typedef_names ) {
+  next if $c->sizeof($_) == 0;
   my $pre  = "\n$_ S_$_ = ";
   my $post = ";\n";
   my $init = $c->unpack( $_, $c->pack($_) ); 
@@ -170,4 +171,31 @@ struct bits {
 -------------------------------------------------------------------------------
 
 bits = { 0, 0, 0 }
+
+===============================================================================
+
+/* taken from the docs, this revealed a bug introduced
+ * with flexible array members
+ */
+
+struct date {
+  unsigned year : 12;
+  unsigned month:  4;
+  unsigned day  :  5;
+  unsigned hour :  5;
+  unsigned min  :  6;
+};
+
+typedef struct {
+  enum { DATE, QWORD } type;
+  short number;
+  union {
+    struct date   date;
+    unsigned long qword;
+  } choice;
+} data;
+
+-------------------------------------------------------------------------------
+
+data = { 0, 0, { { 0, 0, 0, 0, 0 } } }
 

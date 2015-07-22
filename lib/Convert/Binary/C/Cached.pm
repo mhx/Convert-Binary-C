@@ -10,14 +10,14 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/11/24 08:40:33 +0000 $
-# $Revision: 20 $
-# $Snapshot: /Convert-Binary-C/0.49 $
+# $Date: 2004/03/22 20:15:22 +0000 $
+# $Revision: 22 $
+# $Snapshot: /Convert-Binary-C/0.50 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.49 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.50 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 my %cache;
 
@@ -435,7 +435,7 @@ algorithm cannot detect that an update is required.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
@@ -444,3 +444,4 @@ it under the same terms as Perl itself.
 See L<Convert::Binary::C>.
 
 =cut
+

@@ -10,14 +10,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/10/02 09:56:06 +0100 $
-* $Revision: 13 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 21:03:30 +0000 $
+* $Revision: 20 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /ctlib/util/memalloc.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of either the Artistic License or the
@@ -31,38 +31,62 @@
 *
 *******************************************************************************/
 
+#include "ccattr.h"
+
 #if defined(DEBUG_MEMALLOC) || (defined(ABORT_IF_NO_MEM) && !defined(NO_SLOW_MEMALLOC_CALLS))
 
 #include "memalloc.h"
-#include "ccattr.h"
 
 #ifdef DEBUG_MEMALLOC
 
-#ifdef UTIL_FORMAT_CHECK
+# ifdef AUTOPURGE_MEMALLOC
+#  include <string.h>
+# endif
 
-# define MEM_DEBUG_FUNC debug_check
+# ifdef UTIL_FORMAT_CHECK
+
+#  define MEM_DEBUG_FUNC debug_check
 static void debug_check( char *str, ... )
             __attribute__(( __format__( __printf__, 1, 2 ), __noreturn__ ));
 
-#else
-# define MEM_DEBUG_FUNC gs_dbfunc
-#endif
+# else
+#  define MEM_DEBUG_FUNC gs_dbfunc
+# endif
 
-#define DEBUG( flag, out )                                                \
-          do {                                                            \
-            if( MEM_DEBUG_FUNC && ((DB_MEMALLOC_ ## flag) & gs_dbflags) ) \
-              MEM_DEBUG_FUNC out ;                                        \
-          } while(0)
+# define DEBUG( flag, out )                                                    \
+         do {                                                                  \
+           if( MEM_DEBUG_FUNC && ((DB_MEMALLOC_ ## flag) & gs_dbflags) )       \
+             MEM_DEBUG_FUNC out ;                                              \
+         } while(0)
 
 static void (*gs_dbfunc)(const char *, ...) = NULL;
 static unsigned long gs_dbflags             = 0;
 
 #else /* !DEBUG_MEMALLOC */
 
-#define DEBUG( flag, out )
+# define DEBUG( flag, out )
 
 #endif
 
+#ifndef MEMALLOC_MAX_DIAG_DIST
+# define MEMALLOC_MAX_DIAG_DIST     256
+#endif
+
+#ifndef MEMALLOC_BUCKET_SIZE_INCR
+# define MEMALLOC_BUCKET_SIZE_INCR    4
+#endif
+
+#ifndef MEMALLOC_HASH_OFFSET
+# define MEMALLOC_HASH_OFFSET         4
+#endif
+
+#ifndef MEMALLOC_HASH_BITS
+# define MEMALLOC_HASH_BITS           8
+#endif
+
+#ifndef HEX_BYTES_PER_LINE
+# define HEX_BYTES_PER_LINE          16
+#endif
 
 #if defined(DEBUG_MEMALLOC) && defined(TRACE_MEMALLOC)
 
@@ -72,33 +96,33 @@ static unsigned long gs_dbflags             = 0;
 #include <assert.h>
 #include <limits.h>
 
-#undef ULONG_MAX
-#define ULONG_MAX 1000000
-
 #ifndef ULONG_MAX
 # define ULONG_MAX ((1<<(8*sizeof(unsigned long)))-1)
 #endif
 
-#define BUCKET_SIZE_INCR    4
-#define HASH_OFFSET         4
-#define HASH_BITS           8
-#define HASH_BUCKET( ptr )  ((((unsigned long)(ptr)) >> HASH_OFFSET) & ((1 << HASH_BITS) - 1))
+#define HASH_BUCKET( ptr )  ((((unsigned long)(ptr)) >> MEMALLOC_HASH_OFFSET)  \
+                             & ((1 << MEMALLOC_HASH_BITS) - 1))
 
 #define TRACE_MSG( msg )    (void) (gs_dbfunc ? gs_dbfunc : trace_msg) msg
 
-#define CHECK_SOFT_ASSERT                                                         \
-        do {                                                                      \
-          char *str;                                                              \
-          if( (str = getenv("MEMALLOC_SOFT_ASSERT")) == NULL || atoi(str) == 0 )  \
-            abort();                                                              \
+#define free_slot( p )                                                         \
+        do {                                                                   \
+          gs_memstat.free++;                                                   \
+          gs_memstat.total_blocks--;                                           \
+          gs_memstat.total_bytes -= p->size;                                   \
+          if( MEMALLOC_FLAG(env.check_freed) )                                 \
+            (p)->freed = 1;                                                    \
+          else {                                                               \
+            (p)->ptr   = NULL;                                                 \
+            (p)->size  = 0;                                                    \
+          }                                                                    \
         } while(0)
-
-#define free_slot( p )      do { (p)->ptr = 0; (p)->size = 0; } while(0)
 
 typedef struct {
   const void    *ptr;
   const char    *file;
   int            line;
+  unsigned       freed:1;
   size_t         size;
   unsigned long  serial;
 } MemTrace;
@@ -120,8 +144,17 @@ static struct {
   double        avg_alloc;
 } gs_memstat;
 
+static struct {
+  int initialized;
+  struct {
+    int soft_assert;
+    int check_freed;
+    int show_dumps;
+  } env;
+} gs_flags;
+
 static unsigned long  gs_serial = 0;
-static MemTraceBucket gs_trace[1<<HASH_BITS];
+static MemTraceBucket gs_trace[1<<MEMALLOC_HASH_BITS];
 
 static void trace_msg( const char *fmt, ... )
 {
@@ -129,6 +162,17 @@ static void trace_msg( const char *fmt, ... )
   va_start(l, fmt);
   vfprintf(stderr, fmt, l);
   va_end(l);
+}
+
+#define MEMALLOC_FLAG( x ) \
+        (gs_flags.initialized ? gs_flags.x : (update_flags(), gs_flags.x))
+
+static void update_flags( void )
+{
+  char *str;
+  gs_flags.env.soft_assert = (str=getenv("MEMALLOC_SOFT_ASSERT")) && atoi(str);
+  gs_flags.env.check_freed = (str=getenv("MEMALLOC_CHECK_FREED")) && atoi(str);
+  gs_flags.env.show_dumps  = (str=getenv("MEMALLOC_SHOW_DUMPS"))  && atoi(str);
 }
 
 static void trace_leaks( void )
@@ -200,7 +244,7 @@ static void trace_leaks( void )
 
       for( i = 0; i < buck->size; ++i ) {
         MemTrace *p = &buck->block[i];
-        if( p->ptr != NULL ) {
+        if( p->ptr != NULL && !p->freed ) {
           TRACE_MSG(("(%d) leaked %d bytes at %p allocated in %s:%d\n",
                      p->serial, p->size, p->ptr, p->file, p->line));
 
@@ -241,8 +285,15 @@ static inline MemTrace *get_empty_slot( const void *ptr )
 
   for( i = 0; i < buck->size; ++i ) {
     p = &buck->block[i];
-    if( p->ptr == ptr )
+    if( p->ptr == ptr ) {
+      if( p->freed ) {
+        p->ptr   = NULL;
+        p->size  = 0;
+        p->freed = 0;
+        return p;
+      }
       return NULL;
+    }
     if( pos < 0 && p->ptr == NULL )
       pos = i;
   }
@@ -251,14 +302,17 @@ static inline MemTrace *get_empty_slot( const void *ptr )
     pos = buck->size;
 
   if( pos >= buck->size ) {
-    buck->size  = pos + BUCKET_SIZE_INCR;
+    buck->size  = pos + MEMALLOC_BUCKET_SIZE_INCR;
     buck->block = realloc( buck->block, buck->size * sizeof(MemTrace) );
     if( buck->block == NULL ) {
       fprintf(stderr, "panic: out of memory in get_empty_slot()\n");
       abort();
     }
-    for( p = &buck->block[i = pos]; i < buck->size; ++i, ++p )
-      free_slot( p );
+    for( p = &buck->block[i = pos]; i < buck->size; ++i, ++p ) {
+      p->ptr   = NULL;
+      p->size  = 0;
+      p->freed = 0;
+    }
   }
 
   return &buck->block[pos];
@@ -279,6 +333,250 @@ static inline MemTrace *find_slot( const void *ptr )
   }
 
   return NULL;
+}
+
+static void hex_dump( const void *ptr, size_t len )
+{
+  const unsigned char *px = ptr;
+  unsigned long pos = 0;
+
+  for( pos = 0; pos < len; pos += HEX_BYTES_PER_LINE ) {
+    int i;
+    TRACE_MSG(("%08lX ", pos));
+    for( i = 0; pos+i < len && i < HEX_BYTES_PER_LINE; i++ )
+      TRACE_MSG(("%s%02X", i%4 ? " " : "  ", px[pos+i]));
+    for( ; i < HEX_BYTES_PER_LINE; i++ )
+      TRACE_MSG(("%s  ", i%4 ? " " : "  "));
+    TRACE_MSG((" "));
+    for( i = 0; pos+i < len && i < HEX_BYTES_PER_LINE; i++ )
+      TRACE_MSG(("%s%c", i%4 ? "" : " ", px[pos+i] < 32 || px[pos+i] > 127 ? '.' : px[pos+i]));
+    TRACE_MSG(("\n"));
+  }
+}
+
+static void diag_ptr( const void *ptr )
+{
+  const char *px = ptr;
+  int b, i, delta = -1;
+  MemTraceBucket *buck;
+  MemTrace *best = NULL;
+  enum Match { None, BeforeF, AfterF, BeforeA, AfterA, InsideF, InsideA, Freed }
+             match = None;
+
+  assert( ptr != NULL );
+
+  for( b = 0, buck = &gs_trace[0]; b < sizeof(gs_trace)/sizeof(gs_trace[0]); ++b, ++buck )
+    for( i = 0; i < buck->size; ++i ) {
+      MemTrace *p = &buck->block[i];
+
+      if( p->ptr != NULL ) {
+        const char *ps = p->ptr;
+        const char *pe = ps + p->size;
+        enum Match m = None;
+        int d = 0;
+
+        if( ps == px && p->freed ) {
+          m = Freed;
+        }
+        else if( ps <= px && px < pe ) {
+          m = p->freed ? InsideF : InsideA;
+        }
+        else if( px >= pe ) {
+          m = p->freed ? AfterF : AfterA;
+          d = (px - pe) + 1;
+        }
+        else {
+          assert( px < ps );
+          m = p->freed ? BeforeF : BeforeA;
+          d = ps - px;
+        }
+
+        assert( m != None );
+
+        if( (m >  match && d < MEMALLOC_MAX_DIAG_DIST) ||
+            (m == match && d < delta) ) {
+          match = m;
+          delta = d;
+          best  = p;
+        }
+      }
+    }
+
+  if( match != None ) {
+    const char *type, *s1, *s2;
+
+    assert( delta >= 0 && delta < MEMALLOC_MAX_DIAG_DIST );
+    assert( best != NULL );
+
+    type = best->freed ? "a freed" : "an allocated";
+    s1 = delta == 1 ? "" : "s";
+    s2 = best->size == 1 ? "" : "s";
+
+    switch( match ) {
+      case BeforeF:
+      case BeforeA:
+        TRACE_MSG(("  %p is %d byte%s before %s block of %d byte%s at %p (%s:%d)\n",
+                   ptr, delta, s1, type, best->size, s2, best->ptr, best->file, best->line));
+        break;
+
+      case AfterF:
+      case AfterA:
+        TRACE_MSG(("  %p is %d byte%s behind %s block of %d byte%s at %p (%s:%d)\n",
+                   ptr, delta, s1, type, best->size, s2, best->ptr, best->file, best->line));
+        break;
+
+      case InsideF:
+      case InsideA:
+        assert( delta == 0 );
+        TRACE_MSG(("  %p is inside %s block of %d byte%s at %p (%s:%d)\n",
+                   ptr, type, best->size, s2, best->ptr, best->file, best->line));
+        break;
+
+      case Freed:
+        assert( delta == 0 );
+        TRACE_MSG(("  %p points to a block of %d byte%s already freed (%s:%d)\n",
+                   ptr, best->size, s2, best->file, best->line));
+        break;
+
+      default:
+        fprintf(stderr, "panic: unknown match type (%d)\n", (int) match);
+        abort();
+        break;
+    }
+
+    if( !best->freed && MEMALLOC_FLAG(env.show_dumps) )
+      hex_dump( best->ptr, best->size );
+  }
+}
+
+static void diag_range( const void *ptr, size_t size )
+{
+  const char *pS, *pE;
+  int b, i, delta = -1, overlap = -1;
+  MemTraceBucket *buck;
+  MemTrace *best = NULL;
+  enum Match { None, BeforeF, AfterF, BeforeA, AfterA, OverlapF, OverlapA, InsideF, Freed }
+             match = None;
+
+  assert( ptr != NULL );
+  assert( size > 0 );
+
+  pS = ptr;
+  pE = pS + size;
+
+  for( b = 0, buck = &gs_trace[0]; b < sizeof(gs_trace)/sizeof(gs_trace[0]); ++b, ++buck )
+    for( i = 0; i < buck->size; ++i ) {
+      MemTrace *p = &buck->block[i];
+
+      if( p->ptr != NULL ) {
+        const char *ps = p->ptr;
+        const char *pe = ps + p->size;
+        enum Match m = None;
+        int d = 0, o = 0;
+
+        /*               pS                   pE
+         *                |===================|
+         *                :                   :
+         *          ps |--:-------------------:-----| pe           -> inside
+         *  ps |---------|:pe                 :                    -> after
+         *          ps |--:------| pe         :                    -> overlap
+         *                : ps |---------| pe :                    -> overlap
+         *                :           ps |----:----| pe            -> overlap
+         *                :                   : ps |---------| pe  -> before
+         *                :                   |
+         *                |===================|
+         */
+        if( ps == pS && pe == pE && p->freed ) {
+          m = Freed;
+        }
+        else if( ps <= pS && pe >= pE && p->freed ) {
+          m = InsideF;
+        }
+        else if( pS <= ps && ps <= pE ) {
+          m = p->freed ? OverlapF : OverlapA;
+          o = pE - ps;
+        }
+        else if( pS <= pe && pe <= pE ) {
+          m = p->freed ? OverlapF : OverlapA;
+          o = pe - pS;
+        }
+        else if( pS > pe ) {
+          m = p->freed ? AfterF : AfterA;
+          d = pS - pe;
+        }
+        else {
+          assert( pE < ps );
+          m = p->freed ? BeforeF : BeforeA;
+          d = ps - pE;
+        }
+
+        assert( m != None );
+
+        if( (m >  match && d < MEMALLOC_MAX_DIAG_DIST) ||
+            (m == match && (d < delta || o > overlap)) ) {
+          match   = m;
+          delta   = d;
+          overlap = o;
+          best    = p;
+        }
+      }
+    }
+
+  if( match != None ) {
+    const char *type, *s1, *s2, *s3;
+
+    assert( delta >= 0 && delta < MEMALLOC_MAX_DIAG_DIST );
+    assert( best != NULL );
+
+    type = best->freed ? "a freed" : "an allocated";
+    s1 = delta == 1 ? "" : "s";
+    s2 = best->size == 1 ? "" : "s";
+    s3 = overlap == 1 ? "" : "s";
+
+    switch( match ) {
+      case BeforeF:
+      case BeforeA:
+        assert( overlap == 0 );
+        TRACE_MSG(("  %p(%d) is %d byte%s before %s block of %d byte%s at %p (%s:%d)\n",
+                   ptr, size, delta, s1, type, best->size, s2, best->ptr, best->file, best->line));
+        break;
+
+      case AfterF:
+      case AfterA:
+        assert( overlap == 0 );
+        TRACE_MSG(("  %p(%d) is %d byte%s behind %s block of %d byte%s at %p (%s:%d)\n",
+                   ptr, size, delta, s1, type, best->size, s2, best->ptr, best->file, best->line));
+        break;
+
+      case OverlapF:
+      case OverlapA:
+        assert( delta == 0 );
+        assert( overlap > 0 );
+        TRACE_MSG(("  %p(%d) overlaps %d byte%s with %s block of %d byte%s at %p (%s:%d)\n",
+                   ptr, size, overlap, s3, type, best->size, s2, best->ptr, best->file, best->line));
+        break;
+
+      case InsideF:
+        assert( delta == 0 );
+        TRACE_MSG(("  %p(%d) is inside %s block of %d byte%s at %p (%s:%d)\n",
+                   ptr, size, type, best->size, s2, best->ptr, best->file, best->line));
+        break;
+
+      case Freed:
+        assert( delta == 0 );
+        TRACE_MSG(("  %p(%d) matches a block already freed (%s:%d)\n",
+                   ptr, size, best->file, best->line));
+        break;
+
+      default:
+        fprintf(stderr, "panic: unknown match type (%d)\n", (int) match);
+        abort();
+        break;
+    }
+
+    if( !best->freed && MEMALLOC_FLAG(env.show_dumps) )
+      hex_dump( best->ptr, best->size );
+  }
 }
 
 static inline int trace_add( const void *ptr, size_t size, const char *file, int line )
@@ -348,12 +646,14 @@ static inline int trace_del( const void *ptr, const char *file, int line )
 
   if( (p = find_slot(ptr)) == NULL ) {
     TRACE_MSG(("pointer %p has not yet been allocated in %s:%d\n", ptr, file, line));
+    diag_ptr(ptr);
     return 0;
   }
 
-  gs_memstat.free++;
-  gs_memstat.total_blocks--;
-  gs_memstat.total_bytes -= p->size;
+  if( p->freed ) {
+    TRACE_MSG(("pointer %p has already been freed in %s:%d\n", ptr, file, line));
+    return 0;
+  }
 
   free_slot( p );
 
@@ -367,15 +667,14 @@ static inline int trace_upd( const void *old, const void *ptr, size_t size, cons
   assert( file != NULL );
 
   if( old != ptr && old != NULL ) {
-    if( (p = find_slot(old)) == NULL )
+    if( (p = find_slot(old)) == NULL ) {
       TRACE_MSG(("pointer %p has not yet been allocated in %s:%d\n", old, file, line));
-    else {
-      gs_memstat.free++;
-      gs_memstat.total_blocks--;
-      gs_memstat.total_bytes -= p->size;
-
-      free_slot( p );
+      diag_ptr(old);
     }
+    else if( p->freed )
+      TRACE_MSG(("pointer %p has already been freed in %s:%d\n", ptr, file, line));
+    else
+      free_slot( p );
   }
 
   if( ptr == NULL ) {
@@ -389,8 +688,19 @@ static inline int trace_upd( const void *old, const void *ptr, size_t size, cons
   p = NULL;
 
   if( old == ptr ) {
-    if( (p = find_slot(ptr)) == NULL )
+    if( (p = find_slot(ptr)) == NULL ) {
       TRACE_MSG(("pointer %p has not yet been allocated in %s:%d\n", ptr, file, line));
+      diag_ptr(ptr);
+    }
+    else if( p->freed ) {
+      TRACE_MSG(("pointer %p has already been freed in %s:%d\n", ptr, file, line));
+      p->size  = 0;
+      p->freed = 0;
+    }
+    else {
+      gs_memstat.alloc++;
+      gs_memstat.free++;
+    }
   }
 
   if( p == NULL ) {
@@ -434,36 +744,56 @@ static inline int trace_upd( const void *old, const void *ptr, size_t size, cons
   return 1;
 }
 
-static inline int trace_check_ptr( const void *ptr )
+static inline int trace_check_ptr( const void *ptr, const char *file, int line )
 {
-  assert( ptr != NULL );
-  return find_slot(ptr) != NULL;
+  MemTrace *p;
+
+  if( ptr != NULL && (p =find_slot(ptr)) != NULL && !p->freed )
+    return 1;
+
+  TRACE_MSG(("Assertion failed: %p is not a valid pointer in %s:%d\n", ptr, file, line));
+
+  if( ptr != NULL )
+    diag_ptr(ptr);
+
+  if( MEMALLOC_FLAG(env.soft_assert) == 0 )
+    abort();
+
+  return 0;
 }
 
-static inline int trace_check_range( const void *ptr, size_t size )
+static inline int trace_check_range( const void *ptr, size_t size, const char *file, int line )
 {
   int b, i;
   MemTraceBucket *buck;
 
-  assert( ptr != NULL );
+  if( ptr != NULL && size > 0 ) {
+    for( b = 0, buck = &gs_trace[0]; b < sizeof(gs_trace)/sizeof(gs_trace[0]); ++b, ++buck )
+      for( i = 0; i < buck->size; ++i ) {
+        MemTrace *pmt = &buck->block[i];
 
-  for( b = 0, buck = &gs_trace[0]; b < sizeof(gs_trace)/sizeof(gs_trace[0]); ++b, ++buck )
-    for( i = 0; i < buck->size; ++i ) {
-      MemTrace *pmt = &buck->block[i];
+        if( pmt->ptr != NULL && !pmt->freed ) {
+          const char *bs = pmt->ptr;
+          const char *be = bs + pmt->size;
+          const char *cs = ptr;
+          const char *ce = cs + size;
 
-      if( pmt->ptr != NULL ) {
-        const char *bs = pmt->ptr;
-        const char *be = bs + pmt->size;
-        const char *cs = ptr;
-        const char *ce = cs + size;
+          int s_in_b = bs <= cs && cs <= be;
+          int e_in_b = bs <= ce && ce <= be;
 
-        int s_in_b = bs <= cs && cs <= be;
-        int e_in_b = bs <= ce && ce <= be;
-
-        if( s_in_b && e_in_b )
-          return 1;
+          if( s_in_b && e_in_b )
+            return 1;
+        }
       }
-    }
+  }
+
+  TRACE_MSG(("Assertion failed: %p(%d) is not a valid block in %s:%d\n", ptr, size, file, line));
+
+  if( ptr != NULL && size > 0 )
+    diag_range(ptr, size);
+
+  if( MEMALLOC_FLAG(env.soft_assert) == 0 )
+    abort();
 
   return 0;
 }
@@ -473,12 +803,14 @@ static inline int trace_check_range( const void *ptr, size_t size )
 #define trace_add( ptr, size, file, line )         1
 #define trace_upd( old, ptr, size, file, line )    1
 #define trace_del( ptr, file, line )               1
+#define trace_check_ptr( ptr, file, line )         1
+#define trace_check_range( ptr, size, file, line ) 1
 
 #endif /* defined(DEBUG_MEMALLOC) && defined(TRACE_MEMALLOC) */
 
 
 #ifdef DEBUG_MEMALLOC
-void *_memAlloc( register size_t size, char *file, int line )
+void *_memAlloc( register size_t size, const char *file, int line )
 #else
 void *_memAlloc( register size_t size )
 #endif
@@ -507,7 +839,7 @@ void *_memAlloc( register size_t size )
 }
 
 #ifdef DEBUG_MEMALLOC
-void *_memCAlloc( register size_t nobj, register size_t size, char *file, int line )
+void *_memCAlloc( register size_t nobj, register size_t size, const char *file, int line )
 #else
 void *_memCAlloc( register size_t nobj, register size_t size )
 #endif
@@ -537,7 +869,7 @@ void *_memCAlloc( register size_t nobj, register size_t size )
 }
 
 #ifdef DEBUG_MEMALLOC
-void *_memReAlloc( register void *p, register size_t size, char *file, int line )
+void *_memReAlloc( register void *p, register size_t size, const char *file, int line )
 #else
 void *_memReAlloc( register void *p, register size_t size )
 #endif
@@ -589,12 +921,11 @@ void *_memReAlloc( register void *p, register size_t size )
 
 #ifdef DEBUG_MEMALLOC
 
-void _memFree( register void *p, char *file, int line )
+void _memFree( register void *p, const char *file, int line )
 {
-  (void) trace_del( p, file, line );
   DEBUG( TRACE, ("%s(%d):F=%08lX\n", file, line, (unsigned long)p) );
 
-  if( p ) {
+  if( trace_del( p, file, line ) && p ) {
 #ifdef AUTOPURGE_MEMALLOC
     size_t size;
     p = (void *)(((size_t *)p)-1);
@@ -605,26 +936,16 @@ void _memFree( register void *p, char *file, int line )
   }
 }
 
-void _assertValidPtr( register void *p, char *file, int line )
+void _assertValidPtr( register void *p, const char *file, int line )
 {
   DEBUG( ASSERT, ("%s(%d):V=%08lX\n", file, line, (unsigned long)p) );
-#ifdef TRACE_MEMALLOC
-  if( p == NULL || !trace_check_ptr( p ) ) {
-    TRACE_MSG(("Assertion failed: %p is not a valid pointer in %s:%d\n", p, file, line));
-    CHECK_SOFT_ASSERT;
-  }
-#endif
+  (void) trace_check_ptr( p, file, line );
 }
 
-void _assertValidBlock( register void *p, register size_t size, char *file, int line )
+void _assertValidBlock( register void *p, register size_t size, const char *file, int line )
 {
   DEBUG( ASSERT, ("%s(%d):B=%d@%08lX\n", file, line, size, (unsigned long)p) );
-#ifdef TRACE_MEMALLOC
-  if( p == NULL || !trace_check_range( p, size ) ) {
-    TRACE_MSG(("Assertion failed: %p(%d) is not a valid block in %s:%d\n", p, size, file, line));
-    CHECK_SOFT_ASSERT;
-  }
-#endif
+  (void) trace_check_range( p, size, file, line );
 }
 
 #ifdef UTIL_FORMAT_CHECK
@@ -644,4 +965,221 @@ int SetDebugMemAlloc( void (*dbfunc)(const char *, ...), unsigned long dbflags )
 
 #endif /* DEBUG_MEMALLOC */
 
-#endif /* !defined(DEBUG_MEMALLOC) && !defined(ABORT_IF_NO_MEM) */
+#else
+
+/* avoid empty source file warning */
+extern int _memalloc___notused __attribute__((unused));
+
+#endif /* defined(DEBUG_MEMALLOC) || (defined(ABORT_IF_NO_MEM) && !defined(NO_SLOW_MEMALLOC_CALLS)) */
+
+/* ============================================================= */
+/* ==================== TEST CODE FOLLOWING ==================== */
+/* ============================================================= */
+
+#ifdef MEMALLOC_TEST
+
+#include <stdio.h>
+#include <stdarg.h>
+#include "memalloc.h"
+
+static FILE *ftest;
+static FILE *fdebug;
+
+static struct {
+  int debug;
+  int assert;
+  int check_freed;
+  int stat_level;
+} flags;
+
+static void t_trace( const char *fmt, ... )
+{
+  va_list l;
+  va_start(l, fmt);
+#if defined(DEBUG_MEMALLOC) && defined(TRACE_MEMALLOC)
+  vfprintf(ftest, fmt, l);
+#endif
+  va_end(l);
+}
+
+#if defined(DEBUG_MEMALLOC)
+static void t_debug( const char *fmt, ... )
+{
+  va_list l;
+  va_start(l, fmt);
+  if( flags.debug )
+    vfprintf(ftest, fmt, l);
+  va_end(l);
+}
+#endif
+
+static void t_assert( const char *fmt, ... )
+{
+  va_list l;
+  va_start(l, fmt);
+#if defined(DEBUG_MEMALLOC)
+  if( flags.assert )
+    vfprintf(ftest, fmt, l);
+#endif
+  va_end(l);
+}
+
+#define trc_not_alloc     t_trace("pointer %p has not yet been allocated in %s:%d\n", p, __FILE__, __LINE__)
+#define trc_assP_fail     t_trace("Assertion failed: %p is not a valid pointer in %s:%d\n", p, __FILE__, __LINE__)
+#define trc_assB_fail(s)  t_trace("Assertion failed: %p(%d) is not a valid block in %s:%d\n", p, s, __FILE__, __LINE__)
+#define trc               t_trace
+#define trc_f             if( flags.check_freed ) t_trace
+#define assP              t_assert("%s(%d):V=%08lX\n", __FILE__, __LINE__, (unsigned long)p)
+#define assB(s)           t_assert("%s(%d):B=%d@%08lX\n", __FILE__, __LINE__, s, (unsigned long)p)
+#if defined(DEBUG_MEMALLOC)
+#  define dbg(what)       t_debug("%s(%d):" #what "=%08lX\n", __FILE__, __LINE__, (unsigned long)p)
+#  define dbgA(p,s)       t_debug("%s(%d):A=%d@%08lX\n", __FILE__, __LINE__, s, (unsigned long)p)
+#else
+#  define dbg(what)       (void)1
+#  define dbgA(p,s)       (void)1
+#endif
+
+static void runtests( void )
+{
+  unsigned char *p, *p1;                                   int lp1;
+  int i;
+
+#define S_P1 10
+
+  AllocF( char *, p1, S_P1 );             dbgA(p1,S_P1);   lp1 = __LINE__;
+
+  for( i = 0; i < S_P1; i++ )
+    p1[i] = (unsigned char) i;
+
+#ifdef TRACE_MEMALLOC
+  p = p1 + 1;
+  Free( p );                                     dbg(F);   trc_not_alloc;
+                                                           trc("  %p is inside an allocated block of %d bytes at %p (%s:%d)\n", p, S_P1, p1, __FILE__, lp1);
+  p = p1 + (S_P1-1);
+  Free( p );                                     dbg(F);   trc_not_alloc;
+                                                           trc("  %p is inside an allocated block of %d bytes at %p (%s:%d)\n", p, S_P1, p1, __FILE__, lp1);
+#if MEMALLOC_MAX_DIAG_DIST > 1
+  p = p1 - 1;
+  Free( p );                                     dbg(F);   trc_not_alloc;
+                                                           trc("  %p is 1 byte before an allocated block of %d bytes at %p (%s:%d)\n", p, S_P1, p1, __FILE__, lp1);
+  p = p1 + S_P1;
+  Free( p );                                     dbg(F);   trc_not_alloc;
+                                                           trc("  %p is 1 byte behind an allocated block of %d bytes at %p (%s:%d)\n", p, S_P1, p1, __FILE__, lp1);
+  p = p1 - (MEMALLOC_MAX_DIAG_DIST-1);
+  Free( p );                                     dbg(F);   trc_not_alloc;
+                                                           trc("  %p is %d byte%s before an allocated block of %d bytes at %p (%s:%d)\n", p, MEMALLOC_MAX_DIAG_DIST-1,
+                                                                                                MEMALLOC_MAX_DIAG_DIST-1 == 1 ? "" : "s", S_P1, p1, __FILE__, lp1);
+  p = p1 + (MEMALLOC_MAX_DIAG_DIST+S_P1-2);
+  Free( p );                                     dbg(F);   trc_not_alloc;
+                                                           trc("  %p is %d byte%s behind an allocated block of %d bytes at %p (%s:%d)\n", p, MEMALLOC_MAX_DIAG_DIST-1,
+                                                                                                MEMALLOC_MAX_DIAG_DIST-1 == 1 ? "" : "s", S_P1, p1, __FILE__, lp1);
+#endif
+  p = p1 - (MEMALLOC_MAX_DIAG_DIST);
+  Free( p );                                     dbg(F);   trc_not_alloc;
+
+  p = p1 + (MEMALLOC_MAX_DIAG_DIST+S_P1-1);
+  Free( p );                                     dbg(F);   trc_not_alloc;
+#endif
+
+  p = p1;
+  AssertValidPtr(p);                               assP;
+  p = p1+1;
+  AssertValidPtr(p);                               assP;   trc_assP_fail;
+                                                           trc("  %p is inside an allocated block of %d bytes at %p (%s:%d)\n", p, S_P1, p1, __FILE__, lp1);
+
+  p = p1;
+  AssertValidBlock(p,5);                        assB(5);
+  p = p1-1;
+  AssertValidBlock(p,5);                        assB(5);   trc_assB_fail(5);
+                                                           trc("  %p(5) overlaps 4 bytes with an allocated block of %d bytes at %p (%s:%d)\n", p, S_P1, p1, __FILE__, lp1);
+
+  p = p1;
+  Free( p );                                     dbg(F);
+
+  AssertValidPtr(p);                               assP;   trc_assP_fail;
+                                                           trc_f("  %p points to a block of %d bytes already freed (%s:%d)\n", p, S_P1, __FILE__, lp1);
+
+#ifdef TRACE_MEMALLOC
+  p = p1 + 1;
+  Free( p );                                     dbg(F);   trc_not_alloc;
+                                                           trc_f("  %p is inside a freed block of %d bytes at %p (%s:%d)\n", p, S_P1, p1, __FILE__, lp1);
+  p = p1 + (S_P1-1);
+  Free( p );                                     dbg(F);   trc_not_alloc;
+                                                           trc_f("  %p is inside a freed block of %d bytes at %p (%s:%d)\n", p, S_P1, p1, __FILE__, lp1);
+#if MEMALLOC_MAX_DIAG_DIST > 1
+  p = p1 - 1;
+  Free( p );                                     dbg(F);   trc_not_alloc;
+                                                           trc_f("  %p is 1 byte before a freed block of %d bytes at %p (%s:%d)\n", p, S_P1, p1, __FILE__, lp1);
+  p = p1 + S_P1;
+  Free( p );                                     dbg(F);   trc_not_alloc;
+                                                           trc_f("  %p is 1 byte behind a freed block of %d bytes at %p (%s:%d)\n", p, S_P1, p1, __FILE__, lp1);
+  p = p1 - (MEMALLOC_MAX_DIAG_DIST-1);
+  Free( p );                                     dbg(F);   trc_not_alloc;
+                                                           trc_f("  %p is %d byte%s before a freed block of %d bytes at %p (%s:%d)\n", p, MEMALLOC_MAX_DIAG_DIST-1,
+                                                                                             MEMALLOC_MAX_DIAG_DIST-1 == 1 ? "" : "s", S_P1, p1, __FILE__, lp1);
+  p = p1 + (MEMALLOC_MAX_DIAG_DIST+S_P1-2);
+  Free( p );                                     dbg(F);   trc_not_alloc;
+                                                           trc_f("  %p is %d byte%s behind a freed block of %d bytes at %p (%s:%d)\n", p, MEMALLOC_MAX_DIAG_DIST-1,
+                                                                                             MEMALLOC_MAX_DIAG_DIST-1 == 1 ? "" : "s", S_P1, p1, __FILE__, lp1);
+#endif
+  p = p1 - (MEMALLOC_MAX_DIAG_DIST);
+  Free( p );                                     dbg(F);   trc_not_alloc;
+
+  p = p1 + (MEMALLOC_MAX_DIAG_DIST+S_P1-1);
+  Free( p );                                     dbg(F);   trc_not_alloc;
+
+  p = p1;
+  Free( p );                                     dbg(F);   trc("pointer %p has %s in %s:%d\n", p, flags.check_freed ? "already been freed" : "not yet been allocated", __FILE__, __LINE__);
+#endif
+
+}
+
+#ifdef DEBUG_MEMALLOC
+static void test_dbfunc( const char *fmt, ... )
+{
+  va_list l;
+  va_start(l, fmt);
+  vfprintf(fdebug ? fdebug : stderr, fmt, l);
+  va_end(l);
+}
+#endif
+
+int main( void )
+{
+  const char *str;
+  const char *file;
+
+  if( (file = getenv("MEMALLOC_TEST_FILE")) == NULL )
+    file = "test.ref";
+
+  flags.debug       = (str=getenv("MEMALLOC_TEST_DEBUG")) && atoi(str);
+  flags.assert      = (str=getenv("MEMALLOC_TEST_ASSERT")) && atoi(str);
+  flags.check_freed = (str=getenv("MEMALLOC_CHECK_FREED")) && atoi(str);
+  flags.stat_level  = (str=getenv("MEMALLOC_STAT_LEVEL")) ? atoi(str) : -1;
+
+  if( (str=getenv("MEMALLOC_TEST_DEBUG_FILE")) != NULL )
+    if( (fdebug = fopen(str, "w")) == NULL )
+      return -1;
+
+#ifdef DEBUG_MEMALLOC
+  SetDebugMemAlloc( test_dbfunc, (flags.debug  ? DB_MEMALLOC_TRACE  : 0)
+                               | (flags.assert ? DB_MEMALLOC_ASSERT : 0) );
+#endif
+
+  if( (ftest = fopen(file, "w")) == NULL )
+    return -1;
+
+  runtests();
+
+  fclose(ftest);
+
+#ifdef DEBUG_MEMALLOC
+  SetDebugMemAlloc( NULL, 0 );
+#endif
+
+  if( fdebug )
+    fclose(fdebug);
+
+  return 0;
+}
+#endif

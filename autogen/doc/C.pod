@@ -474,6 +474,101 @@ This would then print:
 
   @@types.pl [5]@@
 
+=head1 USING HOOKS
+
+Hooks are a new feature and in this early state are considered
+experimental. That means that both interface and behaviour may
+be subject to incompatible changes. Nevertheless hooks are quite
+interesting and can be extremely useful, so read on!
+
+Using hooks, you can easily override the
+way L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> handle data.
+If you define hooks for a certain data type, each time this
+data type is processed the corresponding hook will be called
+to allow you to modify the data.
+
+Here's an example. Let's assume the following C code has been
+parsed:
+
+  $$hooks.pl [1]$$
+
+You could now use the types above and, for example, unpack
+binary data representing a C<MsgHeader> like this:
+
+  $$hooks.pl [2]$$
+
+This would give you:
+
+  @@hooks.pl [1]@@
+
+Instead of dealing with C<ProtoId>'s as integers, you would
+rather like to have them as clear text. You could provide
+subroutines to convert between clear text and integers:
+
+  $$hooks.pl [3]$$
+
+The hooks feature allows you to register these subroutines
+using the L<C<add_hooks>|/"add_hooks"> method:
+
+  $$hooks.pl [4]$$
+
+Doing exactly the same unpack on C<MsgHeader> again would
+now return:
+
+  @@hooks.pl [2]@@
+
+Actually, if you don't need the reverse operation, you don't even
+have to register a C<pack> hook. Or, even better, you can have a
+more intelligent C<unpack> hook that creates a dual-typed variable:
+
+  $$hooks.pl [6]$$
+
+Just as before, this would print
+
+  @@hooks.pl [3]@@
+
+but without requiring a C<pack> hook for packing, at least as
+long as you keep the variable dual-typed.
+
+Hooks are called with exactly one argument, which is the data
+that should be processed. They are called in scalar context and
+expected to return the processed data.
+
+To get rid of registered hooks, you can use either
+
+  $$hooks.pl [7]$$
+
+or:
+
+  $$hooks.pl [8]$$
+
+Of course, hooks are not restricted to handling integer values.
+You could just as well add hooks for the C<String> struct from
+the code above. A useful example would be to have these hooks:
+
+  $$hooks.pl [9]$$
+
+While you would normally get the following output when unpacking
+a C<String>
+
+  @@hooks.pl [4]@@
+
+you could just register the hooks using
+
+  $$hooks.pl [10]$$
+
+and you would get a nice human-readable string:
+
+  @@hooks.pl [5]@@
+
+Packing a string turns out to be just as easy:
+
+  $$hooks.pl [11]$$
+
+This would print:
+
+  @@hooks.pl [6]@@
+
 =head1 METHODS
 
 =head2 new
@@ -2141,6 +2236,66 @@ a description on how to interpret this hash.
 
 =back
 
+=head2 add_hooks
+
+=over 8
+
+=item C<add_hooks> TYPE =E<gt> { HOOK =E<gt> SUB, ... }, ...
+
+This method allows you to register subroutines as hooks.
+Hooks are called whenever a certain C<TYPE> is packed or
+unpacked. Hooks are currently considered an experimental
+feature.
+
+You can register hooks for all types except for basic types.
+This means you cannot register a hook for C<int>. C<TYPE> is
+the type you want to register a hook for. C<HOOK> is
+either C<'pack'> or C<'unpack'>. C<SUB> is a reference to
+a subroutine that takes on input argument, processes it and
+returns one output argument.
+
+You can register hooks for as many types as you like with
+one call to L<C<add_hooks>|/"add_hooks">:
+
+  $$hooks2.pl [2]$$
+
+To remove registered hooks, use
+either L<C<delete_hooks>|/"delete_hooks"> or L<C<delete_all_hooks>|/"delete_all_hooks">.
+
+You can also use L<C<add_hooks>|/"add_hooks"> to update
+hooks for types already registered. To remove only a single
+subroutine, pass C<undef> instead of a subroutine reference.
+
+  $$hooks2.pl [3]$$
+
+If all subroutines are removed, the whole hook is removed.
+
+See L<TYPE|/"USING HOOKS"> for examples on how to use hooks.
+
+=back
+
+=head2 delete_hooks
+
+=over 8
+
+=item C<delete_hooks> LIST
+
+Deletes the hooks for all types passed in.
+
+  $$hooks2.pl [4]$$
+
+=back
+
+=head2 delete_all_hooks
+
+=over 8
+
+=item C<delete_all_hooks>
+
+Removes all registered hooks.
+
+=back
+
 =head1 FUNCTIONS
 
 =head2 Convert::Binary::C::feature
@@ -2289,6 +2444,52 @@ which means that no information is collected from the file
 or code that is parsed. However, the preprocessor will run,
 which is useful for benchmarking the preprocessor.
 
+=head1 FLEXIBLE ARRAY MEMBERS AND INCOMPLETE TYPES
+
+Flexible array members are a feature introduced with ISO-C99.
+It's a common problem that you have a variable length data
+field at the end of a structure, for example an array of
+characters at the end of a message struct. ISO-C99 allows
+you to write this as:
+
+  $$flexarray.pl [1]$$
+
+The advantage is that you clearly indicate that the size
+of the appended data is variable, and that the C<data> member
+doesn't contribute to the size of the C<message> structure.
+
+When packing or unpacking data, Convert::Binary::C deals with
+flexible array members as if their length was adjustable. For
+example, L<C<unpack>|/"unpack"> will adapt the length of the
+array depending on the input string:
+
+  $$flexarray.pl [2]$$
+
+The following data is unpacked:
+
+  @@flexarray.pl [1]@@
+
+Similarly, pack will adjust the length of the output string
+according to the data you feed in:
+
+  $$flexarray.pl [3]$$
+
+This would print:
+
+  @@flexarray.pl [2]@@
+
+Incomplete types such as
+
+  $$flexarray.pl [4]$$
+
+are handled in exactly the same way. Thus, you can easily
+
+  $$flexarray.pl [5]$$
+
+which will unpack the following array:
+
+  @@flexarray.pl [3]@@
+
 =head1 FLOATING POINT VALUES
 
 When using Convert::Binary::C to handle floating point values,
@@ -2358,11 +2559,103 @@ of a structure yet.
 
 Convert::Binary::C was designed to be thread-safe.
 
-Since the used preprocessor unfortunately isn't
-re-entrant, source code parsing using
-the L<C<parse>|/"parse"> and L<C<parse_file>|/"parse_file"> methods
-is locked, so don't expect these routines to run in parallel
-on multithreaded perls.
+=head1 PORTABILITY
+
+Convert::Binary::C should build and run on most of the
+platforms that Perl runs on:
+
+=over 4
+
+=item *
+
+Various Linux systems
+
+=item *
+
+Various BSD systems
+
+=item *
+
+HP-UX
+
+=item *
+
+Compaq/HP Tru64 Unix
+
+=item *
+
+Mac-OS X
+
+=item *
+
+Cygwin
+
+=item *
+
+Windows 98/NT/2000/XP
+
+=back
+
+Also, many architectures are supported:
+
+=over 4
+
+=item *
+
+Various Intel Pentium and Itanium systems
+
+=item *
+
+Various Alpha systems
+
+=item *
+
+HP PA-RISC
+
+=item *
+
+Power-PC
+
+=item *
+
+StrongARM
+
+=back
+
+The module should build with any perl binary from 5.5.3
+up to the latest development version.
+
+=head1 COMPARISON WITH SIMILAR MODULES
+
+Most of the time when you're really looking for
+Convert::Binary::C you'll actually end up finding
+one of the following modules. Some of them have
+different goals, so it's probably worth pointing
+out the differences.
+
+=head2 C::Include
+
+Like Convert::Binary::C, this module aims at doing
+conversion from an to binary data based on C types.
+However, its configurability is very limited compared
+to Convert::Binary::C. Also, it does not parse all C
+code correctly. It's slower than Convert::Binary::C,
+doesn't have a preprocessor. On the plus side, it's
+written in pure Perl.
+
+=head2 C::DynaLib::Struct
+
+This module doesn't allow you to reuse your C source
+code. One main goal of Convert::Binary::C was to avoid
+code duplication or, even worse, having to maintain
+different representations of your data structures.
+Like C::Include, C::DynaLib::Struct is rather limited
+in its configurability.
+
+=head2 Win32::API::Struct
+
+This module has a special purpose. It aims at building
+structs for interfacing Perl code with Windows API code.
 
 =head1 CREDITS
 
@@ -2377,6 +2670,11 @@ joy and last but not least for proofreading the documentation.
 
 Alain Barbet E<lt>alian@cpan.orgE<gt> for testing and debugging
 support.
+
+=item *
+
+Mitchell N. Charity for giving me pointers into various
+interesting directions.
 
 =item *
 
@@ -2460,7 +2758,7 @@ want to rate the module at L<http://cpanratings.perl.org/>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
@@ -2476,8 +2774,9 @@ linked to the source code of this module in any other way.
 
 =head1 SEE ALSO
 
-See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar> and L<Data::Dumper>.
+See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
+
 
 

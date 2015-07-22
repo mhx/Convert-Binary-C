@@ -33,6 +33,7 @@
 #include "tune.h"
 #include "cpp.h"
 #include "nhash.h"
+#include "reent.h"
 
 /*
  * A macro represented in a compact form; simple tokens are represented
@@ -64,19 +65,26 @@ struct comp_token_fifo {
 /*
  * from lexer.c
  */
-#define init_cppm	ucpp_init_cppm
-#define put_char	ucpp_put_char
-#define discard_char	ucpp_discard_char
-#define next_token	ucpp_next_token
-#define grap_char	ucpp_grap_char
-#define space_char	ucpp_space_char
+#define init_cppm		UCPP_PRIVATE(init_cppm)
+#define put_char		UCPP_PRIVATE(put_char)
+#define discard_char		UCPP_PRIVATE(discard_char)
+#define next_token		UCPP_PRIVATE(next_token)
+#define grap_char		UCPP_PRIVATE(grap_char)
+#define space_char		UCPP_PRIVATE(space_char)
 
-void init_cppm(void);
-void put_char(struct lexer_state *, unsigned char);
-void discard_char(struct lexer_state *);
-int next_token(struct lexer_state *);
-int grap_char(struct lexer_state *);
+void init_cppm(pCPP);
+void put_char(pCPP_ struct lexer_state *, unsigned char);
+void discard_char(pCPP_ struct lexer_state *);
+int next_token(pCPP_ struct lexer_state *);
+int grap_char(pCPP_ struct lexer_state *);
 int space_char(int);
+
+#ifdef UCPP_REENTRANT
+#define new_cppm		UCPP_PRIVATE(new_cppm)
+#define del_cppm		UCPP_PRIVATE(del_cppm)
+CPPM new_cppm(void);
+void del_cppm(CPPM c);
+#endif
 
 /*
  * from assert.c
@@ -87,17 +95,17 @@ struct assert {
 	struct token_fifo *val;
 };
 
-#define cmp_token_list		ucpp_cmp_token_list
-#define handle_assert		ucpp_handle_assert
-#define handle_unassert		ucpp_handle_unassert
-#define get_assertion		ucpp_get_assertion
-#define wipe_assertions		ucpp_wipe_assertions
+#define cmp_token_list		UCPP_PRIVATE(cmp_token_list)
+#define handle_assert		UCPP_PRIVATE(handle_assert)
+#define handle_unassert		UCPP_PRIVATE(handle_unassert)
+#define get_assertion		UCPP_PRIVATE(get_assertion)
+#define wipe_assertions		UCPP_PRIVATE(wipe_assertions)
 
 int cmp_token_list(struct token_fifo *, struct token_fifo *);
-int handle_assert(struct lexer_state *);
-int handle_unassert(struct lexer_state *);
-struct assert *get_assertion(char *);
-void wipe_assertions(void);
+int handle_assert(pCPP_ struct lexer_state *);
+int handle_unassert(pCPP_ struct lexer_state *);
+struct assert *get_assertion(pCPP_ char *);
+void wipe_assertions(pCPP);
 
 /*
  * from macro.c
@@ -115,70 +123,81 @@ struct macro {
 #endif
 };
 
-#define print_token		ucpp_print_token
-#define handle_define		ucpp_handle_define
-#define handle_undef		ucpp_handle_undef
-#define handle_ifdef		ucpp_handle_ifdef
-#define handle_ifndef		ucpp_handle_ifndef
-#define substitute_macro	ucpp_substitute_macro
-#define get_macro		ucpp_get_macro
-#define wipe_macros		ucpp_wipe_macros
-#define dsharp_lexer		ucpp_dsharp_lexer
-#define compile_time		ucpp_compile_time
-#define compile_date		ucpp_compile_date
+#define print_token		UCPP_PRIVATE(print_token)
+#define handle_define		UCPP_PRIVATE(handle_define)
+#define handle_undef		UCPP_PRIVATE(handle_undef)
+#define handle_ifdef		UCPP_PRIVATE(handle_ifdef)
+#define handle_ifndef		UCPP_PRIVATE(handle_ifndef)
+#define substitute_macro	UCPP_PRIVATE(substitute_macro)
+#define get_macro		UCPP_PRIVATE(get_macro)
+#define wipe_macros		UCPP_PRIVATE(wipe_macros)
+
+void print_token(pCPP_ struct lexer_state *, struct token *, long);
+int handle_define(pCPP_ struct lexer_state *);
+int handle_undef(pCPP_ struct lexer_state *);
+int handle_ifdef(pCPP_ struct lexer_state *);
+int handle_ifndef(pCPP_ struct lexer_state *);
+int substitute_macro(pCPP_ struct lexer_state *, struct macro *,
+	struct token_fifo *, int, int, long);
+struct macro *get_macro(pCPP_ char *);
+void wipe_macros(pCPP);
+
+#ifdef UCPP_REENTRANT
+
+#define dsharp_lexer		(REENTR->_global.dsharp_lexer)
+#define compile_time		(REENTR->_global.compile_time)
+#define compile_date		(REENTR->_global.compile_date)
 #ifdef PRAGMA_TOKENIZE
-#define tokenize_lexer		ucpp_tokenize_lexer
+#define tokenize_lexer		(REENTR->_global.tokenize_lexer)
 #endif
 
-void print_token(struct lexer_state *, struct token *, long);
-int handle_define(struct lexer_state *);
-int handle_undef(struct lexer_state *);
-int handle_ifdef(struct lexer_state *);
-int handle_ifndef(struct lexer_state *);
-int substitute_macro(struct lexer_state *, struct macro *,
-	struct token_fifo *, int, int, long);
-struct macro *get_macro(char *);
-void wipe_macros(void);
+#else
 
+#define dsharp_lexer		UCPP_PRIVATE(dsharp_lexer)
+#define compile_time		UCPP_PRIVATE(compile_time)
+#define compile_date		UCPP_PRIVATE(compile_date)
 extern struct lexer_state dsharp_lexer;
 extern char compile_time[], compile_date[];
+
 #ifdef PRAGMA_TOKENIZE
+#define tokenize_lexer		UCPP_PRIVATE(tokenize_lexer)
 extern struct lexer_state tokenize_lexer;
 #endif
+
+#endif /* UCPP_REENTRANT */
 
 /*
  * from eval.c
  */
-#define strtoconst	ucpp_strtoconst
-#define eval_expr	ucpp_eval_expr
-#define eval_line	ucpp_eval_line
+#define strtoconst		UCPP_PRIVATE(strtoconst)
+#define eval_expr		UCPP_PRIVATE(eval_expr)
 
-unsigned long strtoconst(char *);
-unsigned long eval_expr(struct token_fifo *, int *, int);
-extern long eval_line;
+unsigned long strtoconst(pCPP_ char *);
+unsigned long eval_expr(pCPP_ struct token_fifo *, int *, int);
 
-#define eval_exception	ucpp_eval_exception
-
-#ifdef POSIX_JMP
-#define JMP_BUF	sigjmp_buf
-#define catch(x)	sigsetjmp((x), 0)
-#define throw(x)	siglongjmp((x), 1)
+#ifdef UCPP_REENTRANT
+#define eval_line		(REENTR->_global.eval_line)
 #else
-#define JMP_BUF	jmp_buf
-#define catch(x)	setjmp((x))
-#define throw(x)	longjmp((x), 1)
+#define eval_line		UCPP_PRIVATE(eval_line)
+extern long eval_line;
 #endif
+
+#ifdef UCPP_REENTRANT
+#define eval_exception		(REENTR->_global.eval_exception)
+#else
+#define eval_exception		UCPP_PRIVATE(eval_exception)
 extern JMP_BUF eval_exception;
+#endif
 
 /*
  * from cpp.c
  */
-#define token_name		ucpp_token_name
-#define throw_away		ucpp_throw_away
-#define garbage_collect		ucpp_garbage_collect
-#define init_buf_lexer_state	ucpp_init_buf_lexer_state
+#define token_name		UCPP_PRIVATE(token_name)
+#define throw_away		UCPP_PRIVATE(throw_away)
+#define garbage_collect		UCPP_PRIVATE(garbage_collect)
+#define init_buf_lexer_state	UCPP_PRIVATE(init_buf_lexer_state)
 #ifdef PRAGMA_TOKENIZE
-#define compress_token_list	ucpp_compress_token_list
+#define compress_token_list	UCPP_PRIVATE(compress_token_list)
 #endif
 
 char *token_name(struct token *);
@@ -189,8 +208,29 @@ void init_buf_lexer_state(struct lexer_state *, int);
 struct comp_token_fifo compress_token_list(struct token_fifo *);
 #endif
 
-#define ouch		ucpp_ouch
-#define error		ucpp_error
-#define warning		ucpp_warning
+#ifdef UCPP_REENTRANT
+
+#define no_special_macros	(REENTR->no_special_macros)
+#define emit_dependencies	(REENTR->emit_dependencies)
+#define emit_defines		(REENTR->emit_defines)
+#define emit_assertions		(REENTR->emit_assertions)
+#define c99_compliant		(REENTR->c99_compliant)
+#define c99_hosted		(REENTR->c99_hosted)
+#define emit_output		(REENTR->emit_output)
+#define current_filename	(REENTR->current_filename)
+#define current_long_filename	(REENTR->current_long_filename)
+#define ouch			(REENTR->ucpp_ouch)
+#define error			(REENTR->ucpp_error)
+#define warning			(REENTR->ucpp_warning)
+#define transient_characters	(REENTR->transient_characters)
+#define protect_detect		(REENTR->protect_detect)
+
+#else
+
+#define ouch			ucpp_ouch
+#define error			ucpp_error
+#define warning			ucpp_warning
+
+#endif
 
 #endif

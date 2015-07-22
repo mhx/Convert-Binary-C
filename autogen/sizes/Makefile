@@ -4,6 +4,8 @@ CHECKOUT  = checkout_file
 CECHO     = $(PERL) -e'use Term::ANSIColor; print color(shift); print @ARGV, color("reset"), "\n"'
 BLUE      = $(CECHO) "blue"
 
+CFLAGS    = -fshort-enums -std=c99 -I../../t/include/perlinc -I../../t/include/include
+
 SIZEOF    = ../../t/include/sizeof.pl
 OFFSETOF  = ../../t/include/offsetof.pl
 
@@ -39,7 +41,7 @@ sizeof.txt: mksizes
 
 mksizes: mksizes.c
 	@$(BLUE) "making mksizes"
-	@$(CC) -fshort-enums -I../../t/include/perlinc -I../../t/include/include -o mksizes mksizes.c
+	@$(CC) $(CFLAGS) -o mksizes mksizes.c
 
 mksizes.c: module mksizes.pl
 	@$(BLUE) "making mksizes.c"
@@ -56,7 +58,7 @@ offsetof.txt: mkoffsets
 
 mkoffsets: mkoffsets.c
 	@$(BLUE) "making mkoffsets"
-	@$(CC) -fshort-enums -I../../t/include/perlinc -I../../t/include/include -o mkoffsets mkoffsets.c
+	@$(CC) $(CFLAGS) -o mkoffsets mkoffsets.c
 
 mkoffsets.c: module mkoffsets.pl
 	@$(BLUE) "making mkoffsets.c"

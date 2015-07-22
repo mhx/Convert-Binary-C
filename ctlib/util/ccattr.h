@@ -10,14 +10,14 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 21:21:24 +0000 $
-* $Revision: 3 $
-* $Snapshot: /Convert-Binary-C/0.49 $
+* $Date: 2004/03/22 19:37:58 +0000 $
+* $Revision: 5 $
+* $Snapshot: /Convert-Binary-C/0.50 $
 * $Source: /ctlib/util/ccattr.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of either the Artistic License or the
@@ -45,7 +45,11 @@
 # ifdef  inline
 #  undef inline
 # endif
-# define inline __inline__
+# if __GNUC__ >= 3
+#  define inline __inline__ __attribute__((always_inline))
+# else
+#  define inline __inline__
+# endif
 #else
 /* Other compiler, forget about inline */
 # ifdef  inline
