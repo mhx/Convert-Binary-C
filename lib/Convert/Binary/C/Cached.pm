@@ -12,7 +12,7 @@
 # $Author: mhx $
 # $Date: 2003/04/18 22:32:57 +0100 $
 # $Revision: 15 $
-# $Snapshot: /Convert-Binary-C/0.13 $
+# $Snapshot: /Convert-Binary-C/0.40 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.13 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.40 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 my %cache;
 
