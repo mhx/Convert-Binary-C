@@ -1,0 +1,32 @@
+################################################################################
+#
+# $Project: /Convert-Binary-C $
+# $Author: mhx $
+# $Date: 2002/04/15 22:25:15 +0100 $
+# $Revision: 1 $
+# $Snapshot: /Convert-Binary-C/0.01 $
+# $Source: /typemap $
+#
+################################################################################
+# 
+# Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
+# This program is free software; you can redistribute it and/or
+# modify it under the same terms as Perl itself.
+# 
+################################################################################
+
+TYPEMAP
+CBC *	O_OBJECT
+
+OUTPUT
+O_OBJECT
+	sv_setref_pv( $arg, CLASS, (void *) $var );
+
+INPUT
+O_OBJECT
+	if( sv_isobject( $arg ) && ( SvTYPE( SvRV( $arg ) ) == SVt_PVMG ) )
+	  $var = ($type) CAST_IV_TO_PTRSIZE SvIV( (SV*) SvRV( $arg ) );
+	else {
+	  warn( \"${Package}::$func_name() : $var is not a blessed SV reference\" );
+	  XSRETURN_EMPTY;
+	}

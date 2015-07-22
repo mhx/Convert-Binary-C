@@ -1,0 +1,188 @@
+
+This is a bare-bones prototype for an ANSI C parser.
+
+It is based on _The C Programming Language,
+Second Edition_, Kernighan and Ritchie, Printice Hall, 1988.
+
+The program is relatively untested, but I think it may be instructive.
+Use it at your own risk.
+
+I would appreciate receiving any bug-fixes or improvements you may add.
+But do me a favor: If you modify anything, please remove my name from all
+the files. No offense intended. You understand.
+
+The program is designed to take as input the output of a C-preprocessor
+such as cpp. That is to say, it does not handle #include, #ifdef, et cetera,
+but it DOES handle #line directives. It eats #pragma directives, but
+does nothing with them.
+
+This first version does not do any semantic analysis except as needed
+to recognize typedef-names.
+
+CHANGES TO THE GRAMMAR
+
+Surprisingly few changes to the published grammar were needed to accommodate
+the recognition of typedef-names by the scanner, e.g.,
+
+1) the terminal-symbol TYPEDEF_NAME was introduced and the production
+   reducing identifier to typedef_name was removed; The symbol identifier
+   was replace by the terminal symbol IDENTIFIER.
+
+2) empty-productions for scanner feedback were introduced.
+
+3) The non-terminal symbols "function_declarator" and
+   "direct_function_declarator" were added to the grammar, to replace
+   "declarator" and its derived rules in extern function definitions.
+
+4) The non-terminal symbol type-specifier was split into two parts:
+
+     actual_type_specifier: VOID | CHAR | INT | FLOAT | DOUBLE
+        | TYPEDEF_NAME | struct_or_union_specifier | enum_specifier
+
+     type_adjective: SHORT | LONG | SIGNED | UNSIGNED
+
+
+Additionally, there seems to be a bug in the published grammar.
+Classic C compilers happily accept this file:
+
+	foo();
+	bar() { foo(); }
+
+To make that work, I added the production "untyped_declaration", which
+only applies at the global level.
+
+Finally, one %prec directive was introduced to silence the
+yacc warning about the well-known shift/reduce conflict on ELSE.
+ 
+
+
+CONCERNING TYPEDEF-NAMES AND SCANNER FEEDBACK
+
+There are several kinds of name-spaces in C: a name-space for each
+struct or union, a separate name-space for labels, et cetera.
+The scanner must be aware of the name-space which differentiates
+typedef-names from identifiers and enumeration-constants.  In order for
+the scanner to make that distinction, a scoped symbol table is necessary.
+This first version of the parser maintains only as much info there as is
+necessary to handle typedef-names.
+
+The identifier/typedef-name distinction is only
+useful in contexts where the name-space applies. In other
+contexts the distinction may be inapplicable, or in cases where
+typedef-names are not legal, a semantic-analysis phase
+might potentially be able to generate a better error message if the parser
+did not flag a syntax error. In those contexts, we therefore use a
+production that reduces TYPEDEF_NAMEs, ENUMERATION_CONSTANTS,
+and IDENTIFIERs to the non-terminal symbol "identifier".
+
+Even with that production, it is still necessary to disable
+recognition of typedef-names by the scanner in some contexts. This
+requirement could be obviated only at the expense of approximately tripling
+the size of the grammar.
+
+The scanner therefore has a boolean state-variable called "idents_only"
+which specifies whether the scanner should return a token of type
+TYPEDEF_NAME or ENUMERATION_CONSTANT when applicable, or should only
+return IDENTIFIER.
+
+Productions which interact with the name-space routines are prefixed
+with "NS_".
+
+The production "NS_td" turns typedef-recognition on, and "NS_ntd" turns
+it off. Notice that the state-change is necessarily effective only
+AFTER parsing the token which triggers it. Because original yacc uses
+"lazy lookahead", the routine lex_sync() is necessary to assure that
+the trigger-token is actually parsed before the scanner state-variable
+idents_only is toggled.
+
+See routine lex_sync() in file types.c.
+
+The mechanism that toggles whether the scanner recognizes typedef_names
+as such is a little convoluted. It would be nice if the "NS_td" and "NS_ntd"
+non-terminals could occur in matched sets within single production-rules.
+However, doing so would require that much of the grammar be duplicated.
+Instead, we will turn it off when an actual type-specifier is encountered in
+a declaration, and turn it back on at the end of each production that
+includes a type-specifier, after any declarators to which the type-specifier
+applies. Here is the rationale:
+
+The _Annotated Reference Manual_ specifies that typedef-names may be
+redefined within an inner scope in declarations which contain
+a "type-specifier" [sic].
+
+	typedef char T1;
+	typedef char T2;
+
+	foo() {
+	   int T1, b; /* This redefines "T1" */
+	   static T2; /* But this does not re-define "T2". It is
+ 		       * "legal", but declares nothing.
+                       */
+        }
+
+	T1 ch; /* This is legal. */
+
+I interpret this to mean that to redefine a type-name, the declaration
+must contain something that actually names a type; the type must not
+be merely implied. The rationale is to be able to parse things with
+only a one-token lookahead. Therefore I think the following should
+declare nothing, just as the "static T2" above declares nothing.
+
+	typedef int T1;
+
+	foo() {
+	    short T1;   /* declares nothing. */
+	    short T1 i; /* declares i */
+        }
+
+There are four reserved words that can derive "type-specifier" in
+the original grammar which do not name a specific type:
+SHORT, LONG, SIGNED, UNSIGNED. I changed the grammar accordingly, calling
+those four "type-adjectives", and the others "actual-type-specifiers".
+
+If I am wrong about this, somebody let me know.
+
+We must turn typedef-recognition off in declarator-lists
+and such when an actual-type-specifier is found, then back on again
+after any related declarator is finished.
+
+By inspecting the grammar we find that there are five productions
+which can derive a type-specifier indirectly:
+
+	o function-definition
+	o declaration
+        o parameter-declaration
+        o type-name
+        o struct-declaration
+
+Those derive productions containing either "declaration-specifiers"
+or "specifier-qualifier-list" which in turn derive "type-specifier".
+
+Typedef-recognition must be turned back on at or before the end of each of
+these five constructs, but only after any declarators that the constructs
+apply to have been parsed. The production NS_td does the job.
+
+Now a note concerning the addition of the non-terminal symbol
+"function_declarator". A declarator for a function introduces a
+new scope in the name-space to accommodate its parameters. That
+scope is destroyed either at the end of the declarator, or in the
+case of a function-definition, at the end of the compound-statement that
+is the body of the definition. To distiguish the two cases, I added
+the non-terminal symbols "function_declarator" and
+"direct_function_declarator". They open the name-space scope, but do
+not close it as "declarator" and "direct_declarator" do. Furthermore,
+I did not duplicate the productions for non-function declarators such
+as array-declarators. Therefore some illegal programs will now be flagged with
+syntax errors, where previously detection of the error would have been
+postponed until the semantic analysis phase. For example,
+
+     int foo[3] { int i = 1; }
+
+Under the original grammar, that was a "syntactically legal" program,
+because "foo[3]" constituted a declarator, and the whole thing was therefore
+a function_definition.  Now, because "foo[3]" is not a function_declarator,
+it produces a syntax error. If you think it was better the other way,
+just add the other kinds of declarators to the the rules for
+function-declarator.
+
+Have fun, and good luck.

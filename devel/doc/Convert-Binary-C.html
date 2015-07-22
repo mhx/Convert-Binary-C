@@ -1,0 +1,1813 @@
+<HTML>
+<HEAD>
+<TITLE>Convert::Binary::C</TITLE>
+<LINK rel="stylesheet" type="text/css" href="perldoc.css"></HEAD>
+<BODY BGCOLOR="#FFFFFF" TEXT="#000000">
+<H1>Convert::Binary::C - Contents</H1>
+<UL>
+<LI><A HREF="#NAME">NAME</A></LI>
+<LI><A HREF="#SYNOPSIS">SYNOPSIS</A></LI>
+<LI><A HREF="#DESCRIPTION">DESCRIPTION</A></LI>
+<UL>
+<LI><A HREF="#Why%20Convert%3a%3aBinary%3a%3aC%3f">Why Convert::Binary::C?</A></LI>
+<LI><A HREF="#Creating%20a%20Convert%3a%3aBinary%3a%3aC%20object">Creating a Convert::Binary::C object</A></LI>
+<LI><A HREF="#Configuring%20the%20object">Configuring the object</A></LI>
+<LI><A HREF="#Parsing%20C%20code">Parsing C code</A></LI>
+<LI><A HREF="#Packing%20and%20unpacking">Packing and unpacking</A></LI>
+<LI><A HREF="#Preprocessor%20configuration">Preprocessor configuration</A></LI>
+<LI><A HREF="#Supported%20pragma%20directives">Supported pragma directives</A></LI>
+</UL>
+<LI><A HREF="#METHODS">METHODS</A></LI>
+<UL>
+<LI><A HREF="#new">new</A></LI>
+<LI><A HREF="#configure">configure</A></LI>
+<LI><A HREF="#parse">parse</A></LI>
+<LI><A HREF="#parse_file">parse_file</A></LI>
+<LI><A HREF="#def">def</A></LI>
+<LI><A HREF="#pack">pack</A></LI>
+<LI><A HREF="#unpack">unpack</A></LI>
+<LI><A HREF="#sizeof">sizeof</A></LI>
+<LI><A HREF="#member">member</A></LI>
+<LI><A HREF="#offsetof">offsetof</A></LI>
+<LI><A HREF="#enum_names">enum_names</A></LI>
+<LI><A HREF="#enum">enum</A></LI>
+<LI><A HREF="#compound_names">compound_names</A></LI>
+<LI><A HREF="#compound">compound</A></LI>
+<LI><A HREF="#struct_names">struct_names</A></LI>
+<LI><A HREF="#struct">struct</A></LI>
+<LI><A HREF="#union_names">union_names</A></LI>
+<LI><A HREF="#union">union</A></LI>
+<LI><A HREF="#typedef_names">typedef_names</A></LI>
+<LI><A HREF="#typedef">typedef</A></LI>
+</UL>
+<LI><A HREF="#FUNCTIONS">FUNCTIONS</A></LI>
+<UL>
+<LI><A HREF="#Convert%3a%3aBinary%3a%3aC%3a%3afeature">Convert::Binary::C::feature</A></LI>
+</UL>
+<LI><A HREF="#DEBUGGING">DEBUGGING</A></LI>
+<LI><A HREF="#BITFIELDS">BITFIELDS</A></LI>
+<LI><A HREF="#MULTITHREADING">MULTITHREADING</A></LI>
+<LI><A HREF="#CREDITS">CREDITS</A></LI>
+<LI><A HREF="#BUGS">BUGS</A></LI>
+<LI><A HREF="#TODO">TODO</A></LI>
+<LI><A HREF="#COPYRIGHT">COPYRIGHT</A></LI>
+</UL>
+<H1><A NAME="NAME">NAME</A></H1>
+
+<P>Convert::Binary::C - Binary Data Conversion using C Types</P><H1><A NAME="SYNOPSIS">SYNOPSIS</A></H1>
+
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">use Convert::Binary::C;
+
+$c = new Convert::Binary::C ByteOrder =&gt; 'BigEndian',
+                            Alignment =&gt; 8;
+
+$c-&gt;configure( Include =&gt; ['/usr/include'],
+               Define  =&gt; ['FOOBAR=12345'] );
+
+$c-&gt;parse_file( $file );
+$c-&gt;Alignment( 2 );
+
+$p = $c-&gt;unpack( 'MyType', $data );
+$s = $c-&gt;sizeof( 'BigType' );
+$m = $c-&gt;member( 'AnotherType', 5 );</PRE>
+</TD></TR>
+</TABLE>
+</P><H1><A NAME="DESCRIPTION">DESCRIPTION</A></H1>
+
+<P>Convert::Binary::C is a preprocessor and parser for C type
+definitions. It is highly configurable and should support
+arbitrarily complex data structures. Its OO interface has pack
+and unpack methods that act as replacements for Perl's pack
+and unpack and allow to use the C types instead of a string
+representation of the data structure for conversion of binary
+data from and to Perl's complex data structures.</P>
+<P>Actually, what Convert::Binary::C does is not very different
+from what a C compiler does, just that it doesn't compile the
+source code into an object file or executable, but only parses
+the code and allows Perl to use the enumerations, structs and
+typedefs that have been defined within your C source for binary
+data conversion, similar to Perl's pack and unpack.</P>
+<P>Beyond that, the module offers a lot of convenience methods
+to retrieve information about the C types that have been parsed.</P><H2><A NAME="Why%20Convert%3a%3aBinary%3a%3aC%3f">Why Convert::Binary::C?</A></H2>
+
+<P>Say you want to pack (or unpack) data according to the following
+C structure:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">struct foo {
+  char ary[3];
+  unsigned short baz;
+  int bar;
+};</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>You could of course use Perl's <CODE>pack</CODE> and <CODE>unpack</CODE> functions:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">@ary = (1, 2, 3);
+$baz = 40000;
+$bar = -4711;
+$foo = pack 'c3 S i', @ary, $baz, $bar;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>But this implies that the struct members are byte aligned. If
+they were long aligned (which is the default for most compilers),
+you'd have to write</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$foo = pack 'c3 x S x2 i', @ary, $baz, $bar;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>which doesn't really increase readability.</P>
+<P>Now imagine that you need to pack the data for a completely
+different architecture with different byte order. You would
+look into the <CODE>pack</CODE> manpage again and perhaps come up with
+this:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$foo = pack 'c3 x n x2 N', @ary, $baz, $bar;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>However, if you try to unpack $foo again, your signed values
+have turned into unsigned ones.</P>
+<P>All this can still be managed with Perl. But imagine your
+structures get more complex? Imagine you need to support
+different platforms? Imagine you need to make changes to
+the structures? You'll not only have to change the C source
+but also dozens of <CODE>pack</CODE> strings in your Perl code. This
+is no fun. And Perl should be fun.</P>
+<P>Now, wouldn't it be great if you could just read in the C
+source you've already written and use all the types defined
+there for packing and unpacking? That's what Convert::Binary::C
+does.</P><H2><A NAME="Creating%20a%20Convert%3a%3aBinary%3a%3aC%20object">Creating a Convert::Binary::C object</A></H2>
+
+<P>To use Convert::Binary::C just say</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">use Convert::Binary::C;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>to load the module. Its interface is completely object
+oriented, so it doesn't export any functions.</P>
+<P>Next, you need to create a new Convert::Binary::C object. This
+can be done by either</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj = Convert::Binary::C-&gt;new;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>or</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj = new Convert::Binary::C;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>You can optionally pass configuration options to the
+constructor as described in the next section.</P><H2><A NAME="Configuring%20the%20object">Configuring the object</A></H2>
+
+<P>To configure a Convert::Binary::C object, you can either call
+the <CODE>configure</CODE> method or directly pass the configuration
+options to the constructor. If you want to change byte order
+and alignment, you can use</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj-&gt;configure( ByteOrder =&gt; 'LittleEndian',
+                 Alignment =&gt; 2 );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>or you can change the construction code to</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj = new Convert::Binary::C ByteOrder =&gt; 'LittleEndian',
+                              Alignment =&gt; 2;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>Either way, the object will now know that it should use
+little endian (Intel) byte order and 2-byte struct member
+alignment for packing and unpacking.</P>
+<P>Alternatively, you can use the option names as names of
+methods to configure the object, like:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj-&gt;ByteOrder( 'LittleEndian' );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>You can also retrieve information about the current
+configuration of a Convert::Binary::C object. For details,
+see the section about the <CODE>configure</CODE> method.</P><H2><A NAME="Parsing%20C%20code">Parsing C code</A></H2>
+
+<P>Convert::Binary::C allows two ways of parsing C source. Either
+by parsing external C source files:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj-&gt;parse_file( 'foo.h' );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>Or by parsing C code embedded in your script:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj-&gt;parse( &lt;&lt;'CCODE' );
+struct foo {
+  char ary[3];
+  unsigned short baz;
+  int bar;
+};
+CCODE</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>Now $obj will know about the <CODE>foo</CODE> struct.</P><H2><A NAME="Packing%20and%20unpacking">Packing and unpacking</A></H2>
+
+<P>Convert::Binary::C has two methods, <CODE>pack</CODE> and <CODE>unpack</CODE>,
+that act similar to the functions of same denominator in Perl.
+To perform the packing described in the example above,
+you could write:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$data = {
+  ary =&gt; [1, 2, 3],
+  baz =&gt; 40000,
+  bar =&gt; -4711,
+};
+$foo = $obj-&gt;pack( 'foo', $data );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>Unpacking will work exactly the same way, just that the<CODE>unpack</CODE> method will take a byte string as its input and
+will return a reference to a (possibly very complex) Perl
+data structure.</P><H2><A NAME="Preprocessor%20configuration">Preprocessor configuration</A></H2>
+
+<P>Convert::Binary::C uses Thomas Pornin's <B>ucpp</B> as an internal
+C preprocessor. It is compliant to ISO-C99, so you don't have
+to worry about using even weird preprocessor constructs in
+your code.</P>
+<P>If your C source contains includes or depends upon preprocessor
+defines, you may need to configure the internal preprocessor.
+Use the <CODE>Include</CODE> and <CODE>Define</CODE> configuration options for that:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj-&gt;configure( Include =&gt; ['/usr/include',
+                             '/home/mhx/include'],
+                 Define  =&gt; [qw(NDEBUG FOO=42)] );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>If your code uses system includes, it is most likely the case
+that you will need to define the symbols that are usually
+defined by the compiler.</P><H2><A NAME="Supported%20pragma%20directives">Supported pragma directives</A></H2>
+
+<P>Convert::Binary::C supports the pack pragma to locally override
+struct member alignment. The supported syntax is as follows:</P><DL><DT><A NAME="%23pragma%20pack(%20ALIGN%20)">#pragma pack( ALIGN )</A></DT>
+<DD>
+
+<P>Sets the new alignment to ALIGN.</P></DD>
+<DT><A NAME="%23pragma%20pack">#pragma pack</A></DT>
+<DD>
+
+<P>Resets the alignment to its original value.</P></DD>
+<DT><A NAME="%23pragma%20pack(%20push%2c%20ALIGN%20)">#pragma pack( push, ALIGN )</A></DT>
+<DD>
+
+<P>Saves the current alignment on a stack and sets the new
+alignment to ALIGN.</P></DD>
+<DT><A NAME="%23pragma%20pack(%20pop%20)">#pragma pack( pop )</A></DT>
+<DD>
+
+<P>Restores the alignment to the last value saved on the
+stack.</P></DD>
+</DL>
+<H1><A NAME="METHODS">METHODS</A></H1>
+<H2><A NAME="new">new</A></H2>
+<DL><DT><A NAME="new">new</A></DT>
+<DD>
+</DD>
+<DT><A NAME="new%20OPTION1%20%3d%3e%20VALUE1%2c%20OPTION2%20%3d%3e%20VALUE2%2c%20...">new OPTION1 =&gt; VALUE1, OPTION2 =&gt; VALUE2, ...</A></DT>
+<DD>
+
+<P>The constructor is used to create a new Convert::Binary::C object.
+You can simply use</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj = new Convert::Binary::C;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>without additional arguments to create an object, or you can
+optionally pass any arguments to the constructor that are
+described for the <CODE>configure</CODE> method.</P></DD>
+</DL>
+<H2><A NAME="configure">configure</A></H2>
+<DL><DT><A NAME="configure">configure</A></DT>
+<DD>
+</DD>
+<DT><A NAME="configure%20OPTION">configure OPTION</A></DT>
+<DD>
+</DD>
+<DT><A NAME="configure%20OPTION1%20%3d%3e%20VALUE1%2c%20OPTION2%20%3d%3e%20VALUE2%2c%20...">configure OPTION1 =&gt; VALUE1, OPTION2 =&gt; VALUE2, ...</A></DT>
+<DD>
+
+<P>This method can be used to configure an existing Convert::Binary::C
+object or to retrieve its current configuration.</P>
+<P>To configure the object, the list of options consists of key and
+value pairs and must therefore contain an even number of elements.<CODE>configure</CODE> (and also <CODE>new</CODE> if used with configuration options)
+will throw an exception if you pass an odd number of elements.
+Configuration will normally look like this:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj-&gt;configure( ByteOrder =&gt; 'BigEndian', IntSize =&gt; 2 );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>To retrieve the current value of a configuration option, you
+must pass a single argument to <CODE>configure</CODE> that holds the name
+of the option, just like</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$order = $obj-&gt;configure( 'ByteOrder' );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>If you want to get the values of all configuration options at
+once, you can call <CODE>configure</CODE> without any arguments and it
+will return a reference to a hash table that holds the whole
+object configuration. This can be conveniently used with the
+Data::Dumper module, for example:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">print Dumper( $obj-&gt;configure );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>This will print something like this:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$VAR1 = {
+          'UnsignedChars' =&gt; 0,
+          'ShortSize' =&gt; 2,
+          'EnumType' =&gt; 'Integer',
+          'EnumSize' =&gt; 4,
+          'Include' =&gt; [
+                         '/usr/include'
+                       ],
+          'DoubleSize' =&gt; 4,
+          'FloatSize' =&gt; 4,
+          'HasCPPComments' =&gt; 1,
+          'Alignment' =&gt; 1,
+          'Define' =&gt; [
+                        'DEBUGGING',
+                        'FOO=123'
+                      ],
+          'HasC99Keywords' =&gt; 1,
+          'HasMacroVAARGS' =&gt; 1,
+          'HashSize' =&gt; 'Normal',
+          'LongSize' =&gt; 4,
+          'HasVOID' =&gt; 1,
+          'Warnings' =&gt; 0,
+          'ByteOrder' =&gt; 'LittleEndian',
+          'Assert' =&gt; [],
+          'IntSize' =&gt; 4,
+          'PointerSize' =&gt; 4
+        };</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>Since you may not always want to write a configure call when
+you only want to change a single configuration item, you can
+use any configuration option name as a method name, like:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj-&gt;ByteOrder( 'LittleEndian' ) if $obj-&gt;IntSize &lt; 4;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>(Yes, the example doesn't make very much sense...)</P>
+<P>However, you should keep in mind that configuration methods
+that can take lists (namely <CODE>Include</CODE>, <CODE>Define</CODE> and <CODE>Assert</CODE>)
+may behave slightly different than their <CODE>configure</CODE> equivalent.
+If you pass these methods a single argument that is an array
+reference, the current list will be <B>replaced</B> by the new one,
+which is just the behaviour of the corresponding <CODE>configure</CODE>
+call. So the following are equivalent:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj-&gt;configure( Define =&gt; ['foo', 'bar=123'] );
+$obj-&gt;Define( ['foo', 'bar=123'] );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>But if you pass a list of strings instead of an array reference
+(which cannot be done when using <CODE>configure</CODE>), the new list
+items are <B>appended</B> to the current list, so</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj = new Convert::Binary::C Include =&gt; ['/include'];
+$obj-&gt;Include( '/usr/include', '/usr/local/include' );
+print Dumper( $obj-&gt;Include );
+$obj-&gt;Include( ['/usr/local/include'] );
+print Dumper( $obj-&gt;Include );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>will first print all three include paths, but finally only</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">/usr/local/include</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>will be configured.</P>
+<P>You can configure the following options. Unknown options, as well
+as invalid values for an option, will cause the object to throw
+exceptions.</P><DL><DT><A NAME="IntSize%20%3d%3e%200%20%7c%201%20%7c%202%20%7c%204">IntSize =&gt; 0 | 1 | 2 | 4</A></DT>
+<DD>
+
+<P>Set the number of bytes that are occupied by an integer. This is
+in most cases 2 or 4. If you set it to zero, the size of an
+integer on the host system will be used. This is also the
+default.</P></DD>
+<DT><A NAME="ShortSize%20%3d%3e%200%20%7c%201%20%7c%202%20%7c%204">ShortSize =&gt; 0 | 1 | 2 | 4</A></DT>
+<DD>
+
+<P>Set the number of bytes that are occupied by a short integer.
+Although integers explicitly declared as <CODE>short</CODE> should be
+always 16 bit, there are weird compilers that make a short
+8 bit wide. If you set it to zero, the size of a short
+integer on the host system will be used. This is also the
+default.</P></DD>
+<DT><A NAME="LongSize%20%3d%3e%200%20%7c%201%20%7c%202%20%7c%204">LongSize =&gt; 0 | 1 | 2 | 4</A></DT>
+<DD>
+
+<P>Set the number of bytes that are occupied by a long integer.
+Integers explicitly declared as <CODE>long</CODE> should always be
+32 bit wide. However, for the sake of completeness, you can
+adjust the size. If you set it to zero, the size of a long
+integer on the host system will be used. This is also the
+default.</P></DD>
+<DT><A NAME="FloatSize%20%3d%3e%200%20%7c%201%20%7c%202%20%7c%204%20%7c%208">FloatSize =&gt; 0 | 1 | 2 | 4 | 8</A></DT>
+<DD>
+
+<P>Set the number of bytes that are occupied by a single
+precision floating point value.
+If you set it to zero, the size of a <CODE>float</CODE> on the
+host system will be used. This is also the default.
+Values can only be packed and unpacked if the size
+matches the native size of a <CODE>float</CODE>.</P></DD>
+<DT><A NAME="DoubleSize%20%3d%3e%200%20%7c%201%20%7c%202%20%7c%204%20%7c%208">DoubleSize =&gt; 0 | 1 | 2 | 4 | 8</A></DT>
+<DD>
+
+<P>Set the number of bytes that are occupied by a double
+precision floating point value.
+If you set it to zero, the size of a <CODE>double</CODE> on the
+host system will be used. This is also the default.
+Values can only be packed and unpacked if the size
+matches the native size of a <CODE>double</CODE>.</P></DD>
+<DT><A NAME="PointerSize%20%3d%3e%200%20%7c%201%20%7c%202%20%7c%204">PointerSize =&gt; 0 | 1 | 2 | 4</A></DT>
+<DD>
+
+<P>Set the number of bytes that are occupied by a pointer. This is
+in most cases 2 or 4. If you set it to zero, the size of a
+pointer on the host system will be used. This is also the
+default.</P></DD>
+<DT><A NAME="EnumSize%20%3d%3e%200%20%7c%201%20%7c%202%20%7c%204">EnumSize =&gt; 0 | 1 | 2 | 4</A></DT>
+<DD>
+
+<P>Set the number of bytes that are occupied by an enumeration type.
+On most systems, this is equal to the size of an integer,
+which is also the default. However, for some compilers, the
+size of an enumeration type depends on the size occupied by the
+largest enumerator. So the size may vary between 1 and 4. If you
+have</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">enum foo {
+  ONE = 100, TWO = 200
+};</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>this will occupy one byte because the enum can be represented
+as an <CODE>unsigned char</CODE>. However,</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">enum foo {
+  ONE = -100, TWO = 200
+};</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>will occupy two bytes, because 200 doesn't fit into
+a <CODE>signed char</CODE> and therefore the type used is
+a <CODE>signed short</CODE>. If this is the behaviour you need,
+set the EnumSize to zero.</P></DD>
+<DT><A NAME="Alignment%20%3d%3e%201%20%7c%202%20%7c%204%20%7c%208">Alignment =&gt; 1 | 2 | 4 | 8</A></DT>
+<DD>
+
+<P>Set the struct member alignment. This option controls where
+padding bytes are inserted between struct members. It globally
+sets the alignment for all structs/unions. However, this can
+be overridden from within the source code with the common pack
+pragma as explained in <A HREF="#Supported%20pragma%20directives">Supported pragma directives</A>.
+The default alignment is 1, which means no padding bytes are
+inserted.</P></DD>
+<DT><A NAME="ByteOrder%20%3d%3e%20'BigEndian'%20%7c%20'LittleEndian'">ByteOrder =&gt; 'BigEndian' | 'LittleEndian'</A></DT>
+<DD>
+
+<P>Set the byte order for integers larger than a single byte.
+Little endian (Intel, least significant byte first) and
+big endian (Motorola, most significant byte first) byte
+order are supported. The default byte order is the same as
+the byte order of the host system.</P></DD>
+<DT><A NAME="EnumType%20%3d%3e%20'Integer'%20%7c%20'String'%20%7c%20'Both'">EnumType =&gt; 'Integer' | 'String' | 'Both'</A></DT>
+<DD>
+
+<P>This option controls the type that enumeration constants
+will have in data structures returned by the <CODE>unpack</CODE>
+method. If you have the following definitions:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">typedef enum {
+  SUNDAY, MONDAY, TUESDAY, WEDNESDAY,
+  THURSDAY, FRIDAY, SATURDAY
+} Weekday;
+ 
+typedef enum {
+  JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY,
+  AUGUST, SEPTEMBER, OCTOBER, NOVEMBER, DECEMBER
+} Month;
+ 
+typedef struct {
+  int     year;
+  Month   month;
+  int     day;
+  Weekday weekday;
+} Date;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>and a byte string that holds a packed Date struct,
+then you'll get the following results from a call
+to the <CODE>unpack</CODE> method:</P><DL><DT><A NAME="Integer">Integer</A></DT>
+<DD>
+
+<P>Enumeration constants are returned as plain integers. This
+is fast, but may be not very useful. It is also the default.</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">{
+  year    =&gt; 2002,
+  month   =&gt; 0,
+  day     =&gt; 7,
+  weekday =&gt; 1
+}</PRE>
+</TD></TR>
+</TABLE>
+</P></DD>
+<DT><A NAME="String">String</A></DT>
+<DD>
+
+<P>Enumeration constants are returned as strings. This will
+create a string constant for every unpacked enumeration
+constant and thus consume more time and memory. However,
+the result may be more useful.</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">{
+  year    =&gt; 2002,
+  month   =&gt; 'JANUARY',
+  day     =&gt; 7,
+  weekday =&gt; 'MONDAY'
+}</PRE>
+</TD></TR>
+</TABLE>
+</P></DD>
+<DT><A NAME="Both">Both</A></DT>
+<DD>
+
+<P>Enumeration constants are returned as double typed scalars.
+If evaluated in string context, the enumeration constant
+will be a string, if evaluated in numeric context, the
+enumeration constant will be an integer. This seems to be
+the most useful, but unfortunately if you want to dump the
+data structures with Data::Dumper, you will see only the
+integer values.</P></DD>
+</DL>
+</DD>
+<DT><A NAME="HasVOID%20%3d%3e%200%20%7c%201">HasVOID =&gt; 0 | 1</A></DT>
+<DD>
+
+<P>Use this boolean option to turn the recognition of the<CODE>void</CODE> keyword on or off. The keyword is turned on by
+default. However, there are still compilers out there
+that will not recognize <CODE>void</CODE> as a keyword. If someone
+then does a</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">typedef int void;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>the Convert::Binary::C parser will obviously choke if it
+treats <CODE>void</CODE> as a keyword.</P></DD>
+<DT><A NAME="UnsignedChars%20%3d%3e%200%20%7c%201">UnsignedChars =&gt; 0 | 1</A></DT>
+<DD>
+
+<P>Use this boolean option if you want characters to be
+unsigned if specified without an explicit <CODE>signed</CODE> or<CODE>unsigned</CODE> type specifier. By default, characters are
+signed.</P></DD>
+<DT><A NAME="Warnings%20%3d%3e%200%20%7c%201">Warnings =&gt; 0 | 1</A></DT>
+<DD>
+
+<P>Use this boolean option if you want warnings to be issued
+during the parsing of source code. Currently, warnings
+are only reported by the preprocessor, so don't expect
+the output to cover everything.</P>
+<P>By default, this is turned off and only errors will be
+reported. However, even these errors are turned off if
+you run without the <CODE>-w</CODE> flag.</P></DD>
+<DT><A NAME="HasC99Keywords%20%3d%3e%200%20%7c%201">HasC99Keywords =&gt; 0 | 1</A></DT>
+<DD>
+
+<P>Use this boolean option to turn the recognition of the
+new keywords introduced by the ANSI C99 standard on and
+off. The following keywords are additionally recognized
+by default:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">inline
+restrict</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>This option has no effect on the rules that are used by
+the Convert::Binary::C parser. It will only allow you to
+use the above keywords as type names or identifiers.</P></DD>
+<DT><A NAME="HasCPPComments%20%3d%3e%200%20%7c%201">HasCPPComments =&gt; 0 | 1</A></DT>
+<DD>
+
+<P>Use this option to turn C++ comments on or off. By default,
+C++ comments are enabled. Disabling C++ comments may be
+neccessary if your code includes strange things like:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">one = 4 //* &lt;- divide */ 4;
+two = 2;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>With C++ comments, the above will be interpreted as</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">one = 4
+two = 2;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>which will obviously create a parse error, but without
+C++ comments, it will be interpreted as</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">one = 4 / 4;
+two = 2;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>which is correct.</P></DD>
+<DT><A NAME="HasMacroVAARGS%20%3d%3e%200%20%7c%201">HasMacroVAARGS =&gt; 0 | 1</A></DT>
+<DD>
+
+<P>Use this option to turn the <CODE>__VA_ARGS__</CODE> macro expansion
+on or off. If this is enabled (the default), you can use
+variable length argument lists in your preprocessor macros.</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">#define DEBUG( ... )  fprintf( stderr, __VA_ARGS__ )</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>There's normally no reason to turn that feature off.</P></DD>
+<DT><A NAME="Include%20%3d%3e%20%5b%20INCLUDES%20%5d">Include =&gt; [ INCLUDES ]</A></DT>
+<DD>
+
+<P>Use this option to set the include path for the internal
+preprocessor. The option value is a reference to an array
+of strings, each string holding a directory that should
+be searched for includes.</P></DD>
+<DT><A NAME="Define%20%3d%3e%20%5b%20DEFINES%20%5d">Define =&gt; [ DEFINES ]</A></DT>
+<DD>
+
+<P>Use this option to define symbols in the preprocessor.
+The option value is, again, a reference to an array of
+strings. Each string can be either just a symbol or an
+assignment to a symbol. This is completely equivalent
+to what the <CODE>-D</CODE> option does for most preprocessors.</P>
+<P>The following will define the symbol <CODE>FOO</CODE> and
+define <CODE>BAR</CODE> to be <CODE>12345</CODE>:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj-&gt;configure( Define =&gt; [qw(FOO BAR=12345)] );</PRE>
+</TD></TR>
+</TABLE>
+</P></DD>
+<DT><A NAME="Assert%20%3d%3e%20%5b%20ASSERTIONS%20%5d">Assert =&gt; [ ASSERTIONS ]</A></DT>
+<DD>
+
+<P>Use this option to make assertions in the preprocessor.
+If you don't know what assertions are don't be
+concerned, since they're deprecated anyway. They
+are, however, used in some system's include files.
+The value is an array reference, just like for the
+macro definitions. Only the way the assertions are
+defined is a bit different and mimics the way they
+are defined with the <CODE>#assert</CODE> directive:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj-&gt;configure( Assert =&gt; ['foo(bar)'] );</PRE>
+</TD></TR>
+</TABLE>
+</P></DD>
+<DT><A NAME="HashSize%20%3d%3e%20'Tiny'%20%7c%20'Small'%20%7c%20'Normal'%20%7c%20'Large'%20%7c%20'Huge'">HashSize =&gt; 'Tiny' | 'Small' | 'Normal' | 'Large' | 'Huge'</A></DT>
+<DD>
+
+<P>This is a special setting and you hardly need to change
+it. It controls the size of the hash tables used by
+Convert::Binary::C internally.</P>
+<P>While small hash tables consume less memory, larger
+hash tables might be faster. Unless you parse really
+huge files (with a few thousands of typedefs or struct
+definitions or several thousands of enumeration constants)
+you can leave it as is. If the files you're parsing
+are rather small and you have only little memory, you may
+adjust this setting to <CODE>Small</CODE> or <CODE>Tiny</CODE>.</P>
+<P>If you go from <CODE>Tiny</CODE> to <CODE>Huge</CODE>, each step will double
+the memory requirements. However, the normal case will
+consume only slightly more than 4k of memory per object.</P></DD>
+</DL>
+
+<P>You can reconfigure all options even after you have
+parsed some code. The changes will be applied to the
+already parsed definitions. This works as long as array
+lengths are not affected by the changes. If you have
+alignment and integer size set to 4 and parse code like
+this</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">typedef struct {
+  char abc;
+  int  day;
+} foo;
+ 
+struct bar {
+  foo  zap[2*sizeof(foo)];
+};</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>the array <CODE>zap</CODE> in struct <CODE>bar</CODE> will obviously have
+16 elements. If you reconfigure the alignment to 1 now,
+the size of <CODE>foo</CODE> is now 5 instead of 8. While the
+alignment is adjusted correctly, the number of elements
+in array <CODE>zap</CODE> will still be 16 and will not be changed
+to 10.</P></DD>
+</DL>
+<H2><A NAME="parse">parse</A></H2>
+<DL><DT><A NAME="parse%20CODE">parse CODE</A></DT>
+<DD>
+
+<P>Parses a string of valid C code. All enumeration, struct
+and type definitions are extracted. You can call
+the <CODE>parse</CODE> and <CODE>parse_file</CODE> methods as often as you like
+to add further definitions to the Convert::Binary::C object.
+You must be aware that the preprocessor is reset with
+every call. You may use types previously defined, but
+you are not allowed to redefine types.</P>
+<P><CODE>parse</CODE> will throw an exception in case an error occurs.</P></DD>
+</DL>
+<H2><A NAME="parse_file">parse_file</A></H2>
+<DL><DT><A NAME="parse_file%20FILE">parse_file FILE</A></DT>
+<DD>
+
+<P>Parses a C source file. All enumeration, struct and
+type definitions are extracted. You can call
+the <CODE>parse</CODE> and <CODE>parse_file</CODE> methods as often
+as you like to add further definitions to the
+Convert::Binary::C object.
+You must be aware that the preprocessor is reset with
+every call. You may use types previously defined, but
+you are not allowed to redefine types.</P>
+<P><CODE>parse_file</CODE> will throw an exception in case an error occurs.</P></DD>
+</DL>
+<H2><A NAME="def">def</A></H2>
+<DL><DT><A NAME="def%20TYPE">def TYPE</A></DT>
+<DD>
+
+<P>If you need to know if a definition for a certain type
+exists, use this method. You pass it the name of an enum,
+struct/union or typedef, and it will return 1 if there's
+a definition for the type in question, or 0 if there's no
+such definition, or <CODE>undef</CODE> if the name is completely
+unknown. So after parsing</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">typedef struct __not  not;
+typedef struct __not *ptr;
+
+struct foo {
+  enum bar *xxx;
+};</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>the following would be returned by the <CODE>def</CODE> method:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$p-&gt;def( 'not' )  =&gt;  0
+$p-&gt;def( 'ptr' )  =&gt;  1
+$p-&gt;def( 'foo' )  =&gt;  1
+$p-&gt;def( 'bar' )  =&gt;  0
+$p-&gt;def( 'xxx' )  =&gt;  undef</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>So, if <CODE>def</CODE> is 1, you can safely use any other method
+with that type's name.</P></DD>
+</DL>
+<H2><A NAME="pack">pack</A></H2>
+<DL><DT><A NAME="pack%20TYPE%2c%20DATA">pack TYPE, DATA</A></DT>
+<DD>
+</DD>
+<DT><A NAME="pack%20TYPE%2c%20DATA%2c%20STRING">pack TYPE, DATA, STRING</A></DT>
+<DD>
+
+<P>Use this method to pack a complex data structure into a
+byte string according to a type definition that has been
+previously parsed. DATA must be a scalar matching the
+type definition. C structures and unions are represented
+by references to Perl hashes, C arrays by references to
+Perl arrays. Note that hashes need not contain a key for
+each struct member and arrays may be truncated.</P>
+<P>Elements not defined in the Perl data structure will be
+set to zero in the packed byte string. On success, the
+packed byte string is returned.</P>
+<P>Call <CODE>pack</CODE> with the optional STRING argument if you
+want to use an existing string to insert the data.
+If called in a void context, <CODE>pack</CODE> will directly
+modify the string you passed as the third argument.
+Otherwise, a copy of the string is created, and <CODE>pack</CODE>
+will modify and return the copy, so the original string
+will remain unchanged.</P>
+<P>The 3-argument version may be useful if you want to change
+only a few members of a complex data structure without
+having to <CODE>unpack</CODE> everything, change the members, and
+then <CODE>unpack</CODE> again (which could waste lots of memory
+and CPU cycles). So, instead of doing something like</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$foo = $obj-&gt;unpack( 'foo', $str );
+$foo-&gt;{bar} = -7;
+$foo-&gt;{baz} = 42;
+$str = $obj-&gt;pack( 'foo', $foo );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>to change the <CODE>bar</CODE> and <CODE>baz</CODE> members of $foo, you
+could simply do either</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$obj-&gt;pack( 'foo', { bar =&gt; -7, baz =&gt; 42 }, $str );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>or</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$new = $obj-&gt;pack( 'foo', { bar =&gt; -7, baz =&gt; 42 }, $str );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>while the latter would not change $str, but store the
+modified string in $new. Besides this code being a lot
+shorter (and perhaps even more readable), it can be
+significantly faster if you're dealing with really
+big data blocks.</P>
+<P>If the length of the input string is less than the size
+required by the type, the string (or its copy) is
+extended and the extended part is initialized to zero.
+If the length is more than the size required by the type,
+the string is kept at that length, and also a copy would
+be an exact copy of that string.</P></DD>
+</DL>
+<H2><A NAME="unpack">unpack</A></H2>
+<DL><DT><A NAME="unpack%20TYPE%2c%20STRING">unpack TYPE, STRING</A></DT>
+<DD>
+
+<P>Use this method to unpack a byte string and create an
+arbitrarily complex Perl data structure based on a
+previously parsed type definition.</P>
+<P>On failure, e.g. if the specified type cannot be found,
+the method will throw an exception. On success, a
+reference to a complex Perl data structure is returned.</P></DD>
+</DL>
+<H2><A NAME="sizeof">sizeof</A></H2>
+<DL><DT><A NAME="sizeof%20TYPE">sizeof TYPE</A></DT>
+<DD>
+
+<P>This method will return the size of a C type in bytes.
+If it cannot find the type, it will throw an exception.</P></DD>
+</DL>
+<H2><A NAME="member">member</A></H2>
+<DL><DT><A NAME="member%20TYPE%2c%20OFFSET">member TYPE, OFFSET</A></DT>
+<DD>
+
+<P>You can use this method if you want to retrieve the name
+of the member that is located at a specific offset for a
+previously parsed type.</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">$c = new Convert::Binary::C Alignment =&gt; 4;
+ 
+$c-&gt;parse( &lt;&lt;'CCODE' );
+typedef struct {
+  char abc;
+  long day;
+} foo;
+ 
+struct bar {
+  foo  zap[2*sizeof(foo)];
+};
+CCODE
+ 
+print $c-&gt;member( 'bar', 16 );  # &quot;zap[2].abc&quot;
+print $c-&gt;member( 'bar', 27 );  # &quot;zap[3]+3&quot;
+print $c-&gt;member( 'bar', 45 );  # &quot;zap[5].day+1&quot;
+print $c-&gt;member( 'bar', 150 ); #  =&gt; exception</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>The output of the first line is obvious. The
+member <CODE>zap[2].abc</CODE> is located at offset 16 of
+type <CODE>bar</CODE>.</P>
+<P>In the second line, the offset points into a region
+of padding bytes, thus no member of <CODE>foo</CODE> can be
+named and instead of a member name the offset
+relative to <CODE>zap[3]</CODE> is appended.</P>
+<P>In the third line, the offset points to <CODE>zap[5].day</CODE>.
+However, <CODE>zap[5].day</CODE> is located at 44, not at 45,
+and thus the remaining offset of 1 is also appended.</P>
+<P>The last line causes an exception because the offset
+of 150 is not valid for struct <CODE>bar</CODE> since the size
+of struct <CODE>bar</CODE> is only 128.</P></DD>
+</DL>
+<H2><A NAME="offsetof">offsetof</A></H2>
+<DL><DT><A NAME="offsetof%20TYPE%2c%20MEMBER">offsetof TYPE, MEMBER</A></DT>
+<DD>
+
+<P>You can think of <CODE>offsetof</CODE> as being the reverse of
+the <CODE>member</CODE> method. Given the above example code,</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">print $c-&gt;offsetof( 'bar', 'zap[5].day' );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>will print <CODE>44</CODE>. Note that the <CODE>+n</CODE> syntax isn't
+allowed by <CODE>offsetof</CODE>, so</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">print $c-&gt;offsetof( 'bar', 'zap[5].day+1' );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>would not print <CODE>45</CODE>, but rather cause an exception
+because an invalid character is being used in the
+expression.</P></DD>
+</DL>
+
+<P>The following methods can be used to retrieve information
+about the definitions that have been parsed.</P>
+<P>The examples given in the following description all
+assume the following piece of C code has been parsed.</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">typedef unsigned long U32;
+
+enum __socket_type
+{
+  SOCK_STREAM    = 1,
+  SOCK_DGRAM     = 2,
+  SOCK_RAW       = 3,
+  SOCK_RDM       = 4,
+  SOCK_SEQPACKET = 5,
+  SOCK_PACKET    = 10
+};
+
+struct STRUCT_SV {
+  void *sv_any;
+  U32	sv_refcnt;
+  U32	sv_flags;
+};
+
+typedef union {
+  int abc[2];
+  struct xxx {
+    int a;
+    int b;
+  }   ab[3][4];
+} test;</PRE>
+</TD></TR>
+</TABLE>
+</P><H2><A NAME="enum_names">enum_names</A></H2>
+<DL><DT><A NAME="enum_names">enum_names</A></DT>
+<DD>
+
+<P>Returns a list of identifiers of all defined enumeration
+objects. Enumeration objects don't neccessarily have an
+identifier, so something like</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">enum { A, B, C };</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>will obviously not appear in the list returned by
+the <CODE>enum_names</CODE> method. Also, enumerations that are not
+defined within the source code - like in</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">struct foo {
+  enum weekday *pWeekday;
+  unsigned long year;
+}</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>where only a pointer to the <CODE>weekday</CODE> enumeration object
+is used - will not be returned, even though they have an
+identifier.</P>
+<P>The only way to retrieve a list of all enumeration
+objects is to use the <CODE>enum</CODE> method without additional
+arguments. You can get a list of all enumeration objects
+that have an identifier by using</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">@enum = map { $_-&gt;{identifier} || () } $p-&gt;enum;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>but these may not have a definition.</P>
+<P>The <CODE>def</CODE> method returns 1 for all identifiers returned
+by <CODE>enum_names</CODE>.</P></DD>
+</DL>
+<H2><A NAME="enum">enum</A></H2>
+<DL><DT><A NAME="enum">enum</A></DT>
+<DD>
+</DD>
+<DT><A NAME="enum%20LIST">enum LIST</A></DT>
+<DD>
+
+<P>Returns a list of references to hashes containing
+detailed information about all enumerations that
+have been parsed.</P>
+<P>If a list of enumeration identifiers is passed to the
+method, the returned list will only contain hash
+references for those enumerations.</P>
+<P>If an enumeration identifier cannot be found, a
+warning is issued and the returned list will contain
+an undefined value at that position.</P>
+<P>In scalar context, the number of enumerations will
+be returned as long as the number of arguments to
+the method call is not 1. In the latter case, a
+hash reference holding information for the enumeration
+will be returned.</P>
+<P>The list returned by the <CODE>enum</CODE> method looks similar
+to this:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">@enum = (
+  {
+    'identifier' =&gt; '__socket_type',
+    'enumerators' =&gt; {
+      'SOCK_RAW' =&gt; 3,
+      'SOCK_DGRAM' =&gt; 2,
+      'SOCK_STREAM' =&gt; 1,
+      'SOCK_SEQPACKET' =&gt; 5,
+      'SOCK_RDM' =&gt; 4,
+      'SOCK_PACKET' =&gt; 10
+    },
+    'sign' =&gt; 0,
+    'size' =&gt; 1
+  }
+);</PRE>
+</TD></TR>
+</TABLE>
+</P><DL><DT><A NAME="identifier">identifier</A></DT>
+<DD>
+
+<P>holds the enumeration identifier. This key is not
+present if the enumeration has no identifier.</P></DD>
+<DT><A NAME="enumerators">enumerators</A></DT>
+<DD>
+
+<P>is a reference to a hash table that holds
+all enumerators of the enumeration.</P></DD>
+<DT><A NAME="sign">sign</A></DT>
+<DD>
+
+<P>is a boolean indicating if the enumeration is
+signed.</P></DD>
+<DT><A NAME="size">size</A></DT>
+<DD>
+
+<P>is the size in bytes needed to store any enumerator of
+that enumeration. This does <B>not</B> need to be the size
+that is actually occupied by an enum. Only if <CODE>EnumSize</CODE>
+is configured to <CODE>0</CODE>, these are identical.</P></DD>
+</DL>
+
+<P>One useful application may be to create a hash table that
+holds all enumerators of all defined enumerations:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">%enum = map %{$_-&gt;{enumerators}||{}}, $p-&gt;enum;</PRE>
+</TD></TR>
+</TABLE>
+</P></DD>
+</DL>
+<H2><A NAME="compound_names">compound_names</A></H2>
+<DL><DT><A NAME="compound_names">compound_names</A></DT>
+<DD>
+
+<P>Returns a list of identifiers of all structs and unions
+(compound data structures) that are defined in the parsed
+source code. Like enumerations, compounds don't need to
+have an identifier, nor do they need to be defined.</P>
+<P>Again, the only way to retrieve information about all
+struct and union objects is to use the <CODE>compound</CODE> method
+and don't pass it any arguments. If you should need a
+list of all struct and union identifiers, you can use:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">@structs = map { $_-&gt;{identifier} || () } $p-&gt;compound;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>The <CODE>def</CODE> method returns 1 for all identifiers returned
+by <CODE>compound_names</CODE>.</P>
+<P>If you need the names of only the structs or only the
+unions, use the <CODE>struct_names</CODE> and <CODE>union_names</CODE> methods
+respectively.</P></DD>
+</DL>
+<H2><A NAME="compound">compound</A></H2>
+<DL><DT><A NAME="compound">compound</A></DT>
+<DD>
+</DD>
+<DT><A NAME="compound%20LIST">compound LIST</A></DT>
+<DD>
+
+<P>Returns a list of references to hashes containing
+detailed information about all compounds (structs and
+unions) that have been parsed.</P>
+<P>If a list of struct/union identifiers is passed to the
+method, the returned list will only contain hash
+references for those compounds.</P>
+<P>If an identifier cannot be found, a warning is issued
+and the returned list will contain an undefined value
+at that position.</P>
+<P>In scalar context, the number of compounds will
+be returned as long as the number of arguments to
+the method call is not 1. In the latter case, a
+hash reference holding information for the compound
+will be returned.</P>
+<P>The list returned by the <CODE>compound</CODE> method looks similar
+to this:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">@struct = (
+  {
+    'declarations' =&gt; [
+      {
+        'declarators' =&gt; [
+          {
+            'declarator' =&gt; '*sv_any',
+            'offset' =&gt; 0,
+            'size' =&gt; 4
+          }
+        ],
+        'type' =&gt; 'void'
+      },
+      {
+        'declarators' =&gt; [
+          {
+            'declarator' =&gt; 'sv_refcnt',
+            'offset' =&gt; 4,
+            'size' =&gt; 4
+          }
+        ],
+        'type' =&gt; 'U32'
+      },
+      {
+        'declarators' =&gt; [
+          {
+            'declarator' =&gt; 'sv_flags',
+            'offset' =&gt; 8,
+            'size' =&gt; 4
+          }
+        ],
+        'type' =&gt; 'U32'
+      }
+    ],
+    'pack' =&gt; 0,
+    'align' =&gt; 4,
+    'size' =&gt; 12,
+    'identifier' =&gt; 'STRUCT_SV',
+    'type' =&gt; 'struct'
+  },
+  {
+    'declarations' =&gt; [
+      {
+        'declarators' =&gt; [
+          {
+            'declarator' =&gt; 'a',
+            'offset' =&gt; 0,
+            'size' =&gt; 4
+          }
+        ],
+        'type' =&gt; 'int'
+      },
+      {
+        'declarators' =&gt; [
+          {
+            'declarator' =&gt; 'b',
+            'offset' =&gt; 4,
+            'size' =&gt; 4
+          }
+        ],
+        'type' =&gt; 'int'
+      }
+    ],
+    'pack' =&gt; 0,
+    'align' =&gt; 4,
+    'size' =&gt; 8,
+    'identifier' =&gt; 'xxx',
+    'type' =&gt; 'struct'
+  },
+  {
+    'declarations' =&gt; [
+      {
+        'declarators' =&gt; [
+          {
+            'declarator' =&gt; 'abc[2]',
+            'offset' =&gt; 0,
+            'size' =&gt; 8
+          }
+        ],
+        'type' =&gt; 'int'
+      },
+      {
+        'declarators' =&gt; [
+          {
+            'declarator' =&gt; 'ab[3][4]',
+            'offset' =&gt; 0,
+            'size' =&gt; 96
+          }
+        ],
+        'type' =&gt; 'struct xxx'
+      }
+    ],
+    'pack' =&gt; 0,
+    'align' =&gt; 4,
+    'size' =&gt; 96,
+    'type' =&gt; 'union'
+  }
+);</PRE>
+</TD></TR>
+</TABLE>
+</P><DL><DT><A NAME="identifier">identifier</A></DT>
+<DD>
+
+<P>holds the struct or union identifier. This
+key is not present if the compound has no identifier.</P></DD>
+<DT><A NAME="type">type</A></DT>
+<DD>
+
+<P>is either 'struct' or 'union'.</P></DD>
+<DT><A NAME="size">size</A></DT>
+<DD>
+
+<P>is the size of the struct or union.</P></DD>
+<DT><A NAME="align">align</A></DT>
+<DD>
+
+<P>is the alignment of the struct or union.</P></DD>
+<DT><A NAME="pack">pack</A></DT>
+<DD>
+
+<P>is the struct member alignment if the compound
+is packed, or zero otherwise.</P></DD>
+<DT><A NAME="declarations">declarations</A></DT>
+<DD>
+
+<P>is an array of hash references describing each struct
+declaration:</P><DL><DT><A NAME="type">type</A></DT>
+<DD>
+
+<P>is the type of the struct declaration. This may be a
+string or a reference to a hash describing the type.</P></DD>
+<DT><A NAME="declarators">declarators</A></DT>
+<DD>
+
+<P>is an array of hashes describing each declarator:</P><DL><DT><A NAME="declarator">declarator</A></DT>
+<DD>
+
+<P>is a string representation of the declarator.</P></DD>
+<DT><A NAME="offset">offset</A></DT>
+<DD>
+
+<P>is the offset of the struct member represented by
+the current declarator relative to the beginning
+of the struct or union.</P></DD>
+<DT><A NAME="size">size</A></DT>
+<DD>
+
+<P>is the size occupied by the struct member represented
+by the current declarator.</P></DD>
+</DL>
+</DD>
+</DL>
+</DD>
+</DL>
+
+<P>It may be useful to have separate lists for structs and
+unions. One way to retrieve such lists would be to use</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">map {
+  push @{$_-&gt;{type} eq 'union' ? \@unions : \@structs}, $_
+} $p-&gt;compound;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>However, you should use the <CODE>struct</CODE> and <CODE>union</CODE>
+methods, which is a lot simpler:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">@structs = $p-&gt;struct;
+@unions  = $p-&gt;union;</PRE>
+</TD></TR>
+</TABLE>
+</P></DD>
+</DL>
+<H2><A NAME="struct_names">struct_names</A></H2>
+<DL><DT><A NAME="struct_names">struct_names</A></DT>
+<DD>
+
+<P>Returns a list of all defined struct identifiers.
+This is equivalent to calling <CODE>compound_names</CODE>, just that
+it only returns the names of the struct identifiers and
+doesn't return the names of the union identifiers.</P></DD>
+</DL>
+<H2><A NAME="struct">struct</A></H2>
+<DL><DT><A NAME="struct">struct</A></DT>
+<DD>
+
+<P>Like the <CODE>compound</CODE> method, but only allows for structs.</P></DD>
+</DL>
+<H2><A NAME="union_names">union_names</A></H2>
+<DL><DT><A NAME="union_names">union_names</A></DT>
+<DD>
+
+<P>Returns a list of all defined union identifiers.
+This is equivalent to calling <CODE>compound_names</CODE>, just that
+it only returns the names of the union identifiers and
+doesn't return the names of the struct identifiers.</P></DD>
+</DL>
+<H2><A NAME="union">union</A></H2>
+<DL><DT><A NAME="union">union</A></DT>
+<DD>
+
+<P>Like the <CODE>compound</CODE> method, but only allows for unions.</P></DD>
+</DL>
+<H2><A NAME="typedef_names">typedef_names</A></H2>
+<DL><DT><A NAME="typedef_names">typedef_names</A></DT>
+<DD>
+
+<P>Returns a list of all defined typedef identifiers. Typedefs
+that do not specify a type that you could actually work with
+will not be returned.</P>
+<P>The <CODE>def</CODE> method returns 1 for all identifiers returned
+by <CODE>typedef_names</CODE>.</P></DD>
+</DL>
+<H2><A NAME="typedef">typedef</A></H2>
+<DL><DT><A NAME="typedef">typedef</A></DT>
+<DD>
+</DD>
+<DT><A NAME="typedef%20LIST">typedef LIST</A></DT>
+<DD>
+
+<P>Returns a list of references to hashes containing
+detailed information about all typedefs that have
+been parsed.</P>
+<P>If a list of typedef identifiers is passed to the
+method, the returned list will only contain hash
+references for those typedefs.</P>
+<P>If an identifier cannot be found, a warning is issued
+and the returned list will contain an undefined value
+at that position.</P>
+<P>In scalar context, the number of typedefs will
+be returned as long as the number of arguments to
+the method call is not 1. In the latter case, a
+hash reference holding information for the typedef
+will be returned.</P>
+<P>The list returned by the <CODE>typedef</CODE> method looks similar
+to this:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">@typedef = (
+  {
+    'declarator' =&gt; 'U32',
+    'type' =&gt; 'unsigned long'
+  },
+  {
+    'declarator' =&gt; 'test',
+    'type' =&gt; {
+      'declarations' =&gt; [
+        {
+          'declarators' =&gt; [
+            {
+              'declarator' =&gt; 'abc[2]',
+              'offset' =&gt; 0,
+              'size' =&gt; 8
+            }
+          ],
+          'type' =&gt; 'int'
+        },
+        {
+          'declarators' =&gt; [
+            {
+              'declarator' =&gt; 'ab[3][4]',
+              'offset' =&gt; 0,
+              'size' =&gt; 96
+            }
+          ],
+          'type' =&gt; 'struct xxx'
+        }
+      ],
+      'pack' =&gt; 0,
+      'align' =&gt; 4,
+      'size' =&gt; 96,
+      'type' =&gt; 'union'
+    }
+  }
+);</PRE>
+</TD></TR>
+</TABLE>
+</P><DL><DT><A NAME="declarator">declarator</A></DT>
+<DD>
+
+<P>is the type declarator.</P></DD>
+<DT><A NAME="type">type</A></DT>
+<DD>
+
+<P>is the type specification. This may be a string
+or a reference to a hash describing the type.</P></DD>
+</DL>
+</DD>
+</DL>
+<H1><A NAME="FUNCTIONS">FUNCTIONS</A></H1>
+<H2><A NAME="Convert%3a%3aBinary%3a%3aC%3a%3afeature">Convert::Binary::C::feature</A></H2>
+<DL><DT><A NAME="feature%20STRING">feature STRING</A></DT>
+<DD>
+
+<P>Checks if Convert::Binary::C was built with certain features.
+For example,</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">print &quot;debugging version&quot;
+    if Convert::Binary::C::feature( 'debug' );</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>will check if Convert::Binary::C was built with debugging support
+enabled. The <CODE>feature</CODE> function returns <CODE>1</CODE> if the feature is
+enabled, <CODE>0</CODE> if the feature is disabled, and <CODE>undef</CODE> if the
+feature is unknown. Currently the only features that can be checked
+are <CODE>debug</CODE>, <CODE>threads</CODE> and <CODE>c99</CODE>. The latter will check if some
+extensions of the ANSI-C99 standard are enabled.</P>
+<P>You can enable or disable certain features at compile time of the
+module by using the</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">perl Makefile.PL enable-feature disable-feature</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>syntax.</P></DD>
+</DL>
+<H1><A NAME="DEBUGGING">DEBUGGING</A></H1>
+
+<P>Like perl itself, Convert::Binary::C can be compiled with debugging
+support that can then be selectively enabled at runtime. You can
+specify whether you like to build Convert::Binary::C with debugging
+support or not by explicitly giving an argument to <I>Makefile.PL</I>.
+Use</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">perl Makefile.PL enable-debug</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>to enable debugging, or</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">perl Makefile.PL disable-debug</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>to disable debugging. The default will depend on how your perl
+binary was built. If it was built with <CODE>-DDEBUGGING</CODE>,
+Convert::Binary::C will be built with debugging support, too.</P>
+<P>Once you have built Convert::Binary::C with debugging support, you
+can use the following syntax to enable debug output. Instead of</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">use Convert::Binary::C;</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>you simply say</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">use Convert::Binary::C debug =&gt; 'all';</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>which will enable all debug output. However, I don't recommend
+to enable all debug output, because that can be a fairly large
+amount. Instead of saying <CODE>all</CODE>, you can pass a string that
+consists of one or more of the following characters:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">m   enable memory allocation tracing
+M   enable memory allocation &amp; assertion tracing
+
+h   enable hash table debugging
+H   enable hash table dumps
+
+d   enable debug output from the XS module
+c   enable debug output from the ctlib
+t   enable debug output about type objects
+
+l   enable debug output from the C lexer
+p   enable debug output from the C parser
+r   enable debug output from the #pragma parser
+
+y   enable debug output from yacc (bison)</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>So the following might give you a brief overview of what's
+going on inside Convert::Binary::C:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">use Convert::Binary::C debug =&gt; 'dct';</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>When you want to debug memory allocation using</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">use Convert::Binary::C debug =&gt; 'm';</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>you can use the Perl script <I>check_alloc.pl</I> that resides
+in the <I>ctlib/util/tool</I> directory to extract statistics
+about memory usage and information about memory leaks from
+the resulting debug output.</P>
+<P>By default, all debug output is written to <CODE>stderr</CODE>. You
+can, however, redirect the debug output to a file with
+the <CODE>debugfile</CODE> option:</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">use Convert::Binary::C debug     =&gt; 'dcthHm',
+                       debugfile =&gt; './debug.out';</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>If the file cannot be opened, you'll receive a warning and
+the output will go the <CODE>stderr</CODE> way again.</P>
+<P>If Convert::Binary::C is built without debugging support,
+passing the <CODE>debug</CODE> or <CODE>debugfile</CODE> options will cause
+a warning to be issued.</P><H1><A NAME="BITFIELDS">BITFIELDS</A></H1>
+
+<P>Bitfields are currently not supported by Convert::Binary::C,
+because I generally don't use them. I plan to support them
+in a later release, when I found an easy way of integrating
+them into the module.</P>
+<P>Whenever a method has to deal with bitfields, it will issue
+a warning message that bitfields are unsupported. Thus, you
+may use bitfields in your C source code, but you won't be
+annoyed with warning messages unless you really use a type
+that actually contains bitfields in a method call
+like <CODE>sizeof</CODE> or <CODE>pack</CODE>.</P>
+<P>While bitfields are not appropriately handled by the conversion
+routines yet, they are already parsed correctly. This means
+that you can reliably use the declarator fields as returned
+by the <CODE>struct</CODE> or <CODE>typedef</CODE> methods. Given the following
+source</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">struct bitfield {
+  int seven:7;
+  int :1;
+  int four:4, :0;
+  int integer;
+};</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>a call to <CODE>struct</CODE> will return</P>
+<P><TABLE CLASS="verbatim">
+
+<TR><TD CLASS="verbatim">
+<PRE CLASS="verbatim">@struct = (
+  {
+    'declarations' =&gt; [
+      {
+        'declarators' =&gt; [
+          {
+            'declarator' =&gt; 'seven:7'
+          }
+        ],
+        'type' =&gt; 'int'
+      },
+      {
+        'declarators' =&gt; [
+          {
+            'declarator' =&gt; ':1'
+          }
+        ],
+        'type' =&gt; 'int'
+      },
+      {
+        'declarators' =&gt; [
+          {
+            'declarator' =&gt; 'four:4'
+          },
+          {
+            'declarator' =&gt; ':0'
+          }
+        ],
+        'type' =&gt; 'int'
+      },
+      {
+        'declarators' =&gt; [
+          {
+            'declarator' =&gt; 'integer',
+            'offset' =&gt; 0,
+            'size' =&gt; 4
+          }
+        ],
+        'type' =&gt; 'int'
+      }
+    ],
+    'pack' =&gt; 0,
+    'align' =&gt; 1,
+    'size' =&gt; 4,
+    'identifier' =&gt; 'bitfield',
+    'type' =&gt; 'struct'
+  }
+);</PRE>
+</TD></TR>
+</TABLE>
+</P>
+<P>No size/offset keys will be returned for bitfield entries.
+Also, the size of a structure containing bitfields is not
+valid, as bitfields internally do not increase the size
+of a structure yet.</P><H1><A NAME="MULTITHREADING">MULTITHREADING</A></H1>
+
+<P>Convert::Binary::C was designed to be thread-safe.</P>
+<P>Since the used preprocessor unfortunately isn't re-entrant,
+source code parsing using the <CODE>parse</CODE> and <CODE>parse_file</CODE>
+methods is locked, so don't expect these routines to run
+in parallel on multithreaded perls.</P><H1><A NAME="CREDITS">CREDITS</A></H1>
+<UL>
+<LI>
+<P>Thomas Pornin &lt;pornin@bolet.org&gt; for his excellent
+ucpp preprocessor library.</P></LI>
+<LI>
+<P>Mark Overmeer &lt;mark@overmeer.net&gt; for suggesting the
+module name and giving invaluable feedback.</P></LI>
+<LI>
+<P>Frederic Fabbro &lt;ffreddo@ibelgique.com&gt; for testing
+the package and offering continuous help and feedback.</P></LI>
+<LI>
+<P>Thorsten Jens &lt;thojens@gmx.de&gt; for testing the package
+on various platforms.</P></LI>
+<LI>
+<P>James Roskind, as his C parser was a great starting point to fix
+all the problems I had with my orignal parser based only on the
+ANSI ruleset.</P></LI>
+</UL>
+<H1><A NAME="BUGS">BUGS</A></H1>
+
+<P>I'm sure there are still lots of bugs in the code for this
+module. Also, the functionality is not yet as complete as I
+wish it were. If you find any bugs, Convert::Binary::C doesn't
+seem to build on your system or any of its tests fail, please
+send a mail to &lt;mhx@cpan.org&gt;.</P><H1><A NAME="TODO">TODO</A></H1>
+
+<P>If you're interested in what I currently plan to improve
+(or fix), have a look at the <I>TODO</I> file.</P><H1><A NAME="COPYRIGHT">COPYRIGHT</A></H1>
+
+<P>Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.</P>
+<P>The ucpp library is (c) Thomas Pornin 1999, 2000. For licence
+and redistribution details refer to <I>ctlib/ucpp/README</I>.</P>
+<P>Portions copyright (c) 1989, 1990 James A. Roskind.</P>
+<P>Some of the include files used for the <I>t/parse.t</I> test
+script are (c) 1991-1999, 2000, 2001 Free Software Foundation,
+Inc. They are neither required to create the binary nor linked
+to the source code of this module in any other way.</P>
+</BODY>
+</HTML>

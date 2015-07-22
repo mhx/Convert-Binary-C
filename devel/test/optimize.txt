@@ -1,0 +1,115 @@
+Version of 2001-11-26
+=====================
+
+No malloc() optimization in object.c
+
+Memory
+------
+        Summary Statistics:
+        
+          Total allocs       : 478370
+          Total frees        : 478370
+          Max. memory blocks : 13344
+          Max. memory usage  : 177370 bytes
+        
+          Smallest block     : 2 bytes
+          Largest block      : 48 bytes
+        
+          Memory leakage     : 0 bytes
+
+
+Linux 2.4.4 / i686 (P3) / 1000 MHz / 512 MB
+-------------------------------------------
+        Total Elapsed Time = 3.299436 Seconds
+          User+System Time = 3.299436 Seconds
+        Exclusive Times
+        %Time ExclSec CumulS #Calls sec/call Csec/c  Name
+         93.6   3.090  3.090     10   0.3090 0.3090  C::Type::XS_Parse
+         4.24   0.140  0.140     10   0.0140 0.0140  C::Type::XS_Dump
+         1.21   0.040  0.040     10   0.0040 0.0040  C::Type::XS_Delete
+         0.30   0.010  0.010      2   0.0050 0.0050  lib::BEGIN
+         0.30   0.010  0.020      3   0.0033 0.0066  main::BEGIN
+
+
+HP-UX 10.20 / HPPA7300 / 180 MHz / 128 MB
+-----------------------------------------
+        Total Elapsed Time = 30.50379 Seconds
+          User+System Time = 29.90379 Seconds
+        Exclusive Times
+        %Time ExclSec CumulS #Calls sec/call Csec/c  Name
+         84.2   25.19 25.190     10   2.5190 2.5190  C::Type::XS_Parse
+         14.9   4.480  4.480     10   0.4480 0.4480  C::Type::XS_Dump
+         0.33   0.100  0.100     10   0.0100 0.0100  C::Type::XS_Delete
+         0.17   0.050  0.109      3   0.0166 0.0364  main::BEGIN
+         0.10   0.030  0.030      2   0.0150 0.0150  lib::BEGIN
+
+
+Windows NT / i686 (P3) / 500 MHz / 256 MB
+-----------------------------------------
+        Total Elapsed Time = -0.00125 Seconds
+          User+System Time = 15.02849 Seconds
+        Exclusive Times
+        %Time ExclSec CumulS #Calls sec/call Csec/c  Name
+         70.3   10.57 10.574     10   1.0574 1.0574  C::Type::XS_Parse
+         28.1   4.227  4.227     10   0.4227 0.4227  C::Type::XS_Dump
+         0.60   0.090  0.090     10   0.0090 0.0090  C::Type::XS_Delete
+         0.33   0.050  0.120      3   0.0166 0.0399  main::BEGIN
+         0.20   0.030  0.030      2   0.0150 0.0150  C::Type::BEGIN
+
+
+Windows 2000 / i686 (P3) / 1000 MHz / 512 MB
+--------------------------------------------
+        Total Elapsed Time = -0.00058 Seconds
+          User+System Time = 4.814824 Seconds
+        Exclusive Times
+        %Time ExclSec CumulS #Calls sec/call Csec/c  Name
+         57.4   2.765  2.765     10   0.2765 0.2765  C::Type::XS_Parse
+         39.0   1.881  1.881     10   0.1881 0.1881  C::Type::XS_Dump
+         1.66   0.080  0.080     10   0.0080 0.0080  C::Type::XS_Delete
+         0.83   0.040  0.080      3   0.0133 0.0266  main::BEGIN
+         0.21   0.010  0.010      1   0.0100 0.0100  Config::BEGIN
+
+------------------------------------------------------------------
+
+Optimized object.c to perform less malloc()s and use less memory
+
+Memory
+------
+        Summary Statistics:
+        
+          Total allocs       : 421270
+          Total frees        : 421270
+          Max. memory blocks : 11334
+          Max. memory usage  : 152970 bytes
+        
+          Smallest block     : 2 bytes
+          Largest block      : 48 bytes
+        
+          Memory leakage     : 0 bytes
+
+
+Linux 2.4.4 / i686 (P3) / 1000 MHz / 512 MB
+-------------------------------------------
+        Total Elapsed Time = 3.119154 Seconds
+          User+System Time = 3.119154 Seconds
+        Exclusive Times
+        %Time ExclSec CumulS #Calls sec/call Csec/c  Name
+         94.5   2.950  2.950     10   0.2950 0.2950  C::Type::XS_Parse
+         3.85   0.120  0.120     10   0.0120 0.0120  C::Type::XS_Dump
+         0.32   0.010  0.010     10   0.0010 0.0010  C::Type::XS_Delete
+         0.32   0.010  0.010      1   0.0100 0.0100  Config::BEGIN
+         0.32   0.010  0.010      2   0.0050 0.0050  C::Type::BEGIN
+
+
+HP-UX 10.20 / HPPA7300 / 180 MHz / 128 MB
+-----------------------------------------
+        Total Elapsed Time = 28.57379 Seconds
+          User+System Time = 28.28379 Seconds
+        Exclusive Times
+        %Time ExclSec CumulS #Calls sec/call Csec/c  Name
+         83.2   23.54 23.540     10   2.3540 2.3540  C::Type::XS_Parse
+         15.9   4.510  4.510     10   0.4510 0.4510  C::Type::XS_Dump
+         0.25   0.070  0.070     10   0.0070 0.0070  C::Type::XS_Delete
+         0.18   0.050  0.109      3   0.0166 0.0364  main::BEGIN
+         0.07   0.020  0.020      2   0.0100 0.0099  C::Type::BEGIN
+

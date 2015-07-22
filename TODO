@@ -1,0 +1,72 @@
+=============
+What's to do?
+=============
+
+for future releases:
+--------------------
+
+* add caching option
+
+  - only parse if any of the parsed files are modified
+  - requires, of course, some sort of serializing
+
+* add an object representing a single type
+
+  - for example:
+
+      $p = new Convert::Binary::C;
+      $p->parse_file( 'some_code.h' );
+      $type = $p->get_type( 'type' );
+      $data = $type->unpack( $raw );
+
+    (no, I didn't think about how to name any of the new stuff ;)
+
+  - should use less memory
+  - should allow for serializing
+  - should allow for use with PerlIO layers (?)
+  - I have to think about that!!!
+  - Any suggestions are strongly appreciated!
+
+* add some warnings during parsing
+
+* make the preprocessor re-entrant
+
+  - not high priority, since the locking is working fine, too
+
+* support for unsigned and 64-bit integers
+
+* implement cast operators
+
+* support constant address arithmetics
+
+  - this is mainly needed for the offsetof C macro and
+    similar stuff, eg
+
+      enum { OFFSET = offsetof( struct foo, bar ) };
+
+    doesn't work yet. But I guess such construct is rarely
+    used.
+
+* perhaps add bitfield support
+
+  - would need something like compiler definition files to
+    describe the behaviour of different compilers
+
+* perhaps add better floating-point support
+
+  - same thing as for bitfields
+
+* compiler definition files
+
+  - would be helpful to describe certain properties of a compiler
+
+* do some more optimization in the Get/SetBasicType area
+
+* perhaps add more pragma options
+
+  - any suggestions?
+
+* add even more tests
+
+  - this can't hurt ;)
+  - perhaps try to increase the speed of the slow tests
