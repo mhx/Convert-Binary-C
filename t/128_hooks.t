@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:38:04 +0000 $
-# $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.50 $
+# $Date: 2004/03/23 21:00:43 +0000 $
+# $Revision: 4 $
+# $Snapshot: /Convert-Binary-C/0.51 $
 # $Source: /t/128_hooks.t $
 #
 ################################################################################
@@ -95,17 +95,17 @@ no_hooks();
 $c = $c->clone;
 no_hooks();
 
-$c->add_hooks(Enum   => { pack => \&enum_pack   },
+$c->delete_all_hooks
+  ->add_hooks(Enum   => { pack => \&enum_pack   },
               TextId => { pack => \&textid_pack },
-              String => { pack => \&string_pack });
-
-$c->add_hooks(Enum   => { unpack => \&enum_unpack   },
+              String => { pack => \&string_pack })
+  ->add_hooks(Enum   => { unpack => \&enum_unpack   },
               TextId => { unpack => \&textid_unpack },
               String => { unpack => \&string_unpack });
 
 with_hooks();
 
-$c->delete_all_hooks;
+$c = $c->delete_hooks('String')->delete_all_hooks->clone;
 
 no_hooks();
 

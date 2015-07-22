@@ -120,6 +120,7 @@ t/125_magic.t
 t/126_indexed.t
 t/127_flexarray.t
 t/128_hooks.t
+t/129_substr.t
 t/801_speed.t
 t/802_threads.t
 t/803_debug.t

@@ -514,7 +514,7 @@ These functions are:
 	unset_identifier_char()
 	void init_macros()
 	void print_defines()
-	wipeout(pCPP)
+	wipeout()
 
 Additionally, ucpp_ouch(), ucpp_error() and ucpp_warning() are no
 longer global functions. They can also be defined separately for

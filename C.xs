@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/22 19:38:00 +0000 $
-* $Revision: 116 $
-* $Snapshot: /Convert-Binary-C/0.50 $
+* $Date: 2004/03/23 21:09:23 +0000 $
+* $Revision: 117 $
+* $Snapshot: /Convert-Binary-C/0.51 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -7025,10 +7025,11 @@ CBC::pack( type, data = &PL_sv_undef, string = NULL )
 		  XSRETURN_EMPTY;
 		}
 
-		if( string != NULL )  {
-		  if( ! SvPOK( string ) )
+		if (string != NULL) {
+		  SvGETMAGIC(string);
+		  if ((SvFLAGS(string) & (SVf_POK|SVp_POK)) == 0)
 		    Perl_croak(aTHX_ "Type of arg 3 to pack must be string");
-		  if( GIMME_V == G_VOID && SvREADONLY( string ) )
+		  if (GIMME_V == G_VOID && SvREADONLY(string))
 		    Perl_croak(aTHX_ "Modification of a read-only value "
 		                     "attempted");
 		}
@@ -7092,6 +7093,10 @@ CBC::pack( type, data = &PL_sv_undef, string = NULL )
 
 		IDLIST_FREE( &pack.idl );
 
+		/* this makes substr() as third argument work */
+		if (string)
+		  SvSETMAGIC(string);
+
 	OUTPUT:
 		RETVAL
 
@@ -7128,7 +7133,7 @@ CBC::unpack( type, string )
 
 		CHECK_VOID_CONTEXT;
 
-		if( !SvPOK( string ) )
+		if ((SvFLAGS(string) & (SVf_POK|SVp_POK)) == 0)
 		  Perl_croak(aTHX_ "Type of arg 2 to unpack must be string");
 
 		if( !GetMemberInfo( aTHX_ THIS, type, &mi ) )
@@ -8159,6 +8164,9 @@ CBC::add_hooks(...)
 		  }
 		}
 
+		if( GIMME_V != G_VOID )
+		  XSRETURN(1);
+
 
 ################################################################################
 #
@@ -8233,6 +8241,9 @@ CBC::delete_hooks(...)
 		    WARN((aTHX_ "No hooks defined for '%s'", type));
 		}
 
+		if( GIMME_V != G_VOID )
+		  XSRETURN(1);
+
 
 ################################################################################
 #
@@ -8262,6 +8273,9 @@ CBC::delete_all_hooks()
 		HT_flush(THIS->enum_hooks,    (HTDestroyFunc) hook_delete);
 		HT_flush(THIS->struct_hooks,  (HTDestroyFunc) hook_delete);
 		HT_flush(THIS->typedef_hooks, (HTDestroyFunc) hook_delete);
+
+		if( GIMME_V != G_VOID )
+		  XSRETURN(1);
 
 
 ################################################################################

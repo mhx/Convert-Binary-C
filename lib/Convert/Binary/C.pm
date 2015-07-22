@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:38:00 +0000 $
-# $Revision: 59 $
-# $Snapshot: /Convert-Binary-C/0.50 $
+# $Date: 2004/03/23 21:12:50 +0000 $
+# $Revision: 60 $
+# $Snapshot: /Convert-Binary-C/0.51 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.50 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.51 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -812,10 +812,11 @@ that should be processed. They are called in scalar context and
 expected to return the processed data.
 
 To get rid of registered hooks, you can use either
+the L<C<delete_hooks>|/"delete_hooks"> method
 
   $c->delete_hooks('ProtoId');
 
-or:
+or L<C<delete_all_hooks>|/"delete_all_hooks">:
 
   $c->delete_all_hooks;
 
@@ -878,6 +879,15 @@ This would print:
 
     0x0000 : 00 00 00 19 4A 75 73 74 20 61 6E 6F 74 68 65 72 : ....Just.another
     0x0010 : 20 50 65 72 6C 20 68 61 63 6B 65 72 2C          : .Perl.hacker,
+
+Using hooks isn't for free. In performance-critical applications
+you have to keep in mind that hooks are actually perl subroutines
+and that they are called once for every value of a registered
+type that is being packed or unpacked. If only about 10% of the
+values require hooks to be called, you'll hardly notice the
+difference (if your hooks are implemented efficiently, that is).
+But if all values would require hooks to be called, that alone
+could easily make packing and unpacking very slow.
 
 =head1 METHODS
 
@@ -3457,7 +3467,11 @@ subroutine, pass C<undef> instead of a subroutine reference.
 
 If all subroutines are removed, the whole hook is removed.
 
-See L<TYPE|/"USING HOOKS"> for examples on how to use hooks.
+L<C<add_hooks>|/"add_hooks"> will throw an exception if an
+error occurs. On success, the method returns a reference to
+its object.
+
+See L<"USING HOOKS"> for examples on how to use hooks.
 
 =back
 
@@ -3471,6 +3485,10 @@ Deletes the hooks for all types passed in.
 
   $c->delete_hooks(qw(ObjectType ProtocolId));
 
+L<C<delete_hooks>|/"delete_hooks"> will throw an exception if an
+error occurs. On success, the method returns a reference to
+its object.
+
 =back
 
 =head2 delete_all_hooks
@@ -3479,7 +3497,7 @@ Deletes the hooks for all types passed in.
 
 =item C<delete_all_hooks>
 
-Removes all registered hooks.
+Removes all registered hooks and returns a reference to its object.
 
 =back
 
