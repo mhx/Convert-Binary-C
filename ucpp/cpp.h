@@ -200,6 +200,21 @@ struct lexer_state {
 };
 
 /*
+ * Callback argument for iterate_macros()
+ */
+struct macro_info {
+  void *arg;
+  const char *name;
+  const char *definition;
+  size_t definition_len;
+};
+
+/*
+ * Flags for iterate_macros()
+ */
+#define MI_WITH_DEFINITION     0x00000001UL
+
+/*
  * Flags for struct lexer_state
  */
 /* warning flags */
@@ -245,8 +260,13 @@ struct lexer_state {
 #define new_cpp			UCPP_PUBLIC(new_cpp)
 #define del_cpp			UCPP_PUBLIC(del_cpp)
 struct CPP *new_cpp(void);
-void del_cpp(struct CPP *c);
+void del_cpp(struct CPP *);
 #endif /* UCPP_REENTRANT */
+
+#ifdef UCPP_CLONE
+#define clone_cpp		UCPP_PUBLIC(clone_cpp)
+struct CPP *clone_cpp(const struct CPP *);
+#endif /* UCPP_CLONE */
 
 #ifndef NO_UCPP_BUF
 #define flush_output		UCPP_PUBLIC(flush_output)
@@ -266,10 +286,18 @@ void print_assertions(pCPP);
 #define define_macro		UCPP_PUBLIC(define_macro)
 #define undef_macro		UCPP_PUBLIC(undef_macro)
 #define print_defines		UCPP_PUBLIC(print_defines)
+#define is_macro_defined	UCPP_PUBLIC(is_macro_defined)
+#define get_macro_definition	UCPP_PUBLIC(get_macro_definition)
+#define free_macro_definition	UCPP_PUBLIC(free_macro_definition)
+#define iterate_macros		UCPP_PUBLIC(iterate_macros)
 void init_macros(pCPP);
 int define_macro(pCPP_ struct lexer_state *, char *);
 int undef_macro(pCPP_ struct lexer_state *, char *);
 void print_defines(pCPP);
+int is_macro_defined(pCPP_ const char *);
+char *get_macro_definition(pCPP_ const char *, size_t *);
+void free_macro_definition(char *);
+void iterate_macros(pCPP_ void (*)(const struct macro_info *), void *, unsigned long);
 
 #define set_init_filename	UCPP_PUBLIC(set_init_filename)
 #define init_cpp		UCPP_PUBLIC(init_cpp)

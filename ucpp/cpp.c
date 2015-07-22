@@ -352,6 +352,30 @@ static void del_found_file_sys(void *m)
 	freemem(ffs);
 }
 
+#ifdef UCPP_CLONE
+
+static void *clone_found_file(const void *m)
+{
+	const struct found_file *src = m;
+	struct found_file *dst = getmem(sizeof(struct found_file));
+
+	dst->name = src->name ? sdup(src->name) : src->name;
+	dst->protect = src->protect ? sdup(src->protect) : src->protect;
+	return dst;
+}
+
+static void *clone_found_file_sys(const void *m)
+{
+	const struct found_file_sys *src = m;
+	struct found_file_sys *dst = getmem(sizeof(struct found_file_sys));
+
+	dst->rff = src->rff;
+	dst->incdir = src->incdir;
+	return dst;
+}
+
+#endif /* UCPP_CLONE */
+
 /*
  * To keep up with the #ifndef/#define/#endif protection mechanism
  * detection.
@@ -381,10 +405,10 @@ void set_init_filename(pCPP_ char *x, int real_file)
 static void init_found_files(pCPP)
 {
 	if (found_files_init_done) HTT_kill(&found_files);
-	HTT_init(&found_files, del_found_file);
+	HTT_init(&found_files, del_found_file _aCLONE(clone_found_file));
 	found_files_init_done = 1;
 	if (found_files_sys_init_done) HTT_kill(&found_files_sys);
-	HTT_init(&found_files_sys, del_found_file_sys);
+	HTT_init(&found_files_sys, del_found_file_sys _aCLONE(clone_found_file_sys));
 	found_files_sys_init_done = 1;
 }
 
@@ -2668,3 +2692,79 @@ int main(int argc, char *argv[])
 	return fr ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 #endif
+
+#ifdef UCPP_CLONE
+
+/* undefine all REENTR macros */
+#undef dsharp_lexer
+#ifdef PRAGMA_TOKENIZE
+#undef tokenize_lexer
+#endif
+#undef current_filename
+#undef current_long_filename
+#undef protect_detect
+#undef include_path
+#undef include_path_nb
+#undef ls_depth
+#undef ls_stack
+#undef protect_detect_stack
+#undef found_files
+#undef found_files_sys
+#undef found_files_init_done
+#undef found_files_sys_init_done
+
+static void update_ffs_pointer(void *ht, void *m)
+{
+	struct found_file_sys *ffs = m;
+
+	ffs->rff = HTT_get(ht, HASH_ITEM_NAME(ffs->rff));
+}
+
+struct CPP *clone_cpp(const struct CPP *src)
+{
+	struct CPP *dst;
+	size_t i;
+
+	if (src->_cpp.ls_depth > 0) /* cannot clone running preprocessor? */
+		return NULL;
+
+	dst = getmem(sizeof(struct CPP));
+
+	mmv(dst, src, sizeof(struct CPP));
+
+	if (src->current_filename)
+		dst->current_filename = sdup(src->current_filename);
+
+	if (src->protect_detect.macro)
+		dst->protect_detect.macro = sdup(src->protect_detect.macro);
+
+	HTT_clone(&dst->_assert.assertions, &src->_assert.assertions);
+	HTT_clone(&dst->_macro.macros, &src->_macro.macros);
+	HTT_clone(&dst->_cpp.found_files, &src->_cpp.found_files);
+	HTT_clone(&dst->_cpp.found_files_sys, &src->_cpp.found_files_sys);
+	HTT_scan_arg(&dst->_cpp.found_files_sys, update_ffs_pointer, &dst->_cpp.found_files);
+
+	if (src->current_long_filename)
+		dst->current_long_filename = HASH_ITEM_NAME(HTT_get(&dst->_cpp.found_files,
+							src->current_long_filename));
+
+	if (src->protect_detect.ff)
+		dst->protect_detect.ff = HTT_get(&dst->_cpp.found_files,
+						HASH_ITEM_NAME(src->protect_detect.ff));
+
+	dst->_cpp.include_path_nb = 0;
+	for (i = 0; i < src->_cpp.include_path_nb; i ++)
+		aol(dst->_cpp.include_path, dst->_cpp.include_path_nb,
+			sdup(src->_cpp.include_path[i]), INCPATH_MEMG);
+
+	dst->_lexer.sm = clone_cppm(src->_lexer.sm);
+
+	init_buf_lexer_state(&dst->_global.dsharp_lexer, 0);
+#ifdef PRAGMA_TOKENIZE
+	init_buf_lexer_state(&dst->_global.tokenize_lexer, 0);
+#endif
+
+	return dst;
+}
+
+#endif /* UCPP_CLONE */

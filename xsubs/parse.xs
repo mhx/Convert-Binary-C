@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/04 16:07:53 +0000 $
-# $Revision: 4 $
+# $Date: 2006/02/04 06:58:55 +0000 $
+# $Revision: 6 $
 # $Source: /xsubs/parse.xs $
 #
 ################################################################################
@@ -50,13 +50,9 @@ CBC::parse(code)
 
     buf.length = len;
     buf.pos    = 0;
-#if defined(CBC_THREAD_SAFE) && !defined(UCPP_REENTRANT)
-    MUTEX_LOCK(&gs_parse_mutex);
-#endif
+
     (void) parse_buffer(NULL, &buf, &THIS->cfg, &THIS->cpi);
-#if defined(CBC_THREAD_SAFE) && !defined(UCPP_REENTRANT)
-    MUTEX_UNLOCK(&gs_parse_mutex);
-#endif
+
     if (temp)
       SvREFCNT_dec(temp);
 
@@ -84,13 +80,9 @@ CBC::parse_file(file)
 
   CODE:
     CT_DEBUG_METHOD1("'%s'", file);
-#if defined(CBC_THREAD_SAFE) && !defined(UCPP_REENTRANT)
-    MUTEX_LOCK(&gs_parse_mutex);
-#endif
+
     (void) parse_buffer(file, NULL, &THIS->cfg, &THIS->cpi);
-#if defined(CBC_THREAD_SAFE) && !defined(UCPP_REENTRANT)
-    MUTEX_UNLOCK(&gs_parse_mutex);
-#endif
+
     handle_parse_errors(aTHX_ THIS->cpi.errorStack);
 
     if (GIMME_V != G_VOID)

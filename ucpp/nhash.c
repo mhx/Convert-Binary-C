@@ -41,7 +41,7 @@
  * type is big enough to hold 32-bit arbitrary numbers, a 16-bit number
  * otherwise.
  */
-static unsigned hash_string(char *name)
+static unsigned hash_string(const char *name)
 {
 	unsigned h = 0;
 
@@ -86,9 +86,12 @@ static unsigned hash_string(char *name)
  * lest significant bits of their hash value.
  */
 
-static void internal_init(HTT *htt, void (*deldata)(void *), int reduced)
+static void internal_init(HTT *htt, void (*deldata)(void *) _pCLONEDATA, int reduced)
 {
 	htt->deldata = deldata;
+#ifdef UCPP_CLONE
+	htt->clonedata = clonedata;
+#endif
 	if (reduced) {
 		HTT2 *htt2 = (HTT2 *)htt;
 
@@ -101,15 +104,15 @@ static void internal_init(HTT *htt, void (*deldata)(void *), int reduced)
 }
 
 /* see nhash.h */
-void HTT_init(HTT *htt, void (*deldata)(void *))
+void HTT_init(HTT *htt, void (*deldata)(void *) _pCLONEDATA)
 {
-	internal_init(htt, deldata, 0);
+	internal_init(htt, deldata _aCLONEDATA, 0);
 }
 
 /* see nhash.h */
-void HTT2_init(HTT2 *htt, void (*deldata)(void *))
+void HTT2_init(HTT2 *htt, void (*deldata)(void *) _pCLONEDATA)
 {
-	internal_init((HTT *)htt, deldata, 1);
+	internal_init((HTT *)htt, deldata _aCLONEDATA, 1);
 }
 
 #define PTR_SHIFT    (sizeof(hash_item_header *) * \
@@ -158,7 +161,7 @@ static hash_item_header *find_node(HTT *htt, unsigned u,
 	return node;
 }
 
-static void *internal_get(HTT *htt, char *name, int reduced)
+static void *internal_get(HTT *htt, const char *name, int reduced)
 {
 	unsigned u = hash_string(name), v;
 	hash_item_header *node = find_node(htt, u, NULL, NULL, reduced);
@@ -177,13 +180,13 @@ static void *internal_get(HTT *htt, char *name, int reduced)
 }
 
 /* see nhash.h */
-void *HTT_get(HTT *htt, char *name)
+void *HTT_get(HTT *htt, const char *name)
 {
 	return internal_get(htt, name, 0);
 }
 
 /* see nhash.h */
-void *HTT2_get(HTT2 *htt, char *name)
+void *HTT2_get(HTT2 *htt, const char *name)
 {
 	return internal_get((HTT *)htt, name, 1);
 }
@@ -191,7 +194,7 @@ void *HTT2_get(HTT2 *htt, char *name)
 /*
  * Make an item identifier from its name and its hash value.
  */
-static char *make_ident(char *name, unsigned u)
+static char *make_ident(const char *name, unsigned u)
 {
 	size_t n = strlen(name) + 1;
 	char *ident = getmem(n + sizeof(unsigned));
@@ -213,6 +216,27 @@ static char *make_fake_ident(unsigned u, hash_item_header *next)
 	return ident;
 }
 
+#ifdef UCPP_CLONE
+
+static char *clone_ident(const char *ident)
+{
+	char *cident;
+	unsigned v;
+
+	v = *(unsigned *)(ident);
+	if ((v & 1U) != 0) {
+		cident = getmem(PTR_SHIFT + sizeof(hash_item_header *));
+	} else {
+		size_t n = strlen(ident + sizeof(unsigned)) + 1;
+		cident = getmem(n + sizeof(unsigned));
+		memcpy(cident + sizeof(unsigned), ident + sizeof(unsigned), n);
+	}
+	*(unsigned *)(cident) = v;
+	return cident;
+}
+
+#endif /* UCPP_CLONE */
+
 /*
  * Adding an item is straightforward:
  *  1. look for its emplacement
@@ -223,7 +247,7 @@ static char *make_fake_ident(unsigned u, hash_item_header *next)
  *     3.2. if the node is fake, look for the name in the list; if not found,
  *          add the node at the list end
  */
-static void *internal_put(HTT *htt, void *item, char *name, int reduced)
+static void *internal_put(HTT *htt, void *item, const char *name, int reduced)
 {
 	unsigned u = hash_string(name), v;
 	int ls;
@@ -277,13 +301,13 @@ static void *internal_put(HTT *htt, void *item, char *name, int reduced)
 }
 
 /* see nhash.h */
-void *HTT_put(HTT *htt, void *item, char *name)
+void *HTT_put(HTT *htt, void *item, const char *name)
 {
 	return internal_put(htt, item, name, 0);
 }
 
 /* see nhash.h */
-void *HTT2_put(HTT2 *htt, void *item, char *name)
+void *HTT2_put(HTT2 *htt, void *item, const char *name)
 {
 	return internal_put((HTT *)htt, item, name, 1);
 }
@@ -327,7 +351,7 @@ static void shrink_node(HTT *htt, hash_item_header *fnode,
  *     3.2. delete the correct item
  *     3.3. if there remains only one item, supress the fake node
  */
-static int internal_del(HTT *htt, char *name, int reduced)
+static int internal_del(HTT *htt, const char *name, int reduced)
 {
 	unsigned u = hash_string(name), v;
 	int ls;
@@ -399,13 +423,13 @@ static int internal_del(HTT *htt, char *name, int reduced)
 }
 
 /* see nhash.h */
-int HTT_del(HTT *htt, char *name)
+int HTT_del(HTT *htt, const char *name)
 {
 	return internal_del(htt, name, 0);
 }
 
 /* see nhash.h */
-int HTT2_del(HTT2 *htt, char *name)
+int HTT2_del(HTT2 *htt, const char *name)
 {
 	return internal_del((HTT *)htt, name, 1);
 }
@@ -477,6 +501,57 @@ void HTT_scan_arg(HTT *htt, void (*action)(void *, void *), void *arg)
 		scan_node(htt->tree[u], action, arg, SCAN_FLAG_ARG);
 	}
 }
+
+#ifdef UCPP_CLONE
+
+static hash_item_header *clone_node(const hash_item_header *node, void *(*clone)(const void *))
+{
+	hash_item_header *cleft, *cright, *cnode;
+	unsigned v;
+
+	if (node == NULL) return NULL;
+	cleft = clone_node(node->left, clone);
+	cright = clone_node(node->right, clone);
+	v = *(unsigned *)(node->ident);
+	if ((v & 1U) != 0) {
+		hash_item_header *pnode, **pcpnode;
+
+		cnode = getmem(sizeof *node);
+		cnode->ident = clone_ident(node->ident);
+		pcpnode = (hash_item_header **)(cnode->ident + PTR_SHIFT);
+		for (pnode = *(hash_item_header **)(node->ident + PTR_SHIFT);
+			pnode != NULL; pnode = pnode->left) {
+			*pcpnode = clone(pnode);
+			(*pcpnode)->ident = clone_ident(pnode->ident);
+			pcpnode = &((*pcpnode)->left);
+		}
+		*pcpnode = NULL;
+	} else {
+		cnode = clone(node);
+		cnode->ident = clone_ident(node->ident);
+	}
+	cnode->left = cleft;
+	cnode->right = cright;
+	return cnode;
+}
+
+/* see nhash.h */
+void HTT_clone(HTT *ctt, const HTT *htt)
+{
+	unsigned u;
+
+	for (u = 0; u < HTT_NUM_TREES; u ++) {
+		ctt->tree[u] = clone_node(htt->tree[u], htt->clonedata);
+	}
+}
+
+void HTT2_clone(HTT2 *ctt, const HTT2 *htt)
+{
+	ctt->tree[0] = clone_node(htt->tree[0], htt->clonedata);
+	ctt->tree[1] = clone_node(htt->tree[1], htt->clonedata);
+}
+
+#endif /* UCPP_CLONE */
 
 /* see nhash.h */
 void HTT2_scan(HTT2 *htt, void (*action)(void *))

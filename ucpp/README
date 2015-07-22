@@ -505,8 +505,8 @@ These functions are:
 	init_cpp()
 	init_include_path()
 	init_tables()
-	int define_macro()
-	int undef_macro()
+	define_macro()
+	undef_macro()
 	lex()
 	make_assertion()
 	print_assertions()
@@ -515,8 +515,11 @@ These functions are:
 	set_init_filename()
 	set_input_file()
 	unset_identifier_char()
-	void init_macros()
-	void print_defines()
+	init_macros()
+	print_defines()
+	is_macro_defined()
+	get_macro_definition()
+	iterate_macros()
 	wipeout()
 
 Additionally, ucpp_ouch(), ucpp_error() and ucpp_warning() are no
@@ -534,6 +537,15 @@ preprocessor object as its first parameter. There is also a
 callback_arg member defined in the preprocessor object structure
 which can be used to pass an additional pointer to the callback
 function.
+
+If you additionally define UCPP_CLONE, you can also clone an
+existing preprocessor object:
+
+	clone = clone_cpp(original);
+
+The cloned object will be identical to the original object, except
+for its internal lexer states, which means you cannot clone a
+preprocessor object while it is preprocessing source code.
 
 
 

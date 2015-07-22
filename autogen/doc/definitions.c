@@ -1,3 +1,12 @@
+#define ABC_SIZE 2
+#define MULTIPLY(x, y) ((x)*(y))
+
+#ifdef ABC_SIZE
+# define DEFINED
+#else
+# define NOT_DEFINED
+#endif
+
 typedef unsigned long U32;
 typedef void *any;
 
@@ -18,7 +27,7 @@ struct STRUCT_SV {
 };
 
 typedef union {
-  int abc[2];
+  int abc[ABC_SIZE];
   struct xxx {
     int a;
     int b;

@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/04 17:20:48 +0000 $
-# $Revision: 10 $
+# $Date: 2006/02/26 00:51:34 +0000 $
+# $Revision: 11 $
 # $Source: /xsubs/configure.xs $
 #
 ################################################################################
@@ -43,7 +43,7 @@ CBC::configure(...)
       handle_option(aTHX_ THIS, ST(1), NULL, &RETVAL, NULL);
     else if (items % 2)
     {
-      int i, changes = 0, layout = 0;
+      int i, changes = 0, layout = 0, preproc = 0;
       HandleOptionResult res;
 
       for (i = 1; i < items; i += 2)
@@ -53,14 +53,24 @@ CBC::configure(...)
           changes = 1;
         if (res.impacts_layout)
           layout = 1;
+        if (res.impacts_preproc)
+          preproc = 1;
       }
 
-      if (changes && layout)
+      if (changes)
       {
-        basic_types_reset(THIS->basic);
+        if (layout)
+        {
+          basic_types_reset(THIS->basic);
 
-        if (THIS->cpi.available && THIS->cpi.ready)
-          reset_parse_info(&THIS->cpi);
+          if (THIS->cpi.available && THIS->cpi.ready)
+            reset_parse_info(&THIS->cpi);
+        }
+
+        if (preproc)
+        {
+          reset_preprocessor(&THIS->cpi);
+        }
       }
 
       XSRETURN(1);

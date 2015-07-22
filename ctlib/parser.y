@@ -11,8 +11,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:06 +0000 $
-* $Revision: 58 $
+* $Date: 2006/02/25 23:49:30 +0000 $
+* $Revision: 61 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -194,9 +194,7 @@ struct _parserState {
 
   PragmaState         pragma;
 
-#ifdef UCPP_REENTRANT
-  struct CPP         *cpp;
-#endif
+  struct CPP         *pp;
   struct lexer_state *pLexer;
 
   FileInfo           *pFI;
@@ -689,6 +687,12 @@ primary_expression
 	| '(' comma_expression ')' { $$ = $2; }
 	;
 
+/*
+ * We don't have to deal with postfix expressions currently, since a primary
+ * expression (which the postfix expression is based on) cannot be a type,
+ * but only a variable. And we don't support sizeof(variable) at the moment,
+ * since all variables are discarded.
+ */
 postfix_expression
 	: primary_expression
 	| postfix_expression '[' comma_expression ']'           { UNDEF_VAL($$); }
@@ -2085,7 +2089,7 @@ static inline int c_lex(YYSTYPE *plval, ParserState *pState)
 {
   int rval, token;
   struct lexer_state *pLexer = pState->pLexer;
-  dUCPP(pState->cpp);
+  dUCPP(pState->pp);
 
   CT_DEBUG(CLEXER, ("parser.y::c_lex()"));
 
@@ -2468,9 +2472,7 @@ ParserState *c_parser_new(const CParseConfig *pCPC, CParseInfo *pCPI,
   pState->pCPI                = pCPI;
   pState->pCPC                = pCPC;
   pState->pLexer              = pLexer;
-#ifdef UCPP_REENTRANT
-  pState->cpp                 = cpp;
-#endif
+  pState->pp                  = aUCPP;
 
   pState->flags               = 0;
   pState->pFI                 = NULL;

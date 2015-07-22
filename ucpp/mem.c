@@ -148,7 +148,7 @@ void (freemem)(void *x)
 /*
  * This function copies n bytes from src to dest
  */
-void *mmv(void *dest, void *src, size_t n)
+void *mmv(void *dest, const void *src, size_t n)
 {
 	return memcpy(dest, src, n);
 }
@@ -156,7 +156,7 @@ void *mmv(void *dest, void *src, size_t n)
 /*
  * This function copies n bytes from src to dest
  */
-void *mmvwo(void *dest, void *src, size_t n)
+void *mmvwo(void *dest, const void *src, size_t n)
 {
 	return memmove(dest, src, n);
 }
@@ -166,7 +166,7 @@ void *mmvwo(void *dest, void *src, size_t n)
 /*
  * This function creates a new char * and fills it with a copy of src
  */
-char *(sdup)(char *src)
+char *(sdup)(const char *src)
 {
 	size_t n = 1 + strlen(src);
 	char *x = getmem(n);
@@ -204,7 +204,7 @@ void *(incmem)(void *x, size_t s, size_t ns)
 	return incmem(x, s, ns);
 }
 
-char *(sdup)(char *s)
+char *(sdup)(const char *s)
 {
 	return sdup(s);
 }
@@ -218,7 +218,7 @@ static long current_serial = 0L;
 static struct mem_track {
 	void *block;
 	long serial;
-	char *file;
+	const char *file;
 	int line;
 } *mem = 0;
 
@@ -273,7 +273,7 @@ static long find_free_block(void)
 	return current_ptr;
 }
 
-void *getmem_debug(size_t n, char *file, int line)
+void *getmem_debug(size_t n, const char *file, int line)
 {
 	void *x = getmem_raw(n + ALIGNSHIFT);
 	long i = find_free_block();
@@ -286,7 +286,7 @@ void *getmem_debug(size_t n, char *file, int line)
 	return (void *)((unsigned char *)x + ALIGNSHIFT);
 }
 
-void freemem_debug(void *x, char *file, int line)
+void freemem_debug(void *x, const char *file, int line)
 {
 	void *y = (unsigned char *)x - ALIGNSHIFT;
 	long i = *(long *)y;
@@ -300,7 +300,7 @@ void freemem_debug(void *x, char *file, int line)
 	freemem_raw(y);
 }
 
-void *incmem_debug(void *x, size_t ol, size_t nl, char *file, int line)
+void *incmem_debug(void *x, size_t ol, size_t nl, const char *file, int line)
 {
 	void *y = getmem_debug(nl, file, line);
 	mmv(y, x, ol < nl ? ol : nl);
@@ -308,7 +308,7 @@ void *incmem_debug(void *x, size_t ol, size_t nl, char *file, int line)
 	return y;
 }
 
-char *sdup_debug(char *src, char *file, int line)
+char *sdup_debug(const char *src, const char *file, int line)
 {
 	size_t n = 1 + strlen(src);
 	char *x = getmem_debug(n, file, line);

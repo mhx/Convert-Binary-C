@@ -377,6 +377,17 @@ void del_cppm(CPPM c)
 
 #endif /* UCPP_REENTRANT */
 
+#ifdef UCPP_CLONE
+
+CPPM clone_cppm(const CPPM s)
+{
+	CPPM d = getmem(sizeof(struct _cppm));
+	mmv(d, s, sizeof(struct _cppm));
+	return d;
+}
+
+#endif /* UCPP_CLONE */
+
 /*
  * init_cppm() fills cppm[][] with the information stored in cppms[].
  * It must be called before beginning the lexing process.
@@ -833,11 +844,17 @@ static inline int read_token(pCPP_ struct lexer_state *ls)
 	int cstat = S_START, nstat;
 	size_t ltok = 0;
 	int c, outc = 0, ucn_in_id = 0;
-	int shift_state;
-	unsigned long utf8;
+	int shift_state = 0;
+	unsigned long utf8 = 0;
 	long l = ls->line;
 	dCPPM;
 
+	/*
+	 * Make sure token type is initialized.
+	 * Valgrind was complaining about ctok->type not being initialized
+	 * in llex() when parsing an empty source file.
+	 */
+	ls->ctok->type = NONE;
 	ls->ctok->line = l;
 	if (ls->pending_token) {
 		if ((ls->ctok->type = ls->pending_token) == BUNCH) {

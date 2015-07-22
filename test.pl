@@ -3,8 +3,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/01 09:36:50 +0000 $
-# $Revision: 3 $
+# $Date: 2006/02/05 22:05:25 +0000 $
+# $Revision: 5 $
 # $Source: /test.pl $
 #
 ################################################################################
@@ -15,42 +15,52 @@
 #
 ################################################################################
 
-use strict;
-
 BEGIN {
-  if ($] < 5.005) {
-    print STDERR <<ENDERR;
+  $only_basic = $] < 5.005;
+
+  if ($only_basic) {
+    print STDERR <<ENDWARN;
 
 --> WARNING: The version of perl you're using ($]) is very old.
 -->
--->   The test suite cannot be run with perl < 5.005.
-    
-ENDERR
+-->   The complete test suite cannot be run with perl < 5.005.
+-->
+-->   I will only run some very basic tests now.
 
-    exit;
+ENDWARN
+    eval q{
+      use Test::Harness;
+      
+      $Test::Harness::switches = "-w";
+    };
+  }
+  else {
+    eval q{
+      use lib './support';
+      use File::Spec;
+      use Test::Harness;
+      use Cwd;
+
+      $lib = File::Spec->catfile(getcwd, 'support');
+      $lib = qq["$lib"] if $lib =~ /\s/;
+      
+      $Test::Harness::switches = "-I $lib -w";
+    };
   }
 }
 
-use lib './support';
-use Test::Harness;
-use File::Find;
-use File::Spec;
-use Cwd;
-
-my @tests = @ARGV ? @ARGV : find_tests();
+@tests = @ARGV ? @ARGV : find_tests();
 die "*** Can't find any test files\n" unless @tests;
 
-my $lib = File::Spec->catfile(getcwd, 'support');
-$lib = qq["$lib"] if $lib =~ /\s/;
-
-$Test::Harness::switches = "-I $lib -w";
 $ENV{PERL_DL_NONLAZY} = 1;
 
 runtests(@tests);
 
 sub find_tests
 {
+  use File::Find;
+  my $fd = $only_basic ? '1' : $ENV{ONLY_FAST_TESTS} ? '[0123478]' : '\d';
   my %t;
-  find(sub { -f and /\.t$/ and $t{$File::Find::name}++; }, 'tests');
+  find(sub { -f and /^$fd\d{2}_\w+\.t$/ and $t{$File::Find::name}++ }, 'tests');
   return sort keys %t;
 }

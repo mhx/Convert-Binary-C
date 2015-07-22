@@ -3,6 +3,7 @@ use Convert::Binary::C;
 $c = new Convert::Binary::C;
 $c->parse( <<'END' );
 
+#define ADD(a, b) ((a) + (b))
 #define NUMBER 42
 
 typedef struct _mytype mytype;
@@ -31,4 +32,9 @@ print $c->sourcify;
 print "#-8<-\n";
 
 print $c->sourcify( { Context => 1 } );
+
+#-8<-
+print "#-8<-\n";
+
+print $c->sourcify( { Defines => 1 } );
 

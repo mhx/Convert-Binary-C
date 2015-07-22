@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/03 12:33:58 +0000 $
-* $Revision: 11 $
+* $Date: 2006/01/23 21:36:55 +0000 $
+* $Revision: 12 $
 * $Source: /ctlib/layout.c $
 *
 ********************************************************************************
@@ -665,6 +665,72 @@ int get_native_enum_size(void)
   fatal_error("Unsupported native enum size (%d:%d:%d:%d:%d:%d)",
               sizeof(enum pbyte), sizeof(enum nbyte), sizeof(enum pword),
               sizeof(enum nword), sizeof(enum plong), sizeof(enum nlong));
+
+  return -1000;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: get_native_unsigned_chars
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Determine if native chars are unsigned.
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+int get_native_unsigned_chars(void)
+{
+  char c = -1;
+  int  i = (int) c;
+
+  if (i == -1)
+    return 0;
+
+  if (i > 0)
+    return 1;
+
+  fatal_error("Strange result of cast from char to int (%d)", i);
+
+  return -1000;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: get_native_unsigned_bitfields
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Determine if native bitfields are unsigned.
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+int get_native_unsigned_bitfields(void)
+{
+  struct { int a:3; } x = { -1 };
+  int  i = (int) x.a;
+
+  if (i == -1)
+    return 0;
+
+  if (i > 0)
+    return 1;
+
+  fatal_error("Strange result of cast from bitfield to int (%d)", i);
 
   return -1000;
 }

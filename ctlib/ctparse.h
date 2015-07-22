@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/04 16:07:51 +0000 $
-* $Revision: 36 $
+* $Date: 2006/02/24 21:52:44 +0000 $
+* $Revision: 37 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
@@ -40,6 +40,8 @@
 
 
 /*===== TYPEDEFS =============================================================*/
+
+struct CPP;
 
 typedef struct {
   char          *buffer;
@@ -101,31 +103,60 @@ typedef struct {
   HashTable  htStructs;
   HashTable  htTypedefs;
   HashTable  htFiles;
+  HashTable  htPredefined;
   LinkedList errorStack;
+  struct CPP *pp;
   unsigned   available : 1;
   unsigned   ready     : 1;
 } CParseInfo;
+
+typedef struct {
+  void       *arg;
+  const char *name;
+  const char *definition;
+  size_t      definition_len;
+} CMacroInfo;
+
+#define CMIF_WITH_DEFINITION 0x00000001
+#define CMIF_NO_PREDEFINED   0x00000002
+typedef unsigned CMIFlags;
 
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
 #define parse_buffer CTlib_parse_buffer
-int parse_buffer( const char *filename, const Buffer *pBuf,
-                  const CParseConfig *pCPC, CParseInfo *pCPI );
+int parse_buffer(const char *filename, const Buffer *pBuf,
+                 const CParseConfig *pCPC, CParseInfo *pCPI);
 
 #define init_parse_info CTlib_init_parse_info
-void init_parse_info( CParseInfo *pCPI );
+void init_parse_info(CParseInfo *pCPI);
 
 #define free_parse_info CTlib_free_parse_info
-void free_parse_info( CParseInfo *pCPI );
+void free_parse_info(CParseInfo *pCPI);
+
+#define reset_preprocessor CTlib_reset_preprocessor
+void reset_preprocessor(CParseInfo *pCPI);
 
 #define reset_parse_info CTlib_reset_parse_info
-void reset_parse_info( CParseInfo *pCPI );
+void reset_parse_info(CParseInfo *pCPI);
 
 #define update_parse_info CTlib_update_parse_info
-void update_parse_info( CParseInfo *pCPI, const CParseConfig *pCPC );
+void update_parse_info(CParseInfo *pCPI, const CParseConfig *pCPC);
 
 #define clone_parse_info CTlib_clone_parse_info
-void clone_parse_info( CParseInfo *pDest, const CParseInfo *pSrc );
+void clone_parse_info(CParseInfo *pDest, const CParseInfo *pSrc);
+
+#define macro_is_defined CTlib_macro_is_defined
+int macro_is_defined(CParseInfo *pCPI, const char *name);
+
+#define macro_get_def CTlib_macro_get_def
+char *macro_get_def(CParseInfo *pCPI, const char *name, size_t *plen);
+
+#define macro_free_def CTlib_macro_free_def
+void macro_free_def(char *p);
+
+#define macro_iterate_defs CTlib_macro_iterate_defs
+void macro_iterate_defs(CParseInfo *pCPI, void (*func)(const CMacroInfo *),
+                        void *arg, CMIFlags flags);
 
 #endif

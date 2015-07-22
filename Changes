@@ -1,3 +1,39 @@
+----------------------------
+Version 0.64_01 (2006-02-27)
+----------------------------
+
+* added new methods to interface with the preprocessor:
+
+  o the 'defined' method tests if a macro is defined
+
+  o the 'macro_names' method returns a list of all
+    defined macro names
+
+  o the 'macro' method returns macro definitions
+
+* added 'Defines' option for 'sourcify' method; with
+  this option turned on, macro definition are also
+  sourcified
+
+* the speed of the 'sourcify' method has been greatly
+  improved
+
+* add a new pod coverage test
+
+* fix a pod2usage call in elf.pl example
+
+* improve warning when trying to pack references into
+  format tagged types
+
+* make the module and some basic tests compatible with
+  perl 5.004
+
+* the native() function/method now also supports the
+  'UnsignedChars' and 'UnsignedBitfields' properties
+
+* the 'threads' feature is deprecated and will be removed
+  in a future relase
+ 
 -------------------------
 Version 0.64 (2006-01-16)
 -------------------------

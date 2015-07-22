@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/04 22:23:20 +0000 $
-* $Revision: 57 $
+* $Date: 2006/02/26 00:46:10 +0000 $
+* $Revision: 60 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -70,18 +70,20 @@
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 
 static char *get_path_name(const char *dir, const char *file);
+static void macro_callback(const struct macro_info *pmi);
+static void add_predef_callback(const struct macro_info *pmi);
+static void destroy_cpp(struct CPP *pp);
 
 
 /*===== EXTERNAL VARIABLES ===================================================*/
 
 /*===== GLOBAL VARIABLES =====================================================*/
 
-#ifndef UCPP_REENTRANT
-CParseInfo *g_current_cpi;
-#endif
-
-
 /*===== STATIC VARIABLES =====================================================*/
+
+#ifdef MEM_DEBUG
+static int gs_num_cpp;
+#endif
 
 /*===== STATIC FUNCTIONS =====================================================*/
 
@@ -133,8 +135,225 @@ static char *get_path_name(const char *dir, const char *file)
   return buf;
 }
 
+/*******************************************************************************
+*
+*   ROUTINE: macro_callback
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Feb 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+struct macro_cb_arg
+{
+  HashTable predef;
+  void (*func)(const CMacroInfo *);
+  CMacroInfo info;
+};
+
+static void macro_callback(const struct macro_info *pmi)
+{
+  struct macro_cb_arg *a = pmi->arg;
+  if (a->predef == NULL || !HT_exists(a->predef, pmi->name, 0, 0))
+  {
+    CMacroInfo *p = &a->info;
+
+    p->name           = pmi->name;
+    p->definition     = pmi->definition;
+    p->definition_len = pmi->definition_len;
+
+    a->func(p);
+  }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: add_predef_callback
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Feb 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void add_predef_callback(const struct macro_info *pmi)
+{
+  HT_store(pmi->arg, pmi->name, 0, 0, NULL);
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: destroy_cpp
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Feb 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void destroy_cpp(struct CPP *pp)
+{
+  assert(pp != 0);
+
+  wipeout(pp);
+
+  del_cpp(pp);
+
+  /* XXX: This cannot be used with concurrent preprocessor objects.
+   *      Leak checking has to be done when all objects are gone.
+   */
+#ifdef MEM_DEBUG
+  assert(gs_num_cpp > 0);
+
+  gs_num_cpp--;
+
+  if (gs_num_cpp == 0)
+  {
+    report_leaks();
+  }
+#endif
+}
+
 
 /*===== FUNCTIONS ============================================================*/
+
+/*******************************************************************************
+*
+*   ROUTINE: macro_is_defined
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Feb 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+int macro_is_defined(CParseInfo *pCPI, const char *name)
+{
+  assert(pCPI != NULL);
+
+  if (pCPI->pp)
+    return is_macro_defined(pCPI->pp, name);
+
+  return 0;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: macro_get_def
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Feb 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+char *macro_get_def(CParseInfo *pCPI, const char *name, size_t *plen)
+{
+  assert(pCPI != NULL);
+
+  if (pCPI->pp)
+    return get_macro_definition(pCPI->pp, name, plen);
+
+  return NULL;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: macro_free_def
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Feb 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void macro_free_def(char *p)
+{
+  free_macro_definition(p);
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: macro_iterate_defs
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Feb 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void macro_iterate_defs(CParseInfo *pCPI, void (*func)(const CMacroInfo *),
+                        void *arg, CMIFlags flags)
+{
+  if (pCPI && pCPI->pp)
+  {
+    struct macro_cb_arg a;
+    unsigned long ppflags = 0;
+
+    if (flags & CMIF_WITH_DEFINITION)
+      ppflags |= MI_WITH_DEFINITION;
+
+    if (flags & CMIF_NO_PREDEFINED)
+      a.predef = pCPI->htPredefined;
+    else
+      a.predef = NULL;
+
+    a.func     = func;
+    a.info.arg = arg;
+
+    iterate_macros(pCPI->pp, macro_callback, &a, ppflags);
+  }
+}
 
 /*******************************************************************************
 *
@@ -156,21 +375,15 @@ static char *get_path_name(const char *dir, const char *file)
 int parse_buffer(const char *filename, const Buffer *pBuf,
                  const CParseConfig *pCPC, CParseInfo *pCPI)
 {
-  int                rval;
+  int                rval, pp_needs_init;
   char              *file, *str;
   FILE              *infile;
   struct lexer_state lexer;
   ParserState       *pState;
-#ifdef UCPP_REENTRANT
-  struct CPP        *cpp;
-#endif
+  struct CPP        *pp;
 
   CT_DEBUG(CTLIB, ("ctparse::parse_buffer( %s, %p, %p, %p )",
            filename ? filename : BUFFER_NAME, pBuf, pCPI, pCPC));
-
-#ifndef UCPP_REENTRANT
-  g_current_cpi = pCPI;
-#endif
 
   /*----------------------------------*/
   /* Initialize parse info structures */
@@ -199,6 +412,7 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
     pCPI->htStructs     = HT_new_ex(4, HT_AUTOGROW);
     pCPI->htTypedefs    = HT_new_ex(4, HT_AUTOGROW);
     pCPI->htFiles       = HT_new_ex(3, HT_AUTOGROW);
+    pCPI->htPredefined  = HT_new_ex(3, HT_AUTOGROW);
 
     pCPI->errorStack    = LL_new();
 
@@ -248,43 +462,51 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
       {
         Free(file);
         push_error(pCPI, "Cannot find input file '%s'", filename);
-#ifndef UCPP_REENTRANT
-        g_current_cpi = NULL;
-#endif
         return 0;
       }
     }
   }
 
   /*-------------------------*/
-  /* Set up the preprocessor */
+  /* Set up new preprocessor */
   /*-------------------------*/
 
-  CT_DEBUG(CTLIB, ("initializing preprocessor"));
+  CT_DEBUG(CTLIB, ("setting up preprocessor"));
 
-#ifdef UCPP_REENTRANT
-  cpp = new_cpp();
+  pp_needs_init = pCPI->pp == NULL;
+
+  if (pp_needs_init)
+  {
+#ifdef MEM_DEBUG
+    gs_num_cpp++;
 #endif
 
-  init_cpp(aUCPP);
+    pp = pCPI->pp = new_cpp();
 
-#ifdef UCPP_REENTRANT
-  cpp->ucpp_ouch    = my_ucpp_ouch;
-  cpp->ucpp_error   = my_ucpp_error;
-  cpp->ucpp_warning = my_ucpp_warning;
-  cpp->callback_arg = (void *) pCPI;
-#endif
+    CT_DEBUG(CTLIB, ("created preprocessor object @ %p", pp));
 
-  r_no_special_macros = 0;
-  r_emit_defines      = 0;
-  r_emit_assertions   = 0;
-  r_emit_dependencies = 0;
+    init_cpp(pp);
 
-  init_tables( aUCPP_ 1 );
+    pp->ucpp_ouch    = my_ucpp_ouch;
+    pp->ucpp_error   = my_ucpp_error;
+    pp->ucpp_warning = my_ucpp_warning;
+    pp->callback_arg = (void *) pCPI;
 
-  CT_DEBUG(CTLIB, ("configuring preprocessor"));
+    r_no_special_macros = 0;
+    r_emit_defines      = 0;
+    r_emit_assertions   = 0;
+    r_emit_dependencies = 0;
 
-  init_include_path(aUCPP_ NULL);
+    init_tables(aUCPP_ 1);
+
+    CT_DEBUG(CTLIB, ("configuring preprocessor"));
+
+    init_include_path(aUCPP_ NULL);
+  }
+  else
+  {
+    pp = pCPI->pp;
+  }
 
   if (filename != NULL)
   {
@@ -325,28 +547,33 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
     lexer.ebuf         = pBuf->length;
   }
 
-  /* Add includes */
-
-  LL_foreach(str, pCPC->includes)
+  if (pp_needs_init)
   {
-    CT_DEBUG(CTLIB, ("adding include path '%s'", str));
-    add_incpath(aUCPP_ str);
-  }
+    /* Add includes */
 
-  /* Make defines */
+    LL_foreach(str, pCPC->includes)
+    {
+      CT_DEBUG(CTLIB, ("adding include path '%s'", str));
+      add_incpath(aUCPP_ str);
+    }
 
-  LL_foreach(str, pCPC->defines)
-  {
-    CT_DEBUG(CTLIB, ("defining macro '%s'", str));
-    (void) define_macro(aUCPP_ &lexer, str);
-  }
+    /* Make defines */
 
-  /* Make assertions */
+    LL_foreach(str, pCPC->defines)
+    {
+      CT_DEBUG(CTLIB, ("defining macro '%s'", str));
+      (void) define_macro(aUCPP_ &lexer, str);
+    }
 
-  LL_foreach(str, pCPC->assertions)
-  {
-    CT_DEBUG(CTLIB, ("making assertion '%s'", str));
-    (void) make_assertion(aUCPP_ str);
+    /* Make assertions */
+
+    LL_foreach(str, pCPC->assertions)
+    {
+      CT_DEBUG(CTLIB, ("making assertion '%s'", str));
+      (void) make_assertion(aUCPP_ str);
+    }
+
+    iterate_macros(aUCPP_ add_predef_callback, pCPI->htPredefined, 0);
   }
 
   enter_file(aUCPP_ &lexer, lexer.flags);
@@ -384,23 +611,12 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
 
   if (DEBUG_FLAG(PREPROC))
   {
-#ifdef UCPP_REENTRANT
-    cpp->
-#endif
-    emit_output = stderr;  /* the best we can get here... */
-    print_defines(aUCPP);
+    pp->emit_output = stderr;  /* the best we can get here... */
+    print_defines(pp);
+    print_assertions(pp);
   }
 
   free_lexer_state(&lexer);
-  wipeout(aUCPP);
-
-#ifdef UCPP_REENTRANT
-  del_cpp(cpp);
-#endif
-
-#ifdef MEM_DEBUG
-  report_leaks();
-#endif
 
   /*----------------------*/
   /* Cleanup the C parser */
@@ -421,11 +637,8 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
     HT_dump(pCPI->htStructs);
     HT_dump(pCPI->htTypedefs);
     HT_dump(pCPI->htFiles);
+    HT_dump(pCPI->htPredefined);
   }
-#endif
-
-#ifndef UCPP_REENTRANT
-  g_current_cpi = NULL;
 #endif
 
   return rval ? 0 : 1;
@@ -463,11 +676,44 @@ void init_parse_info(CParseInfo *pCPI)
     pCPI->htStructs     = NULL;
     pCPI->htTypedefs    = NULL;
     pCPI->htFiles       = NULL;
+    pCPI->htPredefined  = NULL;
 
     pCPI->errorStack    = NULL;
+    pCPI->pp            = NULL;
 
     pCPI->available     = 0;
     pCPI->ready         = 0;
+  }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: reset_preprocessor
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Feb 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void reset_preprocessor(CParseInfo *pCPI)
+{
+  CT_DEBUG(CTLIB, ("ctparse::reset_preprocessor()"));
+
+  if (pCPI && pCPI->pp)
+  {
+    CT_DEBUG(CTLIB, ("destroying preprocessor object @ %p", pCPI->pp));
+
+    destroy_cpp(pCPI->pp);
+
+    pCPI->pp = NULL;
   }
 }
 
@@ -507,12 +753,16 @@ void free_parse_info(CParseInfo *pCPI)
 
       HT_destroy(pCPI->htFiles,       (LLDestroyFunc) fileinfo_delete);
 
+      HT_destroy(pCPI->htPredefined,  NULL);
+
       if (pCPI->errorStack)
       {
         pop_all_errors(pCPI);
         LL_delete(pCPI->errorStack);
       }
     }
+
+    reset_preprocessor(pCPI);
 
     init_parse_info(pCPI);  /* make sure everything is NULL'd */
   }
@@ -675,6 +925,19 @@ void clone_parse_info(CParseInfo *pDest, const CParseInfo *pSrc)
   assert(pSrc->htStructs != NULL);
   assert(pSrc->htTypedefs != NULL);
   assert(pSrc->htFiles != NULL);
+  assert(pSrc->htPredefined != NULL);
+
+  if (pSrc->pp)
+  {
+#ifdef MEM_DEBUG
+    gs_num_cpp++;
+#endif
+
+    pDest->pp = clone_cpp(pSrc->pp);
+    assert(pDest->pp != NULL);
+
+    CT_DEBUG(CTLIB, ("cloned preprocessor object @ %p -> %p", pSrc->pp, pDest->pp));
+  }
 
   ptrmap = HT_new_ex(3, HT_AUTOGROW);
 
@@ -759,6 +1022,10 @@ void clone_parse_info(CParseInfo *pDest, const CParseInfo *pSrc)
       HT_store(ptrmap, (const char *) &pOld, sizeof(pOld), 0, pNew);
     }
   }
+
+  CT_DEBUG(CTLIB, ("cloning predefined macros"));
+
+  pDest->htPredefined = HT_clone(pSrc->htPredefined, NULL);
 
   CT_DEBUG(CTLIB, ("remapping pointers for enums"));
 

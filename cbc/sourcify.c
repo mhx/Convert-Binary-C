@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:37:59 +0000 $
-* $Revision: 13 $
+* $Date: 2006/02/26 10:04:05 +0000 $
+* $Revision: 15 $
 * $Source: /cbc/sourcify.c $
 *
 ********************************************************************************
@@ -60,13 +60,21 @@
 #define CHECK_SET_KEYWORD                \
         STMT_START {                     \
           if (pSS->flags & F_KEYWORD)    \
-            sv_catpv(s, " ");            \
+            sv_catpvn(s, " ", 1);        \
           else                           \
             SRC_INDENT;                  \
           pSS->flags &= ~F_NEWLINE;      \
           pSS->flags |= F_KEYWORD;       \
         } STMT_END
 
+#define SvGROW_early(s, granularity)                   \
+        STMT_START {                                   \
+          if (SvCUR(s) + ((granularity)/2) > SvLEN(s)) \
+            SvGROW(s, SvCUR(s) + (granularity));       \
+        } STMT_END
+
+#define SVG_STRUCT 512
+#define SVG_ENUM   512
 
 /*===== TYPEDEFS =============================================================*/
 
@@ -91,6 +99,9 @@ static void add_typedef_list_decl_string(pTHX_ SV *str, TypedefList *pTDL);
 static void add_typedef_list_spec_string(pTHX_ SourcifyConfig *pSC, SV *str, TypedefList *pTDL);
 static void add_enum_spec_string(pTHX_ SourcifyConfig *pSC, SV *str, EnumSpecifier *pES);
 static void add_struct_spec_string(pTHX_ SourcifyConfig *pSC, SV *str, Struct *pStruct);
+
+static void pp_macro_callback(const CMacroInfo *pmi);
+static void add_preprocessor_definitions(pTHX_ CParseInfo *pCPI, SV *str);
 
 
 /*===== EXTERNAL VARIABLES ===================================================*/
@@ -241,8 +252,8 @@ static void add_type_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s,
 *
 ********************************************************************************
 *
-* DESCRIPTION:
-*
+* DESCRIPTION:\
+*             \
 *   ARGUMENTS:
 *
 *     RETURNS:
@@ -256,13 +267,15 @@ static void add_enum_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *s,
                           " level=%d, pSS->flags=0x%08lX, pSS->pack=%u )",
                           pES->identifier, level, (unsigned long) pSS->flags, pSS->pack));
 
+  SvGROW_early(s, SVG_ENUM);
+
   pES->tflags |= T_ALREADY_DUMPED;
 
   if (pSC->context)
   {
     if ((pSS->flags & F_NEWLINE) == 0)
     {
-      sv_catpv(s, "\n");
+      sv_catpvn(s, "\n", 1);
       pSS->flags &= ~F_KEYWORD;
       pSS->flags |= F_NEWLINE;
     }
@@ -271,13 +284,13 @@ static void add_enum_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *s,
   }
 
   if (pSS->flags & F_KEYWORD)
-    sv_catpv(s, " ");
+    sv_catpvn(s, " ", 1);
   else
     SRC_INDENT;
 
   pSS->flags &= ~(F_NEWLINE|F_KEYWORD);
 
-  sv_catpv(s, "enum");
+  sv_catpvn(s, "enum", 4);
   if (pES->identifier[0])
     sv_catpvf(s, " %s", pES->identifier);
 
@@ -287,16 +300,16 @@ static void add_enum_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *s,
     int         first = 1;
     Value       lastVal;
 
-    sv_catpv(s, "\n");
+    sv_catpvn(s, "\n", 1);
     SRC_INDENT;
-    sv_catpv(s, "{");
+    sv_catpvn(s, "{", 1);
 
     LL_foreach(pEnum, pES->enumerators)
     {
       if (!first)
-        sv_catpv(s, ",");
+        sv_catpvn(s, ",", 1);
 
-      sv_catpv(s, "\n");
+      sv_catpvn(s, "\n", 1);
       SRC_INDENT;
 
       if (( first && pEnum->value.iv == 0) ||
@@ -311,9 +324,9 @@ static void add_enum_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *s,
       lastVal = pEnum->value;
     }
 
-    sv_catpv(s, "\n");
+    sv_catpvn(s, "\n", 1);
     SRC_INDENT;
-    sv_catpv(s, "}");
+    sv_catpvn(s, "}", 1);
   }
 }
 
@@ -346,6 +359,8 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
                           pStruct->pack, (unsigned long) pStruct->tflags,
                           level, (unsigned long) pSS->flags, pSS->pack));
 
+  SvGROW_early(s, SVG_STRUCT);
+
   pStruct->tflags |= T_ALREADY_DUMPED;
 
   pack_pushed = pStruct->declarations
@@ -356,7 +371,7 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
   {
     if ((pSS->flags & F_NEWLINE) == 0)
     {
-      sv_catpv(s, "\n");
+      sv_catpvn(s, "\n", 1);
       pSS->flags &= ~F_KEYWORD;
       pSS->flags |= F_NEWLINE;
     }
@@ -367,7 +382,7 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
   {
     if ((pSS->flags & F_NEWLINE) == 0)
     {
-      sv_catpv(s, "\n");
+      sv_catpvn(s, "\n", 1);
       pSS->flags &= ~F_KEYWORD;
       pSS->flags |= F_NEWLINE;
     }
@@ -376,13 +391,16 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
   }
 
   if (pSS->flags & F_KEYWORD)
-    sv_catpv(s, " ");
+    sv_catpvn(s, " ", 1);
   else
     SRC_INDENT;
 
   pSS->flags &= ~(F_NEWLINE|F_KEYWORD);
 
-  sv_catpv(s, pStruct->tflags & T_STRUCT ? "struct" : "union");
+  if(pStruct->tflags & T_STRUCT)
+    sv_catpvn(s, "struct", 6);
+  else
+    sv_catpvn(s, "union", 5);
 
   if (pStruct->identifier[0])
     sv_catpvf(s, " %s", pStruct->identifier);
@@ -391,9 +409,9 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
   {
     StructDeclaration *pStructDecl;
 
-    sv_catpv(s, "\n");
+    sv_catpvn(s, "\n", 1);
     SRC_INDENT;
-    sv_catpv(s, "{\n");
+    sv_catpvn(s, "{\n", 2);
 
     LL_foreach(pStructDecl, pStruct->declarations)
     {
@@ -421,7 +439,7 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
       if (ss.flags & F_NEWLINE)
         add_indent(aTHX_ s, level+1);
       else if (pStructDecl->declarators)
-        sv_catpv(s, " ");
+        sv_catpvn(s, " ", 1);
 
       LL_foreach(pDecl, pStructDecl->declarators)
       {
@@ -430,7 +448,7 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
         if (first)
           first = 0;
         else
-          sv_catpv(s, ", ");
+          sv_catpvn(s, ", ", 2);
 
         if (pDecl->bitfield_flag)
         {
@@ -446,17 +464,17 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
         }
       }
 
-      sv_catpv(s, ";\n");
+      sv_catpvn(s, ";\n", 2);
 
       if (ss.flags & F_PRAGMA_PACK_POP)
-        sv_catpv(s, "#pragma pack(pop)\n");
+        sv_catpvn(s, "#pragma pack(pop)\n", 18);
 
       if (need_def)
         check_define_type(aTHX_ pSC, str, &pStructDecl->type);
     }
 
     SRC_INDENT;
-    sv_catpv(s, "}");
+    sv_catpvn(s, "}", 1);
   }
 
   if (pack_pushed)
@@ -495,7 +513,7 @@ static void add_typedef_list_decl_string(pTHX_ SV *str, TypedefList *pTDL)
     if (first)
       first = 0;
     else
-      sv_catpv(str, ", ");
+      sv_catpvn(str, ", ", 2);
 
     sv_catpvf(str, "%s%s", pDecl->pointer_flag ? "*" : "", pDecl->identifier);
 
@@ -535,14 +553,14 @@ static void add_typedef_list_spec_string(pTHX_ SourcifyConfig *pSC, SV *str, Typ
   add_type_spec_string_rec(aTHX_ pSC, str, s, &pTDL->type, 0, &ss);
 
   if ((ss.flags & F_NEWLINE) == 0)
-    sv_catpv(s, " ");
+    sv_catpvn(s, " ", 1);
 
   add_typedef_list_decl_string(aTHX_ s, pTDL);
 
-  sv_catpv(s, ";\n");
+  sv_catpvn(s, ";\n", 2);
 
   if (ss.flags & F_PRAGMA_PACK_POP)
-    sv_catpv(s, "#pragma pack(pop)\n");
+    sv_catpvn(s, "#pragma pack(pop)\n", 18);
 
   sv_catsv(str, s);
 
@@ -577,7 +595,7 @@ static void add_enum_spec_string(pTHX_ SourcifyConfig *pSC, SV *str, EnumSpecifi
   ss.pack  = 0;
 
   add_enum_spec_string_rec(aTHX_ pSC, s, pES, 0, &ss);
-  sv_catpv(s, ";\n");
+  sv_catpvn(s, ";\n", 2);
   sv_catsv(str, s);
 
   SvREFCNT_dec(s);
@@ -611,12 +629,99 @@ static void add_struct_spec_string(pTHX_ SourcifyConfig *pSC, SV *str, Struct *p
   ss.pack  = 0;
 
   add_struct_spec_string_rec(aTHX_ pSC, str, s, pStruct, 0, &ss);
-  sv_catpv(s, ";\n");
+  sv_catpvn(s, ";\n", 2);
 
   if (ss.flags & F_PRAGMA_PACK_POP)
-    sv_catpv(s, "#pragma pack(pop)\n");
+    sv_catpvn(s, "#pragma pack(pop)\n", 18);
 
   sv_catsv(str, s);
+
+  SvREFCNT_dec(s);
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: pp_macro_callback
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Feb 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+#define SvGROWexp(s, amount)                                                   \
+        BEGIN_STMT {                                                           \
+          if (SvCUR(s) + pmi->definition_len + 10 >= SvLEN(s))                 \
+            SvGROW(s, 2*SvLEN(s));                                             \
+        } END_STMT
+
+struct macro_cb_arg
+{
+#ifdef PERL_IMPLICIT_CONTEXT
+  void *interp;
+#endif
+  SV *string;
+};
+
+static void pp_macro_callback(const CMacroInfo *pmi)
+{
+  struct macro_cb_arg *a = pmi->arg;
+  SV *s = a->string;
+  dTHXa(a->interp);
+
+  if (SvCUR(s) + pmi->definition_len + 10 >= SvLEN(s))
+    SvGROW(s, 2*SvLEN(s));
+
+  sv_catpvn(s, "#define ", 8);
+  sv_catpvn(s, pmi->definition, pmi->definition_len);
+  sv_catpvn(s, "\n", 1);
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: add_preprocessor_definitions
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Feb 2006
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void add_preprocessor_definitions(pTHX_ CParseInfo *pCPI, SV *str)
+{
+  struct macro_cb_arg a;
+  SV *s = newSVpvn("", 0);
+
+#ifdef PERL_IMPLICIT_CONTEXT
+  a.interp = aTHX;
+#endif
+  a.string = s;
+
+  SvGROW(s, 512);
+
+  macro_iterate_defs(pCPI, pp_macro_callback, &a, CMIF_WITH_DEFINITION |
+                                                  CMIF_NO_PREDEFINED);
+
+  if (SvCUR(s) > 0)
+  {
+    sv_catpv(str, "/* preprocessor defines */\n\n");
+    sv_catsv(str, s);
+    sv_catpvn(str, "\n", 1);
+  }
 
   SvREFCNT_dec(s);
 }
@@ -679,6 +784,10 @@ void get_sourcify_config(pTHX_ HV *cfg, SourcifyConfig *pSC)
     {
       case SOURCIFY_OPTION_Context:
         pSC->context = SvTRUE(value);
+        break;
+
+      case SOURCIFY_OPTION_Defines:
+        pSC->defines = SvTRUE(value);
         break;
 
       default:
@@ -763,7 +872,7 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
         }
         sv_catpvf(s, "typedef %s %s ", what, ident);
         add_typedef_list_decl_string(aTHX_ s, pTDL);
-        sv_catpv(s, ";\n");
+        sv_catpvn(s, ";\n", 2);
       }
     }
   }
@@ -784,7 +893,7 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
           fTypedef = 1;
         }
         add_typedef_list_spec_string(aTHX_ pSC, s, pTDL);
-        sv_catpv(s, "\n");
+        sv_catpvn(s, "\n", 1);
       }
 
   /* defined enums */
@@ -800,7 +909,7 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
         fEnum = 1;
       }
       add_enum_spec_string(aTHX_ pSC, s, pES);
-      sv_catpv(s, "\n");
+      sv_catpvn(s, "\n", 1);
     }
 
   /* defined structs and unions */
@@ -816,7 +925,7 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
         fStruct = 1;
       }
       add_struct_spec_string(aTHX_ pSC, s, pStruct);
-      sv_catpv(s, "\n");
+      sv_catpvn(s, "\n", 1);
     }
 
   /* undefined enums */
@@ -833,7 +942,7 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
           fUndefEnum = 1;
         }
         add_enum_spec_string(aTHX_ pSC, s, pES);
-        sv_catpv(s, "\n");
+        sv_catpvn(s, "\n", 1);
       }
     }
 
@@ -854,12 +963,22 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
           fUndefStruct = 1;
         }
         add_struct_spec_string(aTHX_ pSC, s, pStruct);
-        sv_catpv(s, "\n");
+        sv_catpvn(s, "\n", 1);
       }
     }
 
     pStruct->tflags &= ~T_ALREADY_DUMPED;
   }
+
+  /*
+   * preprocessor stuff
+   *
+   * NOTE: This _must_ be at the end, because, if placed at the top, some
+   *       defines may already interfere with the C code.
+   */
+
+  if (pSC->defines)
+    add_preprocessor_definitions(aTHX_ pCPI, s);
 
   return s;
 }

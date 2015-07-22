@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:03 +0000 $
-* $Revision: 6 $
+* $Date: 2006/02/24 21:05:09 +0000 $
+* $Revision: 8 $
 * $Source: /ctlib/cppreent.h $
 *
 ********************************************************************************
@@ -53,36 +53,19 @@
 # undef dUCPP
 #endif
 
-#ifdef UCPP_REENTRANT
-
-# define pUCPP     struct CPP *cpp __attribute__((unused))
+# define pUCPP     struct CPP *pp __attribute__((unused))
 # define pUCPP_    pUCPP,
-# define aUCPP     cpp
+# define aUCPP     pp
 # define aUCPP_    aUCPP,
 # define dUCPP(a)  pUCPP = (struct CPP *)a
 
 /* ucpp global variables */
-# define r_no_special_macros   ((struct CPP *) cpp)->no_special_macros
-# define r_emit_defines        ((struct CPP *) cpp)->emit_defines
-# define r_emit_assertions     ((struct CPP *) cpp)->emit_assertions
-# define r_emit_dependencies   ((struct CPP *) cpp)->emit_dependencies
-# define r_current_filename    ((struct CPP *) cpp)->current_filename
-
-#else /* !UCPP_REENTRANT */
-
-# define pUCPP     void
-# define pUCPP_
-# define aUCPP
-# define aUCPP_
-# define dUCPP(a)  extern int CTlib___notused __attribute__((unused))
-
-# define r_no_special_macros   no_special_macros
-# define r_emit_defines        emit_defines
-# define r_emit_assertions     emit_assertions
-# define r_emit_dependencies   emit_dependencies
-# define r_current_filename    current_filename
-
-#endif /* UCPP_REENTRANT */
+# define r_no_special_macros   ((struct CPP *) pp)->no_special_macros
+# define r_emit_defines        ((struct CPP *) pp)->emit_defines
+# define r_emit_assertions     ((struct CPP *) pp)->emit_assertions
+# define r_emit_dependencies   ((struct CPP *) pp)->emit_dependencies
+# define r_current_filename    ((struct CPP *) pp)->current_filename
+# define r_callback_arg        ((struct CPP *) pp)->callback_arg
 
 /*===== TYPEDEFS =============================================================*/
 

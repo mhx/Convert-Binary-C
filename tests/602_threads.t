@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/01 09:38:21 +0000 $
-# $Revision: 26 $
+# $Date: 2006/02/05 22:05:06 +0000 $
+# $Revision: 28 $
 # $Source: /tests/602_threads.t $
 #
 ################################################################################
@@ -29,27 +29,21 @@ BEGIN {
 # load appropriate threads module and start a couple of threads
 #===================================================================
 
-my $have_threads = Convert::Binary::C::feature( 'threads' )
-                   && (   ($Config{useithreads} && $] >= 5.008)
-                        || $Config{use5005threads}
-                      );
+my $have_threads = ($Config{useithreads} && $] >= 5.008) ||
+                    $Config{use5005threads};
 
 my $reason = $Config{useithreads} || $Config{use5005threads}
-             ? (
-               Convert::Binary::C::feature( 'threads' )
-               ? "unsupported threads configuration"
-               : "not built with threads support"
-             )
+             ? "unsupported threads configuration"
              : "no threads";
 
 my @t;
 
-if( $have_threads ) {
-  if( $Config{use5005threads} ) {
+if ($have_threads) {
+  if ($Config{use5005threads}) {
     require Thread;
     @t = map { new Thread \&task, $_ } 1 .. NUM_THREADS;
   }
-  elsif( $Config{useithreads} && $] >= 5.008 ) {
+  elsif ($Config{useithreads} && $] >= 5.008) {
     require threads;
     @t = map { new threads \&task, $_ } 1 .. NUM_THREADS;
   }
@@ -59,10 +53,11 @@ else {
   @t = 1 .. NUM_THREADS
 }
 
-skip( $have_threads ? '' : "skip: $reason",
-      $have_threads ? $_->join : $_, '', "thread failed" ) for @t;
+skip($have_threads ? '' : $reason,
+     $have_threads ? $_->join : $_, '', "thread failed") for @t;
 
-sub task {
+sub task
+{
   my $arg = shift;
   my $p;
 
@@ -78,9 +73,9 @@ sub task {
                                 LongDoubleSize => 12,
                                 Include        => ['tests/include/perlinc',
                                                    'tests/include/include'];
-    if( $arg % 2 ) {
+    if ($arg % 2) {
       print "# parse_file ($arg) called\n";
-      $p->parse_file( 'tests/include/include.c' );
+      $p->parse_file('tests/include/include.c');
       print "# parse_file ($arg) returned\n";
     }
     else {
@@ -130,13 +125,13 @@ END
     push @fail, $_[0];
   };
 
-  for my $t ( keys %size ) {
+  for my $t (keys %size) {
     my $s = eval { $p->sizeof($t) };
 
-    if( $@ ) {
+    if ($@) {
       print "# sizeof failed for '$t': $@\n";
     }
-    elsif( $size{$t} != $s ) {
+    elsif ($size{$t} != $s) {
       print "# incorrect size for '$t' (expected $size{$t}, got $s)\n";
     }
     else {
@@ -154,12 +149,12 @@ END
   my $data = pack 'C*', map { $_ & 0xFF } 1 .. $max_size;
   @fail = ();
 
-  for my $id ( @enum_ids, @compound_ids, @typedef_ids ) {
+  for my $id (@enum_ids, @compound_ids, @typedef_ids) {
 
     # skip long doubles
     next if grep { $id eq $_ } qw( __convert_long_double float_t double_t );
 
-    my $x = eval { $p->unpack( $id, $data ) };
+    my $x = eval { $p->unpack($id, $data) };
 
     if( $@ ) {
       print "# ($arg) unpack failed for '$id': $@\n";
@@ -167,15 +162,15 @@ END
       next;
     }
 
-    my $packed = eval { $p->pack( $id, $x ) };
+    my $packed = eval { $p->pack($id, $x) };
 
-    if( $@ ) {
+    if ($@) {
       print "# ($arg) pack failed for '$id': $@\n";
       push @fail, $id;
       next;
     }
 
-    unless( chkpack( $data, $packed ) ) {
+    unless (chkpack($data, $packed)) {
       print "# ($arg) inconsistent pack/unpack data for '$id'\n";
       push @fail, $id;
       next;
@@ -193,7 +188,7 @@ sub chkpack
 {
   my($orig, $pack) = @_;
 
-  for( my $i = 0; $i < length $pack; ++$i ) {
+  for (my $i = 0; $i < length $pack; ++$i) {
     my $p = ord substr $pack, $i, 1;
     if ($i < length $orig) {
       my $o = ord substr $orig, $i, 1;

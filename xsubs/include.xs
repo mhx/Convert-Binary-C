@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/01 09:38:30 +0000 $
-# $Revision: 3 $
+# $Date: 2006/02/26 00:51:36 +0000 $
+# $Revision: 4 $
 # $Source: /xsubs/include.xs $
 #
 ################################################################################
@@ -89,6 +89,8 @@ CBC::Include(...)
 
     if (hasRval)
       ST(0) = sv_2mortal(rval);
+
+    reset_preprocessor(&THIS->cpi);
 
     XSRETURN(1);
 

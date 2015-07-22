@@ -16,12 +16,12 @@ Convert::Binary::C - Binary Data Conversion using C Types
 =head1 DESCRIPTION
 
 Convert::Binary::C is a preprocessor and parser for C type
-definitions. It is highly configurable and should support
+definitions. It is highly configurable and supports
 arbitrarily complex data structures. Its object-oriented
 interface has L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> methods
 that act as replacements for
 Perl's L<C<pack>|perlfunc/"pack"> and L<C<unpack>|perlfunc/"unpack"> and
-allow to use the C types instead of a string representation
+allow to use C types instead of a string representation
 of the data structure for conversion of binary data from and
 to Perl's complex data structures.
 
@@ -307,6 +307,17 @@ of the Convert::Binary::C object using C<Assert>:
 
   $$preprocessor.pl [3]$$
 
+Information about defined macros can be retrieved from the
+preprocessor as long as its configuration isn't changed. The
+preprocessor is implicitly reset if you change one of the
+following configuration options:
+
+  Include
+  Define
+  Assert
+  HasCPPComments
+  HasMacroVAARGS
+
 =head2 Supported pragma directives
 
 Convert::Binary::C supports the C<pack> pragma to locally override
@@ -500,7 +511,7 @@ probably more tags to come in the future.
 =head2 The Format Tag
 
 One of the tags currently available is the C<Format> tag.
-Using this tag you can a tell Convert::Binary::C object to
+Using this tag, you can tell a Convert::Binary::C object to
 pack and unpack a certain data type in a special way.
 
 For example, if you have a (fixed length) string type
@@ -1638,10 +1649,11 @@ occurs. On success, the method returns a reference to its object.
 
 See L<"Parsing C code"> for an example.
 
-You must be aware that the preprocessor is reset with every call
-to L<C<parse>|/"parse"> or L<C<parse_file>|/"parse_file">.
-Also, you may use types previously defined, but you are not allowed
-to redefine types.
+When calling L<C<parse>|/"parse"> or L<C<parse_file>|/"parse_file"> multiple
+times, you may use types previously defined, but you are not allowed
+to redefine types. The state of the preprocessor is also saved, so you
+may also use defines from a previous parse. This works only as long as the
+preprocessor is not reset. See L<"Preprocessor configuration"> for details.
 
 When you're parsing C source files instead of C header
 files, note that local definitions are ignored. This means
@@ -1738,6 +1750,27 @@ will give preference to the typedef and will thus return
 the string C<"typedef">. You could however force interpretation
 as an enum, struct or union by putting C<"enum">, C<"struct">
 or C<"union"> in front of the type's name.
+
+=back
+
+=head2 defined
+
+=over 8
+
+=item C<defined> MACRO
+
+You can use the L<C<defined>|/"defined"> method to find out if a certain
+macro is defined, just like you would use the C<defined> operator of the
+preprocessor. For example, the following code
+
+  $$defined.pl$$
+
+would print:
+
+  @@defined.pl@@
+
+You have to keep in mind that this works only as long as the preprocessor
+is not reset. See L<"Preprocessor configuration"> for details.
 
 =back
 
@@ -2483,6 +2516,19 @@ would print:
 Note that C<"[buffer]"> refers to the here-doc buffer when
 using L<C<parse>|/"parse">.
 
+=item C<Defines> =E<gt> 0 | 1
+
+Turn this on if you want the defined macros to be part of the
+code output. Given the example code above
+
+  $$sourcify.pl [3]$$
+
+would print:
+
+  @@sourcify.pl [3]@@
+
+The order of the macro definitions is undefined.
+
 =back
 
 =back
@@ -2853,6 +2899,48 @@ a description on how to interpret this hash.
 
 =back
 
+=head2 macro_names
+
+=over 8
+
+=item C<macro_names>
+
+Returns a list of all defined macro names.
+
+The list returned by the L<C<macro_names>|/"macro_names"> method
+looks similar to this:
+
+  @@definitions.pl macro_names definitions.c@@
+
+This works only as long as the preprocessor is not reset.
+See L<"Preprocessor configuration"> for details.
+
+=back
+
+=head2 macro
+
+=over 8
+
+=item C<macro>
+
+=item C<macro> LIST
+
+Returns the definitions for all defined macros.
+
+If a list of macro names is passed to the method, the
+returned list will only contain the definitions for those
+macros. For undefined macros, C<undef> will be returned.
+
+The list returned by the L<C<macro>|/"macro"> method looks
+similar to this:
+
+  @@definitions.pl macro definitions.c@@
+
+This works only as long as the preprocessor is not reset.
+See L<"Preprocessor configuration"> for details.
+
+=back
+
 =head1 FUNCTIONS
 
 You can alternatively call the following functions as methods
@@ -2874,7 +2962,7 @@ will check if Convert::Binary::C was built with debugging support
 enabled. The C<feature> function returns C<1> if the feature is
 enabled, C<0> if the feature is disabled, and C<undef> if the
 feature is unknown. Currently the only features that can be checked
-are C<ieeefp>, C<debug> and C<threads>.
+are C<ieeefp> and C<debug>.
 
 You can enable or disable certain features at compile time of the
 module by using the
@@ -2896,29 +2984,18 @@ syntax.
 Returns the value of a property of the native system that
 Convert::Binary::C was built on. For example,
 
-  $size = Convert::Binary::C::native('IntSize');
+  $$native.pl [2]$$
 
 will fetch the size of an C<int> on the native system.
 The following properties can be queried:
 
-  Alignment
-  ByteOrder
-  CompoundAlignment
-  DoubleSize
-  EnumSize
-  FloatSize
-  IntSize
-  LongDoubleSize
-  LongLongSize
-  LongSize
-  PointerSize
-  ShortSize
+  @@native.pl [1]@@
 
 You can also call L<C<native>|/"native"> without arguments,
 in which case it will return a reference to a hash with all
 properties, like:
 
-  @@native.pl@@
+  @@native.pl [2]@@
 
 The contents of that hash are suitable for passing them to
 the L<C<configure>|/"configure"> method.
@@ -3408,5 +3485,6 @@ linked to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
+
 
 

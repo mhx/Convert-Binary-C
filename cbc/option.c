@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/04 17:20:46 +0000 $
-* $Revision: 19 $
+* $Date: 2006/02/20 09:31:03 +0000 $
+* $Revision: 21 $
 * $Source: /cbc/option.c $
 *
 ********************************************************************************
@@ -751,6 +751,7 @@ void handle_string_list(pTHX_ const char *option, LinkedList list, SV *sv, SV **
           {                                                                    \
             p_res->option_modified = 0;                                        \
             p_res->impacts_layout = 0;                                         \
+            p_res->impacts_preproc = 0;                                        \
           }                                                                    \
           if (SvROK(opt))                                                      \
             Perl_croak(aTHX_ "Option name must be a string, "                  \
@@ -767,6 +768,12 @@ void handle_string_list(pTHX_ const char *option, LinkedList list, SV *sv, SV **
         STMT_START {                                                           \
           if (p_res)                                                           \
             p_res->impacts_layout = layout;                                    \
+        } STMT_END
+
+#define IMPACTS_PREPROC(pp)                                                    \
+        STMT_START {                                                           \
+          if (p_res)                                                           \
+            p_res->impacts_preproc = pp;                                       \
         } STMT_END
 
 #define POST_PROCESS      } switch (cfgopt) {
@@ -786,9 +793,10 @@ void handle_string_list(pTHX_ const char *option, LinkedList list, SV *sv, SV **
           }                                                                    \
         } STMT_END
 
-#define FLAG_OPTION(name, flag, layout)                                        \
+#define FLAG_OPTION(name, flag, layout, pp)                                    \
           case OPTION_ ## name :                                               \
             IMPACTS_LAYOUT(layout);                                            \
+            IMPACTS_PREPROC(pp);                                               \
             if (sv_val)                                                        \
             {                                                                  \
               if (SvROK(sv_val))                                               \
@@ -804,9 +812,10 @@ void handle_string_list(pTHX_ const char *option, LinkedList list, SV *sv, SV **
               *rval = newSViv(THIS->flag ? 1 : 0);                             \
             break;
 
-#define IVAL_OPTION(name, config, layout)                                      \
+#define IVAL_OPTION(name, config, layout, pp)                                  \
           case OPTION_ ## name :                                               \
             IMPACTS_LAYOUT(layout);                                            \
+            IMPACTS_PREPROC(pp);                                               \
             if (sv_val)                                                        \
             {                                                                  \
               IV val;                                                          \
@@ -819,9 +828,10 @@ void handle_string_list(pTHX_ const char *option, LinkedList list, SV *sv, SV **
               *rval = newSViv(THIS->config);                                   \
             break;
 
-#define STRLIST_OPTION(name, config, layout)                                   \
+#define STRLIST_OPTION(name, config, layout, pp)                               \
           case OPTION_ ## name :                                               \
             IMPACTS_LAYOUT(layout);                                            \
+            IMPACTS_PREPROC(pp);                                               \
             handle_string_list(aTHX_ #name, THIS->config, sv_val, rval);       \
             DID_CHANGE(sv_val != NULL);                                        \
             break;
@@ -835,30 +845,30 @@ void handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval, HandleOption
 {
   START_OPTIONS
 
-    FLAG_OPTION(OrderMembers,      order_members,          0)
+    FLAG_OPTION(OrderMembers,      order_members,          0, 0)
 
-    FLAG_OPTION(Warnings,          cfg.issue_warnings,     0)
-    FLAG_OPTION(HasCPPComments,    cfg.has_cpp_comments,   0)
-    FLAG_OPTION(HasMacroVAARGS,    cfg.has_macro_vaargs,   0)
-    FLAG_OPTION(UnsignedChars,     cfg.unsigned_chars,     0)
-    FLAG_OPTION(UnsignedBitfields, cfg.unsigned_bitfields, 0)
+    FLAG_OPTION(Warnings,          cfg.issue_warnings,     0, 0)
+    FLAG_OPTION(HasCPPComments,    cfg.has_cpp_comments,   0, 1)
+    FLAG_OPTION(HasMacroVAARGS,    cfg.has_macro_vaargs,   0, 1)
+    FLAG_OPTION(UnsignedChars,     cfg.unsigned_chars,     0, 0)
+    FLAG_OPTION(UnsignedBitfields, cfg.unsigned_bitfields, 0, 0)
 
-    IVAL_OPTION(PointerSize,       cfg.layout.ptr_size,           1)
-    IVAL_OPTION(EnumSize,          cfg.layout.enum_size,          1)
-    IVAL_OPTION(IntSize,           cfg.layout.int_size,           1)
-    IVAL_OPTION(CharSize,          cfg.layout.char_size,          1)
-    IVAL_OPTION(ShortSize,         cfg.layout.short_size,         1)
-    IVAL_OPTION(LongSize,          cfg.layout.long_size,          1)
-    IVAL_OPTION(LongLongSize,      cfg.layout.long_long_size,     1)
-    IVAL_OPTION(FloatSize,         cfg.layout.float_size,         1)
-    IVAL_OPTION(DoubleSize,        cfg.layout.double_size,        1)
-    IVAL_OPTION(LongDoubleSize,    cfg.layout.long_double_size,   1)
-    IVAL_OPTION(Alignment,         cfg.layout.alignment,          1)
-    IVAL_OPTION(CompoundAlignment, cfg.layout.compound_alignment, 1)
+    IVAL_OPTION(PointerSize,       cfg.layout.ptr_size,           1, 0)
+    IVAL_OPTION(EnumSize,          cfg.layout.enum_size,          1, 0)
+    IVAL_OPTION(IntSize,           cfg.layout.int_size,           1, 0)
+    IVAL_OPTION(CharSize,          cfg.layout.char_size,          1, 0)
+    IVAL_OPTION(ShortSize,         cfg.layout.short_size,         1, 0)
+    IVAL_OPTION(LongSize,          cfg.layout.long_size,          1, 0)
+    IVAL_OPTION(LongLongSize,      cfg.layout.long_long_size,     1, 0)
+    IVAL_OPTION(FloatSize,         cfg.layout.float_size,         1, 0)
+    IVAL_OPTION(DoubleSize,        cfg.layout.double_size,        1, 0)
+    IVAL_OPTION(LongDoubleSize,    cfg.layout.long_double_size,   1, 0)
+    IVAL_OPTION(Alignment,         cfg.layout.alignment,          1, 0)
+    IVAL_OPTION(CompoundAlignment, cfg.layout.compound_alignment, 1, 0)
 
-    STRLIST_OPTION(Include, cfg.includes,   0)
-    STRLIST_OPTION(Define,  cfg.defines,    0)
-    STRLIST_OPTION(Assert,  cfg.assertions, 0)
+    STRLIST_OPTION(Include, cfg.includes,   0, 1)
+    STRLIST_OPTION(Define,  cfg.defines,    0, 1)
+    STRLIST_OPTION(Assert,  cfg.assertions, 0, 1)
 
     OPTION(DisabledKeywords)
       IMPACTS_LAYOUT(0);
@@ -1043,51 +1053,42 @@ SV *get_native_property(pTHX_ const char *property)
   {
     HV *h = newHV();
     
-    HV_STORE_CONST(h, "PointerSize", newSViv(CTLIB_POINTER_SIZE));
-    HV_STORE_CONST(h, "IntSize", newSViv(CTLIB_int_SIZE));
-    HV_STORE_CONST(h, "CharSize", newSViv(CTLIB_char_SIZE));
-    HV_STORE_CONST(h, "ShortSize", newSViv(CTLIB_short_SIZE));
-    HV_STORE_CONST(h, "LongSize", newSViv(CTLIB_long_SIZE));
-    HV_STORE_CONST(h, "LongLongSize", newSViv(CTLIB_long_long_SIZE));
-    HV_STORE_CONST(h, "FloatSize", newSViv(CTLIB_float_SIZE));
-    HV_STORE_CONST(h, "DoubleSize", newSViv(CTLIB_double_SIZE));
-    HV_STORE_CONST(h, "LongDoubleSize", newSViv(CTLIB_long_double_SIZE));
-    HV_STORE_CONST(h, "Alignment", newSViv(CTLIB_ALIGNMENT));
+    HV_STORE_CONST(h, "PointerSize",       newSViv(CTLIB_POINTER_SIZE));
+    HV_STORE_CONST(h, "IntSize",           newSViv(CTLIB_int_SIZE));
+    HV_STORE_CONST(h, "CharSize",          newSViv(CTLIB_char_SIZE));
+    HV_STORE_CONST(h, "ShortSize",         newSViv(CTLIB_short_SIZE));
+    HV_STORE_CONST(h, "LongSize",          newSViv(CTLIB_long_SIZE));
+    HV_STORE_CONST(h, "LongLongSize",      newSViv(CTLIB_long_long_SIZE));
+    HV_STORE_CONST(h, "FloatSize",         newSViv(CTLIB_float_SIZE));
+    HV_STORE_CONST(h, "DoubleSize",        newSViv(CTLIB_double_SIZE));
+    HV_STORE_CONST(h, "LongDoubleSize",    newSViv(CTLIB_long_double_SIZE));
+    HV_STORE_CONST(h, "Alignment",         newSViv(CTLIB_ALIGNMENT));
     HV_STORE_CONST(h, "CompoundAlignment", newSViv(CTLIB_COMPOUND_ALIGNMENT));
-    HV_STORE_CONST(h, "EnumSize", newSViv(get_native_enum_size()));
-    HV_STORE_CONST(h, "ByteOrder", newSVpv(native_byteorder, 0));
+    HV_STORE_CONST(h, "EnumSize",          newSViv(get_native_enum_size()));
+    HV_STORE_CONST(h, "ByteOrder",         newSVpv(native_byteorder, 0));
+    HV_STORE_CONST(h, "UnsignedChars",     newSViv(get_native_unsigned_chars()));
+    HV_STORE_CONST(h, "UnsignedBitfields", newSViv(get_native_unsigned_bitfields()));
     
     return newRV_noinc((SV *)h);
   }
 
   switch (get_config_option(property))
   {
-    case OPTION_PointerSize:
-      return newSViv(CTLIB_POINTER_SIZE);
-    case OPTION_IntSize:
-      return newSViv(CTLIB_int_SIZE);
-    case OPTION_CharSize:
-      return newSViv(CTLIB_char_SIZE);
-    case OPTION_ShortSize:
-      return newSViv(CTLIB_short_SIZE);
-    case OPTION_LongSize:
-      return newSViv(CTLIB_long_SIZE);
-    case OPTION_LongLongSize:
-      return newSViv(CTLIB_long_long_SIZE);
-    case OPTION_FloatSize:
-      return newSViv(CTLIB_float_SIZE);
-    case OPTION_DoubleSize:
-      return newSViv(CTLIB_double_SIZE);
-    case OPTION_LongDoubleSize:
-      return newSViv(CTLIB_long_double_SIZE);
-    case OPTION_Alignment:
-      return newSViv(CTLIB_ALIGNMENT);
-    case OPTION_CompoundAlignment:
-      return newSViv(CTLIB_COMPOUND_ALIGNMENT);
-    case OPTION_EnumSize:
-      return newSViv(get_native_enum_size());
-    case OPTION_ByteOrder:
-      return newSVpv(native_byteorder, 0);
+    case OPTION_PointerSize:       return newSViv(CTLIB_POINTER_SIZE);
+    case OPTION_IntSize:           return newSViv(CTLIB_int_SIZE);
+    case OPTION_CharSize:          return newSViv(CTLIB_char_SIZE);
+    case OPTION_ShortSize:         return newSViv(CTLIB_short_SIZE);
+    case OPTION_LongSize:          return newSViv(CTLIB_long_SIZE);
+    case OPTION_LongLongSize:      return newSViv(CTLIB_long_long_SIZE);
+    case OPTION_FloatSize:         return newSViv(CTLIB_float_SIZE);
+    case OPTION_DoubleSize:        return newSViv(CTLIB_double_SIZE);
+    case OPTION_LongDoubleSize:    return newSViv(CTLIB_long_double_SIZE);
+    case OPTION_Alignment:         return newSViv(CTLIB_ALIGNMENT);
+    case OPTION_CompoundAlignment: return newSViv(CTLIB_COMPOUND_ALIGNMENT);
+    case OPTION_EnumSize:          return newSViv(get_native_enum_size());
+    case OPTION_ByteOrder:         return newSVpv(native_byteorder, 0);
+    case OPTION_UnsignedChars:     return newSViv(get_native_unsigned_chars());
+    case OPTION_UnsignedBitfields: return newSViv(get_native_unsigned_bitfields());
     default:
       return NULL;
   }

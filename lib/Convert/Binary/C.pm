@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/16 17:02:50 +0000 $
-# $Revision: 79 $
+# $Date: 2006/02/26 21:18:42 +0000 $
+# $Revision: 81 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.64 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.64_01 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 $XS_VERSION = $VERSION;
 $VERSION    = eval $VERSION;
 
@@ -161,12 +161,12 @@ Convert::Binary::C - Binary Data Conversion using C Types
 =head1 DESCRIPTION
 
 Convert::Binary::C is a preprocessor and parser for C type
-definitions. It is highly configurable and should support
+definitions. It is highly configurable and supports
 arbitrarily complex data structures. Its object-oriented
 interface has L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> methods
 that act as replacements for
 Perl's L<C<pack>|perlfunc/"pack"> and L<C<unpack>|perlfunc/"unpack"> and
-allow to use the C types instead of a string representation
+allow to use C types instead of a string representation
 of the data structure for conversion of binary data from and
 to Perl's complex data structures.
 
@@ -493,6 +493,17 @@ of the Convert::Binary::C object using C<Assert>:
 
   $c->configure( Assert => ['predicate(answer)'] );
 
+Information about defined macros can be retrieved from the
+preprocessor as long as its configuration isn't changed. The
+preprocessor is implicitly reset if you change one of the
+following configuration options:
+
+  Include
+  Define
+  Assert
+  HasCPPComments
+  HasMacroVAARGS
+
 =head2 Supported pragma directives
 
 Convert::Binary::C supports the C<pack> pragma to locally override
@@ -743,7 +754,7 @@ probably more tags to come in the future.
 =head2 The Format Tag
 
 One of the tags currently available is the C<Format> tag.
-Using this tag you can a tell Convert::Binary::C object to
+Using this tag, you can tell a Convert::Binary::C object to
 pack and unpack a certain data type in a special way.
 
 For example, if you have a (fixed length) string type
@@ -1306,7 +1317,7 @@ as it can already handle C<AV> pointers. And this is what we get:
 
   $VAR1 = {
     'sv_any' => {
-      'xav_array' => '137146800',
+      'xav_array' => '136333344',
       'xav_fill' => '0',
       'xav_max' => '0',
       'xof_off' => '0',
@@ -1324,12 +1335,12 @@ as it can already handle C<AV> pointers. And this is what we get:
           'xhv_riter' => '-1',
           'xhv_eiter' => '0',
           'xhv_pmroot' => '0',
-          'xhv_name' => '137367704'
+          'xhv_name' => '136640880'
         },
         'sv_refcnt' => '2',
         'sv_flags' => '536870923'
       },
-      'xav_alloc' => '137146800',
+      'xav_alloc' => '136333344',
       'xav_arylen' => '0',
       'xav_flags' => '1'
     },
@@ -2330,10 +2341,11 @@ occurs. On success, the method returns a reference to its object.
 
 See L<"Parsing C code"> for an example.
 
-You must be aware that the preprocessor is reset with every call
-to L<C<parse>|/"parse"> or L<C<parse_file>|/"parse_file">.
-Also, you may use types previously defined, but you are not allowed
-to redefine types.
+When calling L<C<parse>|/"parse"> or L<C<parse_file>|/"parse_file"> multiple
+times, you may use types previously defined, but you are not allowed
+to redefine types. The state of the preprocessor is also saved, so you
+may also use defines from a previous parse. This works only as long as the
+preprocessor is not reset. See L<"Preprocessor configuration"> for details.
 
 When you're parsing C source files instead of C header
 files, note that local definitions are ignored. This means
@@ -2479,6 +2491,46 @@ will give preference to the typedef and will thus return
 the string C<"typedef">. You could however force interpretation
 as an enum, struct or union by putting C<"enum">, C<"struct">
 or C<"union"> in front of the type's name.
+
+=back
+
+=head2 defined
+
+=over 8
+
+=item C<defined> MACRO
+
+You can use the L<C<defined>|/"defined"> method to find out if a certain
+macro is defined, just like you would use the C<defined> operator of the
+preprocessor. For example, the following code
+
+  use Convert::Binary::C;
+  
+  my $c = Convert::Binary::C->new->parse(<<'ENDC');
+  
+  #define ADD(a, b) ((a) + (b))
+  
+  #if 1
+  # define DEFINED
+  #else
+  # define UNDEFINED
+  #endif
+  
+  ENDC
+  
+  for my $macro (qw( ADD DEFINED UNDEFINED )) {
+    my $not = $c->defined($macro) ? '' : ' not';
+    print "Macro '$macro' is$not defined.\n";
+  }
+
+would print:
+
+  Macro 'ADD' is defined.
+  Macro 'DEFINED' is defined.
+  Macro 'UNDEFINED' is not defined.
+
+You have to keep in mind that this works only as long as the preprocessor
+is not reset. See L<"Preprocessor configuration"> for details.
 
 =back
 
@@ -3577,6 +3629,7 @@ represent all parsed C data structures.
   $c = new Convert::Binary::C;
   $c->parse( <<'END' );
   
+  #define ADD(a, b) ((a) + (b))
   #define NUMBER 42
   
   typedef struct _mytype mytype;
@@ -3673,7 +3726,7 @@ would print:
   /* defined enums */
   
   
-  #line 20 "[buffer]"
+  #line 21 "[buffer]"
   enum count
   {
   	ZERO,
@@ -3686,17 +3739,17 @@ would print:
   /* defined structs and unions */
   
   
-  #line 6 "[buffer]"
+  #line 7 "[buffer]"
   struct _mytype
   {
-  #line 7 "[buffer]"
+  #line 8 "[buffer]"
   	union
   	{
   		int iCount;
   		enum count *pCount;
   	} counter;
   #pragma pack(push, 1)
-  #line 12 "[buffer]"
+  #line 13 "[buffer]"
   	struct
   	{
   		char string[42];
@@ -3709,6 +3762,56 @@ would print:
 Note that C<"[buffer]"> refers to the here-doc buffer when
 using L<C<parse>|/"parse">.
 
+=item C<Defines> =E<gt> 0 | 1
+
+Turn this on if you want the defined macros to be part of the
+code output. Given the example code above
+
+  print $c->sourcify( { Defines => 1 } );
+
+would print:
+
+  /* typedef predeclarations */
+  
+  typedef struct _mytype mytype;
+  
+  /* defined enums */
+  
+  enum count
+  {
+  	ZERO,
+  	ONE,
+  	TWO,
+  	THREE
+  };
+  
+  
+  /* defined structs and unions */
+  
+  struct _mytype
+  {
+  	union
+  	{
+  		int iCount;
+  		enum count *pCount;
+  	} counter;
+  #pragma pack(push, 1)
+  	struct
+  	{
+  		char string[42];
+  		int array[10];
+  	} storage;
+  #pragma pack(pop)
+  	mytype *next;
+  };
+  
+  /* preprocessor defines */
+  
+  #define ADD(a, b) ((a) + (b))
+  #define NUMBER 42
+
+The order of the macro definitions is undefined.
+
 =back
 
 =back
@@ -3718,6 +3821,15 @@ definitions that have been parsed. The examples given in the description
 for L<C<enum>|/"enum">, L<C<compound>|/"compound"> and L<C<typedef>|/"typedef"> all
 assume this piece of C code has been parsed:
 
+  #define ABC_SIZE 2
+  #define MULTIPLY(x, y) ((x)*(y))
+  
+  #ifdef ABC_SIZE
+  # define DEFINED
+  #else
+  # define NOT_DEFINED
+  #endif
+  
   typedef unsigned long U32;
   typedef void *any;
   
@@ -3738,7 +3850,7 @@ assume this piece of C code has been parsed:
   };
   
   typedef union {
-    int abc[2];
+    int abc[ABC_SIZE];
     struct xxx {
       int a;
       int b;
@@ -3831,7 +3943,7 @@ similar to this:
         'SOCK_DGRAM' => 2
       },
       'identifier' => '__socket_type',
-      'context' => 'definitions.c(4)',
+      'context' => 'definitions.c(13)',
       'size' => 4,
       'sign' => 0
     }
@@ -3941,7 +4053,7 @@ to this:
     {
       'identifier' => 'STRUCT_SV',
       'align' => 1,
-      'context' => 'definitions.c(14)',
+      'context' => 'definitions.c(23)',
       'pack' => 0,
       'type' => 'struct',
       'declarations' => [
@@ -3981,7 +4093,7 @@ to this:
     {
       'identifier' => 'xxx',
       'align' => 1,
-      'context' => 'definitions.c(22)',
+      'context' => 'definitions.c(31)',
       'pack' => 0,
       'type' => 'struct',
       'declarations' => [
@@ -4010,7 +4122,7 @@ to this:
     },
     {
       'align' => 1,
-      'context' => 'definitions.c(20)',
+      'context' => 'definitions.c(29)',
       'pack' => 0,
       'type' => 'union',
       'declarations' => [
@@ -4237,7 +4349,7 @@ to this:
       'declarator' => 'test',
       'type' => {
         'align' => 1,
-        'context' => 'definitions.c(20)',
+        'context' => 'definitions.c(29)',
         'pack' => 0,
         'type' => 'union',
         'declarations' => [
@@ -4294,6 +4406,60 @@ a description on how to interpret this hash.
 
 =back
 
+=head2 macro_names
+
+=over 8
+
+=item C<macro_names>
+
+Returns a list of all defined macro names.
+
+The list returned by the L<C<macro_names>|/"macro_names"> method
+looks similar to this:
+
+  @macro_names = (
+    '__STDC_VERSION__',
+    '__STDC_HOSTED__',
+    'DEFINED',
+    'MULTIPLY',
+    'ABC_SIZE'
+  );
+
+This works only as long as the preprocessor is not reset.
+See L<"Preprocessor configuration"> for details.
+
+=back
+
+=head2 macro
+
+=over 8
+
+=item C<macro>
+
+=item C<macro> LIST
+
+Returns the definitions for all defined macros.
+
+If a list of macro names is passed to the method, the
+returned list will only contain the definitions for those
+macros. For undefined macros, C<undef> will be returned.
+
+The list returned by the L<C<macro>|/"macro"> method looks
+similar to this:
+
+  @macro = (
+    '__STDC_VERSION__ 199901L',
+    '__STDC_HOSTED__ 1',
+    'DEFINED',
+    'MULTIPLY(x, y) ((x)*(y))',
+    'ABC_SIZE 2'
+  );
+
+This works only as long as the preprocessor is not reset.
+See L<"Preprocessor configuration"> for details.
+
+=back
+
 =head1 FUNCTIONS
 
 You can alternatively call the following functions as methods
@@ -4315,7 +4481,7 @@ will check if Convert::Binary::C was built with debugging support
 enabled. The C<feature> function returns C<1> if the feature is
 enabled, C<0> if the feature is disabled, and C<undef> if the
 feature is unknown. Currently the only features that can be checked
-are C<ieeefp>, C<debug> and C<threads>.
+are C<ieeefp> and C<debug>.
 
 You can enable or disable certain features at compile time of the
 module by using the
@@ -4344,6 +4510,7 @@ The following properties can be queried:
 
   Alignment
   ByteOrder
+  CharSize
   CompoundAlignment
   DoubleSize
   EnumSize
@@ -4354,6 +4521,8 @@ The following properties can be queried:
   LongSize
   PointerSize
   ShortSize
+  UnsignedBitfields
+  UnsignedChars
 
 You can also call L<C<native>|/"native"> without arguments,
 in which case it will return a reference to a hash with all
@@ -4368,8 +4537,10 @@ properties, like:
     'Alignment' => 4,
     'LongLongSize' => 8,
     'LongDoubleSize' => 12,
+    'UnsignedChars' => 0,
     'DoubleSize' => 8,
     'CharSize' => 1,
+    'UnsignedBitfields' => 0,
     'EnumSize' => 4,
     'CompoundAlignment' => 1,
     'PointerSize' => 4
@@ -4956,5 +5127,6 @@ linked to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
+
 
 

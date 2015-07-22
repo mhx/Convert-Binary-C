@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/01 09:38:21 +0000 $
-# $Revision: 25 $
+# $Date: 2006/02/05 22:05:06 +0000 $
+# $Revision: 26 $
 # $Source: /tests/603_complex.t $
 #
 ################################################################################
@@ -3007,7 +3007,7 @@ $p->parse($types);
 my $first = 1;
 
 my $debug = Convert::Binary::C::feature('debug');
-my $reason = $debug ? '' : 'skip: no debugging';
+my $reason = $debug ? '' : 'no debugging';
 
 for my $align (4, sort keys %reference) {
   if ($first) { $first = 0 }

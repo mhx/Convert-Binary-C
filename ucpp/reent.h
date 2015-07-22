@@ -30,6 +30,8 @@
 #ifndef UCPP__REENT__
 #define UCPP__REENT__
 
+#include "tune.h"
+
 #ifdef UCPP_REENTRANT
 
 #include "nhash.h"

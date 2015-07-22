@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/04 13:23:30 +0000 $
-* $Revision: 44 $
+* $Date: 2006/02/04 09:46:23 +0000 $
+* $Revision: 45 $
 * $Source: /cbc/pack.c $
 *
 ********************************************************************************
@@ -976,8 +976,38 @@ static void pack_format(pPACKARGS, const CtTag *format, unsigned size, u_32 flag
 
     if (len > size)
     {
-      WARN((aTHX_ "Source string is longer than '%s' (%d > %d)",
-            idl_to_str(aTHX_ &(PACK->idl)), len, size));
+#define COPY_STRING_LENGTH 16
+
+      unsigned char *src = (unsigned char *)p;
+      const char *fmtstr = "Unknown";
+      const char *refstr;
+      char copy[COPY_STRING_LENGTH];
+      unsigned n;
+
+      for (n = 0; n < COPY_STRING_LENGTH - 1 && n < len; n++)
+        copy[n] = src[n] < 32 || src[n] > 127 ? '.' : (char) src[n];
+
+      if (len > n)
+        for (n -= 3; n < COPY_STRING_LENGTH - 1; n++)
+          copy[n] = '.';
+
+      copy[n] = '\0';
+
+      switch (format->flags)
+      {
+        case CBC_TAG_FORMAT_BINARY: fmtstr = "Binary"; break;
+        case CBC_TAG_FORMAT_STRING: fmtstr = "String"; break;
+        default: fatal("Unknown format (%d)", format->flags);
+      }
+
+      /* hint the user that tries to pack format tagged references */
+      refstr = SvROK(sv) ? " (Are you sure you want to pack a reference type?)"
+                         : "";
+
+      WARN((aTHX_ "Source string \"%s\" is longer (%d byte%s) than '%s'"
+                  " (%d byte%s) while packing '%s' format%s",
+            copy, len, len == 1 ? "" : "s", idl_to_str(aTHX_ &(PACK->idl)),
+            size, size == 1 ? "" : "s", fmtstr, refstr));
 
       len = size;
     }

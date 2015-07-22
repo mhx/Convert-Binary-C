@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:03 +0000 $
-* $Revision: 15 $
+* $Date: 2006/02/05 13:51:18 +0000 $
+* $Revision: 17 $
 * $Source: /ctlib/cterror.h $
 *
 ********************************************************************************
@@ -38,12 +38,12 @@
 /*===== TYPEDEFS =============================================================*/
 
 typedef struct {
-  void *       (*newstr)( void );
-  void         (*destroy)( void * );
-  void         (*scatf)( void *, const char *, ... );
-  void         (*vscatf)( void *, const char *, va_list * );
-  const char * (*cstring)( void *, size_t * );
-  void         (*fatalerr)( void * );
+  void *       (*newstr)(void);
+  void         (*destroy)(void *);
+  void         (*scatf)(void *, const char *, ...);
+  void         (*vscatf)(void *, const char *, va_list *);
+  const char * (*cstring)(void *, size_t *);
+  void         (*fatalerr)(void *);
 } PrintFunctions;
 
 enum CTErrorSeverity {
@@ -57,39 +57,31 @@ typedef struct {
   char *string;
 } CTLibError;
 
-#ifdef UCPP_REENTRANT
-struct CPP;
-#endif
-
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
 #define set_print_functions CTlib_set_print_functions
-void set_print_functions( PrintFunctions *pPF );
+void set_print_functions(PrintFunctions *pPF);
 
 #define pop_all_errors CTlib_pop_all_errors
-void pop_all_errors( CParseInfo *pCPI );
+void pop_all_errors(CParseInfo *pCPI);
 
 #define push_error CTlib_push_error
-void push_error( CParseInfo *pCPI, const char *fmt, ... );
+void push_error(CParseInfo *pCPI, const char *fmt, ...);
 
 #define push_warning CTlib_push_warning
-void push_warning( CParseInfo *pCPI, const char *fmt, ... );
+void push_warning(CParseInfo *pCPI, const char *fmt, ...);
 
 #define fatal_error CTlib_fatal_error
-void fatal_error( const char *fmt, ... );
-
-#ifdef UCPP_REENTRANT
+void fatal_error(const char *fmt, ...);
 
 #define my_ucpp_ouch CTlib_my_ucpp_ouch
-void my_ucpp_ouch( pUCPP_ char *fmt, ... );
+void my_ucpp_ouch(pUCPP_ char *fmt, ...);
 
 #define my_ucpp_error CTlib_my_ucpp_error
-void my_ucpp_error( pUCPP_ long line, char *fmt, ... );
+void my_ucpp_error(pUCPP_ long line, char *fmt, ...);
 
 #define my_ucpp_warning CTlib_my_ucpp_warning
-void my_ucpp_warning( pUCPP_ long line, char *fmt, ... );
-
-#endif
+void my_ucpp_warning(pUCPP_ long line, char *fmt, ...);
 
 #endif

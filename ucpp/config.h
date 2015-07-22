@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/07 14:53:25 +0000 $
-* $Revision: 14 $
+* $Date: 2006/02/24 20:58:41 +0000 $
+* $Revision: 15 $
 * $Source: /ucpp/config.h $
 *
 ********************************************************************************
@@ -27,16 +27,12 @@
 
 #include "ctlib/arch.h"
 
-/*------------------------*/
-/* build a reentrant ucpp */
-/*------------------------*/
-
-/* #define UCPP_REENTRANT */
-
 /*-------------------------*/
 /* configure ucpp features */
 /*-------------------------*/
 
+#define UCPP_REENTRANT
+#define UCPP_CLONE
 #define NO_UCPP_COPY_LINE
 
 /*------------------------*/

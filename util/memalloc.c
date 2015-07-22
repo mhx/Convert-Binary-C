@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:26 +0000 $
-* $Revision: 25 $
+* $Date: 2006/02/24 21:49:32 +0000 $
+* $Revision: 28 $
 * $Source: /util/memalloc.c $
 *
 ********************************************************************************
@@ -89,6 +89,14 @@ static unsigned long gs_dbflags             = 0;
 
 #if defined(DEBUG_MEMALLOC) && defined(TRACE_MEMALLOC)
 
+#ifndef MEM_TRACE_REALLOC
+# define MEM_TRACE_REALLOC   realloc
+#endif
+
+#ifndef MEM_TRACE_FREE
+# define MEM_TRACE_FREE      free
+#endif
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -152,6 +160,7 @@ static struct {
   } env;
 } gs_flags;
 
+static int gs_stat_level = -1;
 static unsigned long  gs_serial = 0;
 static MemTraceBucket gs_trace[1<<MEMALLOC_HASH_BITS];
 
@@ -176,16 +185,12 @@ static void update_flags( void )
 
 static void trace_leaks( void )
 {
-  char *str;
-  int b, i, level = -1;
+  int b, i, level = gs_stat_level;
   long min_buck, max_buck, empty_buckets = 0;
   unsigned long bytes_used = 0;
   MemTraceBucket *buck;
 
   assert( gs_memstat.alloc - gs_memstat.free == gs_memstat.total_blocks );
-
-  if( (str = getenv("MEMALLOC_STAT_LEVEL")) != NULL )
-    level = atoi(str);
 
   if( level < 0 && (gs_memstat.total_blocks != 0 || gs_memstat.total_bytes != 0) )
     level = 1;
@@ -226,7 +231,7 @@ static void trace_leaks( void )
 
   min_buck = max_buck = gs_trace[0].size;
 
-  for( b = 0, buck = &gs_trace[0]; b < sizeof(gs_trace)/sizeof(gs_trace[0]); ++b, ++buck ) {
+  for( b = 0, buck = &gs_trace[0]; (unsigned)b < sizeof(gs_trace)/sizeof(gs_trace[0]); ++b, ++buck ) {
     if( level >= 3 ) {
       TRACE_MSG(("bucket %d used %d bytes in %d blocks\n",
                  b, buck->size*sizeof(MemTrace), buck->size));
@@ -257,7 +262,7 @@ static void trace_leaks( void )
       }
 
 #ifdef MEMALLOC_FREE_BLOCKS_AT_EXIT
-      UTIL_FREE( buck->block );
+      MEM_TRACE_FREE( buck->block );
 #endif
     }
     else {
@@ -306,7 +311,7 @@ static inline MemTrace *get_empty_slot( const void *ptr )
 
   if( pos >= buck->size ) {
     buck->size  = pos + MEMALLOC_BUCKET_SIZE_INCR;
-    buck->block = UTIL_REALLOC( buck->block, buck->size * sizeof(MemTrace) );
+    buck->block = MEM_TRACE_REALLOC( buck->block, buck->size * sizeof(MemTrace) );
     if( buck->block == NULL ) {
       fprintf(stderr, "panic: out of memory in get_empty_slot()\n");
       abort();
@@ -368,7 +373,7 @@ static void diag_ptr( const void *ptr )
 
   assert( ptr != NULL );
 
-  for( b = 0, buck = &gs_trace[0]; b < sizeof(gs_trace)/sizeof(gs_trace[0]); ++b, ++buck )
+  for( b = 0, buck = &gs_trace[0]; (unsigned)b < sizeof(gs_trace)/sizeof(gs_trace[0]); ++b, ++buck )
     for( i = 0; i < buck->size; ++i ) {
       MemTrace *p = &buck->block[i];
 
@@ -467,7 +472,7 @@ static void diag_range( const void *ptr, size_t size )
   pS = ptr;
   pE = pS + size;
 
-  for( b = 0, buck = &gs_trace[0]; b < sizeof(gs_trace)/sizeof(gs_trace[0]); ++b, ++buck )
+  for( b = 0, buck = &gs_trace[0]; (unsigned)b < sizeof(gs_trace)/sizeof(gs_trace[0]); ++b, ++buck )
     for( i = 0; i < buck->size; ++i ) {
       MemTrace *p = &buck->block[i];
 
@@ -582,6 +587,19 @@ static void diag_range( const void *ptr, size_t size )
   }
 }
 
+static inline void init_trace(size_t first_alloc_size)
+{
+  const char *str;
+
+  assert(gs_serial == 0);
+
+  if( (str = getenv("MEMALLOC_STAT_LEVEL")) != NULL )
+    gs_stat_level = atoi(str);
+
+  gs_memstat.min_alloc = gs_memstat.max_alloc = first_alloc_size;
+  atexit( trace_leaks );
+}
+
 static inline int trace_add( const void *ptr, size_t size, const char *file, int line )
 {
   MemTrace *p;
@@ -601,10 +619,8 @@ static inline int trace_add( const void *ptr, size_t size, const char *file, int
     return 0;
   }
 
-  if( gs_serial == 0 ) {
-    gs_memstat.min_alloc = gs_memstat.max_alloc = size;
-    atexit( trace_leaks );
-  }
+  if( gs_serial == 0 )
+    init_trace(size);
 
   gs_memstat.alloc++;
   gs_memstat.total_blocks++;
@@ -717,10 +733,8 @@ static inline int trace_upd( const void *old, const void *ptr, size_t size, cons
       gs_memstat.max_total_blocks = gs_memstat.total_blocks;
   }
 
-  if( gs_serial == 0 ) {
-    gs_memstat.min_alloc = gs_memstat.max_alloc = size;
-    atexit( trace_leaks );
-  }
+  if( gs_serial == 0 )
+    init_trace(size);
 
   gs_memstat.total_bytes += size - p->size;
 
@@ -771,7 +785,7 @@ static inline int trace_check_range( const void *ptr, size_t size, const char *f
   MemTraceBucket *buck;
 
   if( ptr != NULL && size > 0 ) {
-    for( b = 0, buck = &gs_trace[0]; b < sizeof(gs_trace)/sizeof(gs_trace[0]); ++b, ++buck )
+    for( b = 0, buck = &gs_trace[0]; (unsigned)b < sizeof(gs_trace)/sizeof(gs_trace[0]); ++b, ++buck )
       for( i = 0; i < buck->size; ++i ) {
         MemTrace *pmt = &buck->block[i];
 

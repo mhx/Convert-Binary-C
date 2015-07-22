@@ -87,6 +87,46 @@ static inline struct macro *new_macro(void)
 	return m;
 }
 
+#ifdef UCPP_CLONE
+
+static void *clone_macro(const void *m)
+{
+	const struct macro *src = m;
+	struct macro *dst = getmem(sizeof(struct macro));
+	size_t i;
+
+	if (src->narg > 0) {
+		dst->narg = 0;
+		for (i = 0; (int)i < src->narg; i ++)
+			aol(dst->arg, dst->narg, sdup(src->arg[i]), MACRO_ARG_MEMG);
+	} else
+		dst->narg = src->narg;
+#ifdef LOW_MEM
+	dst->cval.length = src->cval.length;
+	if (src->cval.length) {
+		dst->cval.length = src->cval.length;
+		dst->cval.t = getmem(src->cval.length);
+		mmv(dst->cval.t, src->cval.t, src->cval.length);
+	}
+#else
+	dst->val.art = src->val.art;
+	if (src->val.nt) {
+		dst->val.nt = 0;
+		for (i = 0; i < src->val.nt; i ++) {
+			aol(dst->val.t, dst->val.nt, src->val.t[i], TOKEN_LIST_MEMG);
+			if (S_TOKEN(src->val.t[i].type))
+				dst->val.t[i].name = sdup(src->val.t[i].name);
+		}
+	} else
+		dst->val.nt = src->val.nt;
+#endif
+	dst->nest  = src->nest;
+	dst->vaarg = src->vaarg;
+	return dst;
+}
+
+#endif /* UCPP_CLONE */
+
 /*
  * for special macros, and the "defined" operator
  */
@@ -189,6 +229,79 @@ static void add_special_macros(pCPP)
  */
 #endif
 
+static inline size_t stradd(char **buf, const char *str)
+{
+	if (*buf) {
+		char *end = *buf;
+		size_t len;
+		while (*str) *end++ = *str++;
+		len = end - *buf;
+		*buf = end;
+		return len;
+	}
+	return strlen(str);
+}
+
+/*
+ * assemble macro definition string
+ */
+static size_t get_macro_def(const struct macro *m, char *buffer)
+{
+	size_t len = 0U, i;
+	char **b = &buffer;
+	char *mname = HASH_ITEM_NAME(m);
+
+	len += stradd(b, mname);
+	if (m->narg >= 0) {
+		len += stradd(b, "(");
+		for (i = 0; i < (size_t)(m->narg); i ++) {
+				if (i) len += stradd(b, ", ");
+				len += stradd(b, m->arg[i]);
+		}
+		if (m->vaarg) {
+				len += stradd(b, m->narg ? ", ..." : "...");
+		}
+		len += stradd(b, ")");
+	}
+#ifdef LOW_MEM
+	if (m->cval.length) len += stradd(b, " ");
+	for (i = 0; i < m->cval.length;) {
+		int tt = m->cval.t[i ++];
+
+		if (tt == MACROARG) {
+			unsigned anum = m->cval.t[i];
+
+			if (anum >= 128)
+				anum = ((anum & 127U) << 8) | m->cval.t[++ i];
+			if (anum == (unsigned)m->narg)
+				len += stradd(b, "__VA_ARGS__");
+			else
+				len += stradd(b, m->arg[anum]);
+			i ++;
+		}
+		else if (S_TOKEN(tt)) {
+			size_t l = stradd(b, (char *)(m->cval.t + i));
+			len += l;
+			i += 1 + l;
+		} else
+			len += stradd(b, operators_name[tt]);
+	}
+#else
+	if (m->val.nt) len += stradd(b, " ");
+	for (i = 0; i < m->val.nt; i ++) {
+		if (m->val.t[i].type == MACROARG) {
+			if (m->val.t[i].line == m->narg)
+				len += stradd(b, "__VA_ARGS__");
+			else
+				len += stradd(b, m->arg[(size_t)(m->val.t[i].line)]);
+		} else
+			len += stradd(b, token_name(m->val.t + i));
+	}
+#endif
+	if (buffer) *buffer = '\0';
+	return len;
+}
+
 /*
  * print the content of a macro, in #define form
  */
@@ -203,67 +316,63 @@ static void print_macro(void *vm)
 	struct CPP *REENTR = re;
 #endif
 	char *mname = HASH_ITEM_NAME(m);
+	char *def;
+	size_t len;
 	int x = check_special_macro(aCPP_ mname);
-	size_t i;
 
 	if (x != MAC_NONE) {
 		fprintf(emit_output, "/* #define %s */ /* special */\n",
 			mname);
 		return;
 	}
-	fprintf(emit_output, "#define %s", mname);
-	if (m->narg >= 0) {
-		fprintf(emit_output, "(");
-		for (i = 0; i < (size_t)(m->narg); i ++) {
-			fprintf(emit_output, i ? ", %s" : "%s", m->arg[i]);
-		}
-		if (m->vaarg) {
-			fputs(m->narg ? ", ..." : "...", emit_output);
-		}
-		fprintf(emit_output, ")");
-	}
-#ifdef LOW_MEM
-	if (m->cval.length == 0) {
-		fputc('\n', emit_output);
-		return;
-	}
-	fputc(' ', emit_output);
-	for (i = 0; i < m->cval.length;) {
-		int tt = m->cval.t[i ++];
+	len = get_macro_def(m, 0);
+	def = getmem(len + 1);
+	if (get_macro_def(m, def) != len)
+		ouch(aCPP_ "length mismatch in print_macro()");
+	fprintf(emit_output, "#define %s\n", def);
+	freemem(def);
+}
 
-		if (tt == MACROARG) {
-			unsigned anum = m->cval.t[i];
-
-			if (anum >= 128) anum = ((anum & 127U) << 8)
-				| m->cval.t[++ i];
-			if (anum == (unsigned)m->narg)
-				fputs("__VA_ARGS__", emit_output);
-			else
-				fputs(m->arg[anum], emit_output);
-			i ++;
-		}
-		else if (S_TOKEN(tt)) {
-			fputs((char *)(m->cval.t + i), emit_output);
-			i += 1 + strlen((char *)(m->cval.t + i));
-		} else fputs(operators_name[tt], emit_output);
-	}
-#else
-	if (m->val.nt == 0) {
-		fputc('\n', emit_output);
-		return;
-	}
-	fputc(' ', emit_output);
-	for (i = 0; i < m->val.nt; i ++) {
-		if (m->val.t[i].type == MACROARG) {
-			if (m->val.t[i].line == m->narg)
-				fputs("__VA_ARGS__", emit_output);
-			else
-				fputs(m->arg[(size_t)(m->val.t[i].line)],
-					emit_output);
-		} else fputs(token_name(m->val.t + i), emit_output);
-	}
+struct macro_iter_arg
+{
+#ifdef UCPP_REENTRANT
+	struct CPP *re;
 #endif
-	fputc('\n', emit_output);
+	unsigned long flags;
+	void (*func)(const struct macro_info *);
+	struct macro_info info;
+};
+
+static void macro_iter(void *arg, void *mac)
+{
+	struct macro_iter_arg *a = arg;
+#ifdef UCPP_REENTRANT
+	struct CPP *REENTR = a->re;
+#endif
+	struct macro *m = mac;
+	char *mname = HASH_ITEM_NAME(m);
+	int x = check_special_macro(aCPP_ mname);
+	struct macro_info *i = &a->info;
+
+	if (x != MAC_NONE) return;
+	i->name = mname;
+	if (a->flags & MI_WITH_DEFINITION) {
+		size_t len = get_macro_def(m, 0);
+		i->definition_len = len;
+		if (len < 128) {
+			char def[128];
+			(void) get_macro_def(m, def);
+			i->definition = def;
+			a->func(i);
+		} else {
+			char *def = getmem(len + 1);
+			(void) get_macro_def(m, def);
+			i->definition = def;
+			a->func(i);
+			freemem(def);
+		}
+	} else
+		a->func(i);
 }
 
 /*
@@ -434,7 +543,7 @@ int handle_define(pCPP_ struct lexer_state *ls)
 				}
 				if (!redef) {
 					aol(m->arg, narg,
-						sdup(ls->ctok->name), 8);
+						sdup(ls->ctok->name), MACRO_ARG_MEMG);
 					/* we must keep track of m->narg
 					   so that cleanup in case of
 					   error works. */
@@ -1699,6 +1808,55 @@ void print_defines(pCPP)
 }
 
 /*
+ * find out if a macro is defined
+ */
+int is_macro_defined(pCPP_ const char *name)
+{
+	return HTT_get(&macros, name) != NULL;
+}
+
+/*
+ * get definition for a macro
+ */
+char *get_macro_definition(pCPP_ const char *name, size_t *plen)
+{
+	struct macro *m = HTT_get(&macros, name);
+
+	if (m) {
+		size_t len = get_macro_def(m, 0);
+		char *def = getmem(len + 1);
+		(void) get_macro_def(m, def);
+		if (plen) *plen = len;
+		return def;
+	}
+	return NULL;
+}
+
+/*
+ * free macro definition returned by get_macro_definition()
+ */
+void free_macro_definition(char *def)
+{
+	if (def) freemem(def);
+}
+
+/*
+ * iterate through all macros
+ */
+void iterate_macros(pCPP_ void (*func)(const struct macro_info *),
+			void *arg, unsigned long flags)
+{
+	struct macro_iter_arg a;
+#ifdef UCPP_REENTRANT
+	a.re = aCPP;
+#endif
+	a.flags = flags;
+	a.func = func;
+	a.info.arg = arg;
+	HTT_scan_arg(&macros, macro_iter, &a);
+}
+
+/*
  * define_macro() defines a new macro, whom definition is given in
  * the command-line syntax: macro=def
  * The '=def' part is optional.
@@ -1939,7 +2097,7 @@ void wipe_macros(pCPP)
 void init_macros(pCPP)
 {
 	wipe_macros(aCPP);
-	HTT_init(&macros, del_macro);
+	HTT_init(&macros, del_macro _aCLONE(clone_macro));
 	macros_init_done = 1;
 	if (!no_special_macros) add_special_macros(aCPP);
 }

@@ -83,7 +83,12 @@ int space_char(int);
 #define new_cppm		UCPP_PRIVATE(new_cppm)
 #define del_cppm		UCPP_PRIVATE(del_cppm)
 CPPM new_cppm(void);
-void del_cppm(CPPM c);
+void del_cppm(CPPM);
+#endif
+
+#ifdef UCPP_CLONE
+#define clone_cppm		UCPP_PRIVATE(clone_cppm)
+CPPM clone_cppm(const CPPM);
 #endif
 
 /*

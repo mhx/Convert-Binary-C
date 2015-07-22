@@ -406,6 +406,7 @@
 #define OUTPUT_BUF_MEMG		8192
 #define TOKEN_NAME_MEMG		64	/* must be at least 4 */
 #define TOKEN_LIST_MEMG		32
+#define MACRO_ARG_MEMG		8
 #define INCPATH_MEMG		16
 #define GARBAGE_LIST_MEMG	32
 #define LS_STACK_MEMG		4
@@ -416,6 +417,10 @@
 /* To protect the innocent. */
 #if defined(NO_UCPP_BUF) && defined(UCPP_MMAP)
 #undef UCPP_MMAP
+#endif
+
+#if defined(UCPP_CLONE) && !defined(UCPP_REENTRANT)
+#error Cannot clone with non-reentrant code
 #endif
 
 #if defined(UCPP_MMAP) || defined(POSIX_JMP)

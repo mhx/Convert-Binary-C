@@ -3,8 +3,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/16 17:03:09 +0000 $
-# $Revision: 89 $
+# $Date: 2006/02/26 17:38:38 +0000 $
+# $Revision: 97 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -36,8 +36,8 @@ ENDWARN
     elsif ($] < 5.005) {
       print STDERR "-->   Chances are quite good that the module will\n",
                    "-->   build successfully, but you won't be able to\n",
-                   "-->   run the test suite, as it uses features not\n",
-                   "-->   available in perl < 5.005.\n";
+                   "-->   run the full test suite, as it uses features\n",
+                   "-->   not available in perl < 5.005.\n";
     }
     else {
       print STDERR "-->   Chances are quite good that the module will\n",
@@ -80,6 +80,7 @@ $BISON = $Config{bison} || 'bison';
   cbc/hook
   cbc/idl
   cbc/init
+  cbc/macros
   cbc/member
   cbc/object
   cbc/option
@@ -138,7 +139,6 @@ unshift @OBJECT, $MODULE =~ /([^:]+)$/;
 
 @DEFINE = qw(
   UCPP_CONFIG
-  UCPP_REENTRANT
   UTIL_HAVE_CONFIG_H
 );
 
@@ -159,7 +159,7 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
                d_flags => [qw()],
              },
   ($Config{usethreads} || $Config{use5005threads} || $Config{useithreads}) ? (
-    threads => {
+    '~threads' => {
                  enabled => 1,
                  e_flags => [qw( CBC_THREAD_SAFE )],
                  d_flags => [qw()],
@@ -207,9 +207,17 @@ push @REALCLEAN, map { ref $_ ? @$_ : $_ } values %GENERATE;
 @ARGV = map {
   my $myopt = 0;
   if( my($what, $feat) = /^(en|dis)able-(\S+)$/ ) {
-    exists $FEATURES{$feat} or $feat = '$'.$feat;
-    exists $FEATURES{$feat}
-      or die "Invalid feature '$2'. Use one of [ @{[keys %FEATURES]} ].\n";
+    for my $pre ('', '$', '~') {
+      if (exists $FEATURES{$pre.$feat}) {
+        warn "WARNING: Feature '$feat' is deprecated and will be removed!\n" if $pre eq '~';
+        $feat = $pre.$feat;
+        last;
+      }
+    }
+    unless (exists $FEATURES{$feat}) {
+      my @feat = join ', ', map { s/^[\$\~]//; "'$_'" } sort keys %FEATURES;
+      die "Invalid feature '$feat'. Use one of @feat.\n";
+    }
     $FEATURES{$feat}{enabled} = $what eq 'en';
     $myopt = 1;
   }
@@ -297,8 +305,6 @@ ENDMSG
 WriteMakefile(
   'NAME'         => $MODULE,
   'VERSION_FROM' => 'lib/Convert/Binary/C.pm',
-  'ABSTRACT'     => 'Binary Data Conversion using C Types',
-  'AUTHOR'       => 'Marcus Holland-Moritz <mhx@cpan.org>',
   'OBJECT'       => join( ' ', map { "$_\$(OBJ_EXT)" } sort @OBJECT ),
   'INC'          => join( ' ', map { "-I$_" } @INC_PATH ),
   'EXE_FILES'    => ['bin/ccconfig'],
@@ -314,10 +320,13 @@ sub configure
 {
   # Configure and print information about features
 
-  for( keys %FEATURES ) {
-    my $f = $FEATURES{$_};
-    $f->{enabled} and print /^\$/ ? "DEVELOPMENT-ONLY feature '$_' selected\n"
-                                  : "Building with feature '$_'\n";
+  for (keys %FEATURES) {
+    my $feat = $_;
+    my $f = $FEATURES{$feat};
+    my $class = '';
+    $class = 'DEVELOPMENT-ONLY ' if $feat =~ s/^\$//;
+    $class = 'DEPRECATED ' if $feat =~ s/^~//;
+    $f->{enabled} and print "Building with ${class}feature '$feat'\n";
     push @DEFINE, @{$f->{enabled} ? $f->{e_flags} : $f->{d_flags} };
   }
  
@@ -333,6 +342,11 @@ sub configure
     }
   }
 
+  if (eval $ExtUtils::MakeMaker::VERSION >= 6) {
+    $config->{'AUTHOR'} = 'Marcus Holland-Moritz <mhx@cpan.org>';
+    $config->{'ABSTRACT_FROM'} = 'lib/Convert/Binary/C.pm';
+  }
+  
   if (eval $ExtUtils::MakeMaker::VERSION >= 6.30_01) {
     print "Setting license tag...\n";
     $config->{'LICENSE'} = 'perl';
@@ -352,7 +366,12 @@ sub MY::c_o
 {
   package MY;
   my $c_o = shift->SUPER::c_o(@_);
-  $c_o =~ s/^\s+\$\(CCCMD\).*$/$&\n\t\$(MV) \$(\@F) t_object.tmp\n\t\$(MV) t_object.tmp \$\@/mg;
+  if (eval $ExtUtils::MakeMaker::VERSION >= 6.17) {
+    $c_o =~ s/^(\s+)(\$\(CCCMD\).*)$/$1\$(NOECHO) \$(ECHO) Compiling [\$(CC) \$(OPTIMIZE)] \$<\n$1\$(NOECHO) $2\n$1\$(NOECHO) \$(MV) \$(\@F) t_object.tmp\n$1\$(NOECHO) \$(MV) t_object.tmp \$\@/mg;
+  }
+  else {
+    $c_o =~ s/^\s+\$\(CCCMD\).*$/$&\n\t\$(MV) \$(\@F) t_object.tmp\n\t\$(MV) t_object.tmp \$\@/mg;
+  }
   $c_o;
 }
 
@@ -363,6 +382,9 @@ sub MY::constants
 
 # Yacc to generate parser
 YACC = $::BISON
+
+# GCC coverage analysis
+GCOV = gcov
 
 # Options for valgrind
 VALGRIND_OPTIONS = --tool=memcheck \\
@@ -540,8 +562,11 @@ END
 
   $::FEATURES{'$coverage'}{enabled} and $postamble .= <<END;
 
-coverage:
-	\@for file in *.bb *.gcda; do gcov -a -b -c -l -p -f \$\$file; done
+cover_simple:
+	\@for file in *.bb *.gcda; do \$(GCOV) -p \$\$file; done
+
+cover_full:
+	\@for file in *.bb *.gcda; do \$(GCOV) -a -b -c -l -p -f \$\$file; done
 END
 
   $postamble;
@@ -561,7 +586,9 @@ sub MY::installbin
   package MY;
   my $ibin = shift->SUPER::installbin(@_);
   my @ex = values %::EXAMPLES;
-  $ibin =~ s!^pure_all\s*:+\s*!$&@ex !m;
+  unless ($ibin =~ s!^pure_all\s*:+\s*!$&@ex !m) {
+    $ibin .= "\npure_all :: @ex\n";
+  }
   $ibin
 }
 

@@ -139,7 +139,7 @@ $p->parse($types);
 my $first = 1;
 
 my $debug = Convert::Binary::C::feature('debug');
-my $reason = $debug ? '' : 'skip: no debugging';
+my $reason = $debug ? '' : 'no debugging';
 
 for my $align (4, sort keys %reference) {
   if ($first) { $first = 0 }

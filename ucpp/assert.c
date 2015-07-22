@@ -81,6 +81,44 @@ static void del_assertion(void *va)
 	freemem(a);
 }
 
+#ifdef UCPP_CLONE
+
+static void clone_token_fifo(struct token_fifo *dst, const struct token_fifo *src)
+{
+	size_t i;
+
+	dst->art = src->art;
+	if (src->nt) {
+		dst->nt = 0;
+		for (i = 0; i < src->nt; i ++) {
+			aol(dst->t, dst->nt, src->t[i], TOKEN_LIST_MEMG);
+			if (S_TOKEN(src->t[i].type))
+				dst->t[i].name = sdup(src->t[i].name);
+		}
+	} else
+		dst->nt = src->nt;
+}
+
+static void *clone_assertion(const void *va)
+{
+	const struct assert *src = va;
+	struct assert *dst = getmem(sizeof(struct assert));
+	size_t i;
+
+	if (src->nbval > 0) {
+		dst->nbval = 0;
+		for (i = 0; i < src->nbval; i ++) {
+			struct token_fifo tf;
+			clone_token_fifo(&tf, &src->val[i]);
+			aol(dst->val, dst->nbval, tf, TOKEN_LIST_MEMG);
+		}
+	} else
+		dst->nbval = src->nbval;
+	return dst;
+}
+
+#endif /* UCPP_CLONE */
+
 /*
  * print the contents of a token list
  */
@@ -415,7 +453,7 @@ void wipe_assertions(pCPP)
 void init_assertions(pCPP)
 {
 	wipe_assertions(aCPP);
-	HTT_init(&assertions, del_assertion);
+	HTT_init(&assertions, del_assertion _aCLONE(clone_assertion));
 	assertions_init_done = 1;
 }
 

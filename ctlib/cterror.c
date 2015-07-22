@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:03 +0000 $
-* $Revision: 19 $
+* $Date: 2006/02/24 21:05:29 +0000 $
+* $Revision: 22 $
 * $Source: /ctlib/cterror.c $
 *
 ********************************************************************************
@@ -44,7 +44,8 @@
 
 #define INIT_CHECK                                                             \
           do {                                                                 \
-            if( !initialized ) {                                               \
+            if (!initialized)                                                  \
+            {                                                                  \
               fprintf(stderr, "FATAL: print functions have not been set!\n");  \
               abort();                                                         \
             }                                                                  \
@@ -54,21 +55,13 @@
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 
-static CTLibError *error_new( enum CTErrorSeverity severity, void *str );
-static void error_delete( CTLibError *error );
-static void push_str( CParseInfo *pCPI, enum CTErrorSeverity severity, void *str );
-static void push_verror( CParseInfo *pCPI, enum CTErrorSeverity severity,
-                         const char *fmt, va_list *pap );
+static CTLibError *error_new(enum CTErrorSeverity severity, void *str);
+static void error_delete(CTLibError *error);
+static void push_str(CParseInfo *pCPI, enum CTErrorSeverity severity, void *str);
+static void push_verror(CParseInfo *pCPI, enum CTErrorSeverity severity,
+                        const char *fmt, va_list *pap);
 
 /*===== EXTERNAL VARIABLES ===================================================*/
-
-#ifndef UCPP_REENTRANT
-extern CParseInfo *g_current_cpi;
-
-#define my_ucpp_ouch    ucpp_ouch
-#define my_ucpp_error   ucpp_error
-#define my_ucpp_warning ucpp_warning
-#endif
 
 /*===== GLOBAL VARIABLES =====================================================*/
 
@@ -96,17 +89,17 @@ static PrintFunctions F;
 *
 *******************************************************************************/
 
-static CTLibError *error_new( enum CTErrorSeverity severity, void *str )
+static CTLibError *error_new(enum CTErrorSeverity severity, void *str)
 {
   CTLibError *perr;
   const char *string;
   size_t len;
 
-  string = F.cstring( str, &len );
-  AllocF( CTLibError *, perr, sizeof(CTLibError) );
-  AllocF( char *, perr->string, len+1 );
+  string = F.cstring(str, &len);
+  AllocF(CTLibError *, perr, sizeof(CTLibError));
+  AllocF(char *, perr->string, len + 1);
   perr->severity = severity;
-  strncpy( perr->string, string, len );
+  strncpy(perr->string, string, len);
   perr->string[len] = '\0';
 
   return perr;
@@ -129,12 +122,14 @@ static CTLibError *error_new( enum CTErrorSeverity severity, void *str )
 *
 *******************************************************************************/
 
-static void error_delete( CTLibError *error )
+static void error_delete(CTLibError *error)
 {
-  if( error ) {
-    if( error->string )
-      Free( error->string );
-    Free( error );
+  if (error)
+  {
+    if (error->string)
+      Free(error->string);
+
+    Free(error);
   }
 }
 
@@ -155,12 +150,12 @@ static void error_delete( CTLibError *error )
 *
 *******************************************************************************/
 
-static void push_str( CParseInfo *pCPI, enum CTErrorSeverity severity, void *str )
+static void push_str(CParseInfo *pCPI, enum CTErrorSeverity severity, void *str)
 {
-  if( pCPI == NULL || pCPI->errorStack == NULL )
-    F.fatalerr( str );
+  if (pCPI == NULL || pCPI->errorStack == NULL)
+    F.fatalerr(str);
 
-  LL_push( pCPI->errorStack, error_new( severity, str ) );
+  LL_push(pCPI->errorStack, error_new(severity, str));
 }
 
 /*******************************************************************************
@@ -180,13 +175,13 @@ static void push_str( CParseInfo *pCPI, enum CTErrorSeverity severity, void *str
 *
 *******************************************************************************/
 
-static void push_verror( CParseInfo *pCPI, enum CTErrorSeverity severity,
-                         const char *fmt, va_list *pap )
+static void push_verror(CParseInfo *pCPI, enum CTErrorSeverity severity,
+                        const char *fmt, va_list *pap)
 {
   void *str = F.newstr();
-  F.vscatf( str, fmt, pap );
-  push_str( pCPI, severity, str );
-  F.destroy( str );
+  F.vscatf(str, fmt, pap);
+  push_str(pCPI, severity, str);
+  F.destroy(str);
 }
 
 /*===== FUNCTIONS ============================================================*/
@@ -208,15 +203,16 @@ static void push_verror( CParseInfo *pCPI, enum CTErrorSeverity severity,
 *
 *******************************************************************************/
 
-void set_print_functions( PrintFunctions *pPF )
+void set_print_functions(PrintFunctions *pPF)
 {
-  if( pPF->newstr   == NULL ||
+  if (pPF->newstr   == NULL ||
       pPF->destroy  == NULL ||
       pPF->scatf    == NULL ||
       pPF->vscatf   == NULL ||
       pPF->cstring  == NULL ||
-      pPF->fatalerr == NULL ) {
-    fprintf( stderr, "FATAL: all print functions must be set!\n" );
+      pPF->fatalerr == NULL)
+  {
+    fprintf(stderr, "FATAL: all print functions must be set!\n");
     abort();
   }
 
@@ -241,9 +237,9 @@ void set_print_functions( PrintFunctions *pPF )
 *
 *******************************************************************************/
 
-void pop_all_errors( CParseInfo *pCPI )
+void pop_all_errors(CParseInfo *pCPI)
 {
-  LL_flush( pCPI->errorStack, (LLDestroyFunc) error_delete );
+  LL_flush(pCPI->errorStack, (LLDestroyFunc) error_delete);
 }
 
 /*******************************************************************************
@@ -263,13 +259,13 @@ void pop_all_errors( CParseInfo *pCPI )
 *
 *******************************************************************************/
 
-void push_error( CParseInfo *pCPI, const char *fmt, ... )
+void push_error(CParseInfo *pCPI, const char *fmt, ...)
 {
   va_list ap;
   INIT_CHECK;
-  va_start( ap, fmt );
-  push_verror( pCPI, CTES_ERROR, fmt, &ap );
-  va_end( ap );
+  va_start(ap, fmt);
+  push_verror(pCPI, CTES_ERROR, fmt, &ap);
+  va_end(ap);
 }
 
 /*******************************************************************************
@@ -289,13 +285,13 @@ void push_error( CParseInfo *pCPI, const char *fmt, ... )
 *
 *******************************************************************************/
 
-void push_warning( CParseInfo *pCPI, const char *fmt, ... )
+void push_warning(CParseInfo *pCPI, const char *fmt, ...)
 {
   va_list ap;
   INIT_CHECK;
-  va_start( ap, fmt );
-  push_verror( pCPI, CTES_WARNING, fmt, &ap );
-  va_end( ap );
+  va_start(ap, fmt);
+  push_verror(pCPI, CTES_WARNING, fmt, &ap);
+  va_end(ap);
 }
 
 /*******************************************************************************
@@ -315,18 +311,18 @@ void push_warning( CParseInfo *pCPI, const char *fmt, ... )
 *
 *******************************************************************************/
 
-void fatal_error( const char *fmt, ... )
+void fatal_error(const char *fmt, ...)
 {
   va_list ap;
   void *str;
 
   INIT_CHECK;
-  va_start( ap, fmt );
+  va_start(ap, fmt);
   str = F.newstr();
-  F.vscatf( str, fmt, &ap );
-  va_end( ap );
+  F.vscatf(str, fmt, &ap);
+  va_end(ap);
 
-  F.fatalerr( str );
+  F.fatalerr(str);
 }
 
 /*******************************************************************************
@@ -346,20 +342,20 @@ void fatal_error( const char *fmt, ... )
 *
 *******************************************************************************/
 
-void my_ucpp_ouch( pUCPP_ char *fmt, ... )
+void my_ucpp_ouch(pUCPP_ char *fmt, ...)
 {
   va_list ap;
   void *str;
 
   INIT_CHECK;
 
-  va_start( ap, fmt );
+  va_start(ap, fmt);
   str = F.newstr();
-  F.scatf( str, "%s: (FATAL) ", r_current_filename );
-  F.vscatf( str, fmt, &ap );
-  va_end( ap );
+  F.scatf(str, "%s: (FATAL) ", r_current_filename);
+  F.vscatf(str, fmt, &ap);
+  va_end(ap);
 
-  F.fatalerr( str );
+  F.fatalerr(str);
 }
 
 /*******************************************************************************
@@ -379,45 +375,42 @@ void my_ucpp_ouch( pUCPP_ char *fmt, ... )
 *
 *******************************************************************************/
 
-void my_ucpp_error( pUCPP_ long line, char *fmt, ... )
+void my_ucpp_error(pUCPP_ long line, char *fmt, ...)
 {
   va_list ap;
   void *str;
 
   INIT_CHECK;
 
-  va_start( ap, fmt );
+  va_start(ap, fmt);
 
   str = F.newstr();
 
-  if( line > 0 )
-    F.scatf( str, "%s, line %ld: ", r_current_filename, line );
-  else if( line == 0 )
-    F.scatf( str, "%s: ", r_current_filename );
+  if (line > 0)
+    F.scatf(str, "%s, line %ld: ", r_current_filename, line);
+  else if (line == 0)
+    F.scatf(str, "%s: ", r_current_filename);
 
-  F.vscatf( str, fmt, &ap );
+  F.vscatf(str, fmt, &ap);
 
-  if( line >= 0 ) {
-    struct stack_context *sc = report_context( aUCPP );
+  if (line >= 0)
+  {
+    struct stack_context *sc = report_context(aUCPP);
     size_t i;
 
-    for( i = 0; sc[i].line >= 0; i++ )
-      F.scatf( str, "\n\tincluded from %s:%ld",
-               sc[i].long_name ? sc[i].long_name : sc[i].name,
-               sc[i].line );
+    for (i = 0; sc[i].line >= 0; i++)
+      F.scatf(str, "\n\tincluded from %s:%ld",
+              sc[i].long_name ? sc[i].long_name : sc[i].name,
+              sc[i].line);
 
-    freemem( sc );
+    freemem(sc);
   }
 
-  va_end( ap );
+  va_end(ap);
 
-#ifdef UCPP_REENTRANT
-  push_str( cpp->callback_arg, CTES_ERROR, str );
-#else
-  push_str( g_current_cpi, CTES_ERROR, str );
-#endif
+  push_str(r_callback_arg, CTES_ERROR, str);
 
-  F.destroy( str );
+  F.destroy(str);
 }
 
 /*******************************************************************************
@@ -437,46 +430,43 @@ void my_ucpp_error( pUCPP_ long line, char *fmt, ... )
 *
 *******************************************************************************/
 
-void my_ucpp_warning( pUCPP_ long line, char *fmt, ... )
+void my_ucpp_warning(pUCPP_ long line, char *fmt, ...)
 {
   va_list ap;
   void *str;
 
   INIT_CHECK;
 
-  va_start( ap, fmt );
+  va_start(ap, fmt);
 
   str = F.newstr();
 
-  if( line > 0 )
-    F.scatf( str, "%s, line %ld: (warning) ",
-             r_current_filename, line);
+  if (line > 0)
+    F.scatf(str, "%s, line %ld: (warning) ",
+            r_current_filename, line);
   else if (line == 0)
-    F.scatf( str, "%s: (warning) ", r_current_filename);
+    F.scatf(str, "%s: (warning) ", r_current_filename);
   else
-    F.scatf( str, "(warning) ");
+    F.scatf(str, "(warning) ");
 
-  F.vscatf( str, fmt, &ap );
+  F.vscatf(str, fmt, &ap);
 
-  if( line >= 0 ) {
-    struct stack_context *sc = report_context( aUCPP );
+  if (line >= 0)
+  {
+    struct stack_context *sc = report_context(aUCPP);
     size_t i;
 
-    for( i = 0; sc[i].line >= 0; i++ )
-      F.scatf( str, "\n\tincluded from %s:%ld",
-               sc[i].long_name ? sc[i].long_name : sc[i].name,
-               sc[i].line );
-    freemem( sc );
+    for (i = 0; sc[i].line >= 0; i++)
+      F.scatf(str, "\n\tincluded from %s:%ld",
+              sc[i].long_name ? sc[i].long_name : sc[i].name,
+              sc[i].line);
+    freemem(sc);
   }
 
-  va_end( ap );
+  va_end(ap);
 
-#ifdef UCPP_REENTRANT
-  push_str( cpp->callback_arg, CTES_WARNING, str );
-#else
-  push_str( g_current_cpi, CTES_WARNING, str );
-#endif
+  push_str(r_callback_arg, CTES_WARNING, str);
 
-  F.destroy( str );
+  F.destroy(str);
 }
 

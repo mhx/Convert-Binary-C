@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/03 12:33:58 +0000 $
-* $Revision: 6 $
+* $Date: 2006/01/23 21:36:55 +0000 $
+* $Revision: 7 $
 * $Source: /ctlib/layout.h $
 *
 ********************************************************************************
@@ -118,5 +118,11 @@ unsigned get_native_compound_alignment(void);
 
 #define get_native_enum_size CTlib_get_native_enum_size
 int get_native_enum_size(void);
+
+#define get_native_unsigned_chars CTlib_get_native_unsigned_chars
+int get_native_unsigned_chars(void);
+
+#define get_native_unsigned_bitfields CTlib_get_native_unsigned_bitfields
+int get_native_unsigned_bitfields(void);
 
 #endif

@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/01 09:38:23 +0000 $
-# $Revision: 21 $
+# $Date: 2006/02/24 21:51:38 +0000 $
+# $Revision: 22 $
 # $Source: /token/config.pl $
 #
 ################################################################################
@@ -55,6 +55,7 @@ use Devel::Tokenizer::C;
 
 @sourcify = qw(
   Context
+  Defines
 );
 
 $file = shift;

@@ -8,11 +8,13 @@ my $t0 = time;
 
 my %opt = (
   order => 0,
+  fast  => 0,
+  check => 0,
   delay => 5,
   init  => !$ENV{CBC_DISABLE_PARSER},
 );
 
-GetOptions(\%opt, qw( init! order delay=f iterations|i=i time|t=i ));
+GetOptions(\%opt, qw( init! check! test! order delay=f iterations|i=i time|t=i ));
 
 exists $opt{iterations} and exists $opt{time}
     and die "Cannot configure both iterations and time\n";
@@ -53,18 +55,26 @@ for my $k (keys %config) {
   }
 }
 
+my $c_inc   = $c->clone;
+my $c_bench = $c->clone;
+
 $c->parse_file('tests/include/include.c');
 $c->parse_file('devel/bench.h');
+
+$c_inc->parse_file('tests/include/include.c');
+$c_bench->parse_file('devel/bench.h');
 
 my $type = 'forfaulture';
 my($d, $p, @o, @m, @a);
 
 if ($opt{init}) {
-  $d = 'x' x $c->sizeof( $type );
+  $d = 'x' x $c->sizeof($type);
   $p = $c->unpack($type, $d);
   @o = (0 .. $c->sizeof($type)-1);
+  @o = grep { $_ % 50 == 5 } @o if $opt{fast};
   @m = map { $c->member($type, $_) } @o;
   @a = map { $type.$_ } @m;
+  printf "running tests with %d offset(s) and %d member(s)\n", scalar @o, scalar @m;
 }
 
 my %tests = (
@@ -83,6 +93,26 @@ my %tests = (
 
   sourcify     => sub {
                     my $x = $c->sourcify;
+                  },
+
+  srcify_ctx   => sub {
+                    my $x = $c->sourcify({ Context => 1 });
+                  },
+
+  srcify_def   => sub {
+                    my $x = $c->sourcify({ Defines => 1 });
+                  },
+
+  srcify_all   => sub {
+                    my $x = $c->sourcify({ Context => 1, Defines => 1 });
+                  },
+
+  srcify_many  => sub {
+                    my $x = $c_inc->sourcify({ Context => 1, Defines => 1 });
+                  },
+
+  srcify_big   => sub {
+                    my $x = $c_bench->sourcify({ Context => 1, Defines => 1 });
                   },
 
   clone        => sub {
@@ -138,6 +168,7 @@ if (@ARGV) {
 }
 
 for my $test (sort keys %tests) {
+  print "pre-running test '$test'\n";
   eval { $tests{$test}->() };
   if ($@) {
     $@ =~ s/^/| /mg;
@@ -145,6 +176,8 @@ for my $test (sort keys %tests) {
     delete $tests{$test};
   }
 }
+
+exit 0 if $opt{check};
 
 while ((time - $t0) < $opt{delay}) { }
 

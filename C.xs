@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/04 16:07:52 +0000 $
-* $Revision: 152 $
+* $Date: 2006/02/26 22:07:21 +0000 $
+* $Revision: 158 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -55,6 +55,7 @@
 #include "cbc/debug.h"
 #include "cbc/hook.h"
 #include "cbc/init.h"
+#include "cbc/macros.h"
 #include "cbc/member.h"
 #include "cbc/object.h"
 #include "cbc/option.h"
@@ -68,6 +69,10 @@
 
 /*===== DEFINES ==============================================================*/
 
+#ifndef PerlEnv_getenv
+#  define PerlEnv_getenv getenv
+#endif
+
 #ifdef CBC_DEBUGGING
 
 #define DBG_CTXT_FMT "%s"
@@ -80,8 +85,8 @@
 
 #endif
 
-#define CBC_METHOD(name)         const char * const method = #name
-#define CBC_METHOD_VAR           const char * method = ""
+#define CBC_METHOD(name)         const char * const method PERL_UNUSED_DECL = #name
+#define CBC_METHOD_VAR           const char * method PERL_UNUSED_DECL = ""
 #define CBC_METHOD_SET(string)   method = string
 
 #define CT_DEBUG_METHOD                                                        \
@@ -142,10 +147,6 @@ static void handle_parse_errors(pTHX_ LinkedList stack);
 /*===== GLOBAL VARIABLES =====================================================*/
 
 /*===== STATIC VARIABLES =====================================================*/
-
-#if defined(CBC_THREAD_SAFE) && !defined(UCPP_REENTRANT)
-static perl_mutex gs_parse_mutex;
-#endif
 
 static int gs_DisableParser;
 static int gs_OrderMembers;
@@ -338,6 +339,10 @@ INCLUDE: xsubs/initializer.xs
 
 INCLUDE: xsubs/dependencies.xs
 
+INCLUDE: xsubs/defined.xs
+
+INCLUDE: xsubs/macro.xs
+
 INCLUDE: xsubs/arg.xs
 
 INCLUDE: xsubs/feature.xs
@@ -427,20 +432,20 @@ import(...)
 #
 ################################################################################
 
-#ifdef CBC_DEBUGGING
-
 SV *
 __DUMP__(val)
   SV *val
 
   CODE:
     RETVAL = newSVpvn("", 0);
+#ifdef CBC_DEBUGGING
     dump_sv(aTHX_ RETVAL, 0, val);
+#else
+    Perl_croak(aTHX_ "__DUMP__ not enabled in non-debug version");
+#endif
 
   OUTPUT:
     RETVAL
-
-#endif
 
 
 ################################################################################
@@ -463,9 +468,6 @@ BOOT:
     f.cstring  = ct_cstring;
     f.fatalerr = ct_fatal;
     set_print_functions(&f);
-#if defined(CBC_THREAD_SAFE) && !defined(UCPP_REENTRANT)
-    MUTEX_INIT(&gs_parse_mutex);
-#endif
 #ifdef CBC_DEBUGGING
     init_debugging(aTHX);
     if ((str = PerlEnv_getenv("CBC_DEBUG_OPT")) != NULL)

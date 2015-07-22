@@ -51,7 +51,7 @@ void *getmem(size_t);
 
 #if defined MEM_DEBUG
 #define getmem_debug	UCPP_PRIVATE(getmem_debug)
-void *getmem_debug(size_t, char *, int);
+void *getmem_debug(size_t, const char *, int);
 #undef getmem
 #define getmem(x)	getmem_debug(x, __FILE__, __LINE__)
 #endif
@@ -65,7 +65,7 @@ void freemem(void *);
 
 #if defined MEM_DEBUG
 #define freemem_debug	UCPP_PRIVATE(freemem_debug)
-void freemem_debug(void *, char *, int);
+void freemem_debug(void *, const char *, int);
 #undef freemem
 #define freemem(x)	freemem_debug(x, __FILE__, __LINE__)
 #endif
@@ -73,17 +73,17 @@ void freemem_debug(void *, char *, int);
 #define incmem		UCPP_PRIVATE(incmem)
 #define sdup		UCPP_PRIVATE(sdup)
 void *incmem(void *, size_t, size_t);
-char *sdup(char *);
+char *sdup(const char *);
 
 #if defined MEM_DEBUG
 #define incmem_debug	UCPP_PRIVATE(incmem_debug)
 #define report_leaks	UCPP_PRIVATE(report_leaks)
 #define sdup_debug	UCPP_PRIVATE(sdup_debug)
-void *incmem_debug(void *, size_t, size_t, char *, int);
+void *incmem_debug(void *, size_t, size_t, const char *, int);
 #undef incmem
 #define incmem(x, y, z)	incmem_debug(x, y, z, __FILE__, __LINE__)
 void report_leaks(void);
-char *sdup_debug(char *, char *, int);
+char *sdup_debug(const char *, const char *, int);
 #undef sdup
 #define sdup(x)		sdup_debug(x, __FILE__, __LINE__)
 #endif
@@ -91,8 +91,8 @@ char *sdup_debug(char *, char *, int);
 #ifdef AUDIT
 #define mmv		UCPP_PRIVATE(mmv)
 #define mmvwo		UCPP_PRIVATE(mmvwo)
-void *mmv(void *, void *, size_t);
-void *mmvwo(void *, void *, size_t);
+void *mmv(void *, const void *, size_t);
+void *mmvwo(void *, const void *, size_t);
 #else
 #define mmv	memcpy
 #define mmvwo	memmove

@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/01 09:38:22 +0000 $
-# $Revision: 21 $
+# $Date: 2006/02/05 22:05:06 +0000 $
+# $Revision: 22 $
 # $Source: /tests/901_memory.t $
 #
 ################################################################################
@@ -44,7 +44,7 @@ for my $test ( @files ) {
 
   my $exf = -e $dbfile ? 1 : 0;
 
-  my $reason = $debug ? '' : 'skip: no debugging';
+  my $reason = $debug ? '' : 'no debugging';
 
   skip( $reason, $exf, 1, "dubious: no debug output file created" );
 
@@ -60,7 +60,7 @@ for my $test ( @files ) {
   }
 
   if( $debug and !$exf ) {
-    $reason = 'skip: no output file created';
+    $reason = 'no output file created';
   }
 
   skip( $reason, ($i{allocs} || 0) > 0, 1, "dubious: no memory allocations" );
