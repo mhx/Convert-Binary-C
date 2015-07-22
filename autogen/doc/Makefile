@@ -1,6 +1,5 @@
 SHELL     = /bin/bash
 PERL      = bleadperl-debug
-CHECKOUT  = checkout_file
 CECHO     = $(PERL) -e'use Term::ANSIColor; print color(shift); print @ARGV, color("reset"), "\n"'
 BLUE      = $(CECHO) "blue"
 ISPELL    = /usr/bin/ispell -b
@@ -51,7 +50,6 @@ ins_c : C.pm
 	@if diff C.pm $(CBC_PM) >/dev/null ; then                          \
 	  $(CECHO) "bold blue" "$(CBC_PM) is unchanged, skip install";     \
 	else                                                               \
-	  $(CHECKOUT) $(CBC_PM);                                           \
 	  $(CECHO) "bold red" "installing $(CBC_PM)";                      \
 	  cp C.pm $(CBC_PM);                                               \
 	fi
@@ -60,7 +58,6 @@ ins_cached : Cached.pm
 	@if diff Cached.pm $(CBCC_PM) >/dev/null ; then                    \
 	  $(CECHO) "bold blue" "$(CBCC_PM) is unchanged, skip install";    \
 	else                                                               \
-	  $(CHECKOUT) $(CBCC_PM);                                          \
 	  $(CECHO) "bold red" "installing $(CBCC_PM)";                     \
 	  cp Cached.pm $(CBCC_PM);                                         \
 	fi
@@ -69,7 +66,6 @@ ins_ccconfig : ccconfig
 	@if diff ccconfig $(CCCONFIG) >/dev/null ; then                    \
 	  $(CECHO) "bold blue" "$(CCCONFIG) is unchanged, skip install";   \
 	else                                                               \
-	  $(CHECKOUT) $(CCCONFIG);                                         \
 	  $(CECHO) "bold red" "installing $(CCCONFIG)";                    \
 	  cp ccconfig $(CCCONFIG);                                         \
 	fi
