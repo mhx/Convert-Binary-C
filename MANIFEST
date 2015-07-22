@@ -106,6 +106,7 @@ t/118_member.t
 t/119_def.t
 t/120_new.t
 t/121_asm.t
+t/122_ieee.t
 t/801_speed.t
 t/802_threads.t
 t/803_debug.t

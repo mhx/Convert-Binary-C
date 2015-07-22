@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/06/06 12:43:02 +0100 $
-# $Revision: 44 $
-# $Snapshot: /Convert-Binary-C/0.41 $
+# $Date: 2003/06/22 23:01:58 +0100 $
+# $Revision: 45 $
+# $Snapshot: /Convert-Binary-C/0.42 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.41 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.42 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -182,7 +182,7 @@ blocks of the device's memory.
 Another part of this realtime debugger was a Perl application
 running on my workstation that gathered all the messages that
 were sent out from the embedded device. It printed all the
-strings an numbers, and hexdumped the arbitrary data.
+strings and numbers, and hexdumped the arbitrary data.
 However, manually parsing a couple of 300 byte hexdumps of a
 complex C structure is not only frustrating, but also error-prone
 and time consuming.
@@ -895,8 +895,8 @@ Set the number of bytes that are occupied by a single
 precision floating point value.
 If you set it to zero, the size of a C<float> on the
 host system will be used. This is also the default.
-Values can only be packed and unpacked if the size
-matches the native size of a C<float>.
+For details on floating point support,
+see L<"FLOATING POINT VALUES">.
 
 =item C<DoubleSize> =E<gt> 0 | 1 | 2 | 4 | 8 | 12 | 16
 
@@ -904,8 +904,8 @@ Set the number of bytes that are occupied by a double
 precision floating point value.
 If you set it to zero, the size of a C<double> on the
 host system will be used. This is also the default.
-Values can only be packed and unpacked if the size
-matches the native size of a C<double>.
+For details on floating point support,
+see L<"FLOATING POINT VALUES">.
 
 =item C<LongDoubleSize> =E<gt> 0 | 1 | 2 | 4 | 8 | 12 | 16
 
@@ -913,8 +913,8 @@ Set the number of bytes that are occupied by a double
 precision floating point value.
 If you set it to zero, the size of a C<long double> on
 the host system, or 12 will be used. This is also the
-default. Values can only be packed and unpacked if the
-size matches the native size of a C<long double>.
+default. For details on floating point support,
+see L<"FLOATING POINT VALUES">.
 
 =item C<PointerSize> =E<gt> 0 | 1 | 2 | 4 | 8
 
@@ -2942,7 +2942,7 @@ will check if Convert::Binary::C was built with debugging support
 enabled. The C<feature> function returns C<1> if the feature is
 enabled, C<0> if the feature is disabled, and C<undef> if the
 feature is unknown. Currently the only features that can be checked
-are C<debug> and C<threads>.
+are C<ieeefp>, C<debug> and C<threads>.
 
 You can enable or disable certain features at compile time of the
 module by using the
@@ -3062,12 +3062,46 @@ which means that no information is collected from the file
 or code that is parsed. However, the preprocessor will run,
 which is useful for benchmarking the preprocessor.
 
+=head1 FLOATING POINT VALUES
+
+When using Convert::Binary::C to handle floating point values,
+you have to be aware of some limitations.
+
+You're usually safe if all your platforms are using the IEEE
+floating point format. During the Convert::Binary::C build
+process, the C<ieeefp> feature will automatically be enabled
+if the host is using IEEE floating point. You can check for
+this feature at runtime using
+the L<C<feature>|/"Convert::Binary::C::feature"> function:
+
+  if (Convert::Binary::C::feature('ieeefp')) {
+    # do something
+  }
+
+When IEEE floating point support is enabled, the module can
+also handle floating point values of a different byteorder.
+
+If your host platform is not using IEEE floating point,
+the C<ieeefp> feature will be disabled. Convert::Binary::C
+then will be more restrictive, refusing to handle any
+non-native floating point values.
+
+However, Convert::Binary::C cannot detect the floating point
+format used by your target platform. It can only try to
+prevent problems in obvious cases. If you know your target
+platform has a completely different floating point format,
+don't use floating point conversion at all.
+
+Whenever Convert::Binary::C detects that it cannot properly
+do floating point value conversion, it will issue a warning
+and will not attempt to convert the floating point value.
+
 =head1 BITFIELDS
 
 Bitfields are currently not supported by Convert::Binary::C,
 because I generally don't use them. I plan to support them
-in a later release, when I will have found an easy way of integrating
-them into the module.
+in a later release, when I will have found an easy way of
+integrating them into the module.
 
 Whenever a method has to deal with bitfields, it will issue
 a warning message that bitfields are unsupported. Thus, you

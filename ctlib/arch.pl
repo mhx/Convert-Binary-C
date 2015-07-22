@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/17 13:39:02 +0100 $
-# $Revision: 9 $
-# $Snapshot: /Convert-Binary-C/0.41 $
+# $Date: 2003/06/17 08:36:24 +0100 $
+# $Revision: 11 $
+# $Snapshot: /Convert-Binary-C/0.42 $
 # $Source: /ctlib/arch.pl $
 #
 ################################################################################
@@ -30,21 +30,21 @@ open OUT, ">".shift or die $!;
 %cfg = %Config;  # because we modify some values in %cfg
 
 %use = (
-  '64bit'      => 1,
-  'longlong'   => 1,
-  'longdouble' => 1,
+  '64BIT'      => 1,
+  'LONGLONG'   => 1,
+  'LONGDOUBLE' => 1,
 );
 
 if( $Config{osname} eq 'hpux' and $Config{cc} eq 'cc' and
     $Config{osvers} =~ /(\d+)\.(\d+)/ and $1 < 11 ) {
   # At least some versions of HP's cc compiler have a broken
   # preprocessor/compiler implementation of 64-bit data types.
-  $use{'64bit'}    = 0;
-  $use{'longlong'} = 0;
+  $use{'64BIT'}    = 0;
+  $use{'LONGLONG'} = 0;
 }
 
-for( qw( 64BIT LONGLONG LONGDOUBLE ) ) {
-  exists $ENV{"CBC_USE$_"} and $use{lc $_} = $ENV{"CBC_USE$_"};
+for( keys %use ) {
+  exists $ENV{"CBC_USE$_"} and $use{$_} = $ENV{"CBC_USE$_"};
 }
 
 # <HACK> required to support perl < 5.6.0
@@ -99,25 +99,25 @@ config <<'ENDCFG';
 
 ENDCFG
 
-if( $use{longdouble} && $cfg{d_longdbl} eq 'define' ) {
+if( $use{LONGDOUBLE} && $cfg{d_longdbl} eq 'define' ) {
 config <<'ENDCFG';
 #define HAVE_LONG_DOUBLE
 ENDCFG
 }
-elsif( $use{longdouble} == 0 ) {
+elsif( $use{LONGDOUBLE} == 0 ) {
   print "DISABLED long double support\n";
 }
 
-if( $use{longlong} && $cfg{d_longlong} eq 'define' ) {
+if( $use{LONGLONG} && $cfg{d_longlong} eq 'define' ) {
 config <<'ENDCFG';
 #define HAVE_LONG_LONG
 ENDCFG
 }
-elsif( $use{longlong} == 0 ) {
+elsif( $use{LONGLONG} == 0 ) {
   print "DISABLED long long support\n";
 }
 
-if( $use{'64bit'} && $cfg{d_quad} eq 'define' ) {
+if( $use{'64BIT'} && $cfg{d_quad} eq 'define' ) {
 config <<'ENDCFG';
 #define NATIVE_64_BIT_INTEGER
 
@@ -127,7 +127,7 @@ typedef ${u64type} u_64;
 
 ENDCFG
 }
-elsif( $use{'64bit'} && $cfg{d_longlong} eq 'define' and $cfg{longlongsize} == 8 ) {
+elsif( $use{'64BIT'} && $cfg{d_longlong} eq 'define' and $cfg{longlongsize} == 8 ) {
 config <<'ENDCFG';
 #define NATIVE_64_BIT_INTEGER
 
@@ -138,7 +138,7 @@ typedef unsigned long long u_64;
 ENDCFG
 }
 else {
-if( $use{'64bit'} == 0 ) {
+if( $use{'64BIT'} == 0 ) {
   print "DISABLED 64-bit support\n";
 }
 config <<'ENDCFG';

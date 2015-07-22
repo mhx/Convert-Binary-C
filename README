@@ -160,13 +160,19 @@ options to the Makefile.PL call. However, you can safely leave them
 at their default.
 
 Available features are 'debug' to build the module with debugging
-support and 'threads' to build a thread-safe version. Note that the
-'threads' feature is only available for multithreaded perl binaries.
+support, 'threads' to build a thread-safe version and 'ieeefp' to
+explicitly enable or disable IEEE floating point support. Note that
+the 'threads' feature is only available for multithreaded perl binaries.
 
 The 'threads' and 'debug' features depend on how your perl binary was
-built. If it's built with the DEBUGGING flag, the 'debug' feature is
-enabled, otherwise it's disabled by default. If your perl binary was
+built. If it was built with the DEBUGGING flag, the 'debug' feature is
+enabled, otherwise it is disabled by default. If your perl binary was
 built to support threads, the module will be build thread-safe.
+
+The 'ieeefp' feature depends on how your machine stores floating point
+values. If they are stored in IEEE format, this feature will be enabled
+automatically. You should really only change the default if you know
+what you're doing.
 
 You can enable or disable features explicitly by adding the arguments
 
@@ -178,7 +184,10 @@ enabled, you would say:
 
   perl Makefile.PL enable-debug
 
-This will still allow you to pass other 'standard' arguments to Makefile.PL.
+This will still allow you to pass other 'standard' arguments to
+Makefile.PL, like
+
+  perl Makefile.PL enable-debug OPTIMIZE=-O3
 
 ------------
 8. COPYRIGHT

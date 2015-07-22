@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/06/09 23:05:34 +0100 $
-# $Revision: 37 $
-# $Snapshot: /Convert-Binary-C/0.41 $
+# $Date: 2003/06/23 19:18:07 +0100 $
+# $Revision: 42 $
+# $Snapshot: /Convert-Binary-C/0.42 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -107,6 +107,7 @@ unshift @OBJECT, $MODULE =~ /([^:]+)$/;
 
 @CLEAN = qw(
   $(OBJECT)
+  t/*.vgo
 );
 
 @DEFINE = qw(
@@ -124,6 +125,11 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
                enabled => $Config{ccflags} =~ /-DDEBUGGING\b/ ? 1 : 0,
                e_flags => [qw( CTYPE_DEBUGGING DEBUG_MEMALLOC DEBUG_HASH YYDEBUG=1 )],
                d_flags => [qw( NDEBUG )],
+             },
+  ieeefp  => {
+               enabled => undef,
+               e_flags => [qw( CBC_HAVE_IEEE_FP )],
+               d_flags => [qw()],
              },
   ($Config{use5005threads} || $Config{useithreads}) ? (
     threads => {
@@ -212,9 +218,69 @@ if( $FEATURES{'$coverage'}{enabled} ) {
   push @CLEAN, qw( *.gcov *.da *.bb *.bbg );
 }
 
+# run the IEEE check anyway
+@ieee_fail = &check_ieee_fp;
+
+if( defined $FEATURES{'ieeefp'}{enabled} ) {
+  if( $FEATURES{'ieeefp'}{enabled} and @ieee_fail ) {
+    print <<ENDMSG;
+-----------------------------------------------------------------------
+  My tests indicate that your machine does not store floating point
+  values in IEEE format. However, you explicitly turned IEEE floating
+  point support on. So I will trust you. You have been warned!
+-----------------------------------------------------------------------
+ENDMSG
+  }
+}
+else {
+  $FEATURES{'ieeefp'}{enabled} = !@ieee_fail;
+  if( @ieee_fail ) {
+    print <<ENDMSG;
+
+--> !!!!!!!!!!   --------------------------------------------------
+--> !! WHOA !!    You did not pass the IEEE floating point check!
+--> !!!!!!!!!!   --------------------------------------------------
+--> 
+--> This means I've done a couple of very simple tests to see if your machine
+--> is storing floating point numbers in IEEE format or not. From the results
+--> I concluded that your machine does _NOT_ store floating point values in
+--> IEEE format.
+--> 
+--> These are the values for which the IEEE test failed:
+--> 
+--> value            format   expected                  got
+--> ---------------------------------------------------------------------------
+ENDMSG
+
+  my $hex = sub { join ' ', map { sprintf "%02X", $_ } unpack "C*", $_[0] };
+
+  for my $t ( @ieee_fail ) {
+    printf "--> %-15s  %-7s  %-24s  %-24s\n", $t->{value}, $t->{check},
+           $hex->( $t->{expected} ), $hex->( $t->{got} );
+  }
+
+  print <<ENDMSG;
+--> ---------------------------------------------------------------------------
+--> 
+--> If you're aware of the fact that your machine does not support IEEE
+--> floating point, please ignore the junk above. You can suppress this
+--> message by explicitly disabling the 'ieeefp' feature:
+--> 
+-->   $^X Makefile.PL disable-ieeefp
+--> 
+--> If you're sure that your machine has IEEE floating point support and the
+--> tests are just complete crap, you can force IEEE support by explicitly
+--> enabling the 'ieeefp' feature:
+--> 
+-->   $^X Makefile.PL enable-ieeefp
+
+ENDMSG
+  }
+}
+
 if( $Config{usemymalloc} eq 'y' and $FEATURES{threads}{enabled} ) {
   die <<ENDMSG;
--->
+
 --> !!!!!!!!!!!!!   ------------------------------------------
 --> !! S T O P !!    Unsupported Perl configuration detected!
 --> !!!!!!!!!!!!!   ------------------------------------------
@@ -232,7 +298,7 @@ if( $Config{usemymalloc} eq 'y' and $FEATURES{threads}{enabled} ) {
 -->     $^X Makefile.PL disable-threads
 -->
 -->   and build the module as usual.
--->
+
 ENDMSG
 }
 
@@ -287,6 +353,12 @@ sub MY::constants {
 
 # Yacc to generate parser
 YACC = $::BISON
+
+# Options for valgrind
+VALGRIND_OPTIONS = --leak-check=yes \\
+		   --leak-resolution=high \\
+		   --show-reachable=yes \\
+		   --num-callers=50
 END
 }
 
@@ -301,9 +373,31 @@ ctlib/pragma.c: ctlib/pragma.y
 	\$(YACC) -v -p pragma_ -o \$*.c \$*.y
 END
 
+  if( $::Config{ccflags} =~ /-DDEBUGGING\b/ ) {
+    my($sym) = $::MODULE =~ /^([^:]+)/;
+    $postamble .= <<END;
+
+valgrind: pure_all
+	\@export PERL_DESTRUCT_LEVEL=2; \\
+	echo PERL_DESTRUCT_LEVEL=\$\$PERL_DESTRUCT_LEVEL; \\
+	for file in t/*.t; do \\
+	  echo checking \$\$file with valgrind...; \\
+	  valgrind \$(VALGRIND_OPTIONS) \$(PERL) -Mblib \$\$file >\$\$file.vgo 2>&1; \\
+	  grep $sym \$\$file.vgo; \\
+	done
+END
+  }
+  else {
+    $postamble .= <<END;
+
+valgrind:
+	\@echo Sorry, I need a debugging version of perl for valgrind.
+END
+  }
+
   $::FEATURES{'$coverage'}{enabled} and $postamble .= <<END;
 
-coverage:
+coverage: test
 	\@for file in *.bb; do gcov \$\$file; done
 END
 
@@ -387,3 +481,68 @@ sub rec_depend {
     exists $d->{$_} and rec_depend( $_, $d, $i );
   }
 }
+
+sub is_big_endian
+{
+  my $byteorder = $Config{byteorder}
+               || unpack( "a*", pack "L", 0x34333231 );
+
+  die "Native byte order ($byteorder) not supported!\n"
+      if   $byteorder ne '1234'     and $byteorder ne '4321'
+       and $byteorder ne '12345678' and $byteorder ne '87654321';
+
+  $byteorder eq '4321' or $byteorder eq '87654321';
+}
+
+sub check_ieee_fp
+{
+  my @test = (
+    {
+      value  => '-1.0',
+      double => pack( 'C*', 0xBF, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ),
+      single => pack( 'C*', 0xBF, 0x80, 0x00, 0x00 ),
+    },
+    {
+      value  => '0.0',
+      double => pack( 'C*', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ),
+      single => pack( 'C*', 0x00, 0x00, 0x00, 0x00 ),
+    },
+    {
+      value  => '0.4',
+      double => pack( 'C*', 0x3F, 0xD9, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9A ),
+      single => pack( 'C*', 0x3E, 0xCC, 0xCC, 0xCD ),
+    },
+    {
+      value  => '1.0',
+      double => pack( 'C*', 0x3F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ),
+      single => pack( 'C*', 0x3F, 0x80, 0x00, 0x00 ),
+    },
+    {
+      value  => '3.1415926535',
+      double => pack( 'C*', 0x40, 0x09, 0x21, 0xFB, 0x54, 0x41, 0x17, 0x44 ),
+      single => pack( 'C*', 0x40, 0x49, 0x0F, 0xDB ),
+    },
+    {
+      value  => '1.220703125e-4',
+      double => pack( 'C*', 0x3F, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ),
+      single => pack( 'C*', 0x39, 0x00, 0x00, 0x00 ),
+    },
+  );
+
+  my @fail;
+
+  for my $t ( @test ) {
+    my $s = pack 'f', $t->{value};
+    my $d = pack 'd', $t->{value};
+    unless( &is_big_endian ) { $_ = reverse $_ for $s, $d }
+
+    $s eq $t->{single} or push @fail,
+        { value => $t->{value}, check => 'single', expected => $t->{single}, got => $s }; 
+
+    $d eq $t->{double} or push @fail,
+        { value => $t->{value}, check => 'double', expected => $t->{double}, got => $d }; 
+  }
+
+  return @fail;
+}
+

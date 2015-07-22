@@ -14,8 +14,8 @@ my $HOMEDIR = '/house/mhx';
 my $PROMPT = '/spe\d{3}(?:\.testdrive\.(?:hp|compaq)\.com)?> $/';
 
 my @hosts = (
-  { ip => '192.233.54.140', prompt => $PROMPT },
-  { ip => '192.233.54.141', prompt => $PROMPT },
+  # { ip => '192.233.54.140', prompt => $PROMPT },  # not reachable
+  # { ip => '192.233.54.141', prompt => $PROMPT },  # broken libgcc?
   { ip => '192.233.54.142', prompt => $PROMPT },
   { ip => '192.233.54.143', prompt => $PROMPT },
   { ip => '192.233.54.144', prompt => $PROMPT },
@@ -26,39 +26,43 @@ my @hosts = (
 
   # { ip => '192.233.54.150', prompt => $PROMPT },  # no C compiler... ;-)
   { ip => '192.233.54.151', prompt => $PROMPT },
-  # { ip => '192.233.54.152', prompt => $PROMPT },  # no response
   { ip => '192.233.54.153', prompt => $PROMPT },
   { ip => '192.233.54.154', prompt => $PROMPT },
   { ip => '192.233.54.155', prompt => $PROMPT },
   { ip => '192.233.54.156', prompt => $PROMPT },
   { ip => '192.233.54.158', prompt => $PROMPT },
-  { ip => '192.233.54.159', prompt => $PROMPT },
 
   { ip => '192.233.54.160', prompt => $PROMPT },
   { ip => '192.233.54.161', prompt => $PROMPT },
-  # { ip => '192.233.54.162', prompt => $PROMPT },  # no response
-  { ip => '192.233.54.163', prompt => $PROMPT },
+  # { ip => '192.233.54.163', prompt => $PROMPT },  # not reachable
   { ip => '192.233.54.164', prompt => $PROMPT },
   { ip => '192.233.54.165', prompt => '/mgtnode> $/' },
   { ip => '192.233.54.166', prompt => $PROMPT },
   { ip => '192.233.54.167', prompt => $PROMPT },
-  # { ip => '192.233.54.168', prompt => $PROMPT },  # only perl 5.5.2
   # { ip => '192.233.54.169', prompt => $PROMPT },  # only perl 5.5.2
 
   # { ip => '192.233.54.170', prompt => $PROMPT },  # HPPA-Linux, make test problems
-  { ip => '192.233.54.172', prompt => $PROMPT },
+  { ip => '192.233.54.171', prompt => $PROMPT },
+  # { ip => '192.233.54.172', prompt => $PROMPT },  # no login
   { ip => '192.233.54.174', prompt => $PROMPT },
+  # { ip => '192.233.54.175', prompt => $PROMPT },  # broken perl installation
+  # { ip => '192.233.54.176', prompt => $PROMPT },  # broken perl installation
+  { ip => '192.233.54.177', prompt => $PROMPT },
+  { ip => '192.233.54.178', prompt => $PROMPT },
 
-  { ip => '192.233.54.188', prompt => $PROMPT },
+  # { ip => '192.233.54.180', prompt => $PROMPT },  # VMS
+  # { ip => '192.233.54.188', prompt => $PROMPT },  # too slow
 
-  { ip => '192.233.54.190', prompt => $PROMPT },
-
+  # { ip => '192.233.54.202', prompt => $PROMPT },  # VMS
   { ip => '192.233.54.206', prompt => $PROMPT },
   { ip => '192.233.54.207', prompt => $PROMPT },
 
-  # { ip => '192.233.54.211', prompt => '/shark1.testdrive.compaq.com> $/' },
-  # { ip => '192.233.54.212', prompt => '/mhx\@shark2:\~\$ $/' },
-  { ip => '192.233.54.214', prompt => '/shark4.testdrive.compaq.com> $/' },
+  # { ip => '192.233.54.216', prompt => '/ipaq> $/' },  # doesn't compile module
+
+  { ip => '192.233.54.222', prompt => '/\[mhx\@spe222 \~\]\$ $/' },
+  { ip => '192.233.54.223', prompt => '/\[mhx\@spe223 \~\]\$ $/' },
+
+  # { ip => '192.233.54.237', prompt => $PROMPT },  # broken system headers
 );
 
 my $file = shift;

@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/06/06 12:41:58 +0100 $
-# $Revision: 8 $
-# $Snapshot: /Convert-Binary-C/0.41 $
+# $Date: 2003/06/15 14:43:23 +0100 $
+# $Revision: 9 $
+# $Snapshot: /Convert-Binary-C/0.42 $
 # $Source: /ctlib/t_parser.pl $
 #
 ################################################################################
@@ -43,8 +43,7 @@ use Devel::Tokenizer::C;
 
 # keywords that can be disabled
 @disable = qw(
-  asm
-  auto
+  asm auto
   const
   double
   enum extern
@@ -63,8 +62,7 @@ use Devel::Tokenizer::C;
   float
   int
   long
-  short
-  signed
+  short signed
   unsigned
 );
 

@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/20 04:16:16 +0100 $
-# $Revision: 21 $
-# $Snapshot: /Convert-Binary-C/0.41 $
+# $Date: 2003/06/17 22:30:50 +0100 $
+# $Revision: 23 $
+# $Snapshot: /Convert-Binary-C/0.42 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
@@ -21,7 +21,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 3382 }
+BEGIN { plan tests => 3494 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -113,7 +113,8 @@ eval_test(q{
   $x = $p->pack( 'hasbf', {} );                            # (1) Bitfields are unsupported in pack('hasbf')
   $x = $p->pack( 't_unsafe', [] );                         # (1) Unsafe values used in pack('t_unsafe')
   $x = $p->pack( 's_unsafe', {} );                         # (1) Unsafe values used in pack('s_unsafe')
-  $x = $p->pack( 'nonnative', 0 );                         # (1) Cannot pack non-native floating point values
+  $x = $p->pack( 'nonnative', 0 );                         # [ ieeefp] (1) Cannot pack 1 byte floating point values
+                                                           # [!ieeefp] (1) Cannot pack non-native floating point values
   $p->pack( 'enum enu', 'A', ['xxxx'] );                   # (E) Type of arg 3 to pack must be string
   $p->pack( 'enum enu', 'A', 'xxxx' );                     # (E) Modification of a read-only value attempted
   $x = $p->pack( 'enum enu', 'A', 'xxxx' );                # no warning
@@ -123,6 +124,11 @@ eval_test(q{
   $x = $p->pack( 'test.foo', sub { 1 } );                  # (1) 'test.foo' should be an array reference
   $x = $p->pack( 'test.bar', [] );                         # (1) 'test.bar' should be a scalar value
   $x = $p->pack( 'test.xxx', {} );                         # (1) 'test.xxx' should be a scalar value
+
+  $x = $p->pack( 'unsigned char', 42 );                    # no warning
+  $x = $p->pack( 'double', 42 );                           # no warning
+  $x = $p->pack( 'short double', 42 );                     # (1) Unsupported floating point type 'short double' in pack
+  $x = $p->pack( 'fp_unsupp', 42 );                        # (1) Unsupported floating point type 'short float' in pack
 
   $p->unpack( 'test', $data );                             # (1) Useless use of unpack in void context
   $x = $p->unpack( '', $data );                            # (E) Cannot find ''
@@ -135,10 +141,15 @@ eval_test(q{
                                                            # (1) Data too short
   $x = $p->unpack( 's_unsafe', $data );                    # (1) Unsafe values used in unpack('s_unsafe')
                                                            # (1) Data too short
-  $x = $p->unpack( 'nonnative', 'x' );                     # (1) Cannot unpack non-native floating point values
-
+  $x = $p->unpack( 'nonnative', 'x' );                     # [ ieeefp] (1) Cannot unpack 1 byte floating point values
+                                                           # [!ieeefp] (1) Cannot unpack non-native floating point values
   $x = $p->unpack( 'multiple', 'x'x100 );                  # (1) Member 'a' used more than once in struct multiple defined in [buffer](71)
                                                            # (1) Member 'b' used more than once in union defined in [buffer](75)
+
+  $x = $p->unpack( 'unsigned char', 'x'x100 );             # no warning
+  $x = $p->unpack( 'double', 'x'x100 );                    # no warning
+  $x = $p->unpack( 'signed float', 'x'x100 );              # (1) Unsupported floating point type 'signed float' in unpack
+  $x = $p->unpack( 'fp_unsupp', 'x'x100 );                 # (1) Unsupported floating point type 'short float' in unpack
 
   $p->sizeof( 'na' );                                      # (1) Useless use of sizeof in void context
   $x = $p->sizeof( '' );                                   # (E) Cannot find ''
@@ -336,15 +347,23 @@ sub eval_test
   my @tests;
 
   for( split $/, $test ) {
+    my $active = 1;
     print "# $_\n";
     /^\s*$/ and next;
     /^\s*\/\// and next;
-    my($c, $l, $w) = /^(.*;)?(?:\s*#(?:\s*\(([E\d])\))?\s*(.*?))?\s*$/;
-    print "# [$c] [$l] [$w]\n";
+    my($c, $f, $l, $w) = /^(.*;)?(?:\s*#(?:\s*\[\s*([^\]]*?)\s*\])?(?:\s*\(([E\d])\))?\s*(.*?))?\s*$/;
+    print "# [$c] [$f] [$l] [$w] => ";
+    for my $feat ( split /\s*,\s*/, $f ) {
+      my($neg, $name) = $feat =~ /(!?)\s*([-\w]+)/;
+      my $have = Convert::Binary::C::feature( $name );
+      print "($name=$have) ";
+      ($neg xor $have) or $active = 0;
+    }
+    printf "%sactive\n", $active ? '' : 'in';
     if( defined $c ) {
       push @tests, { code => $c, warnings => [] };
     }
-    if( @tests && defined $l ) {
+    if( $active and @tests and defined $l ) {
       $w = quotemeta $w;
       $w =~ s/(?:\\\s)+(?:\\\.){3}(?:\\\s)+/.*/g;
       if( $l eq 'E' ) {
@@ -499,6 +518,8 @@ typedef int t_unsafe[(char)600];  /* cast makes it unsafe */
 struct s_unsafe {
   int foo[BAD];  /* uuuhhh!! */
 };
+
+typedef short float fp_unsupp;
 
 #endif
 

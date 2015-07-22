@@ -1,4 +1,28 @@
 ------------
+Version 0.42
+------------
+
+* added new 'ieeefp' feature
+
+* new floating point conversion code to support both IEEE
+  and non-IEEE sytems
+
+  o on machines using the IEEE format to store floating
+    point numbers, you can pack/unpack arbitrary byteorder
+    floating point values for all supported native sizes
+
+  o on machines not using the IEEE format, packing and
+    unpacking of floating point values is restricted to
+    the types natively available
+
+* floating point conversion checks and warnings have been
+  improved
+
+* added floating point format detection to ccconfig
+
+* some code cleanups
+
+------------
 Version 0.41
 ------------
 

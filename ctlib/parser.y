@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/06/10 14:12:09 +0100 $
-* $Revision: 25 $
-* $Snapshot: /Convert-Binary-C/0.41 $
+* $Date: 2003/06/23 10:41:23 +0100 $
+* $Revision: 26 $
+* $Snapshot: /Convert-Binary-C/0.42 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -616,16 +616,15 @@ primary_expression
 	;
 
 postfix_expression
-	: primary_expression { $$ = $1; }
-	| postfix_expression '[' comma_expression ']'    { UNDEF_VAL( $$ ); }
-	| postfix_expression '(' ')'                     { UNDEF_VAL( $$ ); }
-	| postfix_expression '(' argument_expression_list ')' { UNDEF_VAL( $$ ); }
-	| postfix_expression {} '.'   member_name        { UNDEF_VAL( $$ ); }
-	| postfix_expression {} PTR_OP member_name       { UNDEF_VAL( $$ ); }
-	| postfix_expression INC_OP                      { UNDEF_VAL( $$ ); }
-	| postfix_expression DEC_OP                      { UNDEF_VAL( $$ ); }
-	| '(' type_name ')' '{' initializer_list '}'     { UNDEF_VAL( $$ ); } /* ANSI-C99 addition */
-	| '(' type_name ')' '{' initializer_list ',' '}' { UNDEF_VAL( $$ ); } /* ANSI-C99 addition */
+	: primary_expression                                    { $$ = $1; }
+	| postfix_expression '[' comma_expression ']'           { UNDEF_VAL( $$ ); }
+	| postfix_expression '(' ')'                            { UNDEF_VAL( $$ ); }
+	| postfix_expression '(' argument_expression_list ')'   { UNDEF_VAL( $$ ); }
+	| postfix_expression {} '.'   member_name               { UNDEF_VAL( $$ ); }
+	| postfix_expression {} PTR_OP member_name              { UNDEF_VAL( $$ ); }
+	| postfix_expression INC_OP                             { UNDEF_VAL( $$ ); }
+	| postfix_expression DEC_OP                             { UNDEF_VAL( $$ ); }
+	| '(' type_name ')' '{' initializer_list comma_opt '}'  { UNDEF_VAL( $$ ); } /* ANSI-C99 addition */
 	;
 
 member_name
@@ -1324,7 +1323,7 @@ bit_field_size
 	;
 
 enum_name
-	: enum_key_context '{' enumerator_list '}'
+	: enum_key_context '{' enumerator_list comma_opt '}'
 	  {
 	    if( IS_LOCAL ) {
 	      $$.tflags = 0;
@@ -1340,7 +1339,7 @@ enum_name
 	    }
 	    PSTATE->curEnumList = NULL;
 	  }
-	| enum_key_context identifier_or_typedef_name '{' enumerator_list '}'
+	| enum_key_context identifier_or_typedef_name '{' enumerator_list comma_opt '}'
 	  {
 	    if( IS_LOCAL ) {
 	      $$.tflags = 0;
@@ -1434,11 +1433,6 @@ enumerator_list
 	      LL_push( $1, $3 );
 	      $$ = $1;
 	    }
-	  }
-	  /* XXX: most compilers allow a trailing comma */
-	| enumerator_list ','
-	  {
-	    $$ = $1;
 	  }
 	;
 
@@ -1589,8 +1583,7 @@ initializer_opt
 	;
 
 initializer
-	: '{' initializer_list '}'
-	| '{' initializer_list ',' '}'
+	: '{' initializer_list comma_opt '}'
 	| assignment_expression {}
 	;
 
@@ -1612,6 +1605,11 @@ designator_list
 designator
 	: '[' constant_expression ']'
 	| '.' identifier_or_typedef_name { DELETE_NODE( $2 ); }
+	;
+
+comma_opt
+	: /* nothing */
+	| ','
 	;
 
 /*************************** STATEMENTS *******************************/

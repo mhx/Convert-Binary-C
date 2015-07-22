@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/04/23 11:23:03 +0100 $
-* $Revision: 77 $
-* $Snapshot: /Convert-Binary-C/0.41 $
+* $Date: 2003/06/23 14:17:07 +0100 $
+* $Revision: 83 $
+* $Snapshot: /Convert-Binary-C/0.42 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -183,12 +183,14 @@
 #define DEFAULT_ENUMTYPE    ET_INTEGER
 #endif
 
-#ifndef DEFAULT_BYTEORDER
 #ifdef NATIVE_BIG_ENDIAN
-#define DEFAULT_BYTEORDER   BO_BIG_ENDIAN
+#define NATIVE_BYTEORDER   BO_BIG_ENDIAN
 #else
-#define DEFAULT_BYTEORDER   BO_LITTLE_ENDIAN
+#define NATIVE_BYTEORDER   BO_LITTLE_ENDIAN
 #endif
+
+#ifndef DEFAULT_BYTEORDER
+#define DEFAULT_BYTEORDER  NATIVE_BYTEORDER
 #endif
 
 
@@ -205,17 +207,9 @@
 #endif
 
 #ifndef sv_vcatpvf
-void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
+static void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 {
   sv_vcatpvfn( sv, pat, strlen(pat), args, NULL, 0, NULL );
-}
-#endif
-
-#ifndef SvPV_nolen
-char *SvPV_nolen( SV *sv )
-{
-  STRLEN len;
-  return SvPV( sv, len );
 }
 #endif
 
@@ -245,68 +239,6 @@ char *SvPV_nolen( SV *sv )
 /* values passed between all packing/unpacking routines */
 #define pPACKARGS   pTHX_ const CBC *THIS, PackInfo *PACK
 #define aPACKARGS   aTHX_ THIS, PACK
-
-/*-------------------------------------------*/
-/* floats and doubles can only be accessed   */
-/* in native format (at least at the moment) */
-/*-------------------------------------------*/
-
-#ifdef CAN_UNALIGNED_ACCESS
-
-#define GET_FPVAL( type, dest, size )                                          \
-          do {                                                                 \
-            if( (size) == sizeof(type) )                                       \
-              dest = *((type *)PACK->bufptr);                                  \
-            else {                                                             \
-              WARN((aTHX_ "Cannot unpack non-native floating point values"));  \
-              dest = 0.0;                                                      \
-            }                                                                  \
-          } while(0)
-
-#define SET_FPVAL( type, src, size )                                           \
-          do {                                                                 \
-            if( (size) == sizeof(type) )                                       \
-              *((type *)PACK->bufptr) = src;                                   \
-            else                                                               \
-              WARN((aTHX_ "Cannot pack non-native floating point values"));    \
-          } while(0)
-
-#else
-
-#define GET_FPVAL( type, dest, size )                                          \
-          do {                                                                 \
-            if( (size) == sizeof(type) ) {                                     \
-              register void *p = (void *)PACK->bufptr;                         \
-              if( ((unsigned long) p) % sizeof(type) ) {                       \
-                type fpval;                                                    \
-                Copy( p, &fpval, 1, type );                                    \
-                dest = (NV) fpval;                                             \
-              }                                                                \
-              else                                                             \
-                dest = (NV) *((type *) p);                                     \
-            }                                                                  \
-            else {                                                             \
-              WARN((aTHX_ "Cannot unpack non-native floating point values"));  \
-              dest = 0.0;                                                      \
-            }                                                                  \
-          } while(0)
-
-#define SET_FPVAL( type, src, size )                                           \
-          do {                                                                 \
-            if( (size) == sizeof(type) ) {                                     \
-              register void *p = (void *)PACK->bufptr;                         \
-              if( ((unsigned long) p) % sizeof(type) ) {                       \
-                type fpval = (type) src;                                       \
-                Copy( &fpval, p, 1, type );                                    \
-              }                                                                \
-              else                                                             \
-                *((type *) p) = (type) src;                                    \
-            }                                                                  \
-            else                                                               \
-              WARN((aTHX_ "Cannot pack non-native floating point values"));    \
-          } while(0)
-
-#endif
 
 /*--------------------------------*/
 /* macros for buffer manipulation */
@@ -544,6 +476,13 @@ typedef FILE * DebugStream;
 
 typedef enum { GMS_NONE, GMS_PAD, GMS_HIT_OFF, GMS_HIT } GMSRV;
 
+typedef enum {
+  FPT_UNKNOWN,
+  FPT_FLOAT,
+  FPT_DOUBLE,
+  FPT_LONG_DOUBLE
+} FPType;
+
 typedef struct {
   LinkedList hit, off, pad;
   HashTable  htpad;
@@ -605,6 +544,10 @@ static char *string_new_fromSV( pTHX_ SV *sv );
 static void string_delete( char *sv );
 
 static void CroakGTI( pTHX_ ErrorGTI error, const char *name, int warnOnly );
+
+static FPType GetFPType( u_32 flags );
+static void StoreFloatSV( pPACKARGS, unsigned size, u_32 flags, SV *sv );
+static SV *FetchFloatSV( pPACKARGS, unsigned size, u_32 flags );
 
 static void StoreIntSV( pPACKARGS, unsigned size, unsigned sign, SV *sv );
 static SV *FetchIntSV( pPACKARGS, unsigned size, unsigned sign );
@@ -1076,6 +1019,257 @@ static void CroakGTI( pTHX_ ErrorGTI error, const char *name, int warnOnly )
 
 /*******************************************************************************
 *
+*   ROUTINE: GetFPType
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jun 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static FPType GetFPType( u_32 flags )
+{
+  /* mask out irrelevant flags */
+  flags &= T_VOID | T_CHAR | T_SHORT | T_INT
+         | T_LONG | T_FLOAT | T_DOUBLE | T_SIGNED
+         | T_UNSIGNED | T_LONGLONG;
+
+  /* only a couple of types are supported */
+  switch( flags ) {
+    case T_LONG | T_DOUBLE: return FPT_LONG_DOUBLE;
+    case T_DOUBLE         : return FPT_DOUBLE;
+    case T_FLOAT          : return FPT_FLOAT;
+  }
+
+  return FPT_UNKNOWN;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: StoreFloatSV
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jun 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+#ifdef CBC_HAVE_IEEE_FP
+
+#define STORE_FLOAT( ftype )                                                   \
+        do {                                                                   \
+          union {                                                              \
+            ftype f;                                                           \
+            u_8   c[sizeof(ftype)];                                            \
+          } _u;                                                                \
+          int _i;                                                              \
+          u_8 *_p = (u_8 *) PACK->bufptr;                                      \
+          _u.f = (ftype) SvNV( sv );                                           \
+          if( THIS->as.bo == NATIVE_BYTEORDER ) {                              \
+            for( _i = 0; _i < sizeof(ftype); _i++ )                            \
+              *_p++ = _u.c[_i];                                                \
+          }                                                                    \
+          else { /* swap */                                                    \
+            for( _i = sizeof(ftype)-1; _i >= 0; _i-- )                         \
+              *_p++ = _u.c[_i];                                                \
+          }                                                                    \
+        } while(0)
+
+#else /* ! CBC_HAVE_IEEE_FP */
+
+#define STORE_FLOAT( ftype )                                                   \
+        do {                                                                   \
+          if( size == sizeof( ftype ) ) {                                      \
+            u_8 *_p = (u_8 *) PACK->bufptr;                                    \
+            ftype _v = (ftype) SvNV( sv );                                     \
+            Copy( &_v, _p, 1, ftype );                                         \
+          }                                                                    \
+          else                                                                 \
+            goto non_native;                                                   \
+        } while(0)
+
+#endif /* CBC_HAVE_IEEE_FP */
+
+static void StoreFloatSV( pPACKARGS, unsigned size, u_32 flags, SV *sv )
+{
+  FPType type = GetFPType( flags );
+
+  if( type == FPT_UNKNOWN ) {
+    SV *str = NULL;
+    GetBasicTypeSpecString( aTHX_ &str, flags );
+    WARN((aTHX_ "Unsupported floating point type '%s' in pack", SvPV_nolen( str )));
+    SvREFCNT_dec( str );
+    goto finish;
+  }
+
+#ifdef CBC_HAVE_IEEE_FP
+
+  if( size == sizeof(float) )
+    STORE_FLOAT( float );
+  else if( size == sizeof(double) )
+    STORE_FLOAT( double );
+#ifdef HAVE_LONG_DOUBLE
+  else if( size == sizeof(long double) )
+    STORE_FLOAT( long double );
+#endif
+  else
+    WARN((aTHX_ "Cannot pack %d byte floating point values", size));
+
+#else /* ! CBC_HAVE_IEEE_FP */
+
+  if( THIS->as.bo != NATIVE_BYTEORDER )
+    goto non_native;
+
+  switch( type ) {
+    case FPT_FLOAT          : STORE_FLOAT( float );       break;
+    case FPT_DOUBLE         : STORE_FLOAT( double );      break;
+#ifdef HAVE_LONG_DOUBLE
+    case FPT_LONG_DOUBLE    : STORE_FLOAT( long double ); break;
+#endif
+    default:
+      goto non_native;
+  }
+
+  goto finish;
+
+non_native:
+  WARN((aTHX_ "Cannot pack non-native floating point values", size));
+
+#endif /* CBC_HAVE_IEEE_FP */
+
+finish:
+
+  return;
+}
+
+#undef STORE_FLOAT
+
+/*******************************************************************************
+*
+*   ROUTINE: FetchFloatSV
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jun 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+#ifdef CBC_HAVE_IEEE_FP
+
+#define FETCH_FLOAT( ftype )                                                   \
+        do {                                                                   \
+          union {                                                              \
+            ftype f;                                                           \
+            u_8   c[sizeof(ftype)];                                            \
+          } _u;                                                                \
+          int _i;                                                              \
+          u_8 *_p = (u_8 *) PACK->bufptr;                                      \
+          if( THIS->as.bo == NATIVE_BYTEORDER ) {                              \
+            for( _i = 0; _i < sizeof(ftype); _i++ )                            \
+              _u.c[_i] = *_p++;                                                \
+          }                                                                    \
+          else { /* swap */                                                    \
+            for( _i = sizeof(ftype)-1; _i >= 0; _i-- )                         \
+              _u.c[_i] = *_p++;                                                \
+          }                                                                    \
+          value = (NV) _u.f;                                                   \
+        } while(0)
+
+#else /* ! CBC_HAVE_IEEE_FP */
+
+#define FETCH_FLOAT( ftype )                                                   \
+        do {                                                                   \
+          if( size == sizeof( ftype ) ) {                                      \
+            u_8 *_p = (u_8 *) PACK->bufptr;                                    \
+            ftype _v;                                                          \
+            Copy( _p, &_v, 1, ftype );                                         \
+            value = (NV) _v;                                                   \
+          }                                                                    \
+          else                                                                 \
+            goto non_native;                                                   \
+        } while(0)
+
+#endif /* CBC_HAVE_IEEE_FP */
+
+static SV *FetchFloatSV( pPACKARGS, unsigned size, u_32 flags )
+{
+  FPType type = GetFPType( flags );
+  NV value = 0.0;
+
+  if( type == FPT_UNKNOWN ) {
+    SV *str = NULL;
+    GetBasicTypeSpecString( aTHX_ &str, flags );
+    WARN((aTHX_ "Unsupported floating point type '%s' in unpack", SvPV_nolen( str )));
+    SvREFCNT_dec( str );
+    goto finish;
+  }
+
+#ifdef CBC_HAVE_IEEE_FP
+
+  if( size == sizeof(float) )
+    FETCH_FLOAT( float );
+  else if( size == sizeof(double) )
+    FETCH_FLOAT( double );
+#ifdef HAVE_LONG_DOUBLE
+  else if( size == sizeof(long double) )
+    FETCH_FLOAT( long double );
+#endif
+  else
+    WARN((aTHX_ "Cannot unpack %d byte floating point values", size));
+
+#else /* ! CBC_HAVE_IEEE_FP */
+
+  if( THIS->as.bo != NATIVE_BYTEORDER )
+    goto non_native;
+
+  switch( type ) {
+    case FPT_FLOAT          : FETCH_FLOAT( float );       break;
+    case FPT_DOUBLE         : FETCH_FLOAT( double );      break;
+#ifdef HAVE_LONG_DOUBLE
+    case FPT_LONG_DOUBLE    : FETCH_FLOAT( long double ); break;
+#endif
+    default:
+      goto non_native;
+  }
+
+  goto finish;
+
+non_native:
+  WARN((aTHX_ "Cannot unpack non-native floating point values", size));
+
+#endif /* CBC_HAVE_IEEE_FP */
+
+finish:
+
+  return newSVnv( value );
+}
+
+#undef FETCH_FLOAT
+
+
+/*******************************************************************************
+*
 *   ROUTINE: StoreIntSV
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
@@ -1430,28 +1624,10 @@ static void SetBasicType( pPACKARGS, u_32 flags, SV *sv )
   ALIGN_BUFFER( size );
 
   if( DEFINED( sv ) && ! SvROK( sv ) ) {
-    if( flags & (T_DOUBLE | T_FLOAT) ) {
-      NV value = SvNV( sv );
-
-      CT_DEBUG( MAIN, ("SvNV( sv ) = %" NVff, NVff_cast value) );
-
-      if( flags & T_DOUBLE ) {
-        if( (flags & T_LONG) == 0 )
-          SET_FPVAL( double, value, size );
-        else {
-#ifdef HAVE_LONG_DOUBLE
-          SET_FPVAL( long double, value, size );
-#else
-          WARN((aTHX_ "Cannot pack long doubles"));
-#endif
-        }
-      }
-      else /* T_FLOAT */
-        SET_FPVAL( float, value, size );
-    }
-    else {
+    if( flags & (T_DOUBLE | T_FLOAT) )
+      StoreFloatSV( aPACKARGS, size, flags, sv );
+    else
       StoreIntSV( aPACKARGS, size, (flags & T_UNSIGNED) == 0, sv );
-    }
   }
 
   INC_BUFFER( size );
@@ -1846,29 +2022,10 @@ static SV *GetBasicType( pPACKARGS, u_32 flags )
   ALIGN_BUFFER( size );
   CHECK_BUFFER( size );
 
-  if( flags & (T_FLOAT | T_DOUBLE) ) {
-    NV value;
-
-    if( flags & T_DOUBLE ) {
-      if( (flags & T_LONG) == 0 )
-        GET_FPVAL( double, value, size );
-      else {
-#ifdef HAVE_LONG_DOUBLE
-        GET_FPVAL( long double, value, size );
-#else
-        WARN((aTHX_ "Cannot unpack long doubles"));
-        value = 0.0;
-#endif
-      }
-    }
-    else
-      GET_FPVAL( float, value, size );
-
-    sv = newSVnv( value );
-  }
-  else {
+  if( flags & (T_FLOAT | T_DOUBLE) )
+    sv = FetchFloatSV( aPACKARGS, size, flags );
+  else
     sv = FetchIntSV( aPACKARGS, size, (flags & T_UNSIGNED) == 0 );
-  }
 
   INC_BUFFER( size );
 
@@ -6482,19 +6639,38 @@ feature( feat )
 	const char *feat
 
 	CODE:
-		if( strEQ( feat, "debug" ) )
+		RETVAL = -1;
+
+		switch( *feat ) {
+		  case 'd':
+		    if( strEQ( feat, "debug" ) )
 #ifdef CTYPE_DEBUGGING
-		  RETVAL = 1;
+		      RETVAL = 1;
 #else
-		  RETVAL = 0;
+		      RETVAL = 0;
 #endif
-		else if( strEQ( feat, "threads" ) )
+		    break;
+
+		  case 'i':
+		    if( strEQ( feat, "ieeefp" ) )
+#ifdef CBC_HAVE_IEEE_FP
+		      RETVAL = 1;
+#else
+		      RETVAL = 0;
+#endif
+		    break;
+
+		  case 't':
+		    if( strEQ( feat, "threads" ) )
 #ifdef CBC_THREAD_SAFE
-		  RETVAL = 1;
+		      RETVAL = 1;
 #else
-		  RETVAL = 0;
+		      RETVAL = 0;
 #endif
-		else
+		    break;
+		}
+
+		if( RETVAL < 0 )
 		  XSRETURN_UNDEF;
 
 	OUTPUT:
