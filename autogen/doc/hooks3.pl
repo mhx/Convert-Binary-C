@@ -1,7 +1,7 @@
 #!perl -w
 use Convert::Binary::C;
 use Data::Dumper;
-$Data::Dumper::Indent = 1; $^W = 0;
+$Data::Dumper::Indent = 1;
 
 %CC = (
             'Define' => [
@@ -112,7 +112,7 @@ $Data::Dumper::Indent = 1; $^W = 0;
                             },
             'HasCPPComments' => 1,
             'Include' => [
-                           '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.4/include',
+                           '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5/include',
                            '/usr/include'
                          ],
             'CompoundAlignment' => 1
@@ -129,8 +129,8 @@ $c->parse(<<ENDC);
 #include "perl.h"
 ENDC
 
-$c->add_hooks($_ => { unpack_ptr => [\&unpack_ptr,
-                                     $c->arg(qw(SELF TYPE DATA))] })
+$c->tag($_, Hooks => { unpack_ptr => [\&unpack_ptr,
+                                      $c->arg(qw(SELF TYPE DATA))] })
     for qw( XPVAV XPVHV MAGIC MGVTBL HV );
 
 #-8<-

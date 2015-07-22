@@ -1,7 +1,7 @@
 use Convert::Binary::C;
 use Data::Dumper;
 use Data::Hexdumper;
-$Data::Dumper::Indent = 1; $^W = 0; #-8<-
+$Data::Dumper::Indent = 1; #-8<-
 
 $c = Convert::Binary::C->new( ByteOrder => 'BigEndian',
                               LongSize  => 4,

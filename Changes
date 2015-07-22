@@ -1,4 +1,45 @@
 -------------------------
+Version 0.58 (2005-02-21)
+-------------------------
+
+* there's now a mailing list; see the documentation or
+  README for details
+
+* new tag() method provides a generic way of tagging
+  properties such as hooks to types
+
+* the hooks methods are deprecated and will be removed
+  in a future release (new interface is provided through
+  tag() / untag())
+
+* completely restructured the XS/C internals, since C.xs
+  was getting way too large; the code should be a lot
+  more modular and organized now
+
+* make the preprocessor handle (read: ignore) any #ident
+  directives (problem spotted by Ronnie Kelly)
+
+* use faster preprocessor tokenizer routine
+
+* ccconfig: add --output-file and --output-format options
+
+* fix invalid read bug when redefining a macro with trailing
+  whitespace (spotted by valgrind)
+
+* make sure pack() returns null-terminated strings; not doing
+  so can confuse the regex engine
+
+* strip redundant warnings from enum/compound/typedef methods
+
+* fix deep recursion in llex() that causes bus error on hpux
+  (this should fix the activestate test failures)
+
+* make util / ucpp use Perl's memory allocation functions
+  (this should fix problems with -Dusethreads and -Dusemymalloc)
+
+* as usual, more tests and more docs
+
+-------------------------
 Version 0.57 (2004-11-23)
 -------------------------
 

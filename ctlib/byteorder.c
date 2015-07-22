@@ -10,14 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/22 19:37:55 +0000 $
-* $Revision: 7 $
-* $Snapshot: /Convert-Binary-C/0.57 $
+* $Date: 2005/01/23 11:49:40 +0000 $
+* $Revision: 11 $
 * $Source: /ctlib/byteorder.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -44,7 +43,7 @@
 /* depending on the native byte order of the system         */
 /*----------------------------------------------------------*/
 
-#ifdef NATIVE_BIG_ENDIAN
+#if ARCH_NATIVE_BYTEORDER == ARCH_BYTEORDER_BIG_ENDIAN
 
 /*--------------------*/
 /* big endian systems */
@@ -64,7 +63,7 @@
                   | ( (u_32) *( (const u_8 *) ((ptr)+3) ) << 24)               \
                   )
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define GET_LE_LONGLONG( ptr, value, sign )                                    \
           value = (sign ## _64)                                                \
@@ -96,7 +95,7 @@
             *((u_8 *) ((ptr)+3)) = (u_8) ((v >> 24) & 0xFF);                   \
           } while(0)
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define SET_LE_LONGLONG( ptr, value )                                          \
           do {                                                                 \
@@ -121,7 +120,7 @@
 #define GET_BE_LONG( ptr, value, sign ) \
           value = (sign ## _32) ( *( (const u_32 *) (ptr) ) )
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define GET_BE_LONGLONG( ptr, value, sign ) \
           value = (sign ## _64) ( *( (const u_64 *) (ptr) ) )
@@ -134,7 +133,7 @@
 #define SET_BE_LONG( ptr, value ) \
           *( (u_32 *) (ptr) ) = (u_32) value
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define SET_BE_LONGLONG( ptr, value ) \
           *( (u_64 *) (ptr) ) = (u_64) value
@@ -178,7 +177,7 @@
             }                                                                  \
           } while(0)
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define GET_BE_LONGLONG( ptr, value, sign )                                    \
           do {                                                                 \
@@ -233,7 +232,7 @@
             }                                                                  \
           } while(0)
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define SET_BE_LONGLONG( ptr, value )                                          \
           do {                                                                 \
@@ -252,7 +251,7 @@
 
 #endif
 
-#else /* ! NATIVE_BIG_ENDIAN */
+#elif ARCH_NATIVE_BYTEORDER == ARCH_BYTEORDER_LITTLE_ENDIAN
 
 /*-----------------------*/
 /* little endian systems */
@@ -272,7 +271,7 @@
                   | ( (u_32) *( (const u_8 *) ((ptr)+3) ) <<  0)               \
                   )
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define GET_BE_LONGLONG( ptr, value, sign )                                    \
           value = (sign ## _64)                                                \
@@ -304,7 +303,7 @@
             *((u_8 *) ((ptr)+3)) = (u_8) ((v >>  0) & 0xFF);                   \
           } while(0)
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define SET_BE_LONGLONG( ptr, value )                                          \
           do {                                                                 \
@@ -329,7 +328,7 @@
 #define GET_LE_LONG( ptr, value, sign ) \
           value = (sign ## _32) ( *( (const u_32 *) (ptr) ) )
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define GET_LE_LONGLONG( ptr, value, sign ) \
           value = (sign ## _64) ( *( (const u_64 *) (ptr) ) )
@@ -342,7 +341,7 @@
 #define SET_LE_LONG( ptr, value ) \
           *( (u_32 *) (ptr) ) = (u_32) value
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define SET_LE_LONGLONG( ptr, value ) \
           *( (u_64 *) (ptr) ) = (u_64) value
@@ -386,7 +385,7 @@
             }                                                                  \
           } while(0)
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define GET_LE_LONGLONG( ptr, value, sign )                                    \
           do {                                                                 \
@@ -441,7 +440,7 @@
             }                                                                  \
           } while(0)
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define SET_LE_LONGLONG( ptr, value )                                          \
           do {                                                                 \
@@ -460,7 +459,11 @@
 
 #endif
 
-#endif /* NATIVE_BIG_ENDIAN */
+#else /* ARCH_NATIVE_BYTEORDER */
+
+#error "unknown native byte order"
+
+#endif /* ARCH_NATIVE_BYTEORDER */
 
 #define GET_BE_BYTE( ptr, value, sign )                                        \
           value = *((const sign ## _8 *) (ptr))
@@ -512,7 +515,7 @@ static void string2integer( IntValue *pInt );
 
 static int integer2string( IntValue *pInt )
 {
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
   register u_64 val;
 #else
   register u_32 hval, lval, tval, umod, lmod;
@@ -526,7 +529,7 @@ static int integer2string( IntValue *pInt )
 
   len = sp = 0;
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
   if( pInt->sign && pInt->value.s < 0 ) {
     val = -pInt->value.s;
@@ -619,7 +622,7 @@ static void string2integer( IntValue *pInt )
   register int val;
   register const char *pStr = pInt->string;
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
   register u_64 iv = 0;
 #else
   register u_32 hval = 0, lval = 0;
@@ -646,7 +649,7 @@ static void string2integer( IntValue *pInt )
         else
           val -= (int) 'a' - 10;
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
         iv = (iv << 4) | (val & 0xF);
 
@@ -663,7 +666,7 @@ static void string2integer( IntValue *pInt )
       while( isdigit( val = *pStr++ ) ) {
         val -= (int) '0';
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
         iv = (iv << 3) | (val & 0x7);
 
@@ -679,7 +682,7 @@ static void string2integer( IntValue *pInt )
   }
   else {  /* must be decimal */
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
     while( isdigit( val = *pStr++ ) )
       iv = 10*iv + (val - (int) '0');
@@ -716,7 +719,7 @@ static void string2integer( IntValue *pInt )
 
   }
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
   if( pInt->sign )
     pInt->value.s = -iv;
@@ -818,7 +821,7 @@ int string_is_integer(const char *pStr)
 *
 *******************************************************************************/
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define FETCH( bo, what )                                                      \
         do {                                                                   \
@@ -855,27 +858,27 @@ void fetch_integer( unsigned size, unsigned sign, const void *src,
       break;
 
     case 2:
-      if( pAS->bo == BO_BIG_ENDIAN )
+      if( pAS->bo == AS_BO_BIG_ENDIAN )
         FETCH( BE, WORD );
       else
         FETCH( LE, WORD );
       break;
 
     case 4:
-      if( pAS->bo == BO_BIG_ENDIAN )
+      if( pAS->bo == AS_BO_BIG_ENDIAN )
         FETCH( BE, LONG );
       else
         FETCH( LE, LONG );
       break;
 
     case 8:
-#ifdef NATIVE_64_BIT_INTEGER
-      if( pAS->bo == BO_BIG_ENDIAN )
+#if ARCH_NATIVE_64_BIT_INTEGER
+      if( pAS->bo == AS_BO_BIG_ENDIAN )
         FETCH( BE, LONGLONG );
       else
         FETCH( LE, LONGLONG );
 #else
-      if( pAS->bo == BO_BIG_ENDIAN ) {
+      if( pAS->bo == AS_BO_BIG_ENDIAN ) {
         GET_BE_LONG( ptr,   pIV->value.u.h, u );
         GET_BE_LONG( ptr+4, pIV->value.u.l, u );
       }
@@ -915,7 +918,7 @@ void fetch_integer( unsigned size, unsigned sign, const void *src,
 *
 *******************************************************************************/
 
-#ifdef NATIVE_64_BIT_INTEGER
+#if ARCH_NATIVE_64_BIT_INTEGER
 
 #define STORE( bo, what )                                                      \
         do {                                                                   \
@@ -945,27 +948,27 @@ void store_integer( unsigned size, void *dest,
       break;
 
     case 2:
-      if( pAS->bo == BO_BIG_ENDIAN )
+      if( pAS->bo == AS_BO_BIG_ENDIAN )
         STORE( BE, WORD );
       else
         STORE( LE, WORD );
       break;
 
     case 4:
-      if( pAS->bo == BO_BIG_ENDIAN )
+      if( pAS->bo == AS_BO_BIG_ENDIAN )
         STORE( BE, LONG );
       else
         STORE( LE, LONG );
       break;
 
     case 8:
-#ifdef NATIVE_64_BIT_INTEGER
-      if( pAS->bo == BO_BIG_ENDIAN )
+#if ARCH_NATIVE_64_BIT_INTEGER
+      if( pAS->bo == AS_BO_BIG_ENDIAN )
         STORE( BE, LONGLONG );
       else
         STORE( LE, LONGLONG );
 #else
-      if( pAS->bo == BO_BIG_ENDIAN ) {
+      if( pAS->bo == AS_BO_BIG_ENDIAN ) {
         SET_BE_LONG( ptr,   pIV->value.u.h );
         SET_BE_LONG( ptr+4, pIV->value.u.l );
       }

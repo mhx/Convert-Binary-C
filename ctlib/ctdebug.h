@@ -10,14 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/11/23 19:22:30 +0000 $
-* $Revision: 11 $
-* $Snapshot: /Convert-Binary-C/0.57 $
+* $Date: 2005/01/23 11:49:42 +0000 $
+* $Revision: 14 $
 * $Source: /ctlib/ctdebug.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -36,31 +35,31 @@
 
 /*===== DEFINES ==============================================================*/
 
-#define DB_CTYPE_MAIN    0x00000001
-#define DB_CTYPE_PARSER  0x00000002
-#define DB_CTYPE_CLEXER  0x00000004
-#define DB_CTYPE_YACC    0x00000008
-#define DB_CTYPE_PRAGMA  0x00000010
-#define DB_CTYPE_CTLIB   0x00000020
-#define DB_CTYPE_HASH    0x00000040
-#define DB_CTYPE_TYPE    0x00000080
-#define DB_CTYPE_PREPROC 0x00000100
+#define DB_CTLIB_MAIN    0x00000001
+#define DB_CTLIB_PARSER  0x00000002
+#define DB_CTLIB_CLEXER  0x00000004
+#define DB_CTLIB_YACC    0x00000008
+#define DB_CTLIB_PRAGMA  0x00000010
+#define DB_CTLIB_CTLIB   0x00000020
+#define DB_CTLIB_HASH    0x00000040
+#define DB_CTLIB_TYPE    0x00000080
+#define DB_CTLIB_PREPROC 0x00000100
 
-#ifdef CTYPE_DEBUGGING
+#ifdef CTLIB_DEBUGGING
 
 #define DEBUG_FLAG( flag )                                       \
-          (g_CT_dbfunc && ((DB_CTYPE_ ## flag) & g_CT_dbflags))
+          (g_CT_dbfunc && ((DB_CTLIB_ ## flag) & g_CT_dbflags))
 
-#ifdef CTYPE_FORMAT_CHECK
-# define CTYPE_DEBUG_FUNC CT_dbfunc_check
+#ifdef CTLIB_FORMAT_CHECK
+# define CTLIB_DEBUG_FUNC CT_dbfunc_check
 #else
-# define CTYPE_DEBUG_FUNC g_CT_dbfunc
+# define CTLIB_DEBUG_FUNC g_CT_dbfunc
 #endif
 
 #define CT_DEBUG( flag, out )                                    \
           do {                                                   \
             if( DEBUG_FLAG( flag ) )                             \
-              CTYPE_DEBUG_FUNC out ;                             \
+              CTLIB_DEBUG_FUNC out ;                             \
           } while(0)
 
 #else
@@ -74,14 +73,14 @@
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
-#ifdef CTYPE_DEBUGGING
+#ifdef CTLIB_DEBUGGING
 extern void (*g_CT_dbfunc)(const char *, ...);
 extern unsigned long g_CT_dbflags;
 #endif
 
-#ifdef CTYPE_DEBUGGING
+#ifdef CTLIB_DEBUGGING
 
-# ifdef CTYPE_FORMAT_CHECK
+# ifdef CTLIB_FORMAT_CHECK
 void CT_dbfunc_check( const char *str, ... )
      __attribute__(( __format__( __printf__, 1, 2 ), __noreturn__ ));
 # endif

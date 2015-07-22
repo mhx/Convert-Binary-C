@@ -2,14 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:38:05 +0000 $
-# $Revision: 16 $
-# $Snapshot: /Convert-Binary-C/0.57 $
+# $Date: 2005/01/23 11:49:31 +0000 $
+# $Revision: 18 $
 # $Source: /t/901_memory.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #

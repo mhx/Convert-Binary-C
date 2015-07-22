@@ -10,14 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/11/23 19:23:11 +0000 $
-* $Revision: 24 $
-* $Snapshot: /Convert-Binary-C/0.57 $
+* $Date: 2005/01/23 11:49:41 +0000 $
+* $Revision: 28 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -38,13 +37,13 @@
 
 /*===== DEFINES ==============================================================*/
 
-#ifdef HAVE_LONG_LONG
+#if ARCH_HAVE_LONG_LONG
 #define CTLIB_long_long_SIZE sizeof( long long )
 #else
 #define CTLIB_long_long_SIZE 8
 #endif
 
-#ifdef HAVE_LONG_DOUBLE
+#if ARCH_HAVE_LONG_DOUBLE
 #define CTLIB_long_double_SIZE sizeof( long double )
 #else
 #define CTLIB_long_double_SIZE 12
@@ -183,7 +182,7 @@ void reset_parse_info( CParseInfo *pCPI );
 void update_parse_info( CParseInfo *pCPI, const CParseConfig *pCPC );
 
 #define clone_parse_info CTlib_clone_parse_info
-void clone_parse_info( CParseInfo *pDest, CParseInfo *pSrc );
+void clone_parse_info( CParseInfo *pDest, const CParseInfo *pSrc );
 
 #define get_type_info CTlib_get_type_info
 ErrorGTI get_type_info( const CParseConfig *pCPC, const TypeSpec *pTS,

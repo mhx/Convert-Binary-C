@@ -464,7 +464,7 @@ will always correctly set C<$offset>:
 
   @@types.pl [4]@@
 
-If this is not what you mean, e. g. because you want to know the
+If this is not what you mean, e.g. because you want to know the
 offset where the member returned by L<C<member>|/"member"> starts,
 you just have to remove the suffix:
 
@@ -474,30 +474,109 @@ This would then print:
 
   @@types.pl [5]@@
 
-=head1 USING HOOKS
+=head1 USING TAGS
 
-Hooks are a new feature and in this early state are considered
-experimental. That means that both interface and behaviour may
-be subject to incompatible changes. Nevertheless hooks are quite
-interesting and can be extremely useful, so read on!
+In a nutshell, tags are properties that you can attach to types.
+
+You can add tags to types using the L<C<tag>|/"tag"> method,
+and remove them using L<C<tag>|/"tag"> or L<C<untag>|/"untag">,
+for example:
+
+  $$tags_intro.pl [2]$$
+
+You can also use L<C<tag>|/"tag"> to see which tags are
+attached to a type, for example:
+
+  $$tags_intro.pl [3]$$
+
+This would give you:
+
+  @@tags_intro.pl@@
+
+Currently, there are only a couple of different tags that
+influence the way data is packed and unpacked. There are
+probably more tags to come in the future.
+
+=head2 The Format Tag
+
+One of the tags currently available is the C<Format> tag.
+Using this tag you can a tell Convert::Binary::C object to
+pack and unpack a certain data type in a special way.
+
+For example, if you have a (fixed length) string type
+
+  $$format.pl [1]$$
+
+this type would, by default, be unpacked as an array
+of C<char>s. That's because it B<is> only an array
+of C<char>s, and Convert::Binary::C doesn't know it is
+actually used as a string.
+
+But you can tell Convert::Binary::C that C<str_type> is
+a C string using the C<Format> tag:
+
+  $$format.pl [2]$$
+
+This will make L<C<unpack>|/"unpack"> (and of course
+also L<C<pack>|/"pack">) treat the binary data like a
+null-terminated C string:
+
+  $$format.pl [3]$$
+
+would thusly print:
+
+  @@format.pl [1]@@
+
+Of course, this also works the other way round:
+
+  $$format.pl [4]$$
+
+would print:
+
+  @@format.pl [2]@@
+
+If you want Convert::Binary::C to not interpret the binary
+data at all, you can set the C<Format> tag to C<Binary>.
+This might not be seem very useful,
+as L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> would
+just pass through the unmodified binary data.
+But you can tag not only whole types, but also compound
+members. For example
+
+  $$format.pl[5]$$
+
+would allow you to write:
+
+  $$format.pl[6]$$
+
+This would print something like:
+
+  @@format.pl [3]@@
+
+=head2 The Hooks Tag
+
+Hooks are a special kind of tag that can be extremely useful.
 
 Using hooks, you can easily override the
-way L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> handle data.
+way L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> handle data
+using your own subroutines.
 If you define hooks for a certain data type, each time this
 data type is processed the corresponding hook will be called
-to allow you to modify the data.
+to allow you to modify that data.
 
-=head2 Basic hooks
+=head3 Basic Hooks
 
 Here's an example. Let's assume the following C code has been
 parsed:
 
   $$hooks.pl [1]$$
 
+  $$hooks.pl [2]$$
+
 You could now use the types above and, for example, unpack
 binary data representing a C<MsgHeader> like this:
 
-  $$hooks.pl [2]$$
+  $$hooks.pl [3]$$
 
 This would give you:
 
@@ -507,12 +586,12 @@ Instead of dealing with C<ProtoId>'s as integers, you would
 rather like to have them as clear text. You could provide
 subroutines to convert between clear text and integers:
 
-  $$hooks.pl [3]$$
-
-The hooks feature allows you to register these subroutines
-using the L<C<add_hooks>|/"add_hooks"> method:
-
   $$hooks.pl [4]$$
+
+You can now register these subroutines by attaching a C<Hooks> tag
+to C<ProtoId> using the L<C<tag>|/"tag"> method:
+
+  $$hooks.pl [5]$$
 
 Doing exactly the same unpack on C<MsgHeader> again would
 now return:
@@ -523,7 +602,7 @@ Actually, if you don't need the reverse operation, you don't even
 have to register a C<pack> hook. Or, even better, you can have a
 more intelligent C<unpack> hook that creates a dual-typed variable:
 
-  $$hooks.pl [6]$$
+  $$hooks.pl [7]$$
 
 Just as before, this would print
 
@@ -532,24 +611,29 @@ Just as before, this would print
 but without requiring a C<pack> hook for packing, at least as
 long as you keep the variable dual-typed.
 
-Hooks are called with exactly one argument, which is the data
-that should be processed. They are called in scalar context and
-expected to return the processed data.
+Hooks are usually called with exactly one argument, which is the
+data that should be processed (see L<"Advanced Hooks"> for details
+on how to customize hook arguments). They are called in scalar
+context and expected to return the processed data.
 
-To get rid of registered hooks, you can use either
-the L<C<delete_hooks>|/"delete_hooks"> method
-
-  $$hooks.pl [7]$$
-
-or L<C<delete_all_hooks>|/"delete_all_hooks">:
+To get rid of registered hooks, you can either undefine only
+certain hooks
 
   $$hooks.pl [8]$$
 
-Of course, hooks are not restricted to handling integer values.
-You could just as well add hooks for the C<String> struct from
-the code above. A useful example would be to have these hooks:
+or all hooks:
 
   $$hooks.pl [9]$$
+
+Of course, hooks are not restricted to handling integer values.
+You could just as well attach hooks for the C<String> struct from
+the code above. A useful example would be to have these hooks:
+
+  $$hooks.pl [10]$$
+
+(Don't be confused by the fact that the C<unpack> hook
+uses C<pack> and the C<pack> hook uses C<unpack>.
+And also see L<"Advanced Hooks"> for a more clever approach.)
 
 While you would normally get the following output when unpacking
 a C<String>
@@ -558,21 +642,61 @@ a C<String>
 
 you could just register the hooks using
 
-  $$hooks.pl [10]$$
+  $$hooks.pl [11]$$
 
-and you would get a nice human-readable string:
+and you would get a nice human-readable Perl string:
 
   @@hooks.pl [5]@@
 
 Packing a string turns out to be just as easy:
 
-  $$hooks.pl [11]$$
+  $$hooks.pl [12]$$
 
 This would print:
 
   @@hooks.pl [6]@@
 
-=head2 Advanced hooks
+If you want to find out if or which hooks are registered for
+a certain type, you can also use the L<C<tag>|/"tag"> method:
+
+  $$hooks.pl [13]$$
+
+This would return:
+
+  @@hooks.pl [7]@@
+
+=head3 Advanced Hooks
+
+It is also possible to combine hooks with using the C<Format> tag.
+This can be useful if you know better than Convert::Binary::C how
+to interpret the binary data. In the previous section, we've handled
+this type
+
+  $$hooks.pl [2]$$
+
+with the following hooks:
+
+  $$hooks.pl [10]$$
+
+  $$hooks.pl [11]$$
+
+As you can see in the hook code, C<buf> is expected to be an array
+of characters. For the L<C<unpack>|/"unpack"> case Convert::Binary::C
+first turns the binary data into a Perl array, and then the hook packs
+it back into a string. The intermediate array creation and destruction
+is completely useless.
+Same thing, of course, for the L<C<pack>|/"pack"> case.
+
+Here's a clever way to handle this. Just tag C<buf> as binary
+
+  $$hooks.pl [14]$$
+
+and use the following hooks instead:
+
+  $$hooks.pl [15]$$
+
+This will be exactly equivalent to the old code, but faster and
+probably even much easier to understand.
 
 But hooks are even more powerful. You can customize the arguments
 that are passed to your hooks and you can use L<C<arg>|/"arg"> to
@@ -630,9 +754,10 @@ as it can already handle C<AV> pointers. And this is what we get:
 Even though it is rather easy to do such stuff using C<unpack_ptr> hooks,
 you should really know what you're doing and do it with extreme care
 because of the limitations mentioned above. It's really easy to run into
-segmentation faults when you're dereferencing pointers that are not yours.
+segmentation faults when you're dereferencing pointers that point to
+memory which you don't own.
 
-=head2 Performance
+=head3 Performance
 
 Using hooks isn't for free. In performance-critical applications
 you have to keep in mind that hooks are actually perl subroutines
@@ -767,7 +892,7 @@ default unless overridden by C<CBC_DEFAULT_INT_SIZE> at compile time.
 
 Set the number of bytes that are occupied by a C<char>.
 This rarely needs to be changed, except for some platforms
-that don't care about bytes, e.g. DSPs.
+that don't care about bytes, for example DSPs.
 If you set this to zero, the size of a C<char> on the host
 system will be used. This is also the default unless
 overridden by C<CBC_DEFAULT_CHAR_SIZE> at compile time.
@@ -983,7 +1108,7 @@ two structs will both have a size of 16 bytes:
 This is clear for C<struct one>, because the member C<d> has to
 be aligned to an 8-byte boundary, and thus 7 padding bytes are
 inserted after C<c>. But for C<struct two>, the padding bytes
-are inserted I<at the end> of the structure, which doesn't make
+are inserted B<at the end> of the structure, which doesn't make
 much sense immediately. However, it makes perfect sense if you
 think about an array of C<struct two>. Each C<double> has to be
 aligned to an 8-byte boundary, an thus each array element would
@@ -1355,6 +1480,10 @@ the L<C<parse>|/"parse"> and L<C<parse_file>|/"parse_file"> methods
 as often as you like to add further definitions to the
 Convert::Binary::C object.
 
+L<C<parse_file>|/"parse_file"> will search the include path given
+via the C<Include> option for the file if it cannot find it in the
+current directory.
+
 L<C<parse_file>|/"parse_file"> will throw an exception if an error
 occurs. On success, the method returns a reference to its object.
 
@@ -1601,6 +1730,57 @@ both C<$unpack1> and C<$unpack2>:
 When L<C<unpack>|/"unpack"> is called in list context, it will
 unpack as many elements as possible from STRING, including zero
 if STRING is not long enough.
+
+=back
+
+=head2 initializer
+
+=over 8
+
+=item C<initializer> TYPE
+
+=item C<initializer> TYPE, DATA
+
+The L<C<initializer>|/"initializer"> method can be used retrieve
+an initializer string for a certain L<TYPE|/"UNDERSTANDING TYPES">.
+This can be useful if you have to initialize only a couple of
+members in a huge compound type or if you simply want to generate
+initializers automatically.
+
+  $$initializer.pl [1]$$
+
+Given the above code has been parsed
+
+  $$initializer.pl [2]$$
+
+would print the following:
+
+  @@initializer.pl [1]@@
+
+You could directly put that into a C program, although it probably
+isn't very useful yet. It becomes more useful if you actually specify
+how you want to initialize the type:
+
+  $$initializer.pl [3]$$
+
+This would print the following:
+
+  @@initializer.pl [2]@@
+
+As only the first member of a C<union> can be initialized, C<choice.qword> is
+ignored. You will not be warned about the fact that you probably tried
+to initialize a member other than the first. This is considered
+a feature, because it allows you to use L<C<unpack>|/"unpack"> to generate
+the initializer data:
+
+  $$initializer.pl [4]$$
+
+Since L<C<unpack>|/"unpack"> unpacks all union members, you would
+otherwise have to delete all but the first one previous to feeding
+it into L<C<initializer>|/"initializer">.
+
+Also, C<stuff> is ignored, because it actually isn't a member
+of C<data>. You won't be warned about that either.
 
 =back
 
@@ -1870,54 +2050,192 @@ In scalar context, the number of possible members is returned.
 
 =back
 
-=head2 initializer
+=head2 tag
 
 =over 8
 
-=item C<initializer> TYPE
+=item C<tag> TYPE
 
-=item C<initializer> TYPE, DATA
+=item C<tag> TYPE, TAG
 
-The L<C<initializer>|/"initializer"> method can be used retrieve
-an initializer string for a certain L<TYPE|/"UNDERSTANDING TYPES">.
-This can be useful if you have to initialize only a couple of
-members in a huge compound type or if you simply want to generate
-initializers automatically.
+=item C<tag> TYPE, TAG1 =E<gt> VALUE1, TAG2 =E<gt> VALUE2, ...
 
-  $$initializer.pl [1]$$
+The L<C<tag>|/"tag"> method can be used to tag properties to
+a L<TYPE|/"UNDERSTANDING TYPES">. It's a bit like
+having L<C<configure>|/"configure"> for individual types.
 
-Given the above code has been parsed
+See L<"USING TAGS"> for an example.
 
-  $$initializer.pl [2]$$
+Note that while you can tag whole types as well as compound
+members, it is not possible to tag array members, i.e. you
+cannot treat, for example, C<a[1]> and C<a[2]> differently.
 
-would print the following:
+Also note that in code like this
 
-  @@initializer.pl [1]@@
+  $$tag.pl [1]$$
 
-You could directly put that into a C program, although it probably
-isn't very useful yet. It becomes more useful if you actually specify
-how you want to initialize the type:
+if you tag C<test.b.x>, this will also tag C<test.c.x> implicitly.
 
-  $$initializer.pl [3]$$
+It is also possible to tag basic types if you really want
+to do that, for example:
 
-This would print the following:
+  $$tag.pl [2]$$
 
-  @@initializer.pl [2]@@
+To remove a tag from a type, you can either set that
+tag to C<undef>, for example
 
-As only the first member of a C<union> can be initialized, C<choice.qword> is
-ignored. You will not be warned about the fact that you probably tried
-to initialize a member other than the first. This is considered
-a feature, because it allows you to use L<C<unpack>|/"unpack"> to generate
-the initializer data:
+  $$tag.pl [3]$$
 
-  $$initializer.pl [4]$$
+or use L<C<untag>|/"untag">.
 
-Since L<C<unpack>|/"unpack"> unpacks all union members, you would
-otherwise have to delete all but the first one previous to feeding
-it into L<C<initializer>|/"initializer">.
+To see if a tag is attached to a type or to get the value of
+a tag, pass only the type and tag name to L<C<tag>|/"tag">:
 
-Also, C<stuff> is ignored, because it actually isn't a member
-of C<data>. You won't be warned about that either.
+  $$tag.pl [4]$$
+
+This will give you:
+
+  @@tag.pl [1]@@
+
+To see which tags are attached to a type, pass only the type.
+The L<C<tag>|/"tag"> method will now return a hash reference
+containing all tags attached to the type:
+
+  $$tag.pl [5]$$
+
+This will give you:
+
+  @@tag.pl [2]@@
+
+L<C<tag>|/"tag"> will throw an exception if an error occurs.
+If called as a 'set' method, it will return a reference to its
+object, allowing you to chain together consecutive method calls.
+
+The following tags can be configured:
+
+=over 4
+
+=item C<Format> =E<gt> 'Binary' | 'String'
+
+The C<Format> tag allows you to control the way binary data
+is converted by L<C<pack>|/"pack"> and L<C<unpack>|/"unpack">.
+
+If you tag a C<TYPE> as C<Binary>, it will not be converted
+at all, i.e. it will be passed through as a binary string.
+
+If you tag it as C<String>, it will be treated like
+a null-terminated C string, i.e. L<C<unpack>|/"unpack"> will
+convert the C string to a Perl string and vice versa.
+
+See L<"The Format Tag"> for an example.
+
+=item C<Hooks> =E<gt> { HOOK =E<gt> SUB, HOOK =E<gt> [ SUB, ARGS ], ... }, ...
+
+The C<Hooks> tag allows you to register subroutines as hooks.
+
+Hooks are called whenever a certain C<TYPE> is packed or
+unpacked. Hooks are currently considered an experimental
+feature.
+
+C<HOOK> can be one of the following:
+
+  pack
+  unpack
+  pack_ptr
+  unpack_ptr
+
+C<pack> and C<unpack> hooks are called when processing
+their C<TYPE>, while C<pack_ptr> and C<unpack_ptr> hooks
+are called when processing pointers to their C<TYPE>.
+
+C<SUB> is a reference to a subroutine that usually takes one
+input argument, processes it and returns one output argument.
+
+Alternatively, you can pass a custom list of arguments to the
+hook by using an array reference instead of C<SUB> that holds
+the subroutine reference in the first element and the arguments
+to be passed to the subroutine as the other elements.
+This way, you can even pass special arguments to the hook using
+the L<C<arg>|/"arg"> method.
+
+Here are a few examples for registering hooks:
+
+  $$hooks2.pl [2]$$
+
+Note that the above example registers both an C<unpack> hook
+and an C<unpack_ptr> hook for C<ProtocolId> with two separate
+calls to L<C<tag>|/"tag">. As long as you don't explicitly
+overwrite a previously registered hook, it won't be modified
+or removed by registering other hooks for the same C<TYPE>.
+
+To remove all registered hooks for a type, simply remove
+the C<Hooks> tag:
+
+  $$hooks2.pl [3]$$
+
+To remove only a single hook, pass C<undef> as C<SUB> instead
+of a subroutine reference:
+
+  $$hooks2.pl [4]$$
+
+If all hooks are removed, the whole C<Hooks> tag is removed.
+
+See L<"The Hooks Tag"> for examples on how to use hooks.
+
+=back
+
+=back
+
+=head2 untag
+
+=over 8
+
+=item C<untag> TYPE
+
+=item C<untag> TYPE, TAG1, TAG2, ...
+
+Use the L<C<untag>|/"untag"> method to remove one, more, or all
+tags from a type. If you don't pass any tag names, all tags
+attached to the type will be removed. Otherwise only the listed
+tags will be removed.
+
+See L<"USING TAGS"> for an example.
+
+=back
+
+=head2 arg
+
+=over 8
+
+=item C<arg> 'ARG', ...
+
+Creates placeholders for special arguments to be passed to hook
+subroutines. These arguments are currently:
+
+=over 4
+
+=item C<SELF>
+
+A reference to the calling Convert::Binary::C object. This may be
+useful if you need to work with the object inside the hook.
+
+=item C<TYPE>
+
+The name of the type that is currently being processed by the hook.
+
+=item C<DATA>
+
+The data argument that is usually passed to the hook.
+
+=item C<HOOK>
+
+The type of the hook as which the hook has been called,
+for example C<pack> or C<unpack_ptr>.
+
+=back
+
+L<C<arg>|/"arg"> will return a placeholder for each argument it is
+being passed.
 
 =back
 
@@ -2073,9 +2391,8 @@ method, the returned list will only contain hash
 references for those enumerations. The enumeration
 identifiers may optionally be prefixed by C<enum>.
 
-If an enumeration identifier cannot be found, a
-warning is issued and the returned list will contain
-an undefined value at that position.
+If an enumeration identifier cannot be found, the returned
+list will contain an undefined value at that position.
 
 In scalar context, the number of enumerations will
 be returned as long as the number of arguments to
@@ -2169,9 +2486,8 @@ optionally be prefixed by C<struct> or C<union>,
 which limits the search to the specified kind of
 compound.
 
-If an identifier cannot be found, a warning is issued
-and the returned list will contain an undefined value
-at that position.
+If an identifier cannot be found, the returned list
+will contain an undefined value at that position.
 
 In scalar context, the number of compounds will
 be returned as long as the number of arguments to
@@ -2345,9 +2661,8 @@ If a list of typedef identifiers is passed to the
 method, the returned list will only contain hash
 references for those typedefs.
 
-If an identifier cannot be found, a warning is issued
-and the returned list will contain an undefined value
-at that position.
+If an identifier cannot be found, the returned list
+will contain an undefined value at that position.
 
 In scalar context, the number of typedefs will
 be returned as long as the number of arguments to
@@ -2374,126 +2689,6 @@ See L<C<enum>|/"enum"> and L<C<compound>|/"compound"> for
 a description on how to interpret this hash.
 
 =back
-
-=back
-
-=head2 add_hooks
-
-=over 8
-
-=item C<add_hooks> TYPE =E<gt> { HOOK =E<gt> SUB, HOOK =E<gt> [SUB, ARGS], ... }, ...
-
-This method allows you to register subroutines as hooks.
-Hooks are called whenever a certain C<TYPE> is packed or
-unpacked. Hooks are currently considered an experimental
-feature.
-
-You can register hooks for all types except for basic types.
-This means you cannot register a hook for C<int>. C<TYPE> is
-the type you want to register a hook for. C<HOOK> can be one
-of the following:
-
-  pack
-  unpack
-  pack_ptr
-  unpack_ptr
-
-C<'pack'> and C<'unpack'> hooks are called when processing
-their C<TYPE>, while C<'pack_ptr'> and C<'unpack_ptr'> hooks
-are called when processing pointers to their C<TYPE>.
-
-C<SUB> is a reference to a subroutine that takes one input
-argument, processes it and returns one output argument.
-Alternatively, you can pass custom arguments to the hook by
-passing an array reference instead of C<SUB> that holds the
-subroutine reference in the first element and the arguments
-to be passed to the subroutine as the other elements. With
-the latter alternative, you can even pass special arguments
-to the hook using L<C<arg>|/"arg">.
-
-You can register hooks for as many types as you like with
-one call to L<C<add_hooks>|/"add_hooks">:
-
-  $$hooks2.pl [2]$$
-
-To remove registered hooks, use
-either L<C<delete_hooks>|/"delete_hooks"> or L<C<delete_all_hooks>|/"delete_all_hooks">.
-
-You can also use L<C<add_hooks>|/"add_hooks"> to update
-hooks for types already registered. To remove only a single
-subroutine, pass C<undef> instead of a subroutine reference.
-
-  $$hooks2.pl [3]$$
-
-If all subroutines are removed, the whole hook is removed.
-
-L<C<add_hooks>|/"add_hooks"> will throw an exception if an
-error occurs. On success, the method returns a reference to
-its object.
-
-See L<"USING HOOKS"> for examples on how to use hooks.
-
-=back
-
-=head2 delete_hooks
-
-=over 8
-
-=item C<delete_hooks> LIST
-
-Deletes the hooks for all types passed in.
-
-  $$hooks2.pl [4]$$
-
-L<C<delete_hooks>|/"delete_hooks"> will throw an exception if an
-error occurs. On success, the method returns a reference to
-its object.
-
-=back
-
-=head2 delete_all_hooks
-
-=over 8
-
-=item C<delete_all_hooks>
-
-Removes all registered hooks and returns a reference to its object.
-
-=back
-
-=head2 arg
-
-=over 8
-
-=item C<arg> 'ARG', ...
-
-Creates placeholders for special arguments to be passed to hook
-subroutines. These arguments are currently:
-
-=over 4
-
-=item C<SELF>
-
-A reference to the calling Convert::Binary::C object. This may be
-useful if you need to work with the object inside the hook.
-
-=item C<TYPE>
-
-The name of the type that is currently being processed by the hook.
-
-=item C<DATA>
-
-The data argument that is usually passed to the hook.
-
-=item C<HOOK>
-
-The type of the hook as which the hook has been called,
-e.g. C<pack> or C<unpack_ptr>.
-
-=back
-
-L<C<arg>|/"arg"> will return a placeholder for each argument it is
-being passed.
 
 =back
 
@@ -2993,6 +3188,19 @@ algorithm.
 
 =back
 
+=head1 MAILING LIST
+
+There's also a mailing list that you can join:
+
+  convert-binary-c@yahoogroups.com
+
+To subscribe, simply send mail to:
+
+  convert-binary-c-subscribe@yahoogroups.com
+
+You can use this mailing list for non-bug problems, questions
+or discussions.
+
 =head1 BUGS
 
 I'm sure there are still lots of bugs in the code for this
@@ -3024,7 +3232,7 @@ want to rate the module at L<http://cpanratings.perl.org/>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 

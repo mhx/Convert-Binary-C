@@ -1,6 +1,6 @@
 use Convert::Binary::C; #-8<-
 use Data::Dumper; #-8<-
-$Data::Dumper::Indent = 1; $^W = 0; #-8<-
+$Data::Dumper::Indent = 1; #-8<-
 
 sub obj_pack { $_[0] }
 sub obj_unpack { $_[0] }
@@ -14,20 +14,28 @@ struct Proto {
 };
 #-8<-
 
-$c->add_hooks(ObjectType => { pack   => \&obj_pack,
-                              unpack => \&obj_unpack },
-              ProtocolId => { unpack => sub {
-                                $protos[$_[0]]
-                              },
-                              unpack_ptr => [sub {
-                                sprintf "$_[0]:{0x%X}", $_[1]
-                              }, $c->arg('TYPE', 'DATA')] });
+$c->tag('ObjectType', Hooks => {
+          pack   => \&obj_pack,
+          unpack => \&obj_unpack
+        });
+
+$c->tag('ProtocolId', Hooks => {
+          unpack => sub { $protos[$_[0]] }
+        });
+
+$c->tag('ProtocolId', Hooks => {
+          unpack_ptr => [sub {
+                           sprintf "$_[0]:{0x%X}", $_[1]
+                         },
+                         $c->arg('TYPE', 'DATA')
+                        ],
+        });
 
 #-8<-
 
-$c->add_hooks(ObjectType => { pack => undef });
+$c->untag('ProtocolId', 'Hooks');
 
 #-8<-
 
-$c->delete_hooks(qw(ObjectType ProtocolId));
+$c->tag('ObjectType', Hooks => { pack => undef });
 

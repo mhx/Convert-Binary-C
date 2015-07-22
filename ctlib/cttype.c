@@ -10,14 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/05/23 11:37:12 +0100 $
-* $Revision: 17 $
-* $Snapshot: /Convert-Binary-C/0.57 $
+* $Date: 2005/01/23 11:49:40 +0000 $
+* $Revision: 21 $
 * $Source: /ctlib/cttype.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -279,21 +278,22 @@ Enumerator *enum_clone( const Enumerator *pSrc )
 *
 *******************************************************************************/
 
-EnumSpecifier *enumspec_new( char *identifier, int id_len, LinkedList enumerators )
+EnumSpecifier *enumspec_new(char *identifier, int id_len, LinkedList enumerators)
 {
-  CONSTRUCT_OBJECT_IDENT( EnumSpecifier, pEnumSpec );
+  CONSTRUCT_OBJECT_IDENT(EnumSpecifier, pEnumSpec);
 
   pEnumSpec->ctype    = TYP_ENUM;
   pEnumSpec->tflags   = T_ENUM;
   pEnumSpec->refcount = 0;
+  pEnumSpec->tags     = NULL;
 
   if( enumerators == NULL )
     pEnumSpec->enumerators = NULL;
   else
-    enumspec_update( pEnumSpec, enumerators );
+    enumspec_update(pEnumSpec, enumerators);
 
-  CT_DEBUG( TYPE, ("type::enumspec_new( identifier=\"%s\", enumerators=%p [count=%d] ) = %p",
-                   pEnumSpec->identifier, enumerators, LL_count( enumerators ), pEnumSpec) );
+  CT_DEBUG(TYPE, ("type::enumspec_new( identifier=\"%s\", enumerators=%p [count=%d] ) = %p",
+                  pEnumSpec->identifier, enumerators, LL_count( enumerators ), pEnumSpec));
 
   return pEnumSpec;
 }
@@ -317,57 +317,63 @@ EnumSpecifier *enumspec_new( char *identifier, int id_len, LinkedList enumerator
 *
 *******************************************************************************/
 
-void enumspec_update( EnumSpecifier *pEnumSpec, LinkedList enumerators )
+void enumspec_update(EnumSpecifier *pEnumSpec, LinkedList enumerators)
 {
   Enumerator *pEnum;
   long min, max;
 
-  CT_DEBUG( TYPE, ("type::enumspec_update( pEnumSpec=%p [identifier=\"%s\"], enumerators=%p [count=%d] )",
-                   pEnumSpec, pEnumSpec->identifier, enumerators, LL_count( enumerators )) );
+  CT_DEBUG(TYPE, ("type::enumspec_update( pEnumSpec=%p [identifier=\"%s\"], enumerators=%p [count=%d] )",
+                  pEnumSpec, pEnumSpec->identifier, enumerators, LL_count( enumerators )));
 
   pEnumSpec->tflags      = 0;
   pEnumSpec->enumerators = enumerators;
   min = max = 0;
 
-  LL_foreach( pEnum, enumerators ) {
-    if( pEnum->value.iv > max )
+  LL_foreach (pEnum, enumerators)
+  {
+    if (pEnum->value.iv > max)
       max = pEnum->value.iv;
-    else if( pEnum->value.iv < min )
+    else if (pEnum->value.iv < min)
       min = pEnum->value.iv;
 
-    if( IS_UNSAFE_VAL( pEnum->value ) )
+    if (IS_UNSAFE_VAL(pEnum->value))
       pEnumSpec->tflags |= T_UNSAFE_VAL;
   }
 
-  if( min < 0 ) {
+  if (min < 0)
+  {
     pEnumSpec->tflags |= T_SIGNED;
 
-    if( min >= -128 && max < 128 ) {
+    if (min >= -128 && max < 128)
+    {
       pEnumSpec->sizes[ES_SIGNED_SIZE]   = 1U;
       pEnumSpec->sizes[ES_UNSIGNED_SIZE] = 1U;
     }
-    else if( min >= -32768 && max < 32768 ) {
+    else if (min >= -32768 && max < 32768)
+    {
       pEnumSpec->sizes[ES_SIGNED_SIZE]   = 2U;
       pEnumSpec->sizes[ES_UNSIGNED_SIZE] = 2U;
     }
-    else {
+    else
+    {
       pEnumSpec->sizes[ES_SIGNED_SIZE]   = 4U;
       pEnumSpec->sizes[ES_UNSIGNED_SIZE] = 4U;
     }
   }
-  else {
+  else
+  {
     pEnumSpec->tflags |= T_UNSIGNED;
 
-    if( max < 256 )
+    if (max < 256)
       pEnumSpec->sizes[ES_UNSIGNED_SIZE] = 1U;
-    else if( max < 65536 )
+    else if (max < 65536)
       pEnumSpec->sizes[ES_UNSIGNED_SIZE] = 2U;
     else
       pEnumSpec->sizes[ES_UNSIGNED_SIZE] = 4U;
 
-    if( max < 128 )
+    if (max < 128)
       pEnumSpec->sizes[ES_SIGNED_SIZE] = 1U;
-    else if( max < 32768 )
+    else if (max < 32768)
       pEnumSpec->sizes[ES_SIGNED_SIZE] = 2U;
     else
       pEnumSpec->sizes[ES_SIGNED_SIZE] = 4U;
@@ -391,14 +397,16 @@ void enumspec_update( EnumSpecifier *pEnumSpec, LinkedList enumerators )
 *
 *******************************************************************************/
 
-void enumspec_delete( EnumSpecifier *pEnumSpec )
+void enumspec_delete(EnumSpecifier *pEnumSpec)
 {
-  CT_DEBUG( TYPE, ("type::enumspec_delete( pEnumSpec=%p [identifier=\"%s\"] )",
-                   pEnumSpec, pEnumSpec ? pEnumSpec->identifier : "") );
+  CT_DEBUG(TYPE, ("type::enumspec_delete( pEnumSpec=%p [identifier=\"%s\"] )",
+                  pEnumSpec, pEnumSpec ? pEnumSpec->identifier : ""));
 
-  if( pEnumSpec ) {
-    LL_destroy( pEnumSpec->enumerators, (LLDestroyFunc) enum_delete );
-    Free( pEnumSpec );
+  if (pEnumSpec)
+  {
+    LL_destroy(pEnumSpec->enumerators, (LLDestroyFunc) enum_delete);
+    delete_taglist(&pEnumSpec->tags);
+    Free(pEnumSpec);
   }
 }
 
@@ -419,14 +427,15 @@ void enumspec_delete( EnumSpecifier *pEnumSpec )
 *
 *******************************************************************************/
 
-EnumSpecifier *enumspec_clone( const EnumSpecifier *pSrc )
+EnumSpecifier *enumspec_clone(const EnumSpecifier *pSrc)
 {
-  CLONE_OBJECT_IDENT( EnumSpecifier, pDest, pSrc );
+  CLONE_OBJECT_IDENT(EnumSpecifier, pDest, pSrc);
 
-  CT_DEBUG( TYPE, ("type::enumspec_clone( pSrc=%p [identifier=\"%s\"] ) = %p",
-                   pSrc, pSrc ? pSrc->identifier : "", pDest) );
+  CT_DEBUG(TYPE, ("type::enumspec_clone( pSrc=%p [identifier=\"%s\"] ) = %p",
+                  pSrc, pSrc ? pSrc->identifier : "", pDest));
 
-  pDest->enumerators = LL_clone( pSrc->enumerators, (LLCloneFunc) enum_clone );
+  pDest->enumerators = LL_clone(pSrc->enumerators, (LLCloneFunc) enum_clone);
+  pDest->tags        = clone_taglist(pSrc->tags);
 
   return pDest;
 }
@@ -448,18 +457,19 @@ EnumSpecifier *enumspec_clone( const EnumSpecifier *pSrc )
 *
 *******************************************************************************/
 
-Declarator *decl_new( char *identifier, int id_len )
+Declarator *decl_new(char *identifier, int id_len)
 {
-  CONSTRUCT_OBJECT_IDENT( Declarator, pDecl );
+  CONSTRUCT_OBJECT_IDENT(Declarator, pDecl);
 
   pDecl->array         = LL_new();
   pDecl->pointer_flag  =  0;
   pDecl->bitfield_size = -1;
   pDecl->offset        = -1;
   pDecl->size          = -1;
+  pDecl->tags          = NULL;
 
-  CT_DEBUG( TYPE, ("type::decl_new( identifier=\"%s\" ) = %p",
-                   pDecl->identifier, pDecl) );
+  CT_DEBUG(TYPE, ("type::decl_new( identifier=\"%s\" ) = %p",
+                  pDecl->identifier, pDecl));
 
   return pDecl;
 }
@@ -481,14 +491,16 @@ Declarator *decl_new( char *identifier, int id_len )
 *
 *******************************************************************************/
 
-void decl_delete( Declarator *pDecl )
+void decl_delete(Declarator *pDecl)
 {
-  CT_DEBUG( TYPE, ("type::decl_delete( pDecl=%p [identifier=\"%s\"] )",
-                   pDecl, pDecl ? pDecl->identifier : "") );
+  CT_DEBUG(TYPE, ("type::decl_delete( pDecl=%p [identifier=\"%s\"] )",
+                  pDecl, pDecl ? pDecl->identifier : ""));
 
-  if( pDecl ) {
-    LL_destroy( pDecl->array, (LLDestroyFunc) value_delete );
-    Free( pDecl );
+  if (pDecl)
+  {
+    LL_destroy(pDecl->array, (LLDestroyFunc) value_delete);
+    delete_taglist(&pDecl->tags);
+    Free(pDecl);
   }
 }
 
@@ -509,14 +521,15 @@ void decl_delete( Declarator *pDecl )
 *
 *******************************************************************************/
 
-Declarator *decl_clone( const Declarator *pSrc )
+Declarator *decl_clone(const Declarator *pSrc)
 {
-  CLONE_OBJECT_IDENT( Declarator, pDest, pSrc );
+  CLONE_OBJECT_IDENT(Declarator, pDest, pSrc);
 
-  CT_DEBUG( TYPE, ("type::decl_clone( pSrc=%p [identifier=\"%s\"] ) = %p",
-                   pSrc, pSrc ? pSrc->identifier : "", pDest) );
+  CT_DEBUG(TYPE, ("type::decl_clone( pSrc=%p [identifier=\"%s\"] ) = %p",
+                  pSrc, pSrc ? pSrc->identifier : "", pDest));
 
-  pDest->array = LL_clone( pSrc->array, (LLCloneFunc) value_clone );
+  pDest->array = LL_clone(pSrc->array, (LLCloneFunc) value_clone);
+  pDest->tags  = clone_taglist(pSrc->tags);
 
   return pDest;
 }
@@ -627,9 +640,9 @@ StructDeclaration *structdecl_clone( const StructDeclaration *pSrc )
 *
 *******************************************************************************/
 
-Struct *struct_new( char *identifier, int id_len, u_32 tflags, unsigned pack, LinkedList declarations )
+Struct *struct_new(char *identifier, int id_len, u_32 tflags, unsigned pack, LinkedList declarations)
 {
-  CONSTRUCT_OBJECT_IDENT( Struct, pStruct );
+  CONSTRUCT_OBJECT_IDENT(Struct, pStruct);
 
   pStruct->ctype = TYP_STRUCT;
 
@@ -639,11 +652,12 @@ Struct *struct_new( char *identifier, int id_len, u_32 tflags, unsigned pack, Li
   pStruct->size         = 0;
   pStruct->pack         = pack;
   pStruct->declarations = declarations;
+  pStruct->tags         = NULL;
 
-  CT_DEBUG( TYPE, ("type::struct_new( identifier=\"%s\", tflags=0x%08lX, "
-                   "pack=%d, declarations=%p [count=%d] ) = %p",
-                   pStruct->identifier, (unsigned long) tflags, pack,
-                   declarations, LL_count(declarations), pStruct) );
+  CT_DEBUG(TYPE, ("type::struct_new( identifier=\"%s\", tflags=0x%08lX, "
+                  "pack=%d, declarations=%p [count=%d] ) = %p",
+                  pStruct->identifier, (unsigned long) tflags, pack,
+                  declarations, LL_count(declarations), pStruct));
 
   return pStruct;
 }
@@ -665,13 +679,15 @@ Struct *struct_new( char *identifier, int id_len, u_32 tflags, unsigned pack, Li
 *
 *******************************************************************************/
 
-void struct_delete( Struct *pStruct )
+void struct_delete(Struct *pStruct)
 {
-  CT_DEBUG( TYPE, ("type::struct_delete( pStruct=%p )", pStruct) );
+  CT_DEBUG(TYPE, ("type::struct_delete( pStruct=%p )", pStruct));
 
-  if( pStruct ) {
-    LL_destroy( pStruct->declarations, (LLDestroyFunc) structdecl_delete );
-    Free( pStruct );
+  if (pStruct)
+  {
+    LL_destroy(pStruct->declarations, (LLDestroyFunc) structdecl_delete);
+    delete_taglist(&pStruct->tags);
+    Free(pStruct);
   }
 }
 
@@ -692,14 +708,15 @@ void struct_delete( Struct *pStruct )
 *
 *******************************************************************************/
 
-Struct *struct_clone( const Struct *pSrc )
+Struct *struct_clone(const Struct *pSrc)
 {
-  CLONE_OBJECT_IDENT( Struct, pDest, pSrc );
+  CLONE_OBJECT_IDENT(Struct, pDest, pSrc);
 
-  CT_DEBUG( TYPE, ("type::struct_clone( pSrc=%p [identifier=\"%s\"] ) = %p",
-                   pSrc, pSrc ? pSrc->identifier : "", pDest) );
+  CT_DEBUG(TYPE, ("type::struct_clone( pSrc=%p [identifier=\"%s\"] ) = %p",
+                  pSrc, pSrc ? pSrc->identifier : "", pDest));
 
-  pDest->declarations = LL_clone( pSrc->declarations, (LLCloneFunc) structdecl_clone );
+  pDest->declarations = LL_clone(pSrc->declarations, (LLCloneFunc) structdecl_clone);
+  pDest->tags         = clone_taglist(pSrc->tags);
 
   return pDest;
 }

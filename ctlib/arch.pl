@@ -10,14 +10,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/08/21 12:15:29 +0100 $
-# $Revision: 13 $
-# $Snapshot: /Convert-Binary-C/0.57 $
+# $Date: 2005/01/23 11:49:42 +0000 $
+# $Revision: 17 $
 # $Source: /ctlib/arch.pl $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -76,7 +75,7 @@ if( $cfg{i8type} eq 'char' ) {
   $cfg{i8type} = 'signed char';
 }
 
-sub is_big_endian
+sub is_big_endian ()
 {
   my $byteorder = $cfg{byteorder}
                || unpack( "a*", pack "L", 0x34333231 );
@@ -94,33 +93,23 @@ sub config ($) {
   print OUT;
 }
 
-config <<'ENDCFG';
-#ifndef _ARCH_H
-#define _ARCH_H
+$long_double = $use{LONGDOUBLE} && $cfg{d_longdbl} eq 'define' ? 1 : 0;
+print "DISABLED long double support\n" if $use{LONGDOUBLE} == 0;
 
-ENDCFG
+$long_long = $use{LONGLONG} && $cfg{d_longlong} eq 'define' ? 1 : 0;
+print "DISABLED long long support\n" if $use{LONGLONG} == 0;
 
-if( $use{LONGDOUBLE} && $cfg{d_longdbl} eq 'define' ) {
-config <<'ENDCFG';
-#define HAVE_LONG_DOUBLE
-ENDCFG
-}
-elsif( $use{LONGDOUBLE} == 0 ) {
-  print "DISABLED long double support\n";
-}
+config <<ENDCFG;
+#ifndef _CTLIB_ARCH_H
+#define _CTLIB_ARCH_H
 
-if( $use{LONGLONG} && $cfg{d_longlong} eq 'define' ) {
-config <<'ENDCFG';
-#define HAVE_LONG_LONG
+#define ARCH_HAVE_LONG_DOUBLE        $long_double
+#define ARCH_HAVE_LONG_LONG          $long_long
 ENDCFG
-}
-elsif( $use{LONGLONG} == 0 ) {
-  print "DISABLED long long support\n";
-}
 
 if( $use{'64BIT'} && $cfg{d_quad} eq 'define' ) {
 config <<'ENDCFG';
-#define NATIVE_64_BIT_INTEGER
+#define ARCH_NATIVE_64_BIT_INTEGER   1
 
 /* 64-bit integer data types */
 typedef ${i64type} i_64;
@@ -130,7 +119,7 @@ ENDCFG
 }
 elsif( $use{'64BIT'} && $cfg{d_longlong} eq 'define' and $cfg{longlongsize} == 8 ) {
 config <<'ENDCFG';
-#define NATIVE_64_BIT_INTEGER
+#define ARCH_NATIVE_64_BIT_INTEGER   1
 
 /* 64-bit integer data types */
 typedef signed long long i_64;
@@ -139,10 +128,10 @@ typedef unsigned long long u_64;
 ENDCFG
 }
 else {
-if( $use{'64BIT'} == 0 ) {
-  print "DISABLED 64-bit support\n";
-}
+  print "DISABLED 64-bit support\n" if $use{'64BIT'} == 0;
 config <<'ENDCFG';
+#define ARCH_NATIVE_64_BIT_INTEGER   0
+
 /* no native 64-bit support */
 typedef struct {
   ${u32type} h;
@@ -157,8 +146,12 @@ typedef struct {
 ENDCFG
 }
 
-config <<'ENDCFG' if is_big_endian;
-#define NATIVE_BIG_ENDIAN
+$byteorder = is_big_endian ? 'BIG' : 'LITTLE';
+
+config <<"ENDCFG";
+#define ARCH_BYTEORDER_BIG_ENDIAN    1
+#define ARCH_BYTEORDER_LITTLE_ENDIAN 2
+#define ARCH_NATIVE_BYTEORDER        ARCH_BYTEORDER_${byteorder}_ENDIAN 
 
 ENDCFG
 

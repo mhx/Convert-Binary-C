@@ -18,7 +18,10 @@ print <<ENDC;
 
 $defs
 
-int main( void ) {
+int printf(const char *, ...);
+
+int main(void)
+{
 ENDC
 
 for my $t ( $c->enum_names ) {
@@ -53,7 +56,7 @@ sub print_sizes
 ENDC
     my @m = eval { $c->member( $t ) };
     if( $@ ) {
-      $@ =~ /Cannot use member on an? (basic|pointer|enum)/ or warn $@;
+      $@ =~ /Cannot use member on an? (basic|scalar|pointer|enum)/ or warn $@;
     }
     else {
       for my $m ( @m ) {

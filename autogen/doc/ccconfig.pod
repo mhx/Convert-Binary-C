@@ -10,28 +10,36 @@ ccconfig I<options> [-- compiler-options]
 I<options>:
 
   -c
-  --cc       compiler    compiler executable to test
-                         default: auto-determined
+  --cc             compiler   compiler executable to test
+                              default: auto-determined
   
   -p
-  --ppout    flag        compiler option for sending
-                         preprocessor output to stdout
-                         default: -E
+  --ppout          flag       compiler option for sending
+                              preprocessor output to stdout
+                              default: -E
   
   -t
-  --temp     file        name of the temporary test file
-                         default: _t_e_s_t.c
+  --temp           file       name of the temporary test file
+                              default: _t_e_s_t.c
   
-  --nodelete             don't delete temporary files
+  -o
+  --output-file    file       output filename
+                              default: output to stdout
+
+  -f
+  --output-format  format     output format
+                              default: dumper
+
+  --nodelete                  don't delete temporary files
   
-  --norun                don't try to run executables
+  --norun                     don't try to run executables
   
-  --quiet                don't display anything
-  --nostatus             don't display status indicator
+  --quiet                     don't display anything
+  --nostatus                  don't display status indicator
   
-  --version              print version number
+  --version                   print version number
   
-  --debug                debug mode
+  --debug                     debug mode
 
 =head1 DESCRIPTION
 
@@ -62,6 +70,21 @@ compilers.
 =head2 C<--temp> file
 
 Allows you to change the name of the temporary test file.
+
+=head2 C<--output-file> file
+
+Write Convert::Binary::C configuration to the specified
+file. The default is to write the configuration to C<stdout>.
+
+=head2 C<--output-format> format
+
+Specify the output format of the Convert::Binary::C configuration.
+The following formats are currently supported:
+
+  dumper      Output a %config hash using Data::Dumper
+  require     Output in a format suitable for require
+
+The default is C<dumper>.
 
 =head2 C<--nodelete>
 
@@ -133,9 +156,15 @@ or
 
   ccconfig -c gcc32 -- -ansi -fshort-enums
 
+If you'd like to interface with the Perl core, you may find
+a suitable configuration using something like:
+
+  ccconfig --cc=`perl -MConfig -e 'print $Config{cc}'` \
+           -- `perl -MConfig -e 'print $Config{ccflags}'`
+
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 

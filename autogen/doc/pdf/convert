@@ -41,7 +41,7 @@ foreach my $pod (@ARGV) {
     			  AddPreamble => 0,
     			  AddPostamble => 0,
     			  Head1Level => 0,
-    			  LevelNoNum => 3,
+    			  LevelNoNum => 4,
     			 );
 
   $parser->parse_from_filehandle($podfh, $outfh);

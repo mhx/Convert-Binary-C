@@ -2,7 +2,7 @@ use Convert::Binary::C;
 
 my %h;
 
-open FILE, "../../ctlib/t_parser.pl" or die $!;
+open FILE, "../../token/parser.pl" or die $!;
 
 while( <FILE> ) {
   s/#.*$//;

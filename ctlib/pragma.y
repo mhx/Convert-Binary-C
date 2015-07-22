@@ -11,14 +11,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/22 19:37:58 +0000 $
-* $Revision: 9 $
-* $Snapshot: /Convert-Binary-C/0.57 $
+* $Date: 2005/01/23 11:49:41 +0000 $
+* $Revision: 14 $
 * $Source: /ctlib/pragma.y $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -54,7 +53,7 @@
 /*
  * Bison version >= 1.31 is needed for YYFPRINTF
  */
-#if YYDEBUG && defined CTYPE_DEBUGGING
+#if YYDEBUG && defined CTLIB_DEBUGGING
 #define YYFPRINTF BisonDebugFunc
 #endif
 
@@ -337,7 +336,7 @@ static inline int pragma_lex( void *pYYLVAL, PragmaState *pState )
           char *tokstr = pState->str;
           int   toklen, tokval;
 
-#include "t_pragma.c"
+#include "token/t_pragma.c"
 
         success:
           pState->str += toklen+1;

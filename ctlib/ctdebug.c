@@ -10,18 +10,19 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/22 19:37:56 +0000 $
-* $Revision: 6 $
-* $Snapshot: /Convert-Binary-C/0.57 $
+* $Date: 2005/01/23 11:49:42 +0000 $
+* $Revision: 10 $
 * $Source: /ctlib/ctdebug.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
 *******************************************************************************/
+
+#ifdef CTLIB_DEBUGGING
 
 /*===== GLOBAL INCLUDES ======================================================*/
 
@@ -43,27 +44,21 @@
 
 /*===== GLOBAL VARIABLES =====================================================*/
 
-#ifdef CTYPE_DEBUGGING
 void        (*g_CT_dbfunc)(const char *, ...) = NULL;
 unsigned long g_CT_dbflags                    = 0;
-#endif
 
 /*===== STATIC VARIABLES =====================================================*/
 
-#ifdef CTYPE_DEBUGGING
 static void (*gs_vprintf)(const char *, va_list *) = NULL;
-#endif
 
 /*===== STATIC FUNCTIONS =====================================================*/
 
 /*===== FUNCTIONS ============================================================*/
 
-#ifdef CTYPE_DEBUGGING
-
-#ifdef CTYPE_FORMAT_CHECK
+#ifdef CTLIB_FORMAT_CHECK
 void CT_dbfunc_check( const char *str __attribute(( __unused__ )), ... )
 {
-  fprintf( stderr, "compiled with CTYPE_FORMAT_CHECK, please don't run\n" );
+  fprintf( stderr, "compiled with CTLIB_FORMAT_CHECK, please don't run\n" );
   abort();
 }
 #endif
@@ -121,4 +116,6 @@ void BisonDebugFunc( void *dummy, const char *fmt, ... )
     va_end( l );
   }
 }
-#endif
+
+#endif /* CTLIB_DEBUGGING */
+

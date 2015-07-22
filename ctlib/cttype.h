@@ -10,14 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/05/23 11:37:00 +0100 $
-* $Revision: 14 $
-* $Snapshot: /Convert-Binary-C/0.57 $
+* $Date: 2005/01/23 11:49:40 +0000 $
+* $Revision: 17 $
 * $Source: /ctlib/cttype.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -31,6 +30,7 @@
 /*===== LOCAL INCLUDES =======================================================*/
 
 #include "arch.h"
+#include "cttags.h"
 #include "fileinfo.h"
 #include "util/list.h"
 
@@ -178,6 +178,7 @@ typedef struct {
   unsigned    sizes[ES_NUM_ENUM_SIZES];
   ContextInfo context;
   LinkedList  enumerators;
+  CtTagList   tags;
   char        identifier[1];
 } EnumSpecifier;
 
@@ -186,6 +187,7 @@ typedef struct {
   int         bitfield_size;
   int         offset, size;
   LinkedList  array;
+  CtTagList   tags;
   char        identifier[1];
 } Declarator;
 
@@ -209,6 +211,7 @@ typedef struct {
   unsigned    pack;
   ContextInfo context;
   LinkedList  declarations;
+  CtTagList   tags;
   char        identifier[1];
 } Struct;
 

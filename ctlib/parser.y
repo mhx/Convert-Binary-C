@@ -11,14 +11,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/09/19 18:31:44 +0100 $
-* $Revision: 38 $
-* $Snapshot: /Convert-Binary-C/0.57 $
+* $Date: 2005/01/23 11:49:40 +0000 $
+* $Revision: 43 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -117,7 +116,7 @@ colleagues include: Bruce Blodgett, and Mark Langley.
 /*
  * Bison version >= 1.31 is needed for YYFPRINTF
  */
-#if YYDEBUG && defined CTYPE_DEBUGGING
+#if YYDEBUG && defined CTLIB_DEBUGGING
 #define YYFPRINTF BisonDebugFunc
 #endif
 
@@ -130,7 +129,7 @@ colleagues include: Bruce Blodgett, and Mark Langley.
 
 #define PSTATE                  ((ParserState *) pState)
 
-#if CTYPE_DEBUGGING
+#if CTLIB_DEBUGGING
 #define EX_OBJECT( id, list, obj ) ex_object( id, list, obj )
 #else
 #define EX_OBJECT( id, list, obj ) ex_object( list, obj )
@@ -244,7 +243,7 @@ static inline int   string_size( char *s );
 static inline int   check_type( void *pVVLVAL, ParserState *pState, char *s );
 static        void  parser_error( ParserState *pState, char *msg );
 
-#ifdef CTYPE_DEBUGGING
+#ifdef CTLIB_DEBUGGING
 static        void *ex_object( char *type, LinkedList list, void *object );
 #else
 static inline void *ex_object( LinkedList list, void *object );
@@ -2181,7 +2180,7 @@ static inline int c_lex( void *pYYLVAL, ParserState *pState )
           char *tokstr = pLexer->ctok->name;
           const CKeywordToken *ckt;
 
-#include "t_parser.c"
+#include "token/t_parser.c"
 
           unknown:
 
@@ -2231,7 +2230,7 @@ static inline int c_lex( void *pYYLVAL, ParserState *pState )
 *
 *******************************************************************************/
 
-#ifdef CTYPE_DEBUGGING
+#ifdef CTLIB_DEBUGGING
 static void *ex_object( char *type, LinkedList list, void *object )
 #else
 static inline void *ex_object( LinkedList list, void *object )
@@ -2458,7 +2457,7 @@ static inline int check_type( void *pYYLVAL, ParserState *pState, char *s )
 
 const CKeywordToken *get_c_keyword_token( const char *name )
 {
-#include "t_ckeytok.c"
+#include "token/t_ckeytok.c"
 unknown:
   return NULL;
 }
@@ -2508,7 +2507,7 @@ ParserState *c_parser_new( const CParseConfig *pCPC, CParseInfo *pCPI,
 {
   ParserState *pState;
 
-#ifdef CTYPE_DEBUGGING
+#ifdef CTLIB_DEBUGGING
 #ifdef YYDEBUG
   extern int pragma_debug;
   c_debug = pragma_debug = DEBUG_FLAG( YACC ) ? 1 : 0;
@@ -2585,7 +2584,7 @@ void c_parser_delete( ParserState *pState )
 {
   LinkedList list;
 
-#ifdef CTYPE_DEBUGGING
+#ifdef CTLIB_DEBUGGING
   int count;
 #endif
 
@@ -2602,7 +2601,7 @@ void c_parser_delete( ParserState *pState )
   /* Cleanup Enumerators */
   /*---------------------*/
 
-#ifdef CTYPE_DEBUGGING
+#ifdef CTLIB_DEBUGGING
   if( DEBUG_FLAG( PARSER ) ) {
     CT_DEBUG( PARSER, ("cleanup enumerator(s)") );
     if( pState->curEnumList && (count = LL_count( pState->curEnumList )) > 0 )
@@ -2616,7 +2615,7 @@ void c_parser_delete( ParserState *pState )
   /* Cleanup Nodes */
   /*---------------*/
 
-#ifdef CTYPE_DEBUGGING
+#ifdef CTLIB_DEBUGGING
   if( DEBUG_FLAG( PARSER ) ) {
     CT_DEBUG( PARSER, ("cleanup node(s)") );
     if( (count = LL_count( pState->nodeList )) > 0 ) {
@@ -2634,7 +2633,7 @@ void c_parser_delete( ParserState *pState )
   /* Cleanup Declarators */
   /*---------------------*/
 
-#ifdef CTYPE_DEBUGGING
+#ifdef CTLIB_DEBUGGING
   if( DEBUG_FLAG( PARSER ) ) {
     CT_DEBUG( PARSER, ("cleanup declarator(s)") );
     if( (count = LL_count( pState->declaratorList )) > 0 )
@@ -2648,7 +2647,7 @@ void c_parser_delete( ParserState *pState )
   /* Cleanup Arrays */
   /*----------------*/
 
-#ifdef CTYPE_DEBUGGING
+#ifdef CTLIB_DEBUGGING
   if( DEBUG_FLAG( PARSER ) ) {
     Value *pVal;
     CT_DEBUG( PARSER, ("cleanup array(s)") );
@@ -2673,7 +2672,7 @@ void c_parser_delete( ParserState *pState )
   /* Cleanup Struct Declarators */
   /*----------------------------*/
 
-#ifdef CTYPE_DEBUGGING
+#ifdef CTLIB_DEBUGGING
   if( DEBUG_FLAG( PARSER ) ) {
     CT_DEBUG( PARSER, ("cleanup struct declarator(s)") );
     if( (count = LL_count( pState->structDeclList )) > 0 )
@@ -2687,7 +2686,7 @@ void c_parser_delete( ParserState *pState )
   /* Cleanup Struct Declarator Lists */
   /*---------------------------------*/
 
-#ifdef CTYPE_DEBUGGING
+#ifdef CTLIB_DEBUGGING
   if( DEBUG_FLAG( PARSER ) ) {
     CT_DEBUG( PARSER, ("cleanup struct declarator list(s)") );
     if( (count = LL_count( pState->structDeclListsList )) > 0 )

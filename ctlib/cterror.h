@@ -10,14 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/22 19:37:56 +0000 $
-* $Revision: 11 $
-* $Snapshot: /Convert-Binary-C/0.57 $
+* $Date: 2005/01/23 11:49:39 +0000 $
+* $Revision: 14 $
 * $Source: /ctlib/cterror.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -44,7 +43,7 @@ typedef struct {
   void         (*scatf)( void *, const char *, ... );
   void         (*vscatf)( void *, const char *, va_list * );
   const char * (*cstring)( void *, size_t * );
-  void         (*fatal)( void * );
+  void         (*fatalerr)( void * );
 } PrintFunctions;
 
 enum CTErrorSeverity {

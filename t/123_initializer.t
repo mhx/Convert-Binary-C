@@ -2,14 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/05/24 22:00:50 +0100 $
-# $Revision: 7 $
-# $Snapshot: /Convert-Binary-C/0.57 $
+# $Date: 2005/01/23 11:49:30 +0000 $
+# $Revision: 10 $
 # $Source: /t/123_initializer.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -20,7 +19,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 22 }
+BEGIN { plan tests => 27 }
 
 $c = eval { new Convert::Binary::C Include => ['t/include/perlinc',
                                                't/include/include'] };
@@ -61,6 +60,7 @@ for my $snip ( split /={40,}/, do { local $/; <DATA> } ) {
   eval { $c->clean->parse($code) };
   ok($@,'',"failed to parse code snippet");
   for my $test ( @tests ) {
+    $test =~ s/#.*//gm;
     my($data, $id, $ref) = $test =~ /^\s*(?:\$\s*=\s*(.*?))?\s*(\w+)\s*=\s*(.*?)\s*$/;
     my $init = defined $data
              ? $c->initializer( $id, eval $data )
@@ -257,4 +257,44 @@ typedef struct {
 -------------------------------------------------------------------------------
 
 data = { 0, 0, { { 0, 0, 0, 0, 0 } } }
+
+-------------------------------------------------------------------------------
+
+# we should be able to initialize enums
+
+$ = { type => 1 }
+
+data = { 1, 0, { { 0, 0, 0, 0, 0 } } }
+
+-------------------------------------------------------------------------------
+
+# even when out of range
+
+$ = { type => 2 }
+
+data = { 2, 0, { { 0, 0, 0, 0, 0 } } }
+
+-------------------------------------------------------------------------------
+
+# also by name
+
+$ = { type => 'DATE' }
+
+data = { DATE, 0, { { 0, 0, 0, 0, 0 } } }
+
+-------------------------------------------------------------------------------
+
+# even if it doesn't exist (could be some define)
+
+$ = { type => 'SOMETHING' }
+
+data = { SOMETHING, 0, { { 0, 0, 0, 0, 0 } } }
+
+-------------------------------------------------------------------------------
+
+# this should work for 'normal' types as well
+
+$ = { number => 'SOMETHING' }
+
+data = { 0, SOMETHING, { { 0, 0, 0, 0, 0 } } }
 

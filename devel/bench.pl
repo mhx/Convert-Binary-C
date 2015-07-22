@@ -42,6 +42,14 @@ my %tests = (
                     $c->clean->parse_file( 't/include/include.c' )->parse_file( 'devel/bench.h' );
                   },
 
+  parse_c      => sub {
+                    $c->clean->parse_file( 't/include/include.c' );
+                  },
+
+  parse_pp     => sub {
+                    $c->clean->parse_file( 'devel/bench.h' );
+                  },
+
   sourcify     => sub {
                     my $x = $c->sourcify;
                   },

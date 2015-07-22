@@ -1,15 +1,15 @@
+#!/usr/bin/perl
 ################################################################################
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/06/18 13:56:27 +0100 $
-# $Revision: 57 $
-# $Snapshot: /Convert-Binary-C/0.57 $
+# $Date: 2005/02/16 21:10:13 +0000 $
+# $Revision: 70 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
 # 
-# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 # 
@@ -56,6 +56,7 @@ ENDWARN
 
 use ExtUtils::MakeMaker;
 use File::Find;
+use Cwd;
 use Config;
 
 $MODULE = 'Convert::Binary::C';
@@ -69,30 +70,51 @@ $BISON = $Config{bison} || 'bison';
 # Where to look for includes
 
 @INC_PATH = qw(
-  ctlib
+  .
 );
 
 # All object files (without extension)
 
 @OBJECT = qw(
+  cbc/basic
+  cbc/hook
+  cbc/idl
+  cbc/init
+  cbc/member
+  cbc/object
+  cbc/option
+  cbc/pack
+  cbc/sourcify
+  cbc/tag
+  cbc/type
+  cbc/typeinfo
+  cbc/util
+
   ctlib/byteorder
-  ctlib/ctdebug
   ctlib/cterror
   ctlib/ctparse
+  ctlib/cttags
   ctlib/cttype
   ctlib/fileinfo
   ctlib/parser
   ctlib/pragma
-  ctlib/util/hash
-  ctlib/util/list
-  ctlib/util/memalloc
-  ctlib/ucpp/assert
-  ctlib/ucpp/cpp
-  ctlib/ucpp/eval
-  ctlib/ucpp/nhash
-  ctlib/ucpp/lexer
-  ctlib/ucpp/macro
-  ctlib/ucpp/mem
+
+  ucpp/assert
+  ucpp/cpp
+  ucpp/eval
+  ucpp/nhash
+  ucpp/lexer
+  ucpp/macro
+  ucpp/mem
+
+  util/hash
+  util/list
+  util/memalloc
+);
+
+@DBGOBJ = qw(
+  cbc/debug
+  ctlib/ctdebug
 );
 
 unshift @OBJECT, $MODULE =~ /([^:]+)$/;
@@ -108,13 +130,13 @@ unshift @OBJECT, $MODULE =~ /([^:]+)$/;
 @CLEAN = qw(
   $(OBJECT)
   t/*.vgo
+  t/cache.cbc
 );
 
 @DEFINE = qw(
-  ABORT_IF_NO_MEM
-  NO_SLOW_MEMALLOC_CALLS
   UCPP_CONFIG
   UCPP_REENTRANT
+  UTIL_HAVE_CONFIG_H
 );
 
 # On AIX systems, this should be defined for ucpp
@@ -125,7 +147,7 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
 %FEATURES = (
   debug   => {
                enabled => $Config{ccflags} =~ /-DDEBUGGING\b/ ? 1 : 0,
-               e_flags => [qw( CTYPE_DEBUGGING DEBUG_MEMALLOC DEBUG_HASH YYDEBUG=1 )],
+               e_flags => [qw( CBC_DEBUGGING CTLIB_DEBUGGING DEBUG_MEMALLOC DEBUG_HASH YYDEBUG=1 )],
                d_flags => [qw( NDEBUG )],
              },
   ieeefp  => {
@@ -143,7 +165,7 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
   $Config{gccversion} ? (
   '$format-check' => {
                enabled => 0,
-               e_flags => [qw( CTYPE_FORMAT_CHECK UTIL_FORMAT_CHECK )],
+               e_flags => [qw( CTLIB_FORMAT_CHECK UTIL_FORMAT_CHECK )],
                d_flags => [qw()],
              },
   '$coverage' => {
@@ -201,15 +223,19 @@ ENDUSAGE
   $myopt ? () : $_
 } @ARGV;
 
-if( $FEATURES{'$coverage'}{enabled} ) {
+if ($FEATURES{debug}{enabled}) {
+  push @OBJECT, @DBGOBJ;
+}
+
+if ($FEATURES{'$coverage'}{enabled}) {
   push @CLEAN, qw( *.gcov *.gcda *.gcno *.da *.bb *.bbg );
 }
 
 # run the IEEE check anyway
 @ieee_fail = &check_ieee_fp;
 
-if( defined $FEATURES{'ieeefp'}{enabled} ) {
-  if( $FEATURES{'ieeefp'}{enabled} and @ieee_fail ) {
+if (defined $FEATURES{'ieeefp'}{enabled}) {
+  if ($FEATURES{'ieeefp'}{enabled} and @ieee_fail) {
     print <<ENDMSG;
 -----------------------------------------------------------------------
   My tests indicate that your machine does not store floating point
@@ -221,7 +247,7 @@ ENDMSG
 }
 else {
   $FEATURES{'ieeefp'}{enabled} = !@ieee_fail;
-  if( @ieee_fail ) {
+  if (@ieee_fail) {
     print <<ENDMSG;
 
 --> !!!!!!!!!!   --------------------------------------------------
@@ -241,7 +267,7 @@ ENDMSG
 
   my $hex = sub { join ' ', map { sprintf "%02X", $_ } unpack "C*", $_[0] };
 
-  for my $t ( @ieee_fail ) {
+  for my $t (@ieee_fail) {
     printf "--> %-15s  %-7s  %-24s  %-24s\n", $t->{value}, $t->{check},
            $hex->( $t->{expected} ), $hex->( $t->{got} );
   }
@@ -265,48 +291,24 @@ ENDMSG
   }
 }
 
-if( $Config{usemymalloc} eq 'y' and $FEATURES{threads}{enabled} ) {
-  die <<ENDMSG;
-
---> !!!!!!!!!!!!!   ------------------------------------------
---> !! S T O P !!    Unsupported Perl configuration detected!
---> !!!!!!!!!!!!!   ------------------------------------------
--->
--->   You're using a multithreaded Perl binary that was configured
--->   with -Dusemymalloc=y. This configuration is very dangerous
--->   when using XS modules. Convert::Binary::C will work as long
--->   as you're not actually using threads, but there's a 100%
--->   chance that it will fail if you're using threads. Either
--->   disable threads in your binary or don't use Perl's malloc.
--->
--->   Huh? Don't understand anything of the above? Don't plan to
--->   use threads? Ok, just run
--->
--->     $^X Makefile.PL disable-threads
--->
--->   and build the module as usual.
-
-ENDMSG
-}
-
 WriteMakefile(
-  'NAME'            => $MODULE,
-  'VERSION_FROM'    => 'lib/Convert/Binary/C.pm',
-  'ABSTRACT'        => 'Binary Data Conversion using C Types',
-  'AUTHOR'          => 'Marcus Holland-Moritz <mhx@cpan.org>',
-  'OBJECT'          => join( ' ', map { "$_\$(OBJ_EXT)" } @OBJECT ),
-  'INC'             => join( ' ', map { "-I$_" } @INC_PATH ),
-  'EXE_FILES'       => ['bin/ccconfig'],
-  'PL_FILES'        => \%GENERATE,
-  'CONFIGURE'       => \&configure,
-  'clean'           => { FILES => "@CLEAN" },
-  'realclean'       => { FILES => "@REALCLEAN" },
+  'NAME'         => $MODULE,
+  'VERSION_FROM' => 'lib/Convert/Binary/C.pm',
+  'ABSTRACT'     => 'Binary Data Conversion using C Types',
+  'AUTHOR'       => 'Marcus Holland-Moritz <mhx@cpan.org>',
+  'OBJECT'       => join( ' ', map { "$_\$(OBJ_EXT)" } sort @OBJECT ),
+  'INC'          => join( ' ', map { "-I$_" } @INC_PATH ),
+  'EXE_FILES'    => ['bin/ccconfig'],
+  'PL_FILES'     => \%GENERATE,
+  'CONFIGURE'    => \&configure,
+  'clean'        => { FILES => "@CLEAN" },
+  'realclean'    => { FILES => "@REALCLEAN" },
 );
 
 #############################################################################
 
-sub configure {
-
+sub configure
+{
   # Configure and print information about features
 
   for( keys %FEATURES ) {
@@ -315,7 +317,7 @@ sub configure {
                                   : "Building with feature '$_'\n";
     push @DEFINE, @{$f->{enabled} ? $f->{e_flags} : $f->{d_flags} };
   }
-  
+ 
   my $config = {
     'DEFINE' => join(' ', map("-D$_", @DEFINE)),
     'depend' => { find_depend( @INC_PATH ) },
@@ -331,14 +333,16 @@ sub configure {
   $config;
 }
 
-sub MY::c_o {
+sub MY::c_o
+{
   package MY;
   my $c_o = shift->SUPER::c_o(@_);
   $c_o =~ s/^\s+\$\(CCCMD\).*$/$&\n\t\$(MV) \$(\@F) t_object.tmp\n\t\$(MV) t_object.tmp \$\@/mg;
   $c_o;
 }
 
-sub MY::constants {
+sub MY::constants
+{
   package MY;
   shift->SUPER::constants(@_).<<END
 
@@ -354,7 +358,8 @@ VALGRIND_OPTIONS = --tool=memcheck \\
 END
 }
 
-sub MY::postamble {
+sub MY::postamble
+{
   package MY;
 
   my @spec = (
@@ -370,22 +375,34 @@ sub MY::postamble {
     },
     {
       cmd => '$(PERL) {src} {dst}',
-      src => 'ctlib/t_parser.pl',
-      dst => ['ctlib/t_parser.c',
-              'ctlib/t_keywords.c',
-              'ctlib/t_ckeytok.c',
-              'ctlib/t_basic.c'],
+      src => 'token/parser.pl',
+      dst => ['token/t_parser.c',
+              'token/t_keywords.c',
+              'token/t_ckeytok.c',
+              'token/t_basic.c'],
     },
     {
       cmd => '$(PERL) {src} {dst}',
-      src => 'ctlib/t_pragma.pl',
-      dst => ['ctlib/t_pragma.c'],
+      src => 'token/pragma.pl',
+      dst => ['token/t_pragma.c'],
     },
     {
       cmd => '$(PERL) {src} {dst}',
-      src => 'ctlib/t_config.pl',
-      dst => ['ctlib/t_config.c',
-              'ctlib/t_sourcify.c'],
+      src => 'token/config.pl',
+      dst => ['token/t_config.c',
+              'token/t_sourcify.c'],
+    },
+    {
+      cmd => '$(PERL) {src} {dst}',
+      src => 'token/tag.pl',
+      dst => ['token/t_tag.h',
+              'token/t_tag.c'],
+    },
+    {
+      cmd => '$(PERL) {src} {dst}',
+      src => 'token/hook.pl',
+      dst => ['token/t_hookid.h',
+              'token/t_hookid.c'],
     },
   );
 
@@ -463,7 +480,8 @@ ENDWARN
   $postamble .= "\nregen:\n\t" . join("\n\t", @gen) . "\n";
 
   if( $::Config{ccflags} =~ /-DDEBUGGING\b/ ) {
-    my($sym) = $::MODULE =~ /^([^:]+)/;
+    my $sym = $::MODULE;
+    $sym =~ s/::/.*/g;
     $postamble .= <<END;
 
 valgrind: pure_all
@@ -472,7 +490,7 @@ valgrind: pure_all
 	for file in t/*.t; do \\
 	  echo checking \$\$file with valgrind...; \\
 	  valgrind \$(VALGRIND_OPTIONS) \$(PERL) -Mblib \$\$file >\$\$file.vgo 2>&1; \\
-	  grep $sym \$\$file.vgo; \\
+	  grep "==.*==.*$sym" \$\$file.vgo; \\
 	done
 END
   }
@@ -493,7 +511,8 @@ END
   $postamble;
 }
 
-sub MY::test {
+sub MY::test
+{
   package MY;
   my $test = shift->SUPER::test(@_);
   $::FEATURES{debug}{enabled} and
@@ -501,7 +520,8 @@ sub MY::test {
   $test
 }
 
-sub MY::installbin {
+sub MY::installbin
+{
   package MY;
   my $ibin = shift->SUPER::installbin(@_);
   my @ex = values %::EXAMPLES;
@@ -509,7 +529,26 @@ sub MY::installbin {
   $ibin
 }
 
-sub MY::metafile {
+sub MY::perldepend
+{
+  package MY;
+  my $dep = shift->SUPER::perldepend(@_);
+  my @deps;
+
+  open FILE, "C.xs" or die "C.xs: $!";
+  while (<FILE>) {
+    /^INCLUDE:\s*(\S+)/ or next;
+    push @deps, $1;
+  }
+  close FILE;
+
+  $dep =~ s/^(C\.c\s*:)/$1 @deps /m;
+
+  $dep
+}
+
+sub MY::metafile
+{
   package MY;
   my $self = shift;
   eval { require YAML; 1 }
@@ -523,7 +562,7 @@ sub MY::metafile {
   $node->{distribution_type} = 'module';
   $node->{generated_by}      = "$::MODULE $0";
 
-  my $dump = YAML::Dump( $node );
+  my $dump = YAML::Dump($node);
 
   $dump =~ s/^(.*)$/\t\$(NOECHO) \$(ECHO) "$1" >>META.yml/gm;
   $dump =~ s/>>META\.yml/>META.yml/;
@@ -534,62 +573,70 @@ sub MY::metafile {
 # The following routines will extract the include dependencies
 # from the source files.
 
-sub find_depend {
+sub find_depend
+{
   my @inc_path = ('.', @_);
   my(%depend, %d);
+  my $cwd = getcwd;
 
   printf "Finding dependencies...\n";
 
-  for( @inc_path ) {
+  for (@inc_path) {
     /\/$/ or $_ .= '/';
   }
 
-  File::Find::find( sub {
-    /\.(?:xs|[chy])$/ or return;
+  File::Find::find(sub {
+    /\.(?:(xs)|[chy])$/ or return;
     $File::Find::dir =~ /^\.[\/\\]t[\/\\]/ and return; # exclude test directory
     my @incs;
-    open FILE, $_ or die $!;
-    while( <FILE> ) {
+    open FILE, $_ or die "$_: $!";
+    my $olddir = getcwd;
+    chdir $cwd;
+    while (<FILE>) {
       my($inc,$base) = /^\s*#\s*include\s*"([^"]+\.\w+)"/ or next;
-      for my $path ( @inc_path ) {
-        if( -e "$path$inc" ) {
-          push @incs, $File::Find::dir . "/$path" . $inc;
+      for my $path (@inc_path, "$File::Find::dir/") {
+        if (-e "$path$inc") {
+          push @incs, $path . $inc;
         }
       }
-      for my $gen ( keys %GENERATE ) {
-        push @incs, grep /\E$inc/, ( ref $GENERATE{$gen} ? @{$GENERATE{$gen}} : $GENERATE{$gen} );
+      for my $gen (keys %GENERATE) {
+        push @incs, grep /\E$inc/, (ref $GENERATE{$gen} ? @{$GENERATE{$gen}} : $GENERATE{$gen});
       }
     }
     close FILE;
+    chdir $olddir;
     return unless @incs;
     my $name = $File::Find::name;
-    for( @incs, $name ) {
+    for (@incs, $name) {
       s/\.[\\\/]//;
       s/^\.\/|\/\.(?=\/)//g;
       s/[^\/]+\/\.\.\///g;
     }
     @{$depend{$name}}{@incs} = (1)x@incs;
-  }, '.' );
+  }, '.');
 
-  for( @OBJECT ) {
-    my $name = $_;
-    for( qw( xs y c ) ) {
-      -e "$name.$_" and $name .= ".$_" and last;
+  for my $o (@OBJECT) {
+    my $name = $o;
+
+    for my $ext (qw( xs y c )) {
+      -e "$name.$ext" and $name .= ".$ext" and last;
     }
+
     my %incs;
-    rec_depend( $name, \%depend, \%incs );
-    $d{"$_\$(OBJ_EXT)"} = join ' ', keys %incs;
+    rec_depend($name, \%depend, \%incs);
+    $d{"$o\$(OBJ_EXT)"} = join ' ', sort keys %incs;
   }
 
   %d;
 }
 
-sub rec_depend {
+sub rec_depend
+{
   my($f,$d,$i) = @_;
   my $h = $d->{$f};
-  for( keys %$h ) {
+  for (keys %$h) {
     exists $i->{$_} and next; $i->{$_} = 1;
-    exists $d->{$_} and rec_depend( $_, $d, $i );
+    exists $d->{$_} and rec_depend($_, $d, $i);
   }
 }
 

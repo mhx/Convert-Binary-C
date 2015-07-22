@@ -6,6 +6,6 @@
 \.orig$
 \.cache\.cm$
 ^blib
-^ctlib/util/doc
+^util/doc
 ^devel
 ^autogen

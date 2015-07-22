@@ -2,14 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/11/23 19:23:32 +0000 $
-# $Revision: 17 $
-# $Snapshot: /Convert-Binary-C/0.57 $
+# $Date: 2005/01/31 08:46:19 +0000 $
+# $Revision: 20 $
 # $Source: /t/105_pack.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -20,7 +19,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 244 }
+BEGIN { plan tests => 277 }
 
 eval {
   $p = new Convert::Binary::C ByteOrder     => 'BigEndian'
@@ -38,7 +37,7 @@ typedef int array[1];
 typedef struct { array foo; } hash;
 typedef struct { int foo[1]; } hash2;
 typedef char c_8;
-typedef unsigned char u_8;
+typedef unsigned char u_8, v_8[];
 typedef signed char i_8;
 typedef long double ldbl;
 typedef struct { char a; int b[3][3]; } undef_test[3];
@@ -406,6 +405,114 @@ chkwarn( qr/Bitfields are unsupported in pack\('zero'\)/ );
       ok($p3, substr($d3, $s, length $p3));
     }
   }
+}
+
+#===================================================================
+# pack() should \0 terminate its return value to make the regex
+# engine happy. This is rather a bug in Perl, but we fix it here.
+#===================================================================
+
+$val = "\x42";
+$packed = $p->pack('u_8', 0x42);
+ok($packed, $val);
+ok($packed =~ /^$val$/);
+ok($packed =~ /^$val.*$/);
+
+$packed = $p->pack('u_8', 0x42, "");
+ok($packed, $val);
+ok($packed =~ /^$val$/);
+ok($packed =~ /^$val.*$/);
+
+$packed = "";
+$p->pack('u_8', 0x42, $packed);
+ok($packed, $val);
+ok($packed =~ /^$val$/);
+ok($packed =~ /^$val.*$/);
+
+$val = "\x42"x100;
+$packed = $p->pack('v_8', [(0x42)x100]);
+ok($packed, $val);
+ok($packed =~ /^$val$/);
+ok($packed =~ /^$val.*$/);
+
+#===================================================================
+# some tests for the 3-arg version of pack()
+#===================================================================
+
+{
+  my @res;
+
+  my $c = new Convert::Binary::C;
+  $c->parse(<<ENDC);
+typedef unsigned char u;
+typedef struct {
+  u a, b, c, d;
+} s;
+ENDC
+
+  eval {
+    $packed = pack 'C*', 1 .. 2;
+    push @res, $c->pack('s', { a => 42, d => 13 }, $packed);
+    push @res, $packed;
+    $c->pack('s', { b => 42, c => 13 }, $packed);
+    push @res, $packed;
+    $packed = pack 'C*', 1 .. 6;
+    push @res, $c->pack('s', { a => 42, d => 13 }, $packed);
+    push @res, $packed;
+    $c->pack('s', { b => 42, c => 13 }, $packed);
+    push @res, $packed;
+  };
+
+  ok($@, '', "failed during 3-arg pack test");
+  ok(@res == 6);
+
+  ok($res[0], pack('C*',42,2,0,13));
+  ok($res[1], pack('C*',1,2));
+  ok($res[2], pack('C*',1,42,13,0));
+  ok($res[3], pack('C*',42,2,3,13,5,6));
+  ok($res[4], pack('C*',1,2,3,4,5,6));
+  ok($res[5], pack('C*',1,42,13,4,5,6));
+
+  @res = ();
+  $val = $c->unpack('u', '+');
+  $packed = "mhx";
+  eval {
+    push @res, $c->pack('u', $val, $packed);
+    push @res, $packed;
+    $c->pack('u', $val, $packed);
+    push @res, $packed;
+    push @res, $c->pack('u', $val, substr $packed, 1, 2);
+    push @res, $packed;
+    $c->pack('u', $val, substr $packed, 1, 2);
+    push @res, $packed;
+  };
+
+  ok($@, '', "failed during 3-arg pack test");
+  ok(@res == 6);
+
+  ok($res[0], "+hx");
+  ok($res[1], "mhx");
+  ok($res[2], "+hx");
+  ok($res[3], "+x");
+  ok($res[4], "+hx");
+  ok($res[5], "++x");
+
+  @res = ();
+  $packed = "xxxx";
+  $packed =~ s/xxx$//;
+  eval {
+    push @res, $c->pack('s', {}, $packed);
+    push @res, $packed;
+    $c->pack('s', $val, $packed);
+    push @res, $packed;
+  };
+
+  ok($@, '', "failed during 3-arg pack test");
+  ok(@res == 3);
+
+  ok($res[0], "x\0\0\0");
+  ok($res[1], "x");
+  ok($res[2], "x\0\0\0");
 }
 
 sub rec_write

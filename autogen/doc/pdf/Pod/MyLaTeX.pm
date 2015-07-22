@@ -1416,8 +1416,10 @@ sub head {
   my $lcpar = $paragraph;
   $lcpar =~ s/(^|\s)([^_\W])([^_\W]+)(?=$|\s)/$1$2\L$3/g;
 
+  my $lcparb = $level >= $self->LevelNoNum ? '' : "[$lcpar]";
+
   # Section
-  $self->_output("\\" .$LatexSections[$level] .$star ."[$lcpar]{\\hypertarget{".$hyper."}{$lcpar}\\label{".$label ."}\\index{".$index."}}\n");
+  $self->_output("\\" .$LatexSections[$level] .$star ."${lcparb}{\\hypertarget{".$hyper."}{$lcpar}\\label{".$label ."}\\index{".$index."}}\n");
 
 }
 
@@ -1498,6 +1500,8 @@ sub _replace_special_chars {
   # Must be done after escape of \ since this command adds latex escapes
   # Replace characters that can be escaped
   $paragraph =~ s/([\$\#&%{}])/\\$1/g;
+  $paragraph =~ s/([\[])/\\lbrack{}/g;
+  $paragraph =~ s/([\]])/\\rbrack{}/g;
   $paragraph =~ s/_/\\char95{}/g;
 
   # Replace ^ characters with \^{} so that $^F works okay
@@ -1779,7 +1783,7 @@ it under the same terms as Perl itself.
 
 =head1 REVISION
 
-$Id: MyLaTeX.pm 2 2003/10/27 06:50:09 +0000 mhx $
+$Id: MyLaTeX.pm 4 2005/02/21 07:22:45 +0000 mhx $
 
 =end __PRIVATE__
 

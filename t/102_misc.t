@@ -2,14 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/11/23 19:23:31 +0000 $
-# $Revision: 20 $
-# $Snapshot: /Convert-Binary-C/0.57 $
+# $Date: 2005/01/31 08:45:15 +0000 $
+# $Revision: 23 $
 # $Source: /t/102_misc.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -20,7 +19,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 204 }
+BEGIN { plan tests => 197 }
 
 #===================================================================
 # perform some average stuff
@@ -247,35 +246,10 @@ $refres = {
 reccmp( $refres, $result );
 
 #------------------------------------------------
-# test different cases for pack with 3 arguments
-#------------------------------------------------
-
-eval {
-  $p = new Convert::Binary::C;
-  $p->parse( "typedef struct { unsigned char a, b, c, d; } s;" );
-  $packed = pack 'C*', 1 .. 2;
-  $a = $p->pack( 's', { a => 42, d => 13 }, $packed );
-  $b = $packed;
-  $p->pack( 's', { b => 42, c => 13 }, $packed );
-  $c = $packed;
-  $packed = pack 'C*', 1 .. 6;
-  $d = $p->pack( 's', { a => 42, d => 13 }, $packed );
-  $e = $packed;
-  $p->pack( 's', { b => 42, c => 13 }, $packed );
-  $f = $packed;
-};
-ok($@,'',"failed during 3-arg pack test");
-
-ok($a,pack('C*',42,2,0,13));
-ok($b,pack('C*',1,2));
-ok($c,pack('C*',1,42,13,0));
-ok($d,pack('C*',42,2,3,13,5,6));
-ok($e,pack('C*',1,2,3,4,5,6));
-ok($f,pack('C*',1,42,13,4,5,6));
-
-#------------------------------------------------
 # test pack/unpack/sizeof/typeof for basic types
 #------------------------------------------------
+
+$p = new Convert::Binary::C;
 
 @tests = (
   ['char',        $p->CharSize      ],

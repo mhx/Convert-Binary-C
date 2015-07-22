@@ -10,14 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/22 20:23:28 +0000 $
-* $Revision: 15 $
-* $Snapshot: /Convert-Binary-C/0.57 $
+* $Date: 2005/01/23 11:49:39 +0000 $
+* $Revision: 18 $
 * $Source: /ctlib/cterror.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -159,7 +158,7 @@ static void error_delete( CTLibError *error )
 static void push_str( CParseInfo *pCPI, enum CTErrorSeverity severity, void *str )
 {
   if( pCPI == NULL || pCPI->errorStack == NULL )
-    F.fatal( str );
+    F.fatalerr( str );
 
   LL_push( pCPI->errorStack, error_new( severity, str ) );
 }
@@ -211,12 +210,12 @@ static void push_verror( CParseInfo *pCPI, enum CTErrorSeverity severity,
 
 void set_print_functions( PrintFunctions *pPF )
 {
-  if( pPF->newstr  == NULL ||
-      pPF->destroy == NULL ||
-      pPF->scatf   == NULL ||
-      pPF->vscatf  == NULL ||
-      pPF->cstring == NULL ||
-      pPF->fatal   == NULL ) {
+  if( pPF->newstr   == NULL ||
+      pPF->destroy  == NULL ||
+      pPF->scatf    == NULL ||
+      pPF->vscatf   == NULL ||
+      pPF->cstring  == NULL ||
+      pPF->fatalerr == NULL ) {
     fprintf( stderr, "FATAL: all print functions must be set!\n" );
     abort();
   }
@@ -327,7 +326,7 @@ void fatal_error( const char *fmt, ... )
   F.vscatf( str, fmt, &ap );
   va_end( ap );
 
-  F.fatal( str );
+  F.fatalerr( str );
 }
 
 /*******************************************************************************
@@ -360,7 +359,7 @@ void my_ucpp_ouch( pUCPP_ char *fmt, ... )
   F.vscatf( str, fmt, &ap );
   va_end( ap );
 
-  F.fatal( str );
+  F.fatalerr( str );
 }
 
 /*******************************************************************************

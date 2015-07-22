@@ -11,7 +11,7 @@ CCCONFIG  = ../../bin/ccconfig
 
 GENERATED = C.pm Cached.pm ccconfig
 
-all :: install clean html genpdf
+all :: install clean genpdf
 
 genpdf:
 	@cd pdf && make realclean && make && make clean

@@ -10,14 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/11/23 19:23:11 +0000 $
-* $Revision: 41 $
-* $Snapshot: /Convert-Binary-C/0.57 $
+* $Date: 2005/02/06 21:47:30 +0000 $
+* $Revision: 47 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -515,6 +514,8 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
   if( rval || (pCPC->flags & DISABLE_PARSER) )
     while( lex( aUCPP_ &lexer ) < CPPERR_EOF );
 
+  (void) check_cpp_errors( aUCPP_ &lexer );
+
   if (DEBUG_FLAG(PREPROC))
   {
 #ifdef UCPP_REENTRANT
@@ -546,7 +547,7 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
   if( filename == NULL )
     ((FileInfo *) HT_get( pCPI->htFiles, BUFFER_NAME, 0, 0 ))->valid = 0;
 
-#if !defined NDEBUG && defined CTYPE_DEBUGGING
+#if !defined NDEBUG && defined CTLIB_DEBUGGING
   if( DEBUG_FLAG( HASH ) ) {
     HT_dump( pCPI->htEnumerators );
     HT_dump( pCPI->htEnums );
@@ -750,7 +751,7 @@ void update_parse_info( CParseInfo *pCPI, const CParseConfig *pCPC )
           abort();                                                             \
         } while(0)
 
-void clone_parse_info( CParseInfo *pDest, CParseInfo *pSrc )
+void clone_parse_info( CParseInfo *pDest, const CParseInfo *pSrc )
 {
   HashTable      ptrmap;
   EnumSpecifier *pES;
@@ -1126,10 +1127,10 @@ int get_native_alignment(void)
   CHECK_NATIVE_ALIGNMENT(long);
   CHECK_NATIVE_ALIGNMENT(float);
   CHECK_NATIVE_ALIGNMENT(double);
-#ifdef HAVE_LONG_LONG
+#if ARCH_HAVE_LONG_LONG
   CHECK_NATIVE_ALIGNMENT(long long);
 #endif
-#ifdef HAVE_LONG_DOUBLE
+#if ARCH_HAVE_LONG_DOUBLE
   CHECK_NATIVE_ALIGNMENT(long double);
 #endif
 
