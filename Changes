@@ -195,3 +195,13 @@ Version 0.09
 
 * minor documentation updates
 
+------------
+Version 0.10
+------------
+
+* added --version for ccconfig
+
+* cleaned up and fixed format strings
+
+* updated README
+

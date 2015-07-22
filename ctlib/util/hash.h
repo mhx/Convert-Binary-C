@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/01 11:29:59 +0000 $
-* $Revision: 8 $
-* $Snapshot: /Convert-Binary-C/0.09 $
+* $Date: 2003/01/23 18:45:51 +0000 $
+* $Revision: 9 $
+* $Snapshot: /Convert-Binary-C/0.10 $
 * $Source: /ctlib/util/hash.h $
 *
 ********************************************************************************
@@ -35,9 +35,8 @@
  *  \file hash.h
  *  \brief Generic implementation of Hash Tables
  */
-#ifndef _HASH_H
-#define _HASH_H
-
+#ifndef _UTIL_HASH_H
+#define _UTIL_HASH_H
 
 /**
  *  Maximum allowed hash size

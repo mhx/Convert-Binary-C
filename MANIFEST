@@ -55,6 +55,7 @@ ctlib/ucpp/ucpp.1
 ctlib/ucpp/ucppi.h
 ctlib/util/ARTISTIC
 ctlib/util/GPL
+ctlib/util/ccattr.h
 ctlib/util/doxyfile
 ctlib/util/doxyinc/Alloc.c
 ctlib/util/doxyinc/LinkedList.c

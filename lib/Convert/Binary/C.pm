@@ -12,7 +12,7 @@
 # $Author: mhx $
 # $Date: 2003/01/14 20:11:24 +0000 $
 # $Revision: 35 $
-# $Snapshot: /Convert-Binary-C/0.09 $
+# $Snapshot: /Convert-Binary-C/0.10 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -33,7 +33,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 @ISA = qw(DynaLoader);
 
 $VERSION    = sprintf '%.2f', 0.01*('$Revision: 35 $' =~ /(\d+)/)[0];
-$XS_VERSION =  do { my @r = '$Snapshot: /Convert-Binary-C/0.09 $'
+$XS_VERSION =  do { my @r = '$Snapshot: /Convert-Binary-C/0.10 $'
                             =~ /(\d+\.\d+(?:_\d+)?)/;
                     @r ? $r[0] : '9.99' },
 

@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/01 11:29:58 +0000 $
-* $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.09 $
+* $Date: 2003/01/23 18:46:22 +0000 $
+* $Revision: 5 $
+* $Snapshot: /Convert-Binary-C/0.10 $
 * $Source: /ctlib/util/memalloc.c $
 *
 ********************************************************************************
@@ -38,9 +38,21 @@
 
 #ifdef DEBUG_MEMALLOC
 
-#define DEBUG( flag, out )                                         \
-          if( gs_dbfunc && ((DB_MEMALLOC_ ## flag) & gs_dbflags) ) \
-            gs_dbfunc out
+#ifdef UTIL_FORMAT_CHECK
+
+# define MEM_DEBUG_FUNC debug_check
+static void debug_check( char *str, ... )
+            __attribute__(( __format__( __printf__, 1, 2 ), __noreturn__ ));
+
+#else
+# define MEM_DEBUG_FUNC gs_dbfunc
+#endif
+
+#define DEBUG( flag, out )                                                \
+          do {                                                            \
+            if( MEM_DEBUG_FUNC && ((DB_MEMALLOC_ ## flag) & gs_dbflags) ) \
+              MEM_DEBUG_FUNC out ;                                        \
+          } while(0)
 
 static void (*gs_dbfunc)(char *, ...) = NULL;
 static unsigned long gs_dbflags       = 0;
@@ -231,6 +243,14 @@ void _AssertValidBlock( register void *p, register size_t size, char *file, int 
 {
   DEBUG( ASSERT, ("%s(%d):B=%d@%08lX\n", file, line, size, (unsigned long)p) );
 }
+
+#ifdef UTIL_FORMAT_CHECK
+static void debug_check( char *str __attribute(( __unused__ )), ... )
+{
+  fprintf( stderr, "compiled with UTIL_FORMAT_CHECK, please don't run\n" );
+  abort();
+}
+#endif
 
 int SetDebugMemAlloc( void (*dbfunc)(char *, ...), unsigned long dbflags )
 {

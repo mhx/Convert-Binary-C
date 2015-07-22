@@ -29,6 +29,8 @@ I<options>:
   --quiet                don't display anything
   --nostatus             don't display status indicator
   
+  --version              print version number
+  
   --debug                debug mode
 
 =head1 DESCRIPTION
@@ -91,6 +93,11 @@ Hide the status indicator. Recommended if you want to
 redirect the script output to a file:
 
   ccconfig --nostatus >config.pl 2>ccconfig.log
+
+=head2 --version
+
+Writes the program name, version and path to standard
+output.
 
 =head2 --debug
 

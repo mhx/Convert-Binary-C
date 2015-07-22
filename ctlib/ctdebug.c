@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/20 19:11:18 +0000 $
-* $Revision: 3 $
-* $Snapshot: /Convert-Binary-C/0.09 $
+* $Date: 2003/01/23 18:43:21 +0000 $
+* $Revision: 4 $
+* $Snapshot: /Convert-Binary-C/0.10 $
 * $Source: /ctlib/ctdebug.c $
 *
 ********************************************************************************
@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 /*===== LOCAL INCLUDES =======================================================*/
 
@@ -58,6 +59,15 @@ static void (*gs_vprintf)(char *, va_list *) = NULL;
 /*===== FUNCTIONS ============================================================*/
 
 #ifdef CTYPE_DEBUGGING
+
+#ifdef CTYPE_FORMAT_CHECK
+void CT_dbfunc_check( char *str __attribute(( __unused__ )), ... )
+{
+  fprintf( stderr, "compiled with CTYPE_FORMAT_CHECK, please don't run\n" );
+  abort();
+}
+#endif
+
 /*******************************************************************************
 *
 *   ROUTINE: SetDebugCType

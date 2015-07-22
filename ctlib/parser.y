@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/14 20:13:03 +0000 $
-* $Revision: 19 $
-* $Snapshot: /Convert-Binary-C/0.09 $
+* $Date: 2003/01/23 19:53:50 +0000 $
+* $Revision: 21 $
+* $Snapshot: /Convert-Binary-C/0.10 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -95,6 +95,7 @@ colleagues include: Bruce Blodgett, and Mark Langley.
 #include "parser.h"
 #include "pragma.h"
 
+#include "util/ccattr.h"
 #include "util/list.h"
 #include "util/memalloc.h"
 
@@ -164,7 +165,7 @@ colleagues include: Bruce Blodgett, and Mark Langley.
 #define MAKE_TYPEDEF( list, decl )                                                \
         do {                                                                      \
 	  Typedef *pTypedef = typedef_new( &(list->type), EX_DECL( decl ) );      \
-	  CT_DEBUG( PARSER, ("making new typedef => %s (list 0x%08X)",            \
+	  CT_DEBUG( PARSER, ("making new typedef => %s (list @ %p)",              \
                              decl->identifier, list) );                           \
 	  LL_push( list->typedefs, pTypedef );                                    \
 	  HT_store( PSTATE->pCPI->htTypedefs, decl->identifier, 0, 0, pTypedef ); \
@@ -228,17 +229,17 @@ typedef struct {
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 
-static int   c_lex( void *pYYLVAL, ParserState *pState );
+static inline int   c_lex( void *pYYLVAL, ParserState *pState );
 
-static int   get_char_value( char *s );
-static int   string_size( char *s );
-static int   check_type( void *pVVLVAL, ParserState *pState, char *s );
-static void  parser_error( ParserState *pState, char *msg );
+static inline int   get_char_value( char *s );
+static inline int   string_size( char *s );
+static inline int   check_type( void *pVVLVAL, ParserState *pState, char *s );
+static        void  parser_error( ParserState *pState, char *msg );
 
 #ifdef CTYPE_DEBUGGING
-static void *ex_object( char *type, LinkedList list, void *object );
+static        void *ex_object( char *type, LinkedList list, void *object );
 #else
-static void *ex_object( LinkedList list, void *object );
+static inline void *ex_object( LinkedList list, void *object );
 #endif
 
 
@@ -1117,7 +1118,7 @@ member_declaration_list
 	      $$ = LL_new();
 	      LL_push( $$, EX_STRUCT_DECL( $1 ) );
 	      LL_unshift( PSTATE->structDeclListsList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting struct declaration list (0x%08X) (count=%d)",
+	      CT_DEBUG( PARSER, ("unshifting struct declaration list (%p) (count=%d)",
 	                         $$, LL_count(PSTATE->structDeclListsList)) );
 	    }
 	  }
@@ -1148,7 +1149,7 @@ unnamed_su_declaration
 	    else {
 	      $$ = structdecl_new( $1, NULL );
 	      LL_unshift( PSTATE->structDeclList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting unnamed struct declaration (0x%08X)", $$) );
+	      CT_DEBUG( PARSER, ("unshifting unnamed struct declaration (%p)", $$) );
 	    }
 	  }
 	;
@@ -1165,7 +1166,7 @@ member_default_declaring_list     /* doesn't redeclare typedef*/
 	      if( $2 )
 	        LL_push( $$->declarators, EX_DECL( $2 ) );
 	      LL_unshift( PSTATE->structDeclList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting struct declaration (0x%08X) (count=%d)",
+	      CT_DEBUG( PARSER, ("unshifting struct declaration (%p) (count=%d)",
 	                         $$, LL_count(PSTATE->structDeclList)) );
 	    }
 	  }
@@ -1195,7 +1196,7 @@ member_declaring_list
 	      if( $2 )
 	        LL_push( $$->declarators, EX_DECL( $2 ) );
 	      LL_unshift( PSTATE->structDeclList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting struct declaration (0x%08X) (count=%d)",
+	      CT_DEBUG( PARSER, ("unshifting struct declaration (%p) (count=%d)",
 	                         $$, LL_count(PSTATE->structDeclList)) );
 	    }
 	  }
@@ -1676,7 +1677,7 @@ parameter_typedef_declarator
 	    else {
 	      $$ = decl_new( ((Typedef *) $1.ptr)->pDecl->identifier, 0 );
 	      LL_unshift( PSTATE->declaratorList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
+	      CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (%p) (count=%d)",
 	                         $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
 	    }
 	  }
@@ -1690,7 +1691,7 @@ parameter_typedef_declarator
 	      if( $2 )
 	        LL_delete( LL_splice( $$->array, 0, 0, EX_ARRAY( $2 ) ) );
 	      LL_unshift( PSTATE->declaratorList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
+	      CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (%p) (count=%d)",
 	                         $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
 	    }
 	  }
@@ -1779,7 +1780,7 @@ simple_paren_typedef_declarator
 	    else {
 	      $$ = decl_new( ((Typedef *) $1.ptr)->pDecl->identifier, 0 );
 	      LL_unshift( PSTATE->declaratorList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
+	      CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (%p) (count=%d)",
 	                         $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
 	    }
 	  }
@@ -1828,7 +1829,7 @@ paren_identifier_declarator
 	      $$ = decl_new( $1->key, $1->keylen );
 	      HN_delete( EX_NODE( $1 ) );
 	      LL_unshift( PSTATE->declaratorList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
+	      CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (%p) (count=%d)",
 	                         $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
 	    }
 	    else {
@@ -1890,10 +1891,10 @@ array_abstract_declarator
 	    else {
 	      $$ = LL_new();
 	      LL_unshift( PSTATE->arrayList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
+	      CT_DEBUG( PARSER, ("unshifting array (%p) (count=%d)",
 	                         $$, LL_count(PSTATE->arrayList)) );
 	      LL_push( $$, value_new( $2.iv, $2.flags ) );
-	      CT_DEBUG( PARSER, ("array dimension => %d", $2) );
+	      CT_DEBUG( PARSER, ("array dimension => %ld", $2.iv) );
 	    }
 	  }
 	| '[' '*' ']'
@@ -1904,7 +1905,7 @@ array_abstract_declarator
 	    else {
 	      $$ = LL_new();
 	      LL_unshift( PSTATE->arrayList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
+	      CT_DEBUG( PARSER, ("unshifting array (%p) (count=%d)",
 	                         $$, LL_count(PSTATE->arrayList)) );
 	      LL_push( $$, value_new( 0, 0 ) );
 	      CT_DEBUG( PARSER, ("array dimension => *") );
@@ -1922,11 +1923,11 @@ array_abstract_declarator
 	      else {
                 $$ = LL_new();
 	        LL_unshift( PSTATE->arrayList, $$ );
-	        CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
+	        CT_DEBUG( PARSER, ("unshifting array (%p) (count=%d)",
 	                           $$, LL_count(PSTATE->arrayList)) );
 	      }
 	      LL_push( $$, value_new( $3.iv, $3.flags ) );
-	      CT_DEBUG( PARSER, ("array dimension => %d", $3) );
+	      CT_DEBUG( PARSER, ("array dimension => %ld", $3.iv) );
 	    }
 	  }
 	| array_abstract_declarator '[' '*' ']'
@@ -1941,7 +1942,7 @@ array_abstract_declarator
 	      else {
                 $$ = LL_new();
 	        LL_unshift( PSTATE->arrayList, $$ );
-	        CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
+	        CT_DEBUG( PARSER, ("unshifting array (%p) (count=%d)",
 	                           $$, LL_count(PSTATE->arrayList)) );
 	      }
 	      LL_push( $$, value_new( 0, 0 ) );
@@ -2017,7 +2018,7 @@ postfix_abstract_declarator
 *
 *******************************************************************************/
 
-static int c_lex( void *pYYLVAL, ParserState *pState )
+static inline int c_lex( void *pYYLVAL, ParserState *pState )
 {
   YYSTYPE *plval = (YYSTYPE *) pYYLVAL;
   int rval, token;
@@ -2074,21 +2075,21 @@ static int c_lex( void *pYYLVAL, ParserState *pState )
         CT_DEBUG( CLEXER, ("token-type => NUMBER => [%s]", pLexer->ctok->name) );
         plval->value.iv = strtol( pLexer->ctok->name, NULL, 0 );
         plval->value.flags = 0;
-        CT_DEBUG( CLEXER, ("constant: %s -> %d", pLexer->ctok->name, plval->value.iv) );
+        CT_DEBUG( CLEXER, ("constant: %s -> %ld", pLexer->ctok->name, plval->value.iv) );
         return CONSTANT;
 
       case STRING:
         CT_DEBUG( CLEXER, ("token-type => STRING => [%s]", pLexer->ctok->name) );
         plval->value.iv = string_size( pLexer->ctok->name );
         plval->value.flags = 0;
-        CT_DEBUG( CLEXER, ("string literal: %s -> %d", pLexer->ctok->name, plval->value.iv) );
+        CT_DEBUG( CLEXER, ("string literal: %s -> %ld", pLexer->ctok->name, plval->value.iv) );
         return STRING_LITERAL;
 
       case CHAR:
         CT_DEBUG( CLEXER, ("token-type => CHAR => [%s]", pLexer->ctok->name) );
         plval->value.iv = get_char_value( pLexer->ctok->name );
         plval->value.flags = 0;
-        CT_DEBUG( CLEXER, ("constant: %s -> %d", pLexer->ctok->name, plval->value.iv) );
+        CT_DEBUG( CLEXER, ("constant: %s -> %ld", pLexer->ctok->name, plval->value.iv) );
         return CONSTANT;
 
       case PRAGMA:
@@ -2161,13 +2162,13 @@ static int c_lex( void *pYYLVAL, ParserState *pState )
 #ifdef CTYPE_DEBUGGING
 static void *ex_object( char *type, LinkedList list, void *object )
 #else
-static void *ex_object( LinkedList list, void *object )
+static inline void *ex_object( LinkedList list, void *object )
 #endif
 {
   void *obj;
   int   item = 0;
 
-  CT_DEBUG( PARSER, ("ex_object( type=\"%s\", list=0x%08X, object=0x%08X )",
+  CT_DEBUG( PARSER, ("ex_object( type=\"%s\", list=%p, object=%p )",
                      type, list, object) );
 
   LL_foreach( obj, list ) {
@@ -2177,7 +2178,7 @@ static void *ex_object( LinkedList list, void *object )
   }
 
   if( obj != object ) {
-    CT_DEBUG( PARSER, ("%s (0x%08X) not found in ex_object()", type, object, item) );
+    CT_DEBUG( PARSER, ("%s (%p) not found in ex_object()", type, object) );
     return object;
   }
 
@@ -2227,7 +2228,7 @@ static void parser_error( ParserState *pState, char *msg )
 *
 *******************************************************************************/
 
-static int get_char_value( char *s )
+static inline int get_char_value( char *s )
 {
   while( *s && *s != '\'' ) s++;
 
@@ -2269,7 +2270,7 @@ static int get_char_value( char *s )
 *
 *******************************************************************************/
 
-static int string_size( char *s )
+static inline int string_size( char *s )
 {
   int size, count;
 
@@ -2319,7 +2320,7 @@ static int string_size( char *s )
 *
 *******************************************************************************/
 
-static int check_type( void *pYYLVAL, ParserState *pState, char *s )
+static inline int check_type( void *pYYLVAL, ParserState *pState, char *s )
 {
   YYSTYPE    *plval = (YYSTYPE *) pYYLVAL;
   Enumerator *pEnum;
@@ -2355,7 +2356,7 @@ static int check_type( void *pYYLVAL, ParserState *pState, char *s )
     plval->identifier = HN_new( s, len, hash );
 
     LL_unshift( pState->nodeList, plval->identifier );
-    CT_DEBUG( CLEXER, ("unshifting identifier \"%s\" (0x%08X) (count=%d)",
+    CT_DEBUG( CLEXER, ("unshifting identifier \"%s\" (%p) (count=%d)",
                        plval->identifier->key, plval->identifier,
                        LL_count(pState->nodeList)) );
   }
@@ -2579,9 +2580,10 @@ void c_parser_delete( ParserState *pState )
     if( (count = LL_count( pState->arrayList )) > 0 ) {
       CT_DEBUG( PARSER, ("%d array(s) still in memory, cleaning up...", count) );
       LL_foreach( list, pState->arrayList ) {
-        CT_DEBUG( PARSER, ("[ARRAY=0x%08X]", list) );
+        CT_DEBUG( PARSER, ("[ARRAY=%p]", list) );
         LL_foreach( pVal, list )
-          CT_DEBUG( PARSER, ("[value=%d,flags=0x%08X]", pVal->iv, pVal->flags) );
+          CT_DEBUG( PARSER, ("[value=%ld,flags=0x%08lX]",
+                             pVal->iv, (unsigned long) pVal->flags) );
       }
     }
   }

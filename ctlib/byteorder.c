@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/01 11:29:56 +0000 $
-* $Revision: 3 $
-* $Snapshot: /Convert-Binary-C/0.09 $
+* $Date: 2003/01/23 18:41:14 +0000 $
+* $Revision: 4 $
+* $Snapshot: /Convert-Binary-C/0.10 $
 * $Source: /ctlib/byteorder.c $
 *
 ********************************************************************************
@@ -52,30 +52,30 @@
 
 #define GET_LE_WORD( ptr, value, sign )                                        \
           value = (sign ## _16)                                                \
-                  ( ( (u_16) *( (u_8 *) ((ptr)+0) ) <<  0)                     \
-                  | ( (u_16) *( (u_8 *) ((ptr)+1) ) <<  8)                     \
+                  ( ( (u_16) *( (const u_8 *) ((ptr)+0) ) <<  0)               \
+                  | ( (u_16) *( (const u_8 *) ((ptr)+1) ) <<  8)               \
                   )
 
 #define GET_LE_LONG( ptr, value, sign )                                        \
           value = (sign ## _32)                                                \
-                  ( ( (u_32) *( (u_8 *) ((ptr)+0) ) <<  0)                     \
-                  | ( (u_32) *( (u_8 *) ((ptr)+1) ) <<  8)                     \
-                  | ( (u_32) *( (u_8 *) ((ptr)+2) ) << 16)                     \
-                  | ( (u_32) *( (u_8 *) ((ptr)+3) ) << 24)                     \
+                  ( ( (u_32) *( (const u_8 *) ((ptr)+0) ) <<  0)               \
+                  | ( (u_32) *( (const u_8 *) ((ptr)+1) ) <<  8)               \
+                  | ( (u_32) *( (const u_8 *) ((ptr)+2) ) << 16)               \
+                  | ( (u_32) *( (const u_8 *) ((ptr)+3) ) << 24)               \
                   )
 
 #ifdef NATIVE_64_BIT_INTEGER
 
 #define GET_LE_LONGLONG( ptr, value, sign )                                    \
           value = (sign ## _64)                                                \
-                  ( ( (u_64) *( (u_8 *) ((ptr)+0) ) <<  0)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+1) ) <<  8)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+2) ) << 16)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+3) ) << 24)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+4) ) << 32)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+5) ) << 40)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+6) ) << 48)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+7) ) << 56)                     \
+                  ( ( (u_64) *( (const u_8 *) ((ptr)+0) ) <<  0)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+1) ) <<  8)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+2) ) << 16)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+3) ) << 24)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+4) ) << 32)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+5) ) << 40)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+6) ) << 48)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+7) ) << 56)               \
                   )
 
 #endif
@@ -116,15 +116,15 @@
 #ifdef CAN_UNALIGNED_ACCESS
 
 #define GET_BE_WORD( ptr, value, sign ) \
-          value = (sign ## _16) ( *( (u_16 *) (ptr) ) )
+          value = (sign ## _16) ( *( (const u_16 *) (ptr) ) )
 
 #define GET_BE_LONG( ptr, value, sign ) \
-          value = (sign ## _32) ( *( (u_32 *) (ptr) ) )
+          value = (sign ## _32) ( *( (const u_32 *) (ptr) ) )
 
 #ifdef NATIVE_64_BIT_INTEGER
 
 #define GET_BE_LONGLONG( ptr, value, sign ) \
-          value = (sign ## _64) ( *( (u_64 *) (ptr) ) )
+          value = (sign ## _64) ( *( (const u_64 *) (ptr) ) )
 
 #endif
 
@@ -147,32 +147,32 @@
           do {                                                                 \
             if( ((unsigned long) (ptr)) % 2 )                                  \
               value = (sign ## _16)                                            \
-                      ( ( (u_16) *( (u_8 *) ((ptr)+0) ) <<  8)                 \
-                      | ( (u_16) *( (u_8 *) ((ptr)+1) ) <<  0)                 \
+                      ( ( (u_16) *( (const u_8 *) ((ptr)+0) ) <<  8)           \
+                      | ( (u_16) *( (const u_8 *) ((ptr)+1) ) <<  0)           \
                       );                                                       \
             else                                                               \
-              value = (sign ## _16) ( *( (u_16 *) (ptr) ) );                   \
+              value = (sign ## _16) ( *( (const u_16 *) (ptr) ) );             \
           } while(0)
 
 #define GET_BE_LONG( ptr, value, sign )                                        \
           do {                                                                 \
             switch( ((unsigned long) (ptr)) % 4 ) {                            \
               case 0:                                                          \
-                value = (sign ## _32) ( *( (u_32 *) (ptr) ) );                 \
+                value = (sign ## _32) ( *( (const u_32 *) (ptr) ) );           \
                 break;                                                         \
                                                                                \
               case 2:                                                          \
                 value = (sign ## _32)                                          \
-                        ( ( (u_32) *( (u_16 *) ((ptr)+0) ) << 16)              \
-                        | ( (u_32) *( (u_16 *) ((ptr)+2) ) <<  0)              \
+                        ( ( (u_32) *( (const u_16 *) ((ptr)+0) ) << 16)        \
+                        | ( (u_32) *( (const u_16 *) ((ptr)+2) ) <<  0)        \
                         );                                                     \
                 break;                                                         \
                                                                                \
               default:                                                         \
                 value = (sign ## _32)                                          \
-                        ( ( (u_32) *( (u_8 *)  ((ptr)+0) ) << 24)              \
-                        | ( (u_32) *( (u_16 *) ((ptr)+1) ) <<  8)              \
-                        | ( (u_32) *( (u_8 *)  ((ptr)+3) ) <<  0)              \
+                        ( ( (u_32) *( (const u_8 *)  ((ptr)+0) ) << 24)        \
+                        | ( (u_32) *( (const u_16 *) ((ptr)+1) ) <<  8)        \
+                        | ( (u_32) *( (const u_8 *)  ((ptr)+3) ) <<  0)        \
                         );                                                     \
                 break;                                                         \
             }                                                                  \
@@ -183,14 +183,14 @@
 #define GET_BE_LONGLONG( ptr, value, sign )                                    \
           do {                                                                 \
             value = (sign ## _64)                                              \
-                    ( ( (u_64) *( (u_8 *)  ((ptr)+0) ) << 56)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+1) ) << 48)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+2) ) << 40)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+3) ) << 32)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+4) ) << 24)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+5) ) << 16)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+6) ) <<  8)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+7) ) <<  0)                  \
+                    ( ( (u_64) *( (const u_8 *)  ((ptr)+0) ) << 56)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+1) ) << 48)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+2) ) << 40)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+3) ) << 32)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+4) ) << 24)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+5) ) << 16)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+6) ) <<  8)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+7) ) <<  0)            \
                     );                                                         \
           } while(0)
 
@@ -260,30 +260,30 @@
 
 #define GET_BE_WORD( ptr, value, sign )                                        \
           value = (sign ## _16)                                                \
-                  ( ( (u_16) *( (u_8 *) ((ptr)+0) ) <<  8)                     \
-                  | ( (u_16) *( (u_8 *) ((ptr)+1) ) <<  0)                     \
+                  ( ( (u_16) *( (const u_8 *) ((ptr)+0) ) <<  8)               \
+                  | ( (u_16) *( (const u_8 *) ((ptr)+1) ) <<  0)               \
                   )
 
 #define GET_BE_LONG( ptr, value, sign )                                        \
           value = (sign ## _32)                                                \
-                  ( ( (u_32) *( (u_8 *) ((ptr)+0) ) << 24)                     \
-                  | ( (u_32) *( (u_8 *) ((ptr)+1) ) << 16)                     \
-                  | ( (u_32) *( (u_8 *) ((ptr)+2) ) <<  8)                     \
-                  | ( (u_32) *( (u_8 *) ((ptr)+3) ) <<  0)                     \
+                  ( ( (u_32) *( (const u_8 *) ((ptr)+0) ) << 24)               \
+                  | ( (u_32) *( (const u_8 *) ((ptr)+1) ) << 16)               \
+                  | ( (u_32) *( (const u_8 *) ((ptr)+2) ) <<  8)               \
+                  | ( (u_32) *( (const u_8 *) ((ptr)+3) ) <<  0)               \
                   )
 
 #ifdef NATIVE_64_BIT_INTEGER
 
 #define GET_BE_LONGLONG( ptr, value, sign )                                    \
           value = (sign ## _64)                                                \
-                  ( ( (u_64) *( (u_8 *) ((ptr)+0) ) << 56)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+1) ) << 48)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+2) ) << 40)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+3) ) << 32)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+4) ) << 24)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+5) ) << 16)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+6) ) <<  8)                     \
-                  | ( (u_64) *( (u_8 *) ((ptr)+7) ) <<  0)                     \
+                  ( ( (u_64) *( (const u_8 *) ((ptr)+0) ) << 56)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+1) ) << 48)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+2) ) << 40)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+3) ) << 32)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+4) ) << 24)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+5) ) << 16)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+6) ) <<  8)               \
+                  | ( (u_64) *( (const u_8 *) ((ptr)+7) ) <<  0)               \
                   )
 
 #endif
@@ -324,15 +324,15 @@
 #ifdef CAN_UNALIGNED_ACCESS
 
 #define GET_LE_WORD( ptr, value, sign ) \
-          value = (sign ## _16) ( *( (u_16 *) (ptr) ) )
+          value = (sign ## _16) ( *( (const u_16 *) (ptr) ) )
 
 #define GET_LE_LONG( ptr, value, sign ) \
-          value = (sign ## _32) ( *( (u_32 *) (ptr) ) )
+          value = (sign ## _32) ( *( (const u_32 *) (ptr) ) )
 
 #ifdef NATIVE_64_BIT_INTEGER
 
 #define GET_LE_LONGLONG( ptr, value, sign ) \
-          value = (sign ## _64) ( *( (u_64 *) (ptr) ) )
+          value = (sign ## _64) ( *( (const u_64 *) (ptr) ) )
 
 #endif
 
@@ -355,32 +355,32 @@
           do {                                                                 \
             if( ((unsigned long) (ptr)) % 2 )                                  \
               value = (sign ## _16)                                            \
-                      ( ( (u_16) *( (u_8 *) ((ptr)+0) ) <<  0)                 \
-                      | ( (u_16) *( (u_8 *) ((ptr)+1) ) <<  8)                 \
+                      ( ( (u_16) *( (const u_8 *) ((ptr)+0) ) <<  0)           \
+                      | ( (u_16) *( (const u_8 *) ((ptr)+1) ) <<  8)           \
                       );                                                       \
             else                                                               \
-              value = (sign ## _16) ( *( (u_16 *) (ptr) ) );                   \
+              value = (sign ## _16) ( *( (const u_16 *) (ptr) ) );             \
           } while(0)
 
 #define GET_LE_LONG( ptr, value, sign )                                        \
           do {                                                                 \
             switch( ((unsigned long) (ptr)) % 4 ) {                            \
               case 0:                                                          \
-                value = (sign ## _32) ( *( (u_32 *) (ptr) ) );                 \
+                value = (sign ## _32) ( *( (const u_32 *) (ptr) ) );           \
                 break;                                                         \
                                                                                \
               case 2:                                                          \
                 value = (sign ## _32)                                          \
-                        ( ( (u_32) *( (u_16 *) ((ptr)+0) ) <<  0)              \
-                        | ( (u_32) *( (u_16 *) ((ptr)+2) ) << 16)              \
+                        ( ( (u_32) *( (const u_16 *) ((ptr)+0) ) <<  0)        \
+                        | ( (u_32) *( (const u_16 *) ((ptr)+2) ) << 16)        \
                         );                                                     \
                 break;                                                         \
                                                                                \
               default:                                                         \
                 value = (sign ## _32)                                          \
-                        ( ( (u_32) *( (u_8 *)  ((ptr)+0) ) <<  0)              \
-                        | ( (u_32) *( (u_16 *) ((ptr)+1) ) <<  8)              \
-                        | ( (u_32) *( (u_8 *)  ((ptr)+3) ) << 24)              \
+                        ( ( (u_32) *( (const u_8 *)  ((ptr)+0) ) <<  0)        \
+                        | ( (u_32) *( (const u_16 *) ((ptr)+1) ) <<  8)        \
+                        | ( (u_32) *( (const u_8 *)  ((ptr)+3) ) << 24)        \
                         );                                                     \
                 break;                                                         \
             }                                                                  \
@@ -391,14 +391,14 @@
 #define GET_LE_LONGLONG( ptr, value, sign )                                    \
           do {                                                                 \
             value = (sign ## _64)                                              \
-                    ( ( (u_64) *( (u_8 *)  ((ptr)+0) ) <<  0)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+1) ) <<  8)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+2) ) << 16)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+3) ) << 24)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+4) ) << 32)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+5) ) << 40)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+6) ) << 48)                  \
-                    | ( (u_64) *( (u_8 *)  ((ptr)+7) ) << 56)                  \
+                    ( ( (u_64) *( (const u_8 *)  ((ptr)+0) ) <<  0)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+1) ) <<  8)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+2) ) << 16)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+3) ) << 24)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+4) ) << 32)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+5) ) << 40)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+6) ) << 48)            \
+                    | ( (u_64) *( (const u_8 *)  ((ptr)+7) ) << 56)            \
                     );                                                         \
           } while(0)
 
@@ -463,10 +463,10 @@
 #endif /* NATIVE_BIG_ENDIAN */
 
 #define GET_BE_BYTE( ptr, value, sign )                                        \
-          value = *((sign ## _8 *) (ptr))
+          value = *((const sign ## _8 *) (ptr))
 
 #define GET_LE_BYTE( ptr, value, sign )                                        \
-          value = *((sign ## _8 *) (ptr))
+          value = *((const sign ## _8 *) (ptr))
 
 #define SET_BE_BYTE( ptr, value )                                              \
           *((u_8 *) (ptr)) = (u_8) value
@@ -486,6 +486,10 @@
 /*===== STATIC VARIABLES =====================================================*/
 
 /*===== STATIC FUNCTIONS =====================================================*/
+
+static int integer2string( IntValue *pInt );
+static void string2integer( IntValue *pInt );
+
 
 /*===== FUNCTIONS ============================================================*/
 
@@ -610,7 +614,7 @@ static int integer2string( IntValue *pInt )
 *
 *******************************************************************************/
 
-void string2integer( IntValue *pInt )
+static void string2integer( IntValue *pInt )
 {
   register int val;
   register const char *pStr = pInt->string;
@@ -784,7 +788,7 @@ void string2integer( IntValue *pInt )
 void fetch_integer( unsigned size, unsigned sign, const void *src,
                     const ArchSpecs *pAS, IntValue *pIV )
 {                                                   
-  register u_8 *ptr = (u_8 *) src;
+  register const u_8 *ptr = (const u_8 *) src;
 
   switch( size ) {
     case 1:

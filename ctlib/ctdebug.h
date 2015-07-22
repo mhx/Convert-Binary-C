@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/20 19:11:18 +0000 $
-* $Revision: 5 $
-* $Snapshot: /Convert-Binary-C/0.09 $
+* $Date: 2003/01/23 18:43:22 +0000 $
+* $Revision: 6 $
+* $Snapshot: /Convert-Binary-C/0.10 $
 * $Source: /ctlib/ctdebug.h $
 *
 ********************************************************************************
@@ -32,6 +32,8 @@
 
 /*===== LOCAL INCLUDES =======================================================*/
 
+#include "util/ccattr.h"
+
 /*===== DEFINES ==============================================================*/
 
 #define DB_CTYPE_MAIN    0x00000001
@@ -48,10 +50,16 @@
 #define DEBUG_FLAG( flag )                                       \
           (g_CT_dbfunc && ((DB_CTYPE_ ## flag) & g_CT_dbflags))
 
+#ifdef CTYPE_FORMAT_CHECK
+# define CTYPE_DEBUG_FUNC CT_dbfunc_check
+#else
+# define CTYPE_DEBUG_FUNC g_CT_dbfunc
+#endif
+
 #define CT_DEBUG( flag, out )                                    \
           do {                                                   \
             if( DEBUG_FLAG( flag ) )                             \
-              g_CT_dbfunc out ;                                  \
+              CTYPE_DEBUG_FUNC out ;                             \
           } while(0)
 
 #else
@@ -70,11 +78,21 @@ extern unsigned long g_CT_dbflags;
 #endif
 
 #ifdef CTYPE_DEBUGGING
+
+# ifdef CTYPE_FORMAT_CHECK
+void CT_dbfunc_check( char *str, ... )
+     __attribute__(( __format__( __printf__, 1, 2 ), __noreturn__ ));
+# endif
+
 int SetDebugCType( void (*dbfunc)(char *, ...), void (*dbvprintf)(char *, va_list *),
                    unsigned long dbflags );
+
 void BisonDebugFunc( void *dummy, char *fmt, ... );
+
 #else
-#define SetDebugCType( func, flags ) 0
+
+# define SetDebugCType( func, flags ) 0
+
 #endif
 
 #endif

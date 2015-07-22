@@ -11,9 +11,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/20 17:35:18 +0000 $
-# $Revision: 33 $
-# $Snapshot: /Convert-Binary-C/0.09 $
+# $Date: 2003/01/23 18:59:38 +0000 $
+# $Revision: 35 $
+# $Snapshot: /Convert-Binary-C/0.10 $
 # $Source: /bin/ccconfig $
 #
 ################################################################################
@@ -30,13 +30,13 @@ use Data::Dumper;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = sprintf '%.2f', 0.01*('$Revision: 33 $' =~ /(\d+)/)[0];
-my $MESSAGE = "\nThis is $NAME $VERSION ($0).\n\n";
+my $VERSION = sprintf '%.2f', 0.01*('$Revision: 35 $' =~ /(\d+)/)[0];
+my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT;
 
 unless( GetOptions( \%OPT, qw(
           cc|c=s ppout|p=s temp|t=s
-          debug quiet status! run! delete!
+          version debug quiet status! run! delete!
       ) ) ) {
   # poor man's pod2usage...
   my($USAGE) = do { local(@ARGV,$/)=($0); <> }
@@ -49,9 +49,20 @@ unless( GetOptions( \%OPT, qw(
   exit 2;
 }
 
+if( $OPT{version} ) {
+  print <<VERSION;
+$MESSAGE
+Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+VERSION
+  exit 0;
+}
+
 STDERR->autoflush(1);
 
-$OPT{quiet} or print STDERR $MESSAGE;
+$OPT{quiet} or print STDERR $MESSAGE, "\n";
  
 my $cc  = new Compiler::Config %OPT, ccflags => [@ARGV];
 my $cfg = $cc->get_config;
@@ -2109,6 +2120,8 @@ I<options>:
   --quiet                don't display anything
   --nostatus             don't display status indicator
   
+  --version              print version number
+  
   --debug                debug mode
 
 =head1 DESCRIPTION
@@ -2171,6 +2184,11 @@ Hide the status indicator. Recommended if you want to
 redirect the script output to a file:
 
   ccconfig --nostatus >config.pl 2>ccconfig.log
+
+=head2 --version
+
+Writes the program name, version and path to standard
+output.
 
 =head2 --debug
 

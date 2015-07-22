@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/20 19:11:15 +0000 $
-* $Revision: 51 $
-* $Snapshot: /Convert-Binary-C/0.09 $
+* $Date: 2003/01/23 18:43:20 +0000 $
+* $Revision: 52 $
+* $Snapshot: /Convert-Binary-C/0.10 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -38,6 +38,7 @@
 
 /*===== LOCAL INCLUDES =======================================================*/
 
+#include "util/ccattr.h"
 #include "util/memalloc.h"
 #include "util/list.h"
 #include "util/hash.h"
@@ -212,6 +213,27 @@ void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 }
 #endif
 
+#endif
+
+#ifdef IVdf
+# define IVdf_cast
+#else
+# define IVdf "ld"
+# define IVdf_cast (long)
+#endif
+
+#ifdef UVuf
+# define UVuf_cast
+#else
+# define UVuf "lu"
+# define UVuf_cast (unsigned long)
+#endif
+
+#ifdef NVff
+# define NVff_cast
+#else
+# define NVff "lf"
+# define NVff_cast (double)
 #endif
 
 /*   </HACK>   */
@@ -553,12 +575,12 @@ static void SetDebugFile( char *dbfile );
 static void DumpSV( SV *buf, int level, SV *sv );
 #endif
 
-static void fatal( char *f, ... );
+static void fatal( char *f, ... ) __attribute__(( __noreturn__ ));
 static void *ct_newstr( void );
 static void ct_scatf( void *p, char *f, ... );
 static void ct_vscatf( void *p, char *f, va_list *l );
 static void ct_warn( void *p );
-static void ct_fatal( void *p );
+static void ct_fatal( void *p ) __attribute__(( __noreturn__ ));
 
 static char *string_new( const char *str );
 static char *string_new_fromSV( SV *sv );
@@ -706,7 +728,7 @@ static void DumpSV( SV *buf, int level, SV *sv )
   }
 
   INDENT; level++;
-  sv_catpvf( buf, "SV = %s @ 0x%x (REFCNT = %d)\n", str, sv, SvREFCNT(sv) );
+  sv_catpvf( buf, "SV = %s @ %p (REFCNT = %d)\n", str, sv, SvREFCNT(sv) );
 
   switch( type ) {
     case SVt_RV:
@@ -1021,7 +1043,7 @@ static void StoreIntSV( CBC *THIS, unsigned size, unsigned sign, SV *sv )
 
     if( sign ) {
       IV val = SvIV( sv );
-      CT_DEBUG( MAIN, ("SvIV( sv ) = %d", val) );
+      CT_DEBUG( MAIN, ("SvIV( sv ) = %" IVdf, IVdf_cast val) );
 #ifdef NATIVE_64_BIT_INTEGER
       iv.value.s = val;
 #else
@@ -1031,7 +1053,7 @@ static void StoreIntSV( CBC *THIS, unsigned size, unsigned sign, SV *sv )
     }
     else {
       UV val = SvUV( sv );
-      CT_DEBUG( MAIN, ("SvUV( sv ) = %u", val) );
+      CT_DEBUG( MAIN, ("SvUV( sv ) = %" UVuf, UVuf_cast val) );
 #ifdef NATIVE_64_BIT_INTEGER
       iv.value.u = val;
 #else
@@ -1131,7 +1153,7 @@ static void SetPointer( CBC *THIS, SV *sv )
 {
   unsigned size = THIS->cfg.ptr_size ? THIS->cfg.ptr_size : sizeof( void * );
 
-  CT_DEBUG( MAIN, (XSCLASS "::SetPointer( THIS=0x%08X, sv=0x%08X )", THIS, sv) );
+  CT_DEBUG( MAIN, (XSCLASS "::SetPointer( THIS=%p, sv=%p )", THIS, sv) );
 
   ALIGN_BUFFER( THIS, size );
 
@@ -1166,7 +1188,7 @@ static void SetStruct( CBC *THIS, Struct *pStruct, SV *sv )
   long               pos;
   unsigned           old_align, old_base;
 
-  CT_DEBUG( MAIN, (XSCLASS "::SetStruct( THIS=0x%08X, pStruct=0x%08X, sv=0x%08X )",
+  CT_DEBUG( MAIN, (XSCLASS "::SetStruct( THIS=%p, pStruct=%p, sv=%p )",
             THIS, pStruct, sv) );
 
   ALIGN_BUFFER( THIS, pStruct->align );
@@ -1245,7 +1267,7 @@ static void SetEnum( CBC *THIS, EnumSpecifier *pEnumSpec, SV *sv )
   unsigned size = GET_ENUM_SIZE( pEnumSpec );
   IV value = 0;
 
-  CT_DEBUG( MAIN, (XSCLASS "::SetEnum( THIS=0x%08X, pEnumSpec=0x%08X, sv=0x%08X )",
+  CT_DEBUG( MAIN, (XSCLASS "::SetEnum( THIS=%p, pEnumSpec=%p, sv=%p )",
             THIS, pEnumSpec, sv) );
 
   /* TODO: add some checks (range, perhaps even value) */
@@ -1278,7 +1300,7 @@ static void SetEnum( CBC *THIS, EnumSpecifier *pEnumSpec, SV *sv )
         value = SvIV( sv );
     }
   
-    CT_DEBUG( MAIN, ("value(sv) = %d", value) );
+    CT_DEBUG( MAIN, ("value(sv) = %" IVdf, IVdf_cast value) );
   
     iv.string = NULL;
     iv.sign = value < 0;
@@ -1316,10 +1338,10 @@ static void SetBasicType( CBC *THIS, u_32 flags, SV *sv )
 {
   unsigned size;
 
-  CT_DEBUG( MAIN, (XSCLASS "::SetBasicType( THIS=0x%08X, flags=0x%08X, sv=0x%08X )",
-            THIS, flags, sv) );
+  CT_DEBUG( MAIN, (XSCLASS "::SetBasicType( THIS=%p, flags=0x%08lX, sv=%p )",
+            THIS, (unsigned long) flags, sv) );
 
-  CT_DEBUG( MAIN, ("buffer.pos=%d, buffer.length=%d",
+  CT_DEBUG( MAIN, ("buffer.pos=%lu, buffer.length=%lu",
             THIS->buf.pos, THIS->buf.length) );
 
 #define LOAD_SIZE( type ) \
@@ -1350,7 +1372,7 @@ static void SetBasicType( CBC *THIS, u_32 flags, SV *sv )
     if( flags & (T_DOUBLE | T_FLOAT) ) {
       NV value = SvNV( sv );
   
-      CT_DEBUG( MAIN, ("SvNV( sv ) = %f", value) );
+      CT_DEBUG( MAIN, ("SvNV( sv ) = %" NVff, NVff_cast value) );
   
       if( flags & T_DOUBLE ) {
         if( (flags & T_LONG) == 0 )
@@ -1393,8 +1415,8 @@ static void SetBasicType( CBC *THIS, u_32 flags, SV *sv )
 
 static void SetTypedef( CBC *THIS, Typedef *pTypedef, SV *sv, char *name )
 {
-  CT_DEBUG( MAIN, (XSCLASS "::SetTypedef( THIS=0x%08X, pTypedef=0x%08X, "
-                    "sv=0x%08X, name='%s' )", THIS, pTypedef, sv, name) );
+  CT_DEBUG( MAIN, (XSCLASS "::SetTypedef( THIS=%p, pTypedef=%p, sv=%p, name='%s' )",
+                   THIS, pTypedef, sv, name) );
 
   SetType( THIS, pTypedef->pType, pTypedef->pDecl, 0, sv, name );
 }
@@ -1419,8 +1441,8 @@ static void SetTypedef( CBC *THIS, Typedef *pTypedef, SV *sv, char *name )
 static void SetType( CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
                      int dimension, SV *sv, char *name )
 {
-  CT_DEBUG( MAIN, (XSCLASS "::SetType( THIS=0x%08X, pTS=0x%08X, pDecl=0x%08X, "
-            "dimension=%d, sv=0x%08X, name='%s' )",
+  CT_DEBUG( MAIN, (XSCLASS "::SetType( THIS=%p, pTS=%p, pDecl=%p, "
+            "dimension=%d, sv=%p, name='%s' )",
             THIS, pTS, pDecl, dimension, sv, name) );
 
   if( pDecl && dimension < LL_count( pDecl->array ) ) {
@@ -1485,7 +1507,7 @@ static void SetType( CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
       if( sv && SvROK( sv ) )
         WARN(( "'%s' should be a scalar value", name ));
 
-      CT_DEBUG( MAIN, ("SET '%s' @ %d", pDecl ? pDecl->identifier : "", THIS->buf.pos ) );
+      CT_DEBUG( MAIN, ("SET '%s' @ %lu", pDecl ? pDecl->identifier : "", THIS->buf.pos ) );
 
       if( pTS->tflags & T_ENUM )
         SetEnum( THIS, pTS->ptr, sv );
@@ -1517,7 +1539,7 @@ static SV *GetPointer( CBC *THIS )
   SV *sv;
   unsigned size = THIS->cfg.ptr_size ? THIS->cfg.ptr_size : sizeof( void * );
 
-  CT_DEBUG( MAIN, (XSCLASS "::GetPointer( THIS=0x%08X )", THIS) );
+  CT_DEBUG( MAIN, (XSCLASS "::GetPointer( THIS=%p )", THIS) );
 
   ALIGN_BUFFER( THIS, size );
   CHECK_BUFFER( THIS, size );
@@ -1555,7 +1577,7 @@ static SV *GetStruct( CBC *THIS, Struct *pStruct, HV *hash )
   long               pos;
   unsigned           old_align, old_base;
 
-  CT_DEBUG( MAIN, (XSCLASS "::GetStruct( THIS=0x%08X, pStruct=0x%08X, hash=0x%08X )",
+  CT_DEBUG( MAIN, (XSCLASS "::GetStruct( THIS=%p, pStruct=%p, hash=%p )",
             THIS, pStruct, hash) );
 
   h = hash ? hash : newHV();
@@ -1642,8 +1664,7 @@ static SV *GetEnum( CBC *THIS, EnumSpecifier *pEnumSpec )
   IV value;
   SV *sv;
 
-  CT_DEBUG( MAIN, (XSCLASS "::GetEnum( THIS=0x%08X, pEnumSpec=0x%08X )",
-            THIS, pEnumSpec) );
+  CT_DEBUG( MAIN, (XSCLASS "::GetEnum( THIS=%p, pEnumSpec=%p )", THIS, pEnumSpec) );
 
   ALIGN_BUFFER( THIS, size );
   CHECK_BUFFER( THIS, size );
@@ -1691,7 +1712,7 @@ static SV *GetEnum( CBC *THIS, EnumSpecifier *pEnumSpec )
       if( pEnum )
         sv_setpv( sv, pEnum->identifier );
       else
-        sv_setpvf( sv, "<ENUM:%d>", value );
+        sv_setpvf( sv, "<ENUM:%" IVdf ">", IVdf_cast value );
       SvIOK_on( sv );
       break;
 
@@ -1699,7 +1720,7 @@ static SV *GetEnum( CBC *THIS, EnumSpecifier *pEnumSpec )
       if( pEnum )
         sv = newSVpv( pEnum->identifier, 0 );
       else
-        sv = newSVpvf( "<ENUM:%d>", value );
+        sv = newSVpvf( "<ENUM:%" IVdf ">", IVdf_cast value );
       break;
 
     default:
@@ -1732,11 +1753,11 @@ static SV *GetBasicType( CBC *THIS, u_32 flags )
   unsigned size;
   SV *sv;
 
-  CT_DEBUG( MAIN, (XSCLASS "::GetBasicType( THIS=0x%08X, flags=0x%08X )",
-            THIS, flags) );
+  CT_DEBUG( MAIN, (XSCLASS "::GetBasicType( THIS=%p, flags=0x%08lX )",
+                   THIS, (unsigned long) flags) );
 
-  CT_DEBUG( MAIN, ("buffer.pos=%d, buffer.length=%d",
-            THIS->buf.pos, THIS->buf.length) );
+  CT_DEBUG( MAIN, ("buffer.pos=%lu, buffer.length=%lu",
+                   THIS->buf.pos, THIS->buf.length) );
 
 #define LOAD_SIZE( type ) \
         size = THIS->cfg.type ## _size ? THIS->cfg.type ## _size : CTLIB_ ## type ## _SIZE
@@ -1811,7 +1832,7 @@ static SV *GetBasicType( CBC *THIS, u_32 flags )
 
 static SV *GetTypedef( CBC *THIS, Typedef *pTypedef )
 {
-  CT_DEBUG( MAIN, (XSCLASS "::GetTypedef( THIS=0x%08X, pTypedef=0x%08X )",
+  CT_DEBUG( MAIN, (XSCLASS "::GetTypedef( THIS=%p, pTypedef=%p )",
             THIS, pTypedef) );
 
   return GetType( THIS, pTypedef->pType, pTypedef->pDecl, 0 );
@@ -1837,8 +1858,8 @@ static SV *GetTypedef( CBC *THIS, Typedef *pTypedef )
 static SV *GetType( CBC *THIS, TypeSpec *pTS,
                     Declarator *pDecl, int dimension )
 {
-  CT_DEBUG( MAIN, (XSCLASS "::GetType( THIS=0x%08X, pTS=0x%08X, "
-            "pDecl=0x%08X, dimension=%d )", THIS, pTS, pDecl, dimension) );
+  CT_DEBUG( MAIN, (XSCLASS "::GetType( THIS=%p, pTS=%p, pDecl=%p, dimension=%d )",
+                   THIS, pTS, pDecl, dimension) );
 
   if( pDecl && dimension < LL_count( pDecl->array ) ) {
     AV *a = newAV();
@@ -1864,7 +1885,7 @@ static SV *GetType( CBC *THIS, TypeSpec *pTS,
       return GetStruct( THIS, pTS->ptr, NULL );
     }
 
-    CT_DEBUG( MAIN, ("GET '%s' @ %d", pDecl ? pDecl->identifier : "", THIS->buf.pos ) );
+    CT_DEBUG( MAIN, ("GET '%s' @ %lu", pDecl ? pDecl->identifier : "", THIS->buf.pos ) );
 
     if( pTS->tflags & T_ENUM )             return GetEnum( THIS, pTS->ptr );
 
@@ -1906,7 +1927,8 @@ static void GetBasicTypeSpecString( SV **sv, u_32 flags )
   };
   int first = 1;
 
-  CT_DEBUG( MAIN, (XSCLASS "::GetBasicTypeSpecString( sv=0x%08X, flags=0x%08X )", sv, flags) );
+  CT_DEBUG( MAIN, (XSCLASS "::GetBasicTypeSpecString( sv=%p, flags=0x%08lX )",
+                   sv, (unsigned long) flags) );
 
   for( pSpec = spec; pSpec->flag; ++pSpec ) {
     if( pSpec->flag & flags ) {
@@ -1983,8 +2005,8 @@ static void CheckDefineType( SV *str, TypeSpec *pTS )
 {
   u_32 flags = pTS->tflags;
 
-  CT_DEBUG( MAIN, (XSCLASS "::CheckDefineType( pTS=(tflags=0x%08X,ptr=%0x%08X) )",
-                   pTS->tflags, pTS->ptr) );
+  CT_DEBUG( MAIN, (XSCLASS "::CheckDefineType( pTS=(tflags=0x%08lX, ptr=%p) )",
+                   (unsigned long) pTS->tflags, pTS->ptr) );
 
   if( flags & T_TYPE ) {
     Typedef *pTypedef= (Typedef *) pTS->ptr;
@@ -2047,9 +2069,10 @@ static void AddTypeSpecStringRec( SV *str, SV *s, TypeSpec *pTS, int level, U32 
 {
   u_32 flags = pTS->tflags;
 
-  CT_DEBUG( MAIN, (XSCLASS "::AddTypeSpecStringRec( pTS=(tflags=0x%08X,ptr=%0x%08X),"
-                           " level=%d, pFlags=0x%08X (0x%08X) )",
-                   pTS->tflags, pTS->ptr, level, pFlags, pFlags ? *pFlags : 0) );
+  CT_DEBUG( MAIN, (XSCLASS "::AddTypeSpecStringRec( pTS=(tflags=0x%08lX, ptr=%p),"
+                           " level=%d, pFlags=%p (0x%08lX) )",
+                   (unsigned long) pTS->tflags, pTS->ptr, level, pFlags,
+                   (unsigned long) (pFlags ? *pFlags : 0)) );
 
   if( flags & T_TYPE ) {
     Typedef *pTypedef= (Typedef *) pTS->ptr;
@@ -2111,8 +2134,9 @@ static void AddTypeSpecStringRec( SV *str, SV *s, TypeSpec *pTS, int level, U32 
 static void AddEnumSpecStringRec( SV *str, SV *s, EnumSpecifier *pES, int level, U32 *pFlags )
 {
   CT_DEBUG( MAIN, (XSCLASS "::AddEnumSpecStringRec( pES=(identifier=\"%s\"),"
-                           " level=%d, pFlags=0x%08X (0x%08X) )",
-                   pES->identifier, level, pFlags, pFlags ? *pFlags : 0) );
+                           " level=%d, pFlags=%p (0x%08lX) )",
+                   pES->identifier, level, pFlags,
+                   (unsigned long) (pFlags ? *pFlags : 0)) );
 
   pES->tflags |= T_ALREADY_DUMPED;
 
@@ -2122,7 +2146,7 @@ static void AddEnumSpecStringRec( SV *str, SV *s, EnumSpecifier *pES, int level,
     *pFlags &= ~F_KEYWORD;
     *pFlags |= F_NEWLINE;
   }
-  sv_catpvf( s, "#line %d \"%s\"\n", pES->context.line, pES->context.pFI->name );
+  sv_catpvf( s, "#line %lu \"%s\"\n", pES->context.line, pES->context.pFI->name );
 #endif
 
   if( pFlags && (*pFlags & F_KEYWORD) )
@@ -2158,7 +2182,7 @@ static void AddEnumSpecStringRec( SV *str, SV *s, EnumSpecifier *pES, int level,
         )
         sv_catpvf( s, "\t%s", pEnum->identifier );
       else
-        sv_catpvf( s, "\t%s = %d", pEnum->identifier, pEnum->value.iv );
+        sv_catpvf( s, "\t%s = %ld", pEnum->identifier, pEnum->value.iv );
 
       if( first )
         first = 0;
@@ -2192,9 +2216,9 @@ static void AddEnumSpecStringRec( SV *str, SV *s, EnumSpecifier *pES, int level,
 static void AddStructSpecStringRec( SV *str, SV *s, Struct *pStruct, int level, U32 *pFlags )
 {
   CT_DEBUG( MAIN, (XSCLASS "::AddStructSpecStringRec( pStruct=(identifier=\"%s\", "
-                           "pack=%d, tflags=0x%08X), level=%d, pFlags=0x%08X (0x%08X) )",
-                   pStruct->identifier, pStruct->pack, pStruct->tflags, level,
-                   pFlags, pFlags ? *pFlags : 0) );
+                           "pack=%d, tflags=0x%08lX), level=%d, pFlags=%p (0x%08lX) )",
+                   pStruct->identifier, pStruct->pack, (unsigned long) pStruct->tflags,
+                   level, pFlags, (unsigned long) (pFlags ? *pFlags : 0)) );
 
   pStruct->tflags |= T_ALREADY_DUMPED;
 
@@ -2204,7 +2228,7 @@ static void AddStructSpecStringRec( SV *str, SV *s, Struct *pStruct, int level, 
       *pFlags &= ~F_KEYWORD;
       *pFlags |= F_NEWLINE;
     }
-    sv_catpvf( s, "#pragma pack( push, %d )\n", pStruct->pack );
+    sv_catpvf( s, "#pragma pack( push, %u )\n", pStruct->pack );
   }
 
 #ifndef CBC_NO_SOURCIFY_CONTEXT
@@ -2213,7 +2237,7 @@ static void AddStructSpecStringRec( SV *str, SV *s, Struct *pStruct, int level, 
     *pFlags &= ~F_KEYWORD;
     *pFlags |= F_NEWLINE;
   }
-  sv_catpvf( s, "#line %d \"%s\"\n", pStruct->context.line, pStruct->context.pFI->name );
+  sv_catpvf( s, "#line %lu \"%s\"\n", pStruct->context.line, pStruct->context.pFI->name );
 #endif
 
   if( pFlags && (*pFlags & F_KEYWORD) )
@@ -2268,7 +2292,7 @@ static void AddStructSpecStringRec( SV *str, SV *s, Struct *pStruct, int level, 
                                 pDecl->identifier );
 
           LL_foreach( pValue, pDecl->array )
-            sv_catpvf( s, "[%d]", pValue->iv );
+            sv_catpvf( s, "[%ld]", pValue->iv );
         }
       }
 
@@ -2311,7 +2335,7 @@ static void AddTypedefListDeclString( SV *str, TypedefList *pTDL )
   Typedef *pTypedef;
   int first = 1;
 
-  CT_DEBUG( MAIN, (XSCLASS "::AddTypedefListDeclString( pTDL=0x%08X )", pTDL) );
+  CT_DEBUG( MAIN, (XSCLASS "::AddTypedefListDeclString( pTDL=%p )", pTDL) );
 
   LL_foreach( pTypedef, pTDL->typedefs ) {
     Declarator *pDecl = pTypedef->pDecl;
@@ -2325,7 +2349,7 @@ static void AddTypedefListDeclString( SV *str, TypedefList *pTDL )
     sv_catpvf( str, "%s%s", pDecl->pointer_flag ? "*" : "", pDecl->identifier );
 
     LL_foreach( pValue, pDecl->array )
-      sv_catpvf( str, "[%d]", pValue->iv );
+      sv_catpvf( str, "[%ld]", pValue->iv );
   }
 }
 
@@ -2351,7 +2375,7 @@ static void AddTypedefListSpecString( SV *str, TypedefList *pTDL )
   SV *s = newSVpv( "typedef", 0 );
   U32 flags = F_KEYWORD;
 
-  CT_DEBUG( MAIN, (XSCLASS "::AddTypedefListSpecString( pTDL=0x%08X )", pTDL) );
+  CT_DEBUG( MAIN, (XSCLASS "::AddTypedefListSpecString( pTDL=%p )", pTDL) );
 
   AddTypeSpecStringRec( str, s, &pTDL->type, 0, &flags );
 
@@ -2387,7 +2411,7 @@ static void AddEnumSpecString( SV *str, EnumSpecifier *pES )
 {
   SV *s = newSVpvn( "", 0 );
 
-  CT_DEBUG( MAIN, (XSCLASS "::AddEnumSpecString( pES=0x%08X )", pES) );
+  CT_DEBUG( MAIN, (XSCLASS "::AddEnumSpecString( pES=%p )", pES) );
 
   AddEnumSpecStringRec( str, s, pES, 0, NULL );
   sv_catpv( s, ";\n" );
@@ -2417,7 +2441,7 @@ static void AddStructSpecString( SV *str, Struct *pStruct )
 {
   SV *s = newSVpvn( "", 0 );
 
-  CT_DEBUG( MAIN, (XSCLASS "::AddStructSpecString( pStruct=0x%08X )", pStruct) );
+  CT_DEBUG( MAIN, (XSCLASS "::AddStructSpecString( pStruct=%p )", pStruct) );
 
   AddStructSpecStringRec( str, s, pStruct, 0, NULL );
   sv_catpv( s, ";\n" );
@@ -2455,7 +2479,7 @@ static SV *GetParsedDefinitionsString( CParseInfo *pCPI )
 
   SV *s = newSVpvn( "", 0 );
 
-  CT_DEBUG( MAIN, (XSCLASS "::GetParsedDefinitionsString( pCPI=0x%08X )", pCPI) );
+  CT_DEBUG( MAIN, (XSCLASS "::GetParsedDefinitionsString( pCPI=%p )", pCPI) );
 
   /* typedef predeclarations */
 
@@ -2684,7 +2708,7 @@ static SV *GetTypedefSpec( Typedef *pTypedef )
                              pDecl->identifier );
 
   LL_foreach( pValue, pDecl->array )
-    sv_catpvf( sv, "[%d]", pValue->iv );
+    sv_catpvf( sv, "[%ld]", pValue->iv );
 
   HV_STORE_CONST( hv, "declarator", sv );
   HV_STORE_CONST( hv, "type", GetTypeSpec( pTypedef->pType ) );
@@ -2754,8 +2778,8 @@ static SV *GetEnumSpec( EnumSpecifier *pEnumSpec )
     HV_STORE_CONST( hv, "enumerators", GetEnumerators( pEnumSpec->enumerators ) );
   }
 
-  HV_STORE_CONST( hv, "context", newSVpvf( "%s(%d)", pEnumSpec->context.pFI->name,
-                                                     pEnumSpec->context.line ) );
+  HV_STORE_CONST( hv, "context", newSVpvf( "%s(%lu)", pEnumSpec->context.pFI->name,
+                                                      pEnumSpec->context.line ) );
 
   return newRV_noinc( (SV *) hv );
 }
@@ -2796,7 +2820,7 @@ static SV *GetDeclarators( LinkedList declarators )
                                  pDecl->identifier );
 
       LL_foreach( pValue, pDecl->array )
-        sv_catpvf( sv, "[%d]", pValue->iv );
+        sv_catpvf( sv, "[%ld]", pValue->iv );
 
       HV_STORE_CONST( hv, "declarator", sv );
       HV_STORE_CONST( hv, "offset", newSViv( pDecl->offset ) );
@@ -2890,8 +2914,8 @@ static SV *GetStructSpec( Struct *pStruct )
                         GetStructDeclarations( pStruct->declarations ) );
   }
 
-  HV_STORE_CONST( hv, "context", newSVpvf( "%s(%d)", pStruct->context.pFI->name,
-                                                     pStruct->context.line ) );
+  HV_STORE_CONST( hv, "context", newSVpvf( "%s(%lu)", pStruct->context.pFI->name,
+                                                      pStruct->context.line ) );
 
   return newRV_noinc( (SV *) hv );
 }
@@ -3029,7 +3053,7 @@ static GSMSRV GetStructMemberStringRec( Struct *pStruct, int offset, int realoff
   }
 
   LL_foreach( pStructDecl, pStruct->declarations ) {
-    CT_DEBUG( MAIN, ("Current StructDecl: offset=%d size=%d decl=0x%08X",
+    CT_DEBUG( MAIN, ("Current StructDecl: offset=%d size=%d decl=%p",
                      pStructDecl->offset, pStructDecl->size,
                      pStructDecl->declarators) );
 
@@ -4011,10 +4035,11 @@ static int CheckIntegerOption( const IV *options, int count, SV *sv,
     SV *str = sv_2mortal( newSVpvn( "", 0 ) );
 
     for( n = 0; n < count; n++ )
-      sv_catpvf( str, "%d%s", (int) *options++, n <  count-2 ? ", " :
-                                                n == count-2 ? " or " : "" );
+      sv_catpvf( str, "%" IVdf "%s", IVdf_cast *options++,
+                      n <  count-2 ? ", " : n == count-2 ? " or " : "" );
 
-    croak( "%s must be %s, not %d", name, SvPV_nolen( str ), *value );
+    croak( "%s must be %s, not %" IVdf, name, SvPV_nolen( str ),
+                                        IVdf_cast *value );
   }
 
   return 0;

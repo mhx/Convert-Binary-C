@@ -12,7 +12,7 @@
 # $Author: mhx $
 # $Date: 2003/01/10 22:26:26 +0000 $
 # $Revision: 9 $
-# $Snapshot: /Convert-Binary-C/0.09 $
+# $Snapshot: /Convert-Binary-C/0.10 $
 # $Source: /ctlib/Tokenizer.pm $
 #
 ################################################################################

@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/20 18:11:56 +0000 $
-# $Revision: 30 $
-# $Snapshot: /Convert-Binary-C/0.09 $
+# $Date: 2003/01/23 18:48:30 +0000 $
+# $Revision: 31 $
+# $Snapshot: /Convert-Binary-C/0.10 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -103,8 +103,6 @@ $BISON = $Config{bison} || 'bison';
   t/debug.out
 );
 
-# add MEM_DEBUG to @DEFINE to check for ucpp memory leaks
-
 @DEFINE = qw(
   ABORT_IF_NO_MEM
   UCPP_CONFIG
@@ -128,6 +126,16 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
                  d_flags => [qw()],
                },
   ) : (),
+  '$format-check' => {
+               enabled => 0,
+               e_flags => [qw( CTYPE_FORMAT_CHECK UTIL_FORMAT_CHECK )],
+               d_flags => [qw()],
+             },
+  '$mem-check' => {
+               enabled => 0,
+               e_flags => [qw( MEM_DEBUG )],
+               d_flags => [qw()],
+             },
 );
 
 # Automatically generated files
@@ -155,9 +163,11 @@ push @REALCLEAN, map { ref $_ ? @$_ : $_ } values %GENERATE;
 
 @ARGV = map {
   my $myopt = 0;
-  if( /^(en|dis)able-(\w+)$/ ) {
-    exists $FEATURES{$2} or die "Invalid feature '$2'. Use one of [ @{[keys %FEATURES]} ].\n";
-    $FEATURES{$2}{enabled} = $1 eq 'en';
+  if( my($what, $feat) = /^(en|dis)able-(\S+)$/ ) {
+    exists $FEATURES{$feat} or $feat = '$'.$feat;
+    exists $FEATURES{$feat}
+      or die "Invalid feature '$2'. Use one of [ @{[grep !/^\$/, keys %FEATURES]} ].\n";
+    $FEATURES{$feat}{enabled} = $what eq 'en';
     $myopt = 1;
   }
   elsif( /^help$/ ) {
@@ -174,7 +184,7 @@ ENDUSAGE
 
 WriteMakefile(
   'NAME'            => $MODULE,
-  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.09 $'
+  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.10 $'
                                     =~ /(\d+\.\d+(?:_\d+)?)/;
                             @r ? $r[0] : '9.99' },
   'ABSTRACT'        => 'Binary Data Conversion using C Types',
@@ -196,7 +206,8 @@ sub configure {
 
   for( keys %FEATURES ) {
     my $f = $FEATURES{$_};
-    $f->{enabled} and print "Building with feature '$_'.\n";
+    $f->{enabled} and print /^\$/ ? "DEVELOPMENT-ONLY feature '$_' selected.\n"
+                                  : "Building with feature '$_'.\n";
     push @DEFINE, @{$f->{enabled} ? $f->{e_flags} : $f->{d_flags} };
   }
   

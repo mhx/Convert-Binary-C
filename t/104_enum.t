@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2003/01/07 20:56:02 +0000 $
 # $Revision: 7 $
-# $Snapshot: /Convert-Binary-C/0.09 $
+# $Snapshot: /Convert-Binary-C/0.10 $
 # $Source: /t/104_enum.t $
 #
 ################################################################################

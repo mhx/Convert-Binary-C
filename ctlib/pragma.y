@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/03 13:12:35 +0000 $
-* $Revision: 5 $
-* $Snapshot: /Convert-Binary-C/0.09 $
+* $Date: 2003/01/23 19:53:51 +0000 $
+* $Revision: 6 $
+* $Snapshot: /Convert-Binary-C/0.10 $
 * $Source: /ctlib/pragma.y $
 *
 ********************************************************************************
@@ -36,6 +36,7 @@
 #include "ctdebug.h"
 #include "pragma.h"
 
+#include "util/ccattr.h"
 #include "util/memalloc.h"
 #include "util/list.h"
 
@@ -81,10 +82,10 @@ typedef struct {
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 
-static int pragma_lex( void *pYYLVAL, PragmaState *pState );
+static inline int          pragma_lex( void *pYYLVAL, PragmaState *pState );
 
-static PackElement *packelem_new( unsigned size );
-static void packelem_delete( PackElement *pPack );
+static        PackElement *packelem_new( unsigned size );
+static        void         packelem_delete( PackElement *pPack );
 
 
 /*===== EXTERNAL VARIABLES ===================================================*/
@@ -310,7 +311,7 @@ static void packelem_delete( PackElement *pPack )
 *
 *******************************************************************************/
 
-static int pragma_lex( void *pYYLVAL, PragmaState *pState )
+static inline int pragma_lex( void *pYYLVAL, PragmaState *pState )
 {
   YYSTYPE *plval = (YYSTYPE *) pYYLVAL;
   int token, rval;

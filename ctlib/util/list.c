@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/01 11:29:59 +0000 $
-* $Revision: 5 $
-* $Snapshot: /Convert-Binary-C/0.09 $
+* $Date: 2003/01/23 18:46:47 +0000 $
+* $Revision: 6 $
+* $Snapshot: /Convert-Binary-C/0.10 $
 * $Source: /ctlib/util/list.c $
 *
 ********************************************************************************
@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "ccattr.h"
 #include "memalloc.h"
 #include "list.h"
 
@@ -57,9 +58,9 @@ struct _LinkedList {
 /*------------------*/
 /* Static Functions */
 /*------------------*/
-static Link *GetLink( const LinkedList list, int item );
-static void *Extract( const LinkedList list, Link *pLink );
-static Link *Insert( const LinkedList list, Link *pLink, void *pObj );
+static inline Link *GetLink( const LinkedList list, int item );
+static inline void *Extract( const LinkedList list, Link *pLink );
+static inline Link *Insert( const LinkedList list, Link *pLink, void *pObj );
 static void QuickSort( Link *l, Link *r, int size, LLCompareFunc cmp );
 
 
@@ -84,7 +85,7 @@ static void QuickSort( Link *l, Link *r, int size, LLCompareFunc cmp );
  *    return NULL
  */
 
-static Link *GetLink( const LinkedList list, int item )
+static inline Link *GetLink( const LinkedList list, int item )
 {
   Link *pLink = &list->link;
 
@@ -114,7 +115,7 @@ static Link *GetLink( const LinkedList list, int item )
  *  associated object.
  */
 
-static void *Extract( const LinkedList list, Link *pLink )
+static inline void *Extract( const LinkedList list, Link *pLink )
 {
   void *pObj = pLink->pObj;
 
@@ -137,7 +138,7 @@ static void *Extract( const LinkedList list, Link *pLink )
  *  to the inserted link.
  */
 
-static Link *Insert( const LinkedList list, Link *pLink, void *pObj )
+static inline Link *Insert( const LinkedList list, Link *pLink, void *pObj )
 {
   Link *pLinkNew;
 

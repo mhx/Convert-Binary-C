@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/10 22:27:38 +0000 $
-# $Revision: 4 $
-# $Snapshot: /Convert-Binary-C/0.09 $
+# $Date: 2003/01/23 18:43:50 +0000 $
+# $Revision: 5 $
+# $Snapshot: /Convert-Binary-C/0.10 $
 # $Source: /ctlib/t_config.pl $
 #
 ################################################################################
@@ -61,7 +61,7 @@ $enums
   INVALID_OPTION
 } ConfigOption;
 
-ConfigOption GetConfigOption( const char *option )
+static ConfigOption GetConfigOption( const char *option )
 {
 $switch
 unknown:

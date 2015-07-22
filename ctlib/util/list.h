@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/01 11:29:58 +0000 $
-* $Revision: 5 $
-* $Snapshot: /Convert-Binary-C/0.09 $
+* $Date: 2003/01/23 18:45:50 +0000 $
+* $Revision: 6 $
+* $Snapshot: /Convert-Binary-C/0.10 $
 * $Source: /ctlib/util/list.h $
 *
 ********************************************************************************
@@ -49,8 +49,8 @@
  *  Perl uses for manipulating arrays. This is absolutely
  *  intended.
  */
-#ifndef _LIST_H
-#define _LIST_H
+#ifndef _UTIL_LIST_H
+#define _UTIL_LIST_H
 
 /**
  *  Linked List Handle

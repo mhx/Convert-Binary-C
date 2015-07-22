@@ -124,6 +124,7 @@ I have tested it on:
   - Various BSD systems
   - HP-UX
   - Compaq/HP Tru64 Unix
+  - MacOS X
   - Cygwin
   - Windows 98/NT/2000
 
@@ -132,6 +133,7 @@ Also, most architectures should be supported. Tests were done on:
   - Various Intel Pentium and Itanium systems
   - Various Alpha systems
   - HP PA-RISC
+  - PowerPC
   - StrongARM (the module worked fine on an IPAQ system)
 
 The module should build with any perl from 5.005_03 up to 5.8.0.
@@ -148,14 +150,12 @@ options to the Makefile.PL call. However, you can safely leave them
 at their default.
 
 Available features are 'debug' to build the module with debugging
-support, 'threads' to build a thread-safe version and 'c99' to build
-the module with support for ANSI-C99 extensions. Note that the 'threads'
-feature is only available for multithreaded perl binaries.
+support and 'threads' to build a thread-safe version. Note that the
+'threads' feature is only available for multithreaded perl binaries.
 
-While 'c99' is enabled by default (and it makes little sense to disable
-it), the 'threads' and 'debug' features depend on how your perl binary
-was built. If it's built with the DEBUGGING flag, the 'debug' feature
-is enabled, otherwise it's disabled by default. If your perl binary was
+The 'threads' and 'debug' features depend on how your perl binary was
+built. If it's built with the DEBUGGING flag, the 'debug' feature is
+enabled, otherwise it's disabled by default. If your perl binary was
 built to support threads, the module will be build thread-safe.
 
 You can enable or disable features explicitly by adding the arguments
@@ -164,9 +164,9 @@ You can enable or disable features explicitly by adding the arguments
   disable-feature
 
 to the Makefile.PL call. To explicitly build the module with debugging
-enabled and ANSI-C99 features disabled, you would say:
+enabled, you would say:
 
-  perl Makefile.PL enable-debug disable-c99
+  perl Makefile.PL enable-debug
 
 This will still allow you to pass other 'standard' arguments to Makefile.PL.
 

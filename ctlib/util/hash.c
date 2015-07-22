@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/01 11:29:59 +0000 $
-* $Revision: 13 $
-* $Snapshot: /Convert-Binary-C/0.09 $
+* $Date: 2003/01/23 18:47:29 +0000 $
+* $Revision: 14 $
+* $Snapshot: /Convert-Binary-C/0.10 $
 * $Source: /ctlib/util/hash.c $
 *
 ********************************************************************************
@@ -37,6 +37,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include "ccattr.h"
 #include "memalloc.h"
 #include "hash.h"
 
@@ -60,10 +61,16 @@ struct _HashTable {
 
 #ifdef DEBUG_HASH
 
-#define DEBUG( flag, out )                                       \
-          do {                                                   \
-            if( gs_dbfunc && ((DB_HASH_ ## flag) & gs_dbflags) ) \
-              gs_dbfunc out ;                                    \
+#ifdef UTIL_FORMAT_CHECK
+# define HASH_DEBUG_FUNC debug_check
+#else
+# define HASH_DEBUG_FUNC gs_dbfunc
+#endif
+
+#define DEBUG( flag, out )                                             \
+          do {                                                         \
+            if( HASH_DEBUG_FUNC && ((DB_HASH_ ## flag) & gs_dbflags) ) \
+              HASH_DEBUG_FUNC out ;                                    \
           } while(0)
 
 static void (*gs_dbfunc)(char *, ...) = NULL;
@@ -116,8 +123,13 @@ static unsigned long gs_dbflags       = 0;
         } while(0)
 
 /* static function prototypes */
-static void ht_grow( HashTable table, int size );
-static void ht_shrink( HashTable table, int size );
+static inline void ht_grow( HashTable table, int size );
+static inline void ht_shrink( HashTable table, int size );
+
+#if defined(DEBUG_HASH) && defined(UTIL_FORMAT_CHECK)
+static void debug_check( char *str, ... )
+            __attribute__(( __format__( __printf__, 1, 2 ), __noreturn__ ));
+#endif
 
 /************************************************************
 *
@@ -200,7 +212,7 @@ HashTable HT_new_ex( int size, unsigned long flags )
   table->bmask = (unsigned long) (buckets-1);
   table->flags = flags;
 
-  DEBUG( MAIN, ("created new hash table @ 0x%08X with %d buckets\n", table, buckets) );
+  DEBUG( MAIN, ("created new hash table @ %p with %d buckets\n", table, buckets) );
 
   pNode = &table->root[0];
   while( buckets-- )
@@ -225,7 +237,7 @@ HashTable HT_new_ex( int size, unsigned long flags )
 
 void HT_delete( HashTable table )
 {
-  DEBUG( MAIN, ("HT_delete( 0x%08X )\n", table) );
+  DEBUG( MAIN, ("HT_delete( %p )\n", table) );
 
   if( table == NULL )
     return;
@@ -238,7 +250,7 @@ void HT_delete( HashTable table )
   Free( table->root );
   Free( table );
 
-  DEBUG( MAIN, ("deleted hash table @ 0x%08X\n", table) );
+  DEBUG( MAIN, ("deleted hash table @ %p\n", table) );
 }
 
 /**
@@ -266,7 +278,7 @@ void HT_flush( HashTable table, HTDestroyFunc destroy )
   int buckets;
   HashNode *pNode, node, old;
 
-  DEBUG( MAIN, ("HT_flush( 0x%08X, 0x%08X )\n", table, destroy) );
+  DEBUG( MAIN, ("HT_flush( %p, %p )\n", table, destroy) );
 
   if( table == NULL || table->count == 0 )
     return;
@@ -294,7 +306,7 @@ void HT_flush( HashTable table, HTDestroyFunc destroy )
 
   table->count = 0;
 
-  DEBUG( MAIN, ("flushed hash table @ 0x%08X\n", table) );
+  DEBUG( MAIN, ("flushed hash table @ %p\n", table) );
 }
 
 /**
@@ -321,7 +333,7 @@ void HT_destroy( HashTable table, HTDestroyFunc destroy )
   int buckets;
   HashNode *pNode, node, old;
 
-  DEBUG( MAIN, ("HT_destroy( 0x%08X )\n", table) );
+  DEBUG( MAIN, ("HT_destroy( %p )\n", table) );
 
   if( table == NULL )
     return;
@@ -349,7 +361,7 @@ void HT_destroy( HashTable table, HTDestroyFunc destroy )
   Free( table->root );
   Free( table );
 
-  DEBUG( MAIN, ("destroyed hash table @ 0x%08X\n", table) );
+  DEBUG( MAIN, ("destroyed hash table @ %p\n", table) );
 }
 
 /**
@@ -438,7 +450,7 @@ HashTable HT_clone( HashTable table, HTCloneFunc func )
 
 int HT_resize( HashTable table, int size )
 {
-  DEBUG( MAIN, ("HT_resize( 0x%08X, %d )\n", table, size) );
+  DEBUG( MAIN, ("HT_resize( %p, %d )\n", table, size) );
 
   assert( size > 0 );
   assert( size <= MAX_HASH_TABLE_SIZE );
@@ -459,7 +471,7 @@ int HT_resize( HashTable table, int size )
   return 1;
 }
 
-static void ht_grow( HashTable table, int size )
+static inline void ht_grow( HashTable table, int size )
 {
   HashNode *pNode, *pOld, *pNew;
   int old_size, buckets;
@@ -491,7 +503,7 @@ static void ht_grow( HashTable table, int size )
 
     while( *pOld ) {
       if( (*pOld)->hash & mask ) {
-        DEBUG( MAIN, ("pOld=0x%08X *pOld=0x%08X (key=[%s] len=%d hash=0x%08X)\n",
+        DEBUG( MAIN, ("pOld=%p *pOld=%p (key=[%s] len=%d hash=0x%08lX)\n",
                      pOld, *pOld, (*pOld)->key, (*pOld)->keylen, (*pOld)->hash) );
 
         pNew = &table->root[(*pOld)->hash & table->bmask];
@@ -507,10 +519,10 @@ static void ht_grow( HashTable table, int size )
     }
   }
 
-  DEBUG( MAIN, ("hash table @ 0x%08X grown to %d buckets\n", table, 1<<size) );
+  DEBUG( MAIN, ("hash table @ %p grown to %d buckets\n", table, 1<<size) );
 }
 
-static void ht_shrink( HashTable table, int size )
+static inline void ht_shrink( HashTable table, int size )
 {
   HashNode *pNode, *pNew, old, node;
   int old_size, buckets, cmp;
@@ -530,14 +542,14 @@ static void ht_shrink( HashTable table, int size )
     old = *pNode++;
 
     while( old ) {
-      DEBUG( MAIN, ("old=0x%08X (key=[%s] len=%d hash=0x%08X)\n",
+      DEBUG( MAIN, ("old=%p (key=[%s] len=%d hash=0x%08lX)\n",
                    old, old->key, old->keylen, old->hash) );
       node = old;
       old  = old->next;
       pNew = &table->root[node->hash & table->bmask];
 
       while( *pNew ) {
-        DEBUG( MAIN, ("pNew=0x%08X *pNew=0x%08X (key=[%s] len=%d hash=0x%08X)\n",
+        DEBUG( MAIN, ("pNew=%p *pNew=%p (key=[%s] len=%d hash=0x%08lX)\n",
                      pNew, *pNew, (*pNew)->key, (*pNew)->keylen, (*pNew)->hash) );
 
         if(   (cmp = CMPHASH(node->hash, (*pNew)->hash)) == 0
@@ -566,7 +578,7 @@ static void ht_shrink( HashTable table, int size )
   buckets     = 1<<size;
   table->root = ReAlloc( table->root, buckets * sizeof( HashNode ) );
 
-  DEBUG( MAIN, ("hash table @ 0x%08X shrunk to %d buckets\n", table, buckets) );
+  DEBUG( MAIN, ("hash table @ %p shrunk to %d buckets\n", table, buckets) );
 }
 
 #ifdef DEBUG_HASH
@@ -589,7 +601,7 @@ void HT_dump( const HashTable table )
   int i, j, buckets;
   HashNode *pNode, node;
 
-  DEBUG( MAIN, ("HT_dump( 0x%08X )\n", table) );
+  DEBUG( MAIN, ("HT_dump( %p )\n", table) );
 
   assert( table != NULL );
   AssertValidPtr( table );
@@ -598,23 +610,23 @@ void HT_dump( const HashTable table )
     return;
 
   gs_dbfunc( "----------------------------------------------------\n" );
-  gs_dbfunc( "HashTable @ 0x%08X: %d elements in %d buckets\n",
+  gs_dbfunc( "HashTable @ %p: %d elements in %d buckets\n",
              table, table->count, 1<<table->size );
 
   buckets = 1<<table->size;
   pNode = &table->root[0];
 
   for( i=0; i<buckets; ++i ) {
-    gs_dbfunc( "\n  Bucket %d @ 0x%08X:%s\n", i+1, pNode,
+    gs_dbfunc( "\n  Bucket %d @ %p:%s\n", i+1, pNode,
                *pNode ? "" : " no elements" );
 
     node = *pNode++;
 
     for( j = 1; node != NULL; j++, node = node->next )
-      gs_dbfunc( "\n    Element %d @ 0x%08X:\n"
-                 "      Hash : 0x%08X\n"
+      gs_dbfunc( "\n    Element %d @ %p:\n"
+                 "      Hash : 0x%08lX\n"
                  "      Key  : [%s] (len=%d)\n"
-                 "      Value: 0x%08X\n",
+                 "      Value: %p\n",
                  j, node, node->hash, node->key, node->keylen, node->pObj );
   }
 
@@ -697,7 +709,7 @@ HashNode HN_new( const char *key, int keylen, HashSum hash )
 {
   HashNode node;
 
-  DEBUG( MAIN, ("HN_new( 0x%08X, %d, 0x%08X )\n", key, keylen, hash) );
+  DEBUG( MAIN, ("HN_new( %p, %d, 0x%08lX )\n", key, keylen, hash) );
 
   assert( key != NULL );
 
@@ -714,12 +726,12 @@ HashNode HN_new( const char *key, int keylen, HashSum hash )
   node->next   = NULL;
   node->hash   = hash;
   node->keylen = keylen;
-  memcpy( node->key, (void *) key, keylen );
+  memcpy( node->key, (const void *) key, keylen );
 #ifndef NO_TERMINATED_KEYS
   node->key[keylen] = '\0';
 #endif
 
-  DEBUG( MAIN, ("created new hash node @ 0x%08X with key '%s'\n", node, node->key) );
+  DEBUG( MAIN, ("created new hash node @ %p with key \"%s\"\n", node, key) );
 
   return node;
 }
@@ -739,7 +751,7 @@ HashNode HN_new( const char *key, int keylen, HashSum hash )
 
 void HN_delete( HashNode node )
 {
-  DEBUG( MAIN, ("HN_delete( 0x%08X )\n", node) );
+  DEBUG( MAIN, ("HN_delete( %p )\n", node) );
 
   if( node == NULL )
     return;
@@ -749,7 +761,7 @@ void HN_delete( HashNode node )
 
   Free( node );
 
-  DEBUG( MAIN, ("deleted hash node @ 0x%08X\n", node) );
+  DEBUG( MAIN, ("deleted hash node @ %p\n", node) );
 }
 
 /**
@@ -776,7 +788,7 @@ int HT_storenode( const HashTable table, HashNode node, void *pObj )
   HashNode *pNode;
   int cmp;
 
-  DEBUG( MAIN, ("HT_storenode( 0x%08X, 0x%08X, 0x%08X )\n", table, node, pObj) );
+  DEBUG( MAIN, ("HT_storenode( %p, %p, %p )\n", table, node, pObj) );
 
   assert( table != NULL );
   assert( node  != NULL );
@@ -788,12 +800,12 @@ int HT_storenode( const HashTable table, HashNode node, void *pObj )
 
   pNode = &table->root[node->hash & table->bmask];
 
-  DEBUG( MAIN, ("key=[%s] len=%d hash=0x%08X bucket=%d/%d\n",
+  DEBUG( MAIN, ("key=[%s] len=%d hash=0x%08lX bucket=%lu/%d\n",
                 node->key, node->keylen, node->hash,
-                (node->hash & table->bmask) + 1, 1<<table->size) );
+                (node->hash & table->bmask) + 1U, 1<<table->size) );
 
   while( *pNode ) {
-    DEBUG( MAIN, ("pNode=0x%08X *pNode=0x%08X (key=[%s] len=%d hash=0x%08X)\n",
+    DEBUG( MAIN, ("pNode=%p *pNode=%p (key=[%s] len=%d hash=0x%08lX)\n",
                  pNode, *pNode, (*pNode)->key, (*pNode)->keylen, (*pNode)->hash) );
 
     if( (cmp = CMPHASH(node->hash, (*pNode)->hash)) == 0
@@ -848,7 +860,7 @@ void *HT_fetchnode( const HashTable table, HashNode node )
   HashNode *pNode;
   void *pObj;
 
-  DEBUG( MAIN, ("HT_fetchnode( 0x%08X, 0x%08X )\n", table, node) );
+  DEBUG( MAIN, ("HT_fetchnode( %p, %p )\n", table, node) );
 
   assert( table != NULL );
   assert( node  != NULL );
@@ -858,8 +870,8 @@ void *HT_fetchnode( const HashTable table, HashNode node )
 
   pNode = &table->root[node->hash & table->bmask];
 
-  DEBUG( MAIN, ("key [%s] hash 0x%08X bucket %d/%d\n",
-                node->key, node->hash, (node->hash & table->bmask) + 1, 1<<table->size) );
+  DEBUG( MAIN, ("key [%s] hash 0x%08lX bucket %lu/%d\n",
+                node->key, node->hash, (node->hash & table->bmask) + 1U, 1<<table->size) );
 
   while( *pNode && *pNode != node )
     pNode = &(*pNode)->next;
@@ -877,7 +889,7 @@ void *HT_fetchnode( const HashTable table, HashNode node )
 
   table->count--;
 
-  DEBUG( MAIN, ("successfully fetched node @ 0x%08X (%d nodes still in hash table)\n",
+  DEBUG( MAIN, ("successfully fetched node @ %p (%d nodes still in hash table)\n",
                 node, table->count) );
 
   CHECK_AUTOSHRINK( table );
@@ -909,7 +921,7 @@ void *HT_rmnode( const HashTable table, HashNode node )
   HashNode *pNode;
   void *pObj;
 
-  DEBUG( MAIN, ("HT_rmnode( 0x%08X, 0x%08X )\n", table, node) );
+  DEBUG( MAIN, ("HT_rmnode( %p, %p )\n", table, node) );
 
   assert( table != NULL );
   assert( node  != NULL );
@@ -919,8 +931,8 @@ void *HT_rmnode( const HashTable table, HashNode node )
 
   pNode = &table->root[node->hash & table->bmask];
 
-  DEBUG( MAIN, ("key [%s] hash 0x%08X bucket %d/%d\n",
-         node->key, node->hash, (node->hash & table->bmask) + 1, 1<<table->size) );
+  DEBUG( MAIN, ("key [%s] hash 0x%08lX bucket %lu/%d\n",
+         node->key, node->hash, (node->hash & table->bmask) + 1U, 1<<table->size) );
 
   while( *pNode && *pNode != node )
     pNode = &(*pNode)->next;
@@ -937,7 +949,7 @@ void *HT_rmnode( const HashTable table, HashNode node )
 
   table->count--;
 
-  DEBUG( MAIN, ("successfully removed node @ 0x%08X (%d nodes still in hash table)\n",
+  DEBUG( MAIN, ("successfully removed node @ %p (%d nodes still in hash table)\n",
                 node, table->count) );
 
   CHECK_AUTOSHRINK( table );
@@ -976,7 +988,7 @@ int HT_store( const HashTable table, const char *key, int keylen, HashSum hash, 
   HashNode *pNode, node;
   int cmp;
 
-  DEBUG( MAIN, ("HT_store( 0x%08X, 0x%08X, %d, 0x%08X, 0x%08X )\n",
+  DEBUG( MAIN, ("HT_store( %p, %p, %d, 0x%08lX, %p )\n",
                 table, key, keylen, hash, pObj) );
 
   assert( table != NULL );
@@ -995,15 +1007,15 @@ int HT_store( const HashTable table, const char *key, int keylen, HashSum hash, 
 
   pNode = &table->root[hash & table->bmask];
 
-  DEBUG( MAIN, ("key=[%s] len=%d hash=0x%08X bucket=%d/%d\n",
-                key, keylen, hash, (hash & table->bmask) + 1, 1<<table->size) );
+  DEBUG( MAIN, ("key=[%s] len=%d hash=0x%08lX bucket=%lu/%d\n",
+                key, keylen, hash, (hash & table->bmask) + 1U, 1<<table->size) );
 
   while( *pNode ) {
-    DEBUG( MAIN, ("pNode=0x%08X *pNode=0x%08X (key=[%s] len=%d hash=0x%08X)\n",
+    DEBUG( MAIN, ("pNode=%p *pNode=%p (key=[%s] len=%d hash=0x%08lX)\n",
                   pNode, *pNode, (*pNode)->key, (*pNode)->keylen, (*pNode)->hash) );
 
     if( (cmp = CMPHASH(hash, (*pNode)->hash)) == 0
-     && (cmp = memcmp((void *) key, (*pNode)->key, MINIMUM(keylen, (*pNode)->keylen))) == 0
+     && (cmp = memcmp((const void *) key, (*pNode)->key, MINIMUM(keylen, (*pNode)->keylen))) == 0
      && (cmp = keylen - (*pNode)->keylen) == 0 ) {
       DEBUG( MAIN, ("key [%s] already in hash, can't store\n", key) );
       return 0;
@@ -1026,7 +1038,7 @@ int HT_store( const HashTable table, const char *key, int keylen, HashSum hash, 
   node->pObj   = pObj;
   node->hash   = hash;
   node->keylen = keylen;
-  memcpy( node->key, (void *) key, keylen );
+  memcpy( node->key, (const void *) key, keylen );
 #ifndef NO_TERMINATED_KEYS
   node->key[keylen] = '\0';
 #endif
@@ -1071,7 +1083,7 @@ void *HT_fetch( const HashTable table, const char *key, int keylen, HashSum hash
   int   cmp;
   void *pObj;
 
-  DEBUG( MAIN, ("HT_fetch( 0x%08X, 0x%08X, %d, 0x%08X )\n", table, key, keylen, hash) );
+  DEBUG( MAIN, ("HT_fetch( %p, %p, %d, 0x%08lX )\n", table, key, keylen, hash) );
 
   assert( table != NULL );
   assert( key   != NULL );
@@ -1090,15 +1102,15 @@ void *HT_fetch( const HashTable table, const char *key, int keylen, HashSum hash
 
   pNode = &table->root[hash & table->bmask];
 
-  DEBUG( MAIN, ("key [%s] hash 0x%08X bucket %d/%d\n",
-                key, hash, (hash & table->bmask) + 1, 1<<table->size) );
+  DEBUG( MAIN, ("key [%s] hash 0x%08lX bucket %lu/%d\n",
+                key, hash, (hash & table->bmask) + 1U, 1<<table->size) );
 
   while( *pNode ) {
-    DEBUG( MAIN, ("node=0x%08X (key=[%s] len=%d hash=0x%08X)\n",
+    DEBUG( MAIN, ("node=%p (key=[%s] len=%d hash=0x%08lX)\n",
                   *pNode, (*pNode)->key, (*pNode)->keylen, (*pNode)->hash) );
 
     if( (cmp = CMPHASH(hash, (*pNode)->hash)) == 0
-     && (cmp = memcmp((void *) key, (*pNode)->key, MINIMUM(keylen, (*pNode)->keylen))) == 0
+     && (cmp = memcmp((const void *) key, (*pNode)->key, MINIMUM(keylen, (*pNode)->keylen))) == 0
      && (cmp = keylen - (*pNode)->keylen) == 0 ) {
       DEBUG( MAIN, ("hash element found\n") );
       break;
@@ -1164,7 +1176,7 @@ void *HT_get( const HashTable table, const char *key, int keylen, HashSum hash )
   HashNode node;
   int cmp;
 
-  DEBUG( MAIN, ("HT_get( 0x%08X, 0x%08X, %d, 0x%08X )\n", table, key, keylen, hash) );
+  DEBUG( MAIN, ("HT_get( %p, %p, %d, 0x%08lX )\n", table, key, keylen, hash) );
 
   assert( table != NULL );
   assert( key   != NULL );
@@ -1183,15 +1195,15 @@ void *HT_get( const HashTable table, const char *key, int keylen, HashSum hash )
 
   node = table->root[hash & table->bmask];
 
-  DEBUG( MAIN, ("key [%s] hash 0x%08X bucket %d/%d\n",
-                key, hash, (hash & table->bmask) + 1, 1<<table->size) );
+  DEBUG( MAIN, ("key [%s] hash 0x%08lX bucket %lu/%d\n",
+                key, hash, (hash & table->bmask) + 1U, 1<<table->size) );
 
   while( node ) {
-    DEBUG( MAIN, ("node=0x%08X (key=[%s] len=%d hash=0x%08X)\n",
+    DEBUG( MAIN, ("node=%p (key=[%s] len=%d hash=0x%08lX)\n",
                   node, node->key, node->keylen, node->hash) );
 
     if( (cmp = CMPHASH(hash, node->hash)) == 0
-     && (cmp = memcmp((void *) key, node->key, MINIMUM(keylen, node->keylen))) == 0
+     && (cmp = memcmp((const void *) key, node->key, MINIMUM(keylen, node->keylen))) == 0
      && (cmp = keylen - node->keylen) == 0 ) {
       DEBUG( MAIN, ("hash element found\n") );
       break;
@@ -1245,7 +1257,7 @@ int HT_exists( const HashTable table, const char *key, int keylen, HashSum hash 
   HashNode node;
   int cmp;
 
-  DEBUG( MAIN, ("HT_exists( 0x%08X, 0x%08X, %d, 0x%08X )\n", table, key, keylen, hash) );
+  DEBUG( MAIN, ("HT_exists( %p, %p, %d, 0x%08lX )\n", table, key, keylen, hash) );
 
   assert( table != NULL );
   assert( key   != NULL );
@@ -1264,15 +1276,15 @@ int HT_exists( const HashTable table, const char *key, int keylen, HashSum hash 
 
   node = table->root[hash & table->bmask];
 
-  DEBUG( MAIN, ("key [%s] hash 0x%08X bucket %d/%d\n",
-                key, hash, (hash & table->bmask) + 1, 1<<table->size) );
+  DEBUG( MAIN, ("key [%s] hash 0x%08lX bucket %lu/%d\n",
+                key, hash, (hash & table->bmask) + 1U, 1<<table->size) );
 
   while( node ) {
-    DEBUG( MAIN, ("node=0x%08X (key=[%s] len=%d hash=0x%08X)\n",
+    DEBUG( MAIN, ("node=%p (key=[%s] len=%d hash=0x%08lX)\n",
                   node, node->key, node->keylen, node->hash) );
 
     if( (cmp = CMPHASH(hash, node->hash)) == 0
-     && (cmp = memcmp((void *) key, node->key, MINIMUM(keylen, node->keylen))) == 0
+     && (cmp = memcmp((const void *) key, node->key, MINIMUM(keylen, node->keylen))) == 0
      && (cmp = keylen - node->keylen) == 0 ) {
       DEBUG( MAIN, ("hash element found\n") );
       return 1;
@@ -1305,7 +1317,7 @@ int HT_exists( const HashTable table, const char *key, int keylen, HashSum hash 
 
 void HT_reset( const HashTable table )
 {
-  DEBUG( MAIN, ("HT_reset( 0x%08X )\n", table) );
+  DEBUG( MAIN, ("HT_reset( %p )\n", table) );
 
   if( table == NULL )
     return;
@@ -1356,14 +1368,14 @@ int HT_next( const HashTable table, char **ppKey, int *pKeylen, void **ppObj )
 {
   HashNode node;
 
-  DEBUG( MAIN, ("HT_next( 0x%08X, 0x%08X, 0x%08X, 0x%08X )\n", table, ppKey, pKeylen, ppObj) );
+  DEBUG( MAIN, ("HT_next( %p, %p, %p, %p )\n", table, ppKey, pKeylen, ppObj) );
 
   if( table == NULL )
     return 0;
 
   AssertValidPtr( table );
 
-  DEBUG( MAIN, ("i.remain=%d i.pBucket=0x%08X i.pNode=0x%08X\n",
+  DEBUG( MAIN, ("i.remain=%d i.pBucket=%p i.pNode=%p\n",
                 table->i.remain, table->i.pBucket, table->i.pNode) );
 
   while( table->i.remain > 0 ) {
@@ -1379,7 +1391,7 @@ int HT_next( const HashTable table, char **ppKey, int *pKeylen, void **ppObj )
     table->i.pNode = *table->i.pBucket++;
     table->i.remain--;
 
-    DEBUG( MAIN, ("i.remain=%d i.pBucket=0x%08X i.pNode=0x%08X\n",
+    DEBUG( MAIN, ("i.remain=%d i.pBucket=%p i.pNode=%p\n",
                   table->i.remain, table->i.pBucket, table->i.pNode) );
   }
 
@@ -1389,6 +1401,15 @@ int HT_next( const HashTable table, char **ppKey, int *pKeylen, void **ppObj )
 }
 
 #ifdef DEBUG_HASH
+
+#ifdef UTIL_FORMAT_CHECK
+static void debug_check( char *str __attribute(( __unused__ )), ... )
+{
+  fprintf( stderr, "compiled with UTIL_FORMAT_CHECK, please don't run\n" );
+  abort();
+}
+#endif
+
 int SetDebugHash( void (*dbfunc)(char *, ...), unsigned long dbflags )
 {
   gs_dbfunc  = dbfunc;

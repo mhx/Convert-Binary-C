@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/14 20:16:20 +0000 $
-* $Revision: 22 $
-* $Snapshot: /Convert-Binary-C/0.09 $
+* $Date: 2003/01/23 18:43:22 +0000 $
+* $Revision: 23 $
+* $Snapshot: /Convert-Binary-C/0.10 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -114,9 +114,9 @@ static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct )
 
   LL_foreach( pStructDecl, pStruct->declarations ) {
 
-    CT_DEBUG( CTLIB, ("%d declarators in struct declaration, tflags=0x%08X ptr=0x%08X",
-              LL_count(pStructDecl->declarators), pStructDecl->type.tflags,
-              pStructDecl->type.ptr) );
+    CT_DEBUG( CTLIB, ("%d declarators in struct declaration, tflags=0x%08lX ptr=%p",
+              LL_count(pStructDecl->declarators),
+              (unsigned long) pStructDecl->type.tflags, pStructDecl->type.ptr) );
 
     pStructDecl->offset = pStruct->tflags & T_STRUCT ? -1 : 0;
     pStructDecl->size   = 0;
@@ -128,7 +128,8 @@ static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct )
                   pDecl->identifier[0] ? pDecl->identifier : "<no-identifier>") );
 
         GetTypeInfo( pCPC, &pStructDecl->type, pDecl, &size, &align, NULL, &flags );
-        CT_DEBUG( CTLIB, ("declarator size=%d, align=%d, flags=0x%08X", size, align, flags) );
+        CT_DEBUG( CTLIB, ("declarator size=%d, align=%d, flags=0x%08lX",
+                          size, align, (unsigned long) flags) );
 
         if( (flags & T_HASBITFIELD) || pDecl->bitfield_size >= 0 ) {
           CT_DEBUG( CTLIB, ("found bitfield '%s' in '%s %s'",
@@ -181,7 +182,8 @@ static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct )
       CT_DEBUG( CTLIB, ("current declaration is an unnamed struct/union") );
 
       GetTypeInfo( pCPC, &pStructDecl->type, NULL, &size, &align, NULL, &flags );
-      CT_DEBUG( CTLIB, ("unnamed struct/union: size=%d, align=%d, flags=0x%08X", size, align, flags) );
+      CT_DEBUG( CTLIB, ("unnamed struct/union: size=%d, align=%d, flags=0x%08lX",
+                        size, align, (unsigned long) flags) );
 
       if( flags & T_HASBITFIELD ) {
         CT_DEBUG( CTLIB, ("found bitfield in unnamed struct/union") );
@@ -297,7 +299,7 @@ int ParseBuffer( const char *filename, const Buffer *pBuf,
   struct lexer_state lexer;
   ParserState       *pState;
 
-  CT_DEBUG( CTLIB, ("ctparse::ParseBuffer( %s, 0x%08X, 0x%08X, 0x%08X )",
+  CT_DEBUG( CTLIB, ("ctparse::ParseBuffer( %s, %p, %p, %p )",
             filename ? filename : BUFFER_NAME, pBuf, pCPI, pCPC) );
 
   /*----------------------------*/
@@ -649,6 +651,13 @@ void UpdateParseInfo( CParseInfo *pCPI, const CParseConfig *pCPC )
 *
 *******************************************************************************/
 
+#define PTR_NOT_FOUND( ptr )                                                   \
+        do {                                                                   \
+          fprintf( stderr, "FATAL: pointer " #ptr " (%p) not found! (%s:%d)\n",\
+                           ptr, __FILE__, __LINE__ );                          \
+          abort();                                                             \
+        } while(0)
+
 void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
 {
   HashTable      ptrmap;
@@ -685,7 +694,7 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
     Enumerator    *pEnum;
     EnumSpecifier *pClone = enumspec_clone( pES );
 
-    CT_DEBUG( CTLIB, ("storing pointer to map: 0x%08X <=> 0x%08X", pES, pClone) );
+    CT_DEBUG( CTLIB, ("storing pointer to map: %p <=> %p", pES, pClone) );
     HT_store( ptrmap, (const char *) &pES, sizeof( pES ), 0, pClone );
     LL_push( pDest->enums, pClone );
 
@@ -701,7 +710,7 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
   LL_foreach( pStruct, pSrc->structs ) {
     Struct *pClone = struct_clone( pStruct );
 
-    CT_DEBUG( CTLIB, ("storing pointer to map: 0x%08X <=> 0x%08X", pStruct, pClone) );
+    CT_DEBUG( CTLIB, ("storing pointer to map: %p <=> %p", pStruct, pClone) );
     HT_store( ptrmap, (const char *) &pStruct, sizeof( pStruct ), 0, pClone );
     LL_push( pDest->structs, pClone );
 
@@ -721,7 +730,7 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
     while(   (pOld = LL_next(pTDL->typedefs))   != NULL
           && (pNew = LL_next(pClone->typedefs)) != NULL
          ) {
-      CT_DEBUG( CTLIB, ("storing pointer to map: 0x%08X <=> 0x%08X", pOld, pNew) );
+      CT_DEBUG( CTLIB, ("storing pointer to map: %p <=> %p", pOld, pNew) );
       HT_store( ptrmap, (const char *) &pOld, sizeof( pOld ), 0, pNew );
       HT_store( pDest->htTypedefs, pNew->pDecl->identifier, 0, 0, pNew );
     }
@@ -742,7 +751,7 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
     while(   HT_next( pSrc->htFiles, NULL, NULL, &pOld)
           && HT_next( pDest->htFiles, NULL, NULL, &pNew)
          ) {
-      CT_DEBUG( CTLIB, ("storing pointer to map: 0x%08X <=> 0x%08X", pOld, pNew) );
+      CT_DEBUG( CTLIB, ("storing pointer to map: %p <=> %p", pOld, pNew) );
       HT_store( ptrmap, (const char *) &pOld, sizeof( pOld ), 0, pNew );
     }
   }
@@ -755,17 +764,12 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
     ptr = HT_get( ptrmap, (const char *) &pES->context.pFI,
                           sizeof(void *), 0 );
 
-    CT_DEBUG( CTLIB, ("EnumSpec @ 0x%08X: 0x%08X => 0x%08X",
-                      pES, pES->context.pFI, ptr) );
+    CT_DEBUG( CTLIB, ("EnumSpec @ %p: %p => %p", pES, pES->context.pFI, ptr) );
 
     if( ptr )
       pES->context.pFI = ptr;
-    else {
-      fprintf( stderr, "FATAL: pointer 0x%08X not found!\n",
-                       pES->context.pFI );
-      abort();
-    }
-    
+    else
+      PTR_NOT_FOUND( pES->context.pFI );
   }
 
   CT_DEBUG( CTLIB, ("remapping pointers for structs") );
@@ -774,7 +778,7 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
     StructDeclaration *pStructDecl;
     void *ptr;
 
-    CT_DEBUG( CTLIB, ("remapping pointers for struct @ 0x%08X ('%s')",
+    CT_DEBUG( CTLIB, ("remapping pointers for struct @ %p ('%s')",
                       pStruct, pStruct->identifier) );
 
     LL_foreach( pStructDecl, pStruct->declarations ) {
@@ -782,32 +786,26 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
         ptr = HT_get( ptrmap, (const char *) &pStructDecl->type.ptr,
                               sizeof(void *), 0 );
 
-        CT_DEBUG( CTLIB, ("StructDecl @ 0x%08X: 0x%08X => 0x%08X",
+        CT_DEBUG( CTLIB, ("StructDecl @ %p: %p => %p",
                           pStructDecl, pStructDecl->type.ptr, ptr) );
 
         if( ptr )
           pStructDecl->type.ptr = ptr;
-        else {
-          fprintf( stderr, "FATAL: pointer 0x%08X not found!\n",
-                           pStructDecl->type.ptr );
-          abort();
-        }
+        else
+          PTR_NOT_FOUND( pStructDecl->type.ptr );
       }
     }
 
     ptr = HT_get( ptrmap, (const char *) &pStruct->context.pFI,
                           sizeof(void *), 0 );
 
-    CT_DEBUG( CTLIB, ("Struct @ 0x%08X: 0x%08X => 0x%08X",
+    CT_DEBUG( CTLIB, ("Struct @ %p: %p => %p",
                       pStruct, pStruct->context.pFI, ptr) );
 
     if( ptr )
       pStruct->context.pFI = ptr;
-    else {
-      fprintf( stderr, "FATAL: pointer 0x%08X not found!\n",
-                       pStruct->context.pFI );
-      abort();
-    }
+    else
+      PTR_NOT_FOUND( pStruct->context.pFI );
   }
 
   CT_DEBUG( CTLIB, ("remapping pointers for typedef lists") );
@@ -817,21 +815,20 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
       void *ptr = HT_get( ptrmap, (const char *) &pTDL->type.ptr,
                                   sizeof(void *), 0 );
 
-      CT_DEBUG( CTLIB, ("TypedefList @ 0x%08X: 0x%08X => 0x%08X",
+      CT_DEBUG( CTLIB, ("TypedefList @ %p: %p => %p",
                         pTDL, pTDL->type.ptr, ptr) );
 
       if( ptr )
         pTDL->type.ptr = ptr;
-      else {
-        fprintf( stderr, "FATAL: pointer 0x%08X not found!\n",
-                         pTDL->type.ptr );
-        abort();
-      }
+      else
+        PTR_NOT_FOUND( pTDL->type.ptr );
     }
   }
 
   HT_destroy( ptrmap, NULL );
 }
+
+#undef PTR_NOT_FOUND
 
 /*******************************************************************************
 *
@@ -859,9 +856,9 @@ ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl
   unsigned size;
   ErrorGTI err = GTI_NO_ERROR;
 
-  CT_DEBUG( CTLIB, ("ctparse::GetTypeInfo( pCPC=0x%08X, pTS=0x%08X "
-                    "[flags=0x%08X, ptr=0x%08X], pDecl=0x%08X, pFlags=0x%08X )",
-                    pCPC, pTS, flags, tptr, pDecl, pFlags) );
+  CT_DEBUG( CTLIB, ("ctparse::GetTypeInfo( pCPC=%p, pTS=%p "
+                    "[flags=0x%08lX, ptr=%p], pDecl=%p, pFlags=%p )",
+                    pCPC, pTS, (unsigned long) flags, tptr, pDecl, pFlags) );
 
   if( pFlags )
     *pFlags = 0;
@@ -907,7 +904,7 @@ ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl
            : ((EnumSpecifier *) tptr)->sizes[-pCPC->enum_size];
     }
     else {
-      CT_DEBUG( CTLIB, ("neither enum_size (%d) nor enum pointer (0x%08X) in GetTypeInfo",
+      CT_DEBUG( CTLIB, ("neither enum_size (%d) nor enum pointer (%p) in GetTypeInfo",
                         pCPC->enum_size, tptr) );
       size = pCPC->int_size ? pCPC->int_size : sizeof( int );
       err = GTI_NO_ENUM_SIZE;
@@ -977,10 +974,10 @@ ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl
   if( pDecl && pDecl->array ) {
     Value *pValue;
 
-    CT_DEBUG( CTLIB, ("processing array [0x%08X]", pDecl->array) );
+    CT_DEBUG( CTLIB, ("processing array [%p]", pDecl->array) );
 
     LL_foreach( pValue, pDecl->array ) {
-      CT_DEBUG( CTLIB, ("[%d]", pValue->iv) );
+      CT_DEBUG( CTLIB, ("[%ld]", pValue->iv) );
       size *= pValue->iv;
       if( pFlags && IS_UNSAFE_VAL( *pValue ) )
         *pFlags |= T_UNSAFE_VAL;
@@ -990,11 +987,11 @@ ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl
   if( pSize )
     *pSize = size;
 
-  CT_DEBUG( CTLIB, ("ctparse::GetTypeInfo( size(0x%08X)=%d, align(0x%08X)=%d, "
-                    "item(0x%08X)=%d, bitfields(0x%08X)=%d ) finished",
+  CT_DEBUG( CTLIB, ("ctparse::GetTypeInfo( size(%p)=%d, align(%p)=%d, "
+                    "item(%p)=%d, flags(%p)=0x%08lX ) finished",
                     pSize, pSize ? *pSize : 0, pAlign, pAlign ? *pAlign : 0,
                     pItemSize, pItemSize ? *pItemSize : 0,
-                    pFlags, pFlags ? *pFlags : 0) );
+                    pFlags, (unsigned long) (pFlags ? *pFlags : 0)) );
 
   return err;
 }
