@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/06/03 16:41:14 +0100 $
-# $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.02 $
+# $Date: 2002/09/25 21:25:55 +0100 $
+# $Revision: 4 $
+# $Snapshot: /Convert-Binary-C/0.03 $
 # $Source: /t/c_misc.t $
 #
 ################################################################################
@@ -35,6 +35,7 @@ eval {
   $p = new Convert::Binary::C PointerSize => 4,
                               EnumSize    => 4,
                               IntSize     => 4,
+                              LongSize    => 4,
                               Alignment   => 2,
                               ByteOrder   => 'BigEndian',
                               EnumType    => 'String';

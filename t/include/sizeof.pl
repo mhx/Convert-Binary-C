@@ -1,3 +1,20 @@
+################################################################################
+#
+# $Project: /Convert-Binary-C $
+# $Author: mhx $
+# $Date: 2002/09/25 21:32:24 +0100 $
+# $Revision: 2 $
+# $Snapshot: /Convert-Binary-C/0.03 $
+# $Source: /t/include/sizeof.pl $
+#
+################################################################################
+# 
+# Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
+# This program is free software; you can redistribute it and/or
+# modify it under the same terms as Perl itself.
+# 
+################################################################################
+
 %size = (
   'AMT'                        => 272,
   'AMTS'                       =>  12,
@@ -29,7 +46,7 @@
   'LOOP'                       =>  42,
   'MAGIC'                      =>  24,
   'MGVTBL'                     =>  20,
-  'NV'                         =>   4,
+  'NV'                         =>   8,
   'OP'                         =>  22,
   'PADOFFSET'                  =>   4,
   'PADOP'                      =>  26,
@@ -58,17 +75,17 @@
   'UNOP'                       =>  26,
   'UV'                         =>   4,
   'XPV'                        =>  12,
-  'XPVAV'                      =>  37,
-  'XPVBM'                      =>  35,
-  'XPVCV'                      =>  70,
-  'XPVFM'                      =>  74,
-  'XPVGV'                      =>  45,
-  'XPVHV'                      =>  44,
-  'XPVIO'                      =>  84,
+  'XPVAV'                      =>  41,
+  'XPVBM'                      =>  39,
+  'XPVCV'                      =>  74,
+  'XPVFM'                      =>  78,
+  'XPVGV'                      =>  49,
+  'XPVHV'                      =>  48,
+  'XPVIO'                      =>  88,
   'XPVIV'                      =>  16,
-  'XPVLV'                      =>  41,
-  'XPVMG'                      =>  28,
-  'XPVNV'                      =>  20,
+  'XPVLV'                      =>  45,
+  'XPVMG'                      =>  32,
+  'XPVNV'                      =>  24,
   'XPVUV'                      =>  16,
   'XRV'                        =>   4,
   'XSINIT_t'                   =>   4,
@@ -217,16 +234,16 @@
   'dirent'                     => 267,
   'dirent64'                   => 275,
   'div_t'                      =>   8,
-  'double_t'                   =>   4,
+  'double_t'                   =>   8,
   'drand48_data'               =>  20,
   'error_t'                    =>   4,
-  'exception'                  =>  20,
+  'exception'                  =>  32,
   'exitlistentry'              =>   8,
   'expectation'                =>   1,
   'fd_mask'                    =>   4,
   'fd_set'                     => 128,
   'filter_t'                   =>   4,
-  'float_t'                    =>   4,
+  'float_t'                    =>   8,
   'flock'                      =>  16,
   'flock64'                    =>  24,
   'fpos64_t'                   =>  16,
@@ -421,17 +438,17 @@
   'winsize'                    =>   8,
   'wint_t'                     =>   4,
   'xpv'                        =>  12,
-  'xpvav'                      =>  37,
-  'xpvbm'                      =>  35,
-  'xpvcv'                      =>  70,
-  'xpvfm'                      =>  74,
-  'xpvgv'                      =>  45,
-  'xpvhv'                      =>  44,
-  'xpvio'                      =>  84,
+  'xpvav'                      =>  41,
+  'xpvbm'                      =>  39,
+  'xpvcv'                      =>  74,
+  'xpvfm'                      =>  78,
+  'xpvgv'                      =>  49,
+  'xpvhv'                      =>  48,
+  'xpvio'                      =>  88,
   'xpviv'                      =>  16,
-  'xpvlv'                      =>  41,
-  'xpvmg'                      =>  28,
-  'xpvnv'                      =>  20,
+  'xpvlv'                      =>  45,
+  'xpvmg'                      =>  32,
+  'xpvnv'                      =>  24,
   'xpvuv'                      =>  16,
   'xrv'                        =>   4,
 );

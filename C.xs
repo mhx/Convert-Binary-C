@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/08/21 14:12:05 +0100 $
-* $Revision: 12 $
-* $Snapshot: /Convert-Binary-C/0.02 $
+* $Date: 2002/09/25 21:16:58 +0100 $
+* $Revision: 14 $
+* $Snapshot: /Convert-Binary-C/0.03 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -3066,8 +3066,8 @@ CBC::new( ... )
 		  RETVAL->cfg.int_size          = DEFAULT_INT_SIZE;
 		  RETVAL->cfg.short_size        = DEFAULT_SHORT_SIZE;
 		  RETVAL->cfg.long_size         = DEFAULT_LONG_SIZE;
-		  RETVAL->cfg.float_size        = DEFAULT_LONG_SIZE;
-		  RETVAL->cfg.double_size       = DEFAULT_LONG_SIZE;
+		  RETVAL->cfg.float_size        = DEFAULT_FLOAT_SIZE;
+		  RETVAL->cfg.double_size       = DEFAULT_DOUBLE_SIZE;
 		  RETVAL->cfg.alignment         = DEFAULT_ALIGNMENT;
 		  RETVAL->cfg.htSizeEnumerators = DEFAULT_HT_SIZE_ENUMERATORS;
 		  RETVAL->cfg.htSizeEnums       = DEFAULT_HT_SIZE_ENUMS;
@@ -3425,7 +3425,7 @@ CBC::pack( type, data, string = NULL )
 	SV *string
 
 	PREINIT:
-		STRLEN size;
+		unsigned size;
 		char *buffer;
 		TypePointer tp;
 		u_32 flags = 0;

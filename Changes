@@ -16,3 +16,18 @@ Version 0.02
 - added copyright notice to the README file
 
 - minor corrections/cleanups
+
+------------
+Version 0.03
+------------
+
+- fixed default sizes for floats and double in object constructor
+
+- fixed some 64-bit architecture issues
+
+- fixed bug in bison parser
+
+- fixed problems with some tests
+
+- added support for dec_osf platform
+

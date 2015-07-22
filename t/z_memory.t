@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/08/16 21:58:46 +0100 $
-# $Revision: 4 $
-# $Snapshot: /Convert-Binary-C/0.02 $
+# $Date: 2002/09/25 21:29:14 +0100 $
+# $Revision: 5 $
+# $Snapshot: /Convert-Binary-C/0.03 $
 # $Source: /t/z_memory.t $
 #
 ################################################################################
@@ -22,7 +22,7 @@ $^W = 1;
 
 BEGIN {
   $debug = Convert::Binary::C::feature( 'debug' );
-  plan tests => $debug ? 55 : 1
+  plan tests => $debug ? 64 : 1
 }
 
 ok( defined $debug );
@@ -78,7 +78,7 @@ sub get_alloc_info {
   
   open MEM, $file or die $!;
   while( <MEM> ) {
-    /^(.*?):(A|F|V)=(?:(\d+)\@)?([0-9a-zA-Z]{8})$/ or next;
+    /^(.*?):(A|F|V)=(?:(\d+)\@)?([0-9a-zA-Z]{8,})$/ or next;
     if( $2 eq 'A' ) {
       exists $alloc{$4} and
         push @{$info{multi_alloc}}, "0x$4 in $1 (previously allocated in $alloc{$4}[0])";

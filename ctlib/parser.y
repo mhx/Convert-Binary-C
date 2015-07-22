@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/05/22 13:30:40 +0100 $
-* $Revision: 3 $
-* $Snapshot: /Convert-Binary-C/0.02 $
+* $Date: 2002/09/25 21:25:04 +0100 $
+* $Revision: 5 $
+* $Snapshot: /Convert-Binary-C/0.03 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -745,48 +745,42 @@ declaration
     specifier must be supplied */
 
 default_declaring_list  /* Can't redeclare typedef names */
-	: declaration_qualifier_list identifier_declarator
+	: declaration_qualifier_list identifier_declarator initializer_opt
 	  {
 	    $$.tflags = $1;
 	    $$.ptr    = NULL;
 	    MAKE_TYPEDEF( $$, $2 );
 	  }
-	  initializer_opt
-	| type_qualifier_list identifier_declarator
+	| type_qualifier_list identifier_declarator initializer_opt
 	  {
 	    $$.tflags = 0;
 	    $$.ptr    = NULL;
 	    decl_delete( EX_DECL( $2 ) );
 	  }
-	  initializer_opt
-	| default_declaring_list ',' identifier_declarator
+	| default_declaring_list ',' identifier_declarator initializer_opt
 	  {
 	    $$ = $1;
 	    MAKE_TYPEDEF( $$, $3 );
 	  }
-	  initializer_opt
 	;
 
 declaring_list
-	: declaration_specifier declarator
+	: declaration_specifier declarator initializer_opt
 	  {
 	    $$ = $1;
 	    MAKE_TYPEDEF( $$, $2 );
 	  }
-	  initializer_opt
-	| type_specifier declarator
+	| type_specifier declarator initializer_opt
 	  {
 	    $$.tflags = 0;
 	    $$.ptr    = NULL;
 	    decl_delete( EX_DECL( $2 ) );
 	  }
-	  initializer_opt
-	| declaring_list ',' declarator
+	| declaring_list ',' declarator initializer_opt
 	  {
 	    $$ = $1;
 	    MAKE_TYPEDEF( $$, $3 );
 	  }
-	  initializer_opt
 	;
 
 /* those are all potential typedefs */

@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/08/21 15:03:49 +0100 $
-# $Revision: 4 $
-# $Snapshot: /Convert-Binary-C/0.02 $
+# $Date: 2002/09/25 21:26:44 +0100 $
+# $Revision: 5 $
+# $Snapshot: /Convert-Binary-C/0.03 $
 # $Source: /t/g_parse.t $
 #
 ################################################################################
@@ -26,9 +26,15 @@ BEGIN { plan tests => 64 }
 # create object (1 tests)
 #===================================================================
 eval {
-  $p = new Convert::Binary::C EnumSize => 0,
-                              Include  => ['t/include/perlinc',
-                                           't/include/include'];
+  $p = new Convert::Binary::C EnumSize    => 0,
+                              ShortSize   => 2,
+                              IntSize     => 4,
+                              LongSize    => 4,
+                              PointerSize => 4,
+                              FloatSize   => 4,
+                              DoubleSize  => 8,
+                              Include     => ['t/include/perlinc',
+                                              't/include/include'];
 };
 ok($@,'',"failed to create Convert::Binary::C object");
 

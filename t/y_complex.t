@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/08/31 12:23:44 +0100 $
-# $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.02 $
+# $Date: 2002/09/25 21:27:55 +0100 $
+# $Revision: 4 $
+# $Snapshot: /Convert-Binary-C/0.03 $
 # $Source: /t/y_complex.t $
 #
 ################################################################################
@@ -12399,9 +12399,14 @@ sub checkrc
   }
 }
 
-my $p = new Convert::Binary::C ByteOrder => 'LittleEndian',
-                               IntSize   => 4,
-                               Alignment => 4;
+my $p = new Convert::Binary::C ByteOrder   => 'LittleEndian',
+                               ShortSize   => 2,
+                               IntSize     => 4,
+                               LongSize    => 4,
+                               PointerSize => 4,
+                               FloatSize   => 4,
+                               DoubleSize  => 8,
+                               Alignment   => 4;
 
 $p->parse( $types );
 

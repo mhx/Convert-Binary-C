@@ -12,7 +12,7 @@
 # $Author: mhx $
 # $Date: 2002/08/21 14:58:23 +0100 $
 # $Revision: 9 $
-# $Snapshot: /Convert-Binary-C/0.02 $
+# $Snapshot: /Convert-Binary-C/0.03 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -31,7 +31,7 @@ use Carp;
 use vars qw( @ISA $VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
-$VERSION = do{my@r='$Snapshot: /Convert-Binary-C/0.02 $'=~/(\d+\.\d+)/;@r?$r[0]:'9.99'};
+$VERSION = do{my@r='$Snapshot: /Convert-Binary-C/0.03 $'=~/(\d+\.\d+)/;@r?$r[0]:'9.99'};
 
 bootstrap Convert::Binary::C $VERSION;
 

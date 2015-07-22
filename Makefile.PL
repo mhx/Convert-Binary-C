@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/08/30 11:03:00 +0100 $
-# $Revision: 10 $
-# $Snapshot: /Convert-Binary-C/0.02 $
+# $Date: 2002/09/25 21:24:10 +0100 $
+# $Revision: 12 $
+# $Snapshot: /Convert-Binary-C/0.03 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -101,8 +101,8 @@ $BISON = $Config{bison} || 'bison';
 
 @DEFINE = qw(
   ABORT_IF_NO_MEM
-  __STRICT_ANSI__
   UCPP_CONFIG
+  _XOPEN_SOURCE_EXTENDED
 );
 
 # Supported features, and flags to set when (e)nabled or (d)isabled
@@ -197,6 +197,11 @@ if( defined $optimize ) {
 # HP-UX cc/acc compilers cannot access non-aligned data by default
 if( $^O eq 'hpux' and $Config{cc} eq 'cc' || $Config{cc} eq 'aCC' ) {
   push @MAKER, ('CCFLAGS' => "$Config{ccflags} +u1");
+}
+
+# HP-UX cc/acc compilers cannot access non-aligned data by default
+if( $^O eq 'dec_osf' and $Config{cc} eq 'cc' ) {
+  push @MAKER, ('CCFLAGS' => "$Config{ccflags} -assume noaligned_objects");
 }
 
 # On AIX systems, this should be defined for ucpp
