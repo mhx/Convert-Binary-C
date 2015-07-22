@@ -1,5 +1,12 @@
 -------------------------
-Version 0.52 (2004-05-25)
+Version 0.53 (2004-05-25)
+-------------------------
+
+* fixed a bug that messed up the return values when using
+  unpack in list context together with OrderMembers => 1
+
+-------------------------
+Version 0.52 (2004-05-24)
 -------------------------
 
 * added new CompoundAlignment option

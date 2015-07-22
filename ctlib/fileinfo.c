@@ -12,7 +12,7 @@
 * $Author: mhx $
 * $Date: 2004/03/22 20:46:47 +0000 $
 * $Revision: 6 $
-* $Snapshot: /Convert-Binary-C/0.52 $
+* $Snapshot: /Convert-Binary-C/0.53 $
 * $Source: /ctlib/fileinfo.c $
 *
 ********************************************************************************

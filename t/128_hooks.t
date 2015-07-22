@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2004/03/23 21:00:43 +0000 $
 # $Revision: 4 $
-# $Snapshot: /Convert-Binary-C/0.52 $
+# $Snapshot: /Convert-Binary-C/0.53 $
 # $Source: /t/128_hooks.t $
 #
 ################################################################################

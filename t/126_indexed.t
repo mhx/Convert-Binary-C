@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:38:04 +0000 $
-# $Revision: 2 $
-# $Snapshot: /Convert-Binary-C/0.52 $
+# $Date: 2004/05/25 19:03:56 +0100 $
+# $Revision: 3 $
+# $Snapshot: /Convert-Binary-C/0.53 $
 # $Source: /t/126_indexed.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 4 }
+BEGIN { plan tests => 45 }
 
 my $reason = do {
   my @w;
@@ -69,3 +69,28 @@ skip( $reason, $keys.",foo", join(',', keys %$unp_o) );
 skip( $reason, $keys, join(',', keys %{$unp_o->{foo}[0]}) );
 skip( $reason, $keys, join(',', keys %{$unp_o->{foo}[1]}) );
 
+my $list = pack 'C*', map { rand(256) } 1 .. 10*$u->sizeof('order');
+
+my @unp_u = $u->unpack('order', $list);
+my @unp_o = $o->unpack('order', $list);
+
+ok(scalar @unp_u, scalar @unp_o);
+
+for my $i (0 .. $#unp_u) {
+  $unp_u = $unp_u[$i];
+  $unp_o = $unp_o[$i];
+
+  $fail = 0;
+
+  for( @keys ) {
+    $unp_u->{$_} == $unp_o->{$_} or $fail++;
+    $unp_u->{foo}[0]{$_} == $unp_o->{foo}[0]{$_} or $fail++;
+    $unp_u->{foo}[1]{$_} == $unp_o->{foo}[1]{$_} or $fail++;
+  }
+  
+  ok( $fail, 0 );
+
+  skip( $reason, $keys.",foo", join(',', keys %$unp_o) );
+  skip( $reason, $keys, join(',', keys %{$unp_o->{foo}[0]}) );
+  skip( $reason, $keys, join(',', keys %{$unp_o->{foo}[1]}) );
+}

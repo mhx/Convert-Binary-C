@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/05/23 23:05:22 +0100 $
-* $Revision: 121 $
-* $Snapshot: /Convert-Binary-C/0.52 $
+* $Date: 2004/05/25 19:03:54 +0100 $
+* $Revision: 122 $
+* $Snapshot: /Convert-Binary-C/0.53 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -7192,19 +7192,32 @@ CBC::unpack( type, string )
 		else
 		  count = mi.size == 0 ? 1 : len / mi.size;
 
-		EXTEND(SP, count);
-
-		for (i = 0; i < count; i++)
+		if (count > 0)
 		{
-		  SV *sv;
+		  SV **sva;
 
-		  pack.buf.pos    = i*mi.size;
-		  pack.bufptr     = pack.buf.buffer + pack.buf.pos;
-		  pack.align_base = 0;
+		  /* newHV_indexed() messes with the stack, so we cannot
+		   * store the return values on the stack immediately...
+		   */
 
-		  sv = GetType(aTHX_ THIS, &pack, &mi.type, mi.pDecl, mi.level);
+		  New(0, sva, count, SV *);
 
-		  PUSHs(sv_2mortal(sv));
+		  for (i = 0; i < count; i++)
+		  {
+		    pack.buf.pos    = i*mi.size;
+		    pack.bufptr     = pack.buf.buffer + pack.buf.pos;
+		    pack.align_base = 0;
+
+		    sva[i] = GetType(aTHX_ THIS, &pack, &mi.type,
+		                           mi.pDecl, mi.level);
+		  }
+
+		  EXTEND(SP, count);
+
+		  for (i = 0; i < count; i++)
+		    PUSHs(sv_2mortal(sva[i]));
+
+		  Safefree(sva);
 		}
 
 		XSRETURN(count);
