@@ -9,17 +9,17 @@ print OUT <<'!NO!SUBS!';
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/02 22:31:00 +0000 $
-# $Revision: 4 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/17 13:39:02 +0100 $
+# $Revision: 5 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /bin/convert.PL $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 #===============================================================================

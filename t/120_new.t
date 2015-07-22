@@ -2,33 +2,36 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/14 21:42:32 +0100 $
-# $Revision: 4 $
+# $Date: 2003/04/17 13:39:10 +0100 $
+# $Revision: 2 $
 # $Snapshot: /Convert-Binary-C/0.13 $
-# $Source: /typemap $
+# $Source: /t/120_new.t $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
-TYPEMAP
-const char *	T_PV
-CBC *		T_OBJECT
+use Test;
+use Convert::Binary::C @ARGV;
 
-OUTPUT
-T_OBJECT
-	sv_setref_pv($arg, CLASS, (void*)$var);
+$^W = 1;
 
-INPUT
-T_OBJECT
-	if (sv_isobject($arg) && SvTYPE(SvRV($arg)) == SVt_PVMG) {
-	  IV tmp = SvIV((SV*)SvRV($arg));
-	  $var = INT2PTR($type, tmp);
-	}
-	else
-	  Perl_croak(aTHX_ \"${Package}::$func_name() : $var is not a blessed SV reference\");
+BEGIN {
+  plan tests => 3;
+}
+
+# This test is basically only for the 901_memory.t test
+
+$c = eval { new Convert::Binary::C };
+ok( $@, '' );
+
+$c = eval { new Convert::Binary::C 'foo' };
+ok( $@, qr/^Number of configuration arguments to new must be even/ );
+
+$c = eval { new Convert::Binary::C foo => 42 };
+ok( $@, qr/^Invalid option 'foo'/ );
 

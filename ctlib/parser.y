@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 19:53:50 +0000 $
-* $Revision: 21 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/17 13:39:03 +0100 $
+* $Revision: 23 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -120,6 +120,7 @@ colleagues include: Bruce Blodgett, and Mark Langley.
 #define c_error( msg )    \
         parser_error( PSTATE, msg )
 
+#define c_parse CTlib_c_parse
 
 /* MACROS */
 
@@ -153,22 +154,22 @@ colleagues include: Bruce Blodgett, and Mark Langley.
 
 #define POSTFIX_DECL( decl, postfix )                                          \
         do {                                                                   \
-	  if( postfix ) {                                                      \
+          if( postfix ) {                                                      \
             EX_ARRAY( postfix );                                               \
-	    if( decl->pointer_flag )                                           \
-	      LL_destroy( postfix, (LLDestroyFunc) value_delete );             \
-	    else                                                               \
-	      LL_delete( LL_splice( decl->array, 0, 0, postfix ) );            \
-	  }                                                                    \
+            if( decl->pointer_flag )                                           \
+              LL_destroy( postfix, (LLDestroyFunc) value_delete );             \
+            else                                                               \
+              LL_delete( LL_splice( decl->array, 0, 0, postfix ) );            \
+          }                                                                    \
         } while(0)
 
 #define MAKE_TYPEDEF( list, decl )                                                \
         do {                                                                      \
-	  Typedef *pTypedef = typedef_new( &(list->type), EX_DECL( decl ) );      \
-	  CT_DEBUG( PARSER, ("making new typedef => %s (list @ %p)",              \
+          Typedef *pTypedef = typedef_new( &(list->type), EX_DECL( decl ) );      \
+          CT_DEBUG( PARSER, ("making new typedef => %s (list @ %p)",              \
                              decl->identifier, list) );                           \
-	  LL_push( list->typedefs, pTypedef );                                    \
-	  HT_store( PSTATE->pCPI->htTypedefs, decl->identifier, 0, 0, pTypedef ); \
+          LL_push( list->typedefs, pTypedef );                                    \
+          HT_store( PSTATE->pCPI->htTypedefs, decl->identifier, 0, 0, pTypedef ); \
         } while(0)
 
 #define UNDEF_VAL( x ) do { x.iv = 0; x.flags = V_IS_UNDEF; } while(0)
@@ -603,7 +604,7 @@ unary_expression
 	      case '*' :
 	      case '&' :
 	        $$ = $2; $$.flags |= V_IS_UNSAFE_PTROP;
-                break;
+	        break;
 
 	      default:
 	        UNDEF_VAL( $$ );
@@ -779,12 +780,12 @@ comma_expression_opt
 
     Example of result of proper declaration binding:
 
-	int a=sizeof(a); / * note that "a" is declared with a type  in
-	    the name space BEFORE parsing the initializer * /
+        int a=sizeof(a); / * note that "a" is declared with a type  in
+            the name space BEFORE parsing the initializer * /
 
-	int b, c[sizeof(b)]; / * Note that the first declarator "b" is
-	     declared  with  a  type  BEFORE the second declarator is
-	     parsed * /
+        int b, c[sizeof(b)]; / * Note that the first declarator "b" is
+             declared  with  a  type  BEFORE the second declarator is
+             parsed * /
 
     */
 
@@ -809,8 +810,8 @@ default_declaring_list  /* Can't redeclare typedef names */
 	        TypeSpec ts;
 	        ts.tflags = $1;
 	        ts.ptr    = NULL;
-                if( (ts.tflags & ANY_TYPE_NAME) == 0 )
-                  ts.tflags |= T_INT;
+	        if( (ts.tflags & ANY_TYPE_NAME) == 0 )
+	          ts.tflags |= T_INT;
 	        $$ = typedef_list_new( ts, LL_new() );
 	        LL_push( PSTATE->pCPI->typedef_lists, $$ );
 	        MAKE_TYPEDEF( $$, $2 );
@@ -845,12 +846,12 @@ declaring_list
 	    }
 	    else {
 	      if( $1.tflags & T_TYPEDEF ) {
-                if( ($1.tflags & ANY_TYPE_NAME) == 0 )
-                  $1.tflags |= T_INT;
-                else if( $1.tflags & T_ENUM )
-                  ((EnumSpecifier *) $1.ptr)->tflags |= T_HASTYPEDEF;
-                else if( $1.tflags & (T_STRUCT | T_UNION) )
-                  ((Struct *) $1.ptr)->tflags |= T_HASTYPEDEF;
+	        if( ($1.tflags & ANY_TYPE_NAME) == 0 )
+	          $1.tflags |= T_INT;
+	        else if( $1.tflags & T_ENUM )
+	          ((EnumSpecifier *) $1.ptr)->tflags |= T_HASTYPEDEF;
+	        else if( $1.tflags & (T_STRUCT | T_UNION) )
+	          ((Struct *) $1.ptr)->tflags |= T_HASTYPEDEF;
 	        $$ = typedef_list_new( $1, LL_new() );
 	        LL_push( PSTATE->pCPI->typedef_lists, $$ );
 	        MAKE_TYPEDEF( $$, $2 );
@@ -1483,7 +1484,7 @@ type_name
 	    if( !IS_LOCAL ) {
 	      unsigned size;
 	      u_32 flags;
-	      (void) GetTypeInfo( PSTATE->pCPC, &$1, NULL, &size, NULL, NULL, &flags );
+	      (void) get_type_info( PSTATE->pCPC, &$1, NULL, &size, NULL, NULL, &flags );
 	      $$.iv    = size;
 	      $$.flags = 0;
 	      if( flags & T_HASBITFIELD )
@@ -1501,7 +1502,7 @@ type_name
 	      else {
 	        unsigned size;
 	        u_32 flags;
-	        (void) GetTypeInfo( PSTATE->pCPC, &$1, NULL, &size, NULL, NULL, &flags );
+	        (void) get_type_info( PSTATE->pCPC, &$1, NULL, &size, NULL, NULL, &flags );
 	        $$.iv = size * $2.multiplicator;
 	        $$.flags = 0;
 	        if( flags & T_HASBITFIELD )
@@ -1522,7 +1523,7 @@ type_name
 	  {
 	    if( !IS_LOCAL ) {
 	      $$.iv = $2.multiplicator * ( $2.pointer_flag ?
-                      PSTATE->pCPC->int_size : PSTATE->pCPC->ptr_size );
+	              PSTATE->pCPC->int_size : PSTATE->pCPC->ptr_size );
 	      $$.flags = 0;
 	    }
 	  }
@@ -1918,10 +1919,10 @@ array_abstract_declarator
 	    }
 	    else {
 	      if( $1 ) {
-                $$ = $1;
+	        $$ = $1;
 	      }
 	      else {
-                $$ = LL_new();
+	        $$ = LL_new();
 	        LL_unshift( PSTATE->arrayList, $$ );
 	        CT_DEBUG( PARSER, ("unshifting array (%p) (count=%d)",
 	                           $$, LL_count(PSTATE->arrayList)) );
@@ -1937,10 +1938,10 @@ array_abstract_declarator
 	    }
 	    else {
 	      if( $1 ) {
-                $$ = $1;
+	        $$ = $1;
 	      }
 	      else {
-                $$ = LL_new();
+	        $$ = LL_new();
 	        LL_unshift( PSTATE->arrayList, $$ );
 	        CT_DEBUG( PARSER, ("unshifting array (%p) (count=%d)",
 	                           $$, LL_count(PSTATE->arrayList)) );
@@ -2064,7 +2065,7 @@ static inline int c_lex( void *pYYLVAL, ParserState *pState )
 
           if( pFI == NULL ) {
             pFI = fileinfo_new( pLexer->input, pLexer->ctok->name, len );
-	    HT_store( pState->pCPI->htFiles, pLexer->ctok->name, len, 0, pFI );
+            HT_store( pState->pCPI->htFiles, pLexer->ctok->name, len, 0, pFI );
           }
 
           pState->pFI = pFI;
@@ -2206,9 +2207,9 @@ static inline void *ex_object( LinkedList list, void *object )
 
 static void parser_error( ParserState *pState, char *msg )
 {
-  FormatError( pState->pCPI, "%s, line %d: %s",
-               pState->pFI ? pState->pFI->name : "[unknown]",
-               pState->pLexer->ctok->line, msg );
+  format_error( pState->pCPI, "%s, line %d: %s",
+                pState->pFI ? pState->pFI->name : "[unknown]",
+                pState->pLexer->ctok->line, msg );
 }
 
 /*******************************************************************************
@@ -2463,7 +2464,7 @@ ParserState *c_parser_new( const CParseConfig *pCPC, CParseInfo *pCPI,
   pState->structDeclListsList = LL_new();
 
   pragma_init( &pState->pragma );
- 
+
   return pState;
 }
 

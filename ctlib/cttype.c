@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 18:43:22 +0000 $
-* $Revision: 11 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/17 13:39:03 +0100 $
+* $Revision: 13 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/cttype.c $
 *
 ********************************************************************************
@@ -71,7 +71,7 @@
     count += strlen( src->identifier );                                        \
   dest = (type *) Alloc( count );                                              \
   memcpy( dest, src, count )
-  
+
 
 /*===== TYPEDEFS =============================================================*/
 
@@ -452,6 +452,8 @@ Declarator *decl_new( char *identifier, int id_len )
   pDecl->array         = LL_new();
   pDecl->pointer_flag  =  0;
   pDecl->bitfield_size = -1;
+  pDecl->offset        = -1;
+  pDecl->size          = -1;
 
   CT_DEBUG( TYPE, ("type::decl_new( identifier=\"%s\" ) = %p",
                    pDecl->identifier, pDecl) );

@@ -7,7 +7,7 @@
  * that running config_h.SH again will wipe out any changes you've made.
  * For a more permanent change edit config.sh and rerun config_h.SH.
  *
- * $Id: config.h 1 2002/04/15 22:26:55 +0100 mhx $
+ * $Id: config.h 3 2003/04/18 23:14:34 +0100 mhx $
  */
 
 /*

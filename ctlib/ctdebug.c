@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 18:43:21 +0000 $
-* $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/14 19:59:03 +0100 $
+* $Revision: 5 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/ctdebug.c $
 *
 ********************************************************************************
@@ -44,14 +44,14 @@
 /*===== GLOBAL VARIABLES =====================================================*/
 
 #ifdef CTYPE_DEBUGGING
-void        (*g_CT_dbfunc)(char *, ...)    = NULL;
-unsigned long g_CT_dbflags                 = 0;
+void        (*g_CT_dbfunc)(const char *, ...) = NULL;
+unsigned long g_CT_dbflags                    = 0;
 #endif
 
 /*===== STATIC VARIABLES =====================================================*/
 
 #ifdef CTYPE_DEBUGGING
-static void (*gs_vprintf)(char *, va_list *) = NULL;
+static void (*gs_vprintf)(const char *, va_list *) = NULL;
 #endif
 
 /*===== STATIC FUNCTIONS =====================================================*/
@@ -61,7 +61,7 @@ static void (*gs_vprintf)(char *, va_list *) = NULL;
 #ifdef CTYPE_DEBUGGING
 
 #ifdef CTYPE_FORMAT_CHECK
-void CT_dbfunc_check( char *str __attribute(( __unused__ )), ... )
+void CT_dbfunc_check( const char *str __attribute(( __unused__ )), ... )
 {
   fprintf( stderr, "compiled with CTYPE_FORMAT_CHECK, please don't run\n" );
   abort();
@@ -85,7 +85,8 @@ void CT_dbfunc_check( char *str __attribute(( __unused__ )), ... )
 *
 *******************************************************************************/
 
-int SetDebugCType( void (*dbfunc)(char *, ...), void (*dbvprintf)(char *, va_list *),
+int SetDebugCType( void (*dbfunc)(const char *, ...),
+                   void (*dbvprintf)(const char *, va_list *),
                    unsigned long dbflags )
 {
   g_CT_dbfunc  = dbfunc;
@@ -111,7 +112,7 @@ int SetDebugCType( void (*dbfunc)(char *, ...), void (*dbvprintf)(char *, va_lis
 *
 *******************************************************************************/
 
-void BisonDebugFunc( void *dummy, char *fmt, ... )
+void BisonDebugFunc( void *dummy, const char *fmt, ... )
 {
   if( dummy != NULL && gs_vprintf != NULL ) {
     va_list l;

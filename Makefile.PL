@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/03/17 21:12:02 +0000 $
-# $Revision: 32 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/18 22:33:25 +0100 $
+# $Revision: 34 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -150,7 +150,11 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
 );
 
 %TOKENIZER = (
-  'ctlib/t_parser.pl' => ['ctlib/t_parser.c', 'ctlib/t_keywords.c', 'ctlib/t_ckeytok.c'],
+  'ctlib/t_parser.pl' => ['ctlib/t_parser.c',
+                          'ctlib/t_keywords.c',
+			  'ctlib/t_ckeytok.c',
+			  'ctlib/t_basic.c',
+			 ],
   'ctlib/t_pragma.pl' =>  'ctlib/t_pragma.c',
   'ctlib/t_config.pl' =>  'ctlib/t_config.c',
 );
@@ -181,7 +185,7 @@ push @REALCLEAN, map { ref $_ ? @$_ : $_ } values %GENERATE;
   elsif( /^help$/ ) {
     die <<ENDUSAGE;
 
-USAGE: perl Makefile.PL enable-feature disable-feature
+USAGE: $^X Makefile.PL enable-feature disable-feature
 
   Available Features: @{[keys %FEATURES]}
 
@@ -190,11 +194,33 @@ ENDUSAGE
   $myopt ? () : $_
 } @ARGV;
 
+if( $Config{usemymalloc} eq 'y' and $FEATURES{threads}{enabled} ) {
+  die <<ENDMSG;
+-->
+--> !!!!!!!!!!!!!   ------------------------------------------
+--> !! S T O P !!    Unsupported Perl configuration detected!
+--> !!!!!!!!!!!!!   ------------------------------------------
+-->
+-->   You're using multithreaded Perl binary that was configured
+-->   with -Dusemymalloc=y. This configuration is very dangerous
+-->   when using XS modules. Convert::Binary::C will work as long
+-->   as you're not actually using threads, but there's a 100%
+-->   chance that it will fail if you're using threads. Either
+-->   disable threads in your binary or don't use Perl's malloc.
+-->
+-->   Huh? Don't understand anything of the above? Don't plan to
+-->   use threads? Ok, just run
+-->
+-->     $^X Makefile.PL disable-threads
+-->
+-->   and build the module as usual.
+-->
+ENDMSG
+}
+
 WriteMakefile(
   'NAME'            => $MODULE,
-  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.12 $'
-                                    =~ /(\d+\.\d+(?:_\d+)?)/;
-                            @r ? $r[0] : '9.99' },
+  'VERSION_FROM'    => 'lib/Convert/Binary/C.pm',
   'ABSTRACT'        => 'Binary Data Conversion using C Types',
   'AUTHOR'          => 'Marcus Holland-Moritz <mhx@cpan.org>',
   'MYEXTLIB'        => 'libctype$(LIB_EXT)',

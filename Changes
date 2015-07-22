@@ -1,35 +1,196 @@
 ------------
-Version 0.01
+Version 0.13
 ------------
 
-* initial release
+* changed behaviour of member method in list context
+  
+  o doesn't return the member's type any longer
+
+  o returns all matching members instead, if multiple
+    members match the given offset
+
+  o this change is NOT backward compatible
+
+  o to get the old behaviour, turn
+
+      ($member, $typeof) = $c->member( $type, $offset );
+
+    into
+
+      $member = $c->member( $type, $offset );
+      $typeof = $c->typeof( $type.$member );
+
+* fixed lots of memory leaks resulting from using sv_dec()
+  where SvREFCNT_dec() should have been used instead
+
+* fixed memory leak when object construction fails
+
+* fixed sourcify for enums in special cases
+
+* fixed segfault in debugging mode
+
+* removed lots of limitations and fixed lots of bugs when
+  dealing with member expressions
+
+* changed module/ccconfig versioning; now
+
+    $Convert::Binary::C::VERSION
+    $Convert::Binary::C::Cached::VERSION
+
+  as well as the version of ccconfig are all set to the
+  version of the distribution to avoid confusion
+
+* added new typeof method
+
+* added dwimmy handling of offset suffixes
+
+* added basic type support for many methods
+
+* allowed basic types to be used without parsing any code
+
+* allowed enum/struct/union prefixes for enum, compound,
+  struct and union methods
+
+* improved performance when using a threaded perl binary
+  by about 20%; performance is now only 5% worse than
+  with a non-threaded binary
+
+* added new "understanding types" section to documentation
+
+* fixed some inconsistencies in documentation
+
+* added some new warnings
+
+* added lots of new tests, some based on coverage analysis
+  using gcov
+
+* fixed some tests that could fail due to random binary
+  input when (un)packing floating point values
+
+* used ppport.h for compatibility
+
+* added check for unsupported perl binary configuration
+  with usemymalloc=y _and_ threads
+
+* lots of code cleanups
 
 ------------
-Version 0.02
+Version 0.12
 ------------
 
-* decreased the complex test file, which speeds up the complex test
-  and decreases the size of the distribution file
+* fixed some bugs in ccconfig
 
-* decreased the number of threads in the threads test
+* fixed dealing with cache file corruption
 
-* added copyright notice to the README file
+* minor fixes in documentation
 
-* minor corrections/cleanups
+* use Devel::Tokenizer::C for tokenizer generation
 
 ------------
-Version 0.03
+Version 0.11
 ------------
 
-* fixed default sizes for floats and double in object constructor
+* fixed problem with recursive data structures in sourcify
 
-* fixed some 64-bit architecture issues
+* minor cleanups
 
-* fixed bug in bison parser
+------------
+Version 0.10
+------------
 
-* fixed problems with some tests
+* added --version for ccconfig
 
-* added support for dec_osf platform
+* cleaned up and fixed format strings
+
+* updated README
+
+------------
+Version 0.09
+------------
+
+* fixed problems with va_list on Linux-PPC that caused some
+  tests to segfault
+
+* updated preprocessor output detection in ccconfig for
+  "smart" preprocessors
+
+* minor fixes and cleanups
+
+* minor documentation updates
+
+------------
+Version 0.08
+------------
+
+* added ccconfig --nodelete option
+
+* added context info for structs/unions/enums
+
+* removed 'c99' feature
+
+* documentation updates and fixes
+
+------------
+Version 0.07
+------------
+
+* fixed packing/unpacking for #pragma pack
+
+* complete rewrite of member() algorithm
+
+* added 'KeywordMap' option to add keywords directly to the parser
+
+* added new behaviour for EnumSize => -1
+
+* extended ranges of some integer options
+
+* integrated new version of ucpp
+
+* added 'ccconfig' script
+
+* example scripts are now generated
+
+* added and improved tests
+
+* documentation updates
+
+* lots of other tiny tweaks
+
+* deprecated 'c99' feature, will be removed in 0.08
+
+------------
+Version 0.06
+------------
+
+* removed options 'HasVOID' and 'HasC99Keywords'
+
+* added 'DisabledKeywords' option, which replaces both 'HasVOID' and
+  'HasC99Keywords', and allows to disable a lot of other keywords, too:
+
+    HasVOID => 0         -->  DisabledKeywords => ['void']
+    HasC99Keywords => 0  -->  DisabledKeywords => [qw(inline restrict)]
+
+* updated parser to ignore type definitions within code blocks
+
+* fixed an access violation when cleaning up the preprocessor
+
+* removed warning when using sourcify method
+
+* added some more tests
+
+* added examples directory and some example scripts
+
+* added more examples to documentation
+
+* documentation fixes/updates
+
+------------
+Version 0.05
+------------
+
+* fixed a bug that suppressed the error message
+  when the cache file could not be created, and
+  added a test for it
 
 ------------
 Version 0.04
@@ -108,120 +269,35 @@ Version 0.04
 * upgraded to bison 1.75
 
 ------------
-Version 0.05
+Version 0.03
 ------------
 
-* fixed a bug that suppressed the error message
-  when the cache file could not be created, and
-  added a test for it
+* fixed default sizes for floats and double in object constructor
+
+* fixed some 64-bit architecture issues
+
+* fixed bug in bison parser
+
+* fixed problems with some tests
+
+* added support for dec_osf platform
 
 ------------
-Version 0.06
+Version 0.02
 ------------
 
-* removed options 'HasVOID' and 'HasC99Keywords'
+* decreased the complex test file, which speeds up the complex test
+  and decreases the size of the distribution file
 
-* added 'DisabledKeywords' option, which replaces both 'HasVOID' and
-  'HasC99Keywords', and allows to disable a lot of other keywords, too:
+* decreased the number of threads in the threads test
 
-    HasVOID => 0         -->  DisabledKeywords => ['void']
-    HasC99Keywords => 0  -->  DisabledKeywords => [qw(inline restrict)]
+* added copyright notice to the README file
 
-* updated parser to ignore type definitions within code blocks
-
-* fixed an access violation when cleaning up the preprocessor
-
-* removed warning when using sourcify method
-
-* added some more tests
-
-* added examples directory and some example scripts
-
-* added more examples to documentation
-
-* documentation fixes/updates
+* minor corrections/cleanups
 
 ------------
-Version 0.07
+Version 0.01
 ------------
 
-* fixed packing/unpacking for #pragma pack
-
-* complete rewrite of member() algorithm
-
-* added 'KeywordMap' option to add keywords directly to the parser
-
-* added new behaviour for EnumSize => -1
-
-* extended ranges of some integer options
-
-* integrated new version of ucpp
-
-* added 'ccconfig' script
-
-* example scripts are now generated
-
-* added and improved tests
-
-* documentation updates
-
-* lots of other tiny tweaks
-
-* deprecated 'c99' feature, will be removed in 0.08
-
-------------
-Version 0.08
-------------
-
-* added ccconfig --nodelete option
-
-* added context info for structs/unions/enums
-
-* removed 'c99' feature
-
-* documentation updates and fixes
-
-------------
-Version 0.09
-------------
-
-* fixed problems with va_list on Linux-PPC that caused some
-  tests to segfault
-
-* updated preprocessor output detection in ccconfig for
-  "smart" preprocessors
-
-* minor fixes and cleanups
-
-* minor documentation updates
-
-------------
-Version 0.10
-------------
-
-* added --version for ccconfig
-
-* cleaned up and fixed format strings
-
-* updated README
-
-------------
-Version 0.11
-------------
-
-* fixed problem with recursive data structures in sourcify
-
-* minor cleanups
-
-------------
-Version 0.12
-------------
-
-* fixed some bugs in ccconfig
-
-* fixed dealing with cache file corruption
-
-* minor fixes in documentation
-
-* use Devel::Tokenizer::C for tokenizer generation
+* initial release
 

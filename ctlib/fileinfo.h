@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/15 16:39:27 +0000 $
-* $Revision: 5 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/12 03:44:13 +0100 $
+* $Revision: 6 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/fileinfo.h $
 *
 ********************************************************************************
@@ -50,8 +50,13 @@ typedef struct {
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
+#define fileinfo_new CTlib_fileinfo_new
 FileInfo *fileinfo_new( FILE *file, char *name, size_t name_len );
+
+#define fileinfo_delete CTlib_fileinfo_delete
 void      fileinfo_delete( FileInfo *pFileInfo );
+
+#define fileinfo_clone CTlib_fileinfo_clone
 FileInfo *fileinfo_clone( const FileInfo *pSrc );
 
 #endif

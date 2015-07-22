@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/07 21:23:55 +0000 $
-# $Revision: 14 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/20 04:15:28 +0100 $
+# $Revision: 18 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /t/804_complex.t $
 #
 ################################################################################
@@ -14,11 +14,11 @@
 #                    ALL CHANGES MADE HERE WILL BE LOST
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 use Test;
@@ -3095,45 +3095,54 @@ for my $align ( 4, sort keys %reference ) {
     skip( $reason, $fail == 0 && $succ > 0 );
   }
 
-  # test if the member() and offsetof() methods work correctly
+  # test if the member(), offsetof() and typeof() methods work correctly
 
   for my $id ( keys %$members ) {
     $fail = 0;
     my $ref = $members->{$id};
 
     for( 0 .. $sizeof->{$id}-1 ) {
-      my($m,$t) = $p->member( $id, $_ );
-      my $m2 = $p->member( $id, $_ );
+      my $m = $p->member( $id, $_ );
+      my @m = $p->member( $id, $_ );
       my $r = $ref->[$_];
 
-      $r =~ /^\d+$/o and $r = "$ref->[$_-$r]+$r";
+      # print "# member( '$id', $_ ) = (", join(', ', map "'$_'", @m), ")\n";
 
-      unless( $m eq $m2 ) {
-        print "# different members in scalar/list context for type '$id', ",
-              "offset $_ (scalar [$m2], list [$m])\n";
+      unless( $m eq $m[0] ) {
+        print "# member mismatch for different contexts ('$m' ne '$m[0]')\n";
         $fail++;
       }
+
+      if( @m > 1 ) {
+        my %seen;
+        for( @m ) {
+          if( $seen{$_}++ ) {
+            print "# duplicate member found in list context output\n";
+            $fail++;
+          }
+        }
+      }
+
+      $r =~ /^\d+$/o and $r = "$ref->[$_-$r]+$r";
+      $r =~ /^\w/o   and $r = ".$r";
+
       unless( $m eq $r ) {
         print "# member mismatch for type '$id', offset $_ (expected $r, got $m)\n";
         $fail++;
       }
-      if( rindex($r, '+') < 0 ) {
+
+      unless( $m =~ /^\+\d+$/ ) {
+        my $t = $p->typeof( $id.$m );
         unless( defined $t ) {
-          print "# undefined type for member without offset ($id, $_)\n";
-          $fail++;
-        }
-        my $o = $p->offsetof( $id, $r );
-        unless( defined $o and $o == $_ ) {
-          print "# offsetof( '$id', '$r' ) == $o, expected $_\n";
+          print "# undefined type for member ($id.$m)\n";
           $fail++;
         }
       }
-      elsif( my($base,$off) = $m =~ /([^+]+)\+(\d+)$/ ) {
-        my($m3,$t2) = $p->member( $id, $_-$off );
-        if( $m3 eq $base and $t2 ne $t ) {
-          print "# types did not match for $id.$m: $t != $t2";
-          $fail++;
-        }
+
+      my $o = $p->offsetof( $id, $m );
+      unless( defined $o and $o == $_ ) {
+        print "# offsetof( '$id', '$m' ) == $o, expected $_\n";
+        $fail++;
       }
     }
     ok( $fail == 0 );
@@ -3147,7 +3156,6 @@ for my $align ( 4, sort keys %reference ) {
 
     for my $size ( keys %$ref ) {
       for my $member ( @{$ref->{$size}} ) {
-        my $s = $p->sizeof( "$id.$member" );
         $size == $p->sizeof( "$id.$member" ) or $fail++;
       }
     }
@@ -3225,4 +3233,5 @@ sub packcheck
 
   ($ok, $rcok);
 }
+
 

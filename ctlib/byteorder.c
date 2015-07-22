@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 18:41:14 +0000 $
-* $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/17 13:39:02 +0100 $
+* $Revision: 5 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/byteorder.c $
 *
 ********************************************************************************
@@ -691,23 +691,23 @@ static void string2integer( IntValue *pInt )
     do {
       if( !isdigit( val = *pStr++ ) )
         goto end_of_string;
-  
+
       lval = 10*lval + (val - (int) '0');
     } while( lval < 429496729 );
-  
+
     while( isdigit( val = *pStr++ ) ) {
       hval = ((hval << 3) | (lval >> 29))
            + ((hval << 1) | (lval >> 31));
-  
+
       lval <<= 1;
-  
+
       temp = lval + (lval << 2);
-  
+
       if( temp < lval )
         hval++;
-  
+
       lval = temp + (int) (val - '0');
-  
+
       if( lval < temp )
         hval++;
     }
@@ -787,7 +787,7 @@ static void string2integer( IntValue *pInt )
 
 void fetch_integer( unsigned size, unsigned sign, const void *src,
                     const ArchSpecs *pAS, IntValue *pIV )
-{                                                   
+{
   register const u_8 *ptr = (const u_8 *) src;
 
   switch( size ) {

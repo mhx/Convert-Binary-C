@@ -2,17 +2,17 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/01 11:30:04 +0000 $
-# $Revision: 14 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/17 13:39:11 +0100 $
+# $Revision: 15 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /t/901_memory.t $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 use Test;
@@ -30,7 +30,7 @@ ok( defined $debug );
 
 $dbfile = 't/debug.out';
 $cmd  = "$^X -w " . join( ' ', map qq["-I$_"], @INC );
-@args = ( debug => "m", debugfile => $dbfile ); 
+@args = ( debug => "m", debugfile => $dbfile );
 
 for my $test ( @files ) {
   print "# testing '$test'\n";
@@ -93,7 +93,7 @@ sub get_alloc_info {
   );
   my $count = 0;
   my $total = 0;
-  
+
   open MEM, $file or die $!;
   while( <MEM> ) {
     /^(.*?):(A|F|V)=(?:(\d+)\@)?([0-9a-zA-Z]{8,})$/ or next;
@@ -126,7 +126,7 @@ sub get_alloc_info {
     $info{max_total}  = $total if $total > $info{max_total};
   }
   close MEM;
-  
+
   for( sort keys %alloc ) {
     push @{$info{not_free}}, "0x$_ in $alloc{$_}[0]";
   }

@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/20 19:11:17 +0000 $
-* $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/14 19:59:02 +0100 $
+* $Revision: 6 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/cpperr.h $
 *
 ********************************************************************************
@@ -36,8 +36,8 @@
 
 typedef struct {
   void * (*newstr)( void );
-  void   (*scatf)( void *, char *, ... );
-  void   (*vscatf)( void *, char *, va_list * );
+  void   (*scatf)( void *, const char *, ... );
+  void   (*vscatf)( void *, const char *, va_list * );
   void   (*warn)( void * );
   void   (*error)( void * );
   void   (*fatal)( void * );
@@ -45,6 +45,7 @@ typedef struct {
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
-void SetPrintFunctions( PrintFunctions *pPF );
+#define set_print_functions CTlib_set_print_functions
+void set_print_functions( PrintFunctions *pPF );
 
 #endif

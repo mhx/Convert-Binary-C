@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 18:43:22 +0000 $
-* $Revision: 23 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/17 13:39:03 +0100 $
+* $Revision: 27 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -65,8 +65,8 @@
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 
-static void GetPathName( char *buf, const char *dir, const char *file );
-static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct );
+static void get_path_name( char *buf, const char *dir, const char *file );
+static void update_struct( const CParseConfig *pCPC, Struct *pStruct );
 
 
 /*===== EXTERNAL VARIABLES ===================================================*/
@@ -79,7 +79,7 @@ static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct );
 
 /*******************************************************************************
 *
-*   ROUTINE: UpdateStruct
+*   ROUTINE: update_struct
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
 *   CHANGED BY:                                   ON:
@@ -94,19 +94,19 @@ static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct );
 *
 *******************************************************************************/
 
-static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct )
+static void update_struct( const CParseConfig *pCPC, Struct *pStruct )
 {
   StructDeclaration *pStructDecl;
   Declarator        *pDecl;
   unsigned           size, align, alignment;
   u_32               flags;
 
-  CT_DEBUG( CTLIB, ("UpdateStruct( %s ), got %d struct declaration(s)",
+  CT_DEBUG( CTLIB, ("update_struct( %s ), got %d struct declaration(s)",
             pStruct->identifier[0] ? pStruct->identifier : "<no-identifier>",
             LL_count(pStruct->declarations)) );
 
   if( pStruct->declarations == NULL ) {
-    CT_DEBUG( CTLIB, ("no struct declarations in UpdateStruct") );
+    CT_DEBUG( CTLIB, ("no struct declarations in update_struct") );
     return;
   }
 
@@ -127,7 +127,7 @@ static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct )
         CT_DEBUG( CTLIB, ("current declarator [%s]",
                   pDecl->identifier[0] ? pDecl->identifier : "<no-identifier>") );
 
-        GetTypeInfo( pCPC, &pStructDecl->type, pDecl, &size, &align, NULL, &flags );
+        get_type_info( pCPC, &pStructDecl->type, pDecl, &size, &align, NULL, &flags );
         CT_DEBUG( CTLIB, ("declarator size=%d, align=%d, flags=0x%08lX",
                           size, align, (unsigned long) flags) );
 
@@ -181,7 +181,7 @@ static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct )
 
       CT_DEBUG( CTLIB, ("current declaration is an unnamed struct/union") );
 
-      GetTypeInfo( pCPC, &pStructDecl->type, NULL, &size, &align, NULL, &flags );
+      get_type_info( pCPC, &pStructDecl->type, NULL, &size, &align, NULL, &flags );
       CT_DEBUG( CTLIB, ("unnamed struct/union: size=%d, align=%d, flags=0x%08lX",
                         size, align, (unsigned long) flags) );
 
@@ -228,14 +228,14 @@ static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct )
   if( pStruct->size % pStruct->align )
     pStruct->size += pStruct->align - pStruct->size % pStruct->align;
 
-  CT_DEBUG( CTLIB, ("UpdateStruct( %s ): size=%d, align=%d",
+  CT_DEBUG( CTLIB, ("update_struct( %s ): size=%d, align=%d",
             pStruct->identifier[0] ? pStruct->identifier : "<no-identifier>",
             pStruct->size, pStruct->align) );
 }
 
 /*******************************************************************************
 *
-*   ROUTINE: GetPathName
+*   ROUTINE: get_path_name
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
 *   CHANGED BY:                                   ON:
@@ -250,7 +250,7 @@ static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct )
 *
 *******************************************************************************/
 
-static void GetPathName( char *buf, const char *dir, const char *file )
+static void get_path_name( char *buf, const char *dir, const char *file )
 {
   int len = 0;
 
@@ -274,7 +274,7 @@ static void GetPathName( char *buf, const char *dir, const char *file )
 
 /*******************************************************************************
 *
-*   ROUTINE: ParseBuffer
+*   ROUTINE: parse_buffer
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
 *   CHANGED BY:                                   ON:
@@ -289,7 +289,7 @@ static void GetPathName( char *buf, const char *dir, const char *file )
 *
 *******************************************************************************/
 
-int ParseBuffer( const char *filename, const Buffer *pBuf,
+int parse_buffer( const char *filename, const Buffer *pBuf,
                  const CParseConfig *pCPC, CParseInfo *pCPI )
 {
   int                rval;
@@ -299,7 +299,7 @@ int ParseBuffer( const char *filename, const Buffer *pBuf,
   struct lexer_state lexer;
   ParserState       *pState;
 
-  CT_DEBUG( CTLIB, ("ctparse::ParseBuffer( %s, %p, %p, %p )",
+  CT_DEBUG( CTLIB, ("ctparse::parse_buffer( %s, %p, %p, %p )",
             filename ? filename : BUFFER_NAME, pBuf, pCPI, pCPC) );
 
   /*----------------------------*/
@@ -309,7 +309,7 @@ int ParseBuffer( const char *filename, const Buffer *pBuf,
   infile = NULL;
 
   if( filename != NULL ) {
-    GetPathName( file, NULL, filename );
+    get_path_name( file, NULL, filename );
 
     CT_DEBUG( CTLIB, ("Trying '%s'...", file) );
 
@@ -317,7 +317,7 @@ int ParseBuffer( const char *filename, const Buffer *pBuf,
 
     if( infile == NULL ) {
       LL_foreach( str, pCPC->includes ) {
-        GetPathName( file, str, filename );
+        get_path_name( file, str, filename );
 
         CT_DEBUG( CTLIB, ("Trying '%s'...", file) );
 
@@ -326,7 +326,7 @@ int ParseBuffer( const char *filename, const Buffer *pBuf,
       }
 
       if( infile == NULL ) {
-        FormatError( pCPI, "Cannot find input file '%s'", filename );
+        format_error( pCPI, "Cannot find input file '%s'", filename );
         return 0;
       }
     }
@@ -494,7 +494,7 @@ int ParseBuffer( const char *filename, const Buffer *pBuf,
 
 /*******************************************************************************
 *
-*   ROUTINE: InitParseInfo
+*   ROUTINE: init_parse_info
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
 *   CHANGED BY:                                   ON:
@@ -509,9 +509,9 @@ int ParseBuffer( const char *filename, const Buffer *pBuf,
 *
 *******************************************************************************/
 
-void InitParseInfo( CParseInfo *pCPI )
+void init_parse_info( CParseInfo *pCPI )
 {
-  CT_DEBUG( CTLIB, ("ctparse::InitParseInfo()") );
+  CT_DEBUG( CTLIB, ("ctparse::init_parse_info()") );
 
   if( pCPI ) {
     pCPI->typedef_lists = NULL;
@@ -530,7 +530,7 @@ void InitParseInfo( CParseInfo *pCPI )
 
 /*******************************************************************************
 *
-*   ROUTINE: FreeParseInfo
+*   ROUTINE: free_parse_info
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
 *   CHANGED BY:                                   ON:
@@ -545,9 +545,9 @@ void InitParseInfo( CParseInfo *pCPI )
 *
 *******************************************************************************/
 
-void FreeParseInfo( CParseInfo *pCPI )
+void free_parse_info( CParseInfo *pCPI )
 {
-  CT_DEBUG( CTLIB, ("ctparse::FreeParseInfo()") );
+  CT_DEBUG( CTLIB, ("ctparse::free_parse_info()") );
 
   if( pCPI ) {
     LL_destroy( pCPI->enums,         (LLDestroyFunc) enumspec_delete );
@@ -561,16 +561,19 @@ void FreeParseInfo( CParseInfo *pCPI )
 
     HT_destroy( pCPI->htFiles,       (LLDestroyFunc) fileinfo_delete );
 
-    if( pCPI->errstr )
+    if( pCPI->errstr ) {
       Free( pCPI->errstr );
+      pCPI->errstr = NULL;
+    }
 
-    InitParseInfo( pCPI );  /* make sure everything is NULL'd */
+
+    init_parse_info( pCPI );  /* make sure everything is NULL'd */
   }
 }
 
 /*******************************************************************************
 *
-*   ROUTINE: ResetParseInfo
+*   ROUTINE: reset_parse_info
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
 *   CHANGED BY:                                   ON:
@@ -585,11 +588,14 @@ void FreeParseInfo( CParseInfo *pCPI )
 *
 *******************************************************************************/
 
-void ResetParseInfo( CParseInfo *pCPI )
+void reset_parse_info( CParseInfo *pCPI )
 {
   Struct *pStruct;
+  TypedefList *pTDL;
+  Typedef *pTD;
 
-  CT_DEBUG( CTLIB, ("ctparse::ResetParseInfo(): got %d struct(s)", LL_count( pCPI->structs )) );
+  CT_DEBUG( CTLIB, ("ctparse::reset_parse_info(): got %d struct(s)",
+                    LL_count( pCPI->structs )) );
 
   /* clear size and align fields */
   LL_foreach( pStruct, pCPI->structs ) {
@@ -599,11 +605,15 @@ void ResetParseInfo( CParseInfo *pCPI )
     pStruct->align = 0;
     pStruct->size  = 0;
   }
+
+  LL_foreach( pTDL, pCPI->typedef_lists )
+    LL_foreach( pTD, pTDL->typedefs )
+      pTD->pDecl->size = -1;
 }
 
 /*******************************************************************************
 *
-*   ROUTINE: UpdateParseInfo
+*   ROUTINE: update_parse_info
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
 *   CHANGED BY:                                   ON:
@@ -618,11 +628,14 @@ void ResetParseInfo( CParseInfo *pCPI )
 *
 *******************************************************************************/
 
-void UpdateParseInfo( CParseInfo *pCPI, const CParseConfig *pCPC )
+void update_parse_info( CParseInfo *pCPI, const CParseConfig *pCPC )
 {
   Struct *pStruct;
+  TypedefList *pTDL;
+  Typedef *pTD;
 
-  CT_DEBUG( CTLIB, ("ctparse::UpdateParseInfo(): got %d struct(s)", LL_count( pCPI->structs )) );
+  CT_DEBUG( CTLIB, ("ctparse::update_parse_info(): got %d struct(s)",
+                    LL_count( pCPI->structs )) );
 
   /* compute size and alignment */
   LL_foreach( pStruct, pCPI->structs ) {
@@ -630,13 +643,22 @@ void UpdateParseInfo( CParseInfo *pCPI, const CParseConfig *pCPC )
                       pStruct->identifier : "<no-identifier>") );
 
     if( pStruct->align == 0 )
-      UpdateStruct( pCPC, pStruct );
+      update_struct( pCPC, pStruct );
   }
+
+  LL_foreach( pTDL, pCPI->typedef_lists )
+    LL_foreach( pTD, pTDL->typedefs )
+      if( pTD->pDecl->size < 0 ) {
+        unsigned size;
+        if( get_type_info( pCPC, pTD->pType, pTD->pDecl, &size,
+	                   NULL, NULL, NULL ) == GTI_NO_ERROR )
+          pTD->pDecl->size = (int) size;
+      }
 }
 
 /*******************************************************************************
 *
-*   ROUTINE: CloneParseInfo
+*   ROUTINE: clone_parse_info
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
 *   CHANGED BY:                                   ON:
@@ -658,14 +680,14 @@ void UpdateParseInfo( CParseInfo *pCPI, const CParseConfig *pCPC )
           abort();                                                             \
         } while(0)
 
-void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
+void clone_parse_info( CParseInfo *pDest, CParseInfo *pSrc )
 {
   HashTable      ptrmap;
   EnumSpecifier *pES;
   Struct        *pStruct;
   TypedefList   *pTDL;
 
-  CT_DEBUG( CTLIB, ("ctparse::CloneParseInfo()") );
+  CT_DEBUG( CTLIB, ("ctparse::clone_parse_info()") );
 
   if(   pSrc->enums         == NULL
      || pSrc->structs       == NULL
@@ -832,7 +854,7 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
 
 /*******************************************************************************
 *
-*   ROUTINE: GetTypeInfo
+*   ROUTINE: get_type_info
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
 *   CHANGED BY:                                   ON:
@@ -847,16 +869,16 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
 *
 *******************************************************************************/
 
-ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
-                      unsigned *pSize, unsigned *pAlign, unsigned *pItemSize,
-                      u_32 *pFlags )
+ErrorGTI get_type_info( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
+                        unsigned *pSize, unsigned *pAlign, unsigned *pItemSize,
+                        u_32 *pFlags )
 {
   u_32 flags = pTS->tflags;
   void *tptr = pTS->ptr;
   unsigned size;
   ErrorGTI err = GTI_NO_ERROR;
 
-  CT_DEBUG( CTLIB, ("ctparse::GetTypeInfo( pCPC=%p, pTS=%p "
+  CT_DEBUG( CTLIB, ("ctparse::get_type_info( pCPC=%p, pTS=%p "
                     "[flags=0x%08lX, ptr=%p], pDecl=%p, pFlags=%p )",
                     pCPC, pTS, (unsigned long) flags, tptr, pDecl, pFlags) );
 
@@ -880,16 +902,16 @@ ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl
       Typedef *pTypedef = (Typedef *) tptr;
       if( pFlags ) {
         u_32 flags;
-        err = GetTypeInfo( pCPC, pTypedef->pType, pTypedef->pDecl, &size,
-                           pAlign, NULL, &flags );
+        err = get_type_info( pCPC, pTypedef->pType, pTypedef->pDecl, &size,
+                             pAlign, NULL, &flags );
         *pFlags |= flags;
       }
       else
-        err = GetTypeInfo( pCPC, pTypedef->pType, pTypedef->pDecl, &size,
-                           pAlign, NULL, NULL );
+        err = get_type_info( pCPC, pTypedef->pType, pTypedef->pDecl, &size,
+                             pAlign, NULL, NULL );
     }
     else {
-      CT_DEBUG( CTLIB, ("NULL pointer to typedef in GetTypeInfo") );
+      CT_DEBUG( CTLIB, ("NULL pointer to typedef in get_type_info") );
       size = pCPC->int_size ? pCPC->int_size : sizeof( int );
       if( pAlign )
         *pAlign = size;
@@ -904,7 +926,7 @@ ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl
            : ((EnumSpecifier *) tptr)->sizes[-pCPC->enum_size];
     }
     else {
-      CT_DEBUG( CTLIB, ("neither enum_size (%d) nor enum pointer (%p) in GetTypeInfo",
+      CT_DEBUG( CTLIB, ("neither enum_size (%d) nor enum pointer (%p) in get_type_info",
                         pCPC->enum_size, tptr) );
       size = pCPC->int_size ? pCPC->int_size : sizeof( int );
       err = GTI_NO_ENUM_SIZE;
@@ -919,7 +941,7 @@ ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl
       Struct *pStruct = (Struct *) tptr;
 
       if( pStruct->declarations == NULL ) {
-        CT_DEBUG( CTLIB, ("no struct declarations in GetTypeInfo") );
+        CT_DEBUG( CTLIB, ("no struct declarations in get_type_info") );
         size = pCPC->int_size ? pCPC->int_size : sizeof( int );
         if( pAlign )
           *pAlign = size;
@@ -927,8 +949,8 @@ ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl
       }
       else {
         if( pStruct->align == 0 )
-          UpdateStruct( pCPC, pStruct );
-    
+          update_struct( pCPC, pStruct );
+
         size = pStruct->size;
         if( pAlign )
           *pAlign = pStruct->align;
@@ -938,7 +960,7 @@ ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl
         *pFlags |= pStruct->tflags & (T_HASBITFIELD | T_UNSAFE_VAL);
     }
     else {
-      CT_DEBUG( CTLIB, ("NULL pointer to struct/union in GetTypeInfo") );
+      CT_DEBUG( CTLIB, ("NULL pointer to struct/union in get_type_info") );
       size = pCPC->int_size ? pCPC->int_size : sizeof( int );
       if( pAlign )
         *pAlign = size;
@@ -987,7 +1009,7 @@ ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl
   if( pSize )
     *pSize = size;
 
-  CT_DEBUG( CTLIB, ("ctparse::GetTypeInfo( size(%p)=%d, align(%p)=%d, "
+  CT_DEBUG( CTLIB, ("ctparse::get_type_info( size(%p)=%d, align(%p)=%d, "
                     "item(%p)=%d, flags(%p)=0x%08lX ) finished",
                     pSize, pSize ? *pSize : 0, pAlign, pAlign ? *pAlign : 0,
                     pItemSize, pItemSize ? *pItemSize : 0,
@@ -998,7 +1020,7 @@ ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl
 
 /*******************************************************************************
 *
-*   ROUTINE: FormatError
+*   ROUTINE: format_error
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
 *   CHANGED BY:                                   ON:
@@ -1013,7 +1035,7 @@ ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl
 *
 *******************************************************************************/
 
-void FormatError( CParseInfo *pCPI, char *format, ... )
+void format_error( CParseInfo *pCPI, char *format, ... )
 {
   va_list args;
   char buffer[1024];
@@ -1021,8 +1043,10 @@ void FormatError( CParseInfo *pCPI, char *format, ... )
 
   va_start( args, format );
 
-  if( pCPI->errstr )
+  if( pCPI->errstr ) {
     Free( pCPI->errstr );
+    pCPI->errstr = NULL;
+  }
 
   len = vsprintf( buffer, format, args );
 
@@ -1034,28 +1058,5 @@ void FormatError( CParseInfo *pCPI, char *format, ... )
     pCPI->errstr = NULL;
 
   va_end( args );
-}
-
-/*******************************************************************************
-*
-*   ROUTINE: FreeError
-*
-*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
-*   CHANGED BY:                                   ON:
-*
-********************************************************************************
-*
-* DESCRIPTION:
-*
-*   ARGUMENTS:
-*
-*     RETURNS:
-*
-*******************************************************************************/
-
-void FreeError( CParseInfo *pCPI )
-{
-  if( pCPI->errstr )
-    Free( pCPI->errstr );
 }
 

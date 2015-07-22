@@ -10,17 +10,17 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/03/17 21:10:05 +0000 $
-# $Revision: 5 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/17 13:39:04 +0100 $
+# $Revision: 7 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /ctlib/t_parser.pl $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 use Devel::Tokenizer::C;
@@ -56,6 +56,17 @@ use Devel::Tokenizer::C;
   void volatile
 );
 
+@basic = qw(
+  char
+  double
+  float
+  int
+  long
+  short
+  signed
+  unsigned
+);
+
 # put them in a hash
 @NDIS{@no_disable} = (1) x @no_disable;
 
@@ -64,6 +75,13 @@ $file = shift;
 if( $file =~ /t_parser/ ) {
   $t = Devel::Tokenizer::C->new( TokenFunc => \&t_parser )
                           ->add_tokens( @disable, @no_disable );
+}
+elsif( $file =~ /t_basic/ ) {
+  $t = Devel::Tokenizer::C->new( TokenFunc   => \&t_basic,
+                                 TokenString => 'c',
+                                 TokenEnd    => '*name',
+                               )
+                          ->add_tokens( @basic );
 }
 elsif( $file =~ /t_keywords/ ) {
   $t = Devel::Tokenizer::C->new( TokenFunc => \&t_keywords, TokenString => 'str' )
@@ -88,6 +106,20 @@ sub t_parser {
     return "if( pState->pCPC->keywords & HAS_KEYWORD_\U$token\E )\n"
          . "  return \U$token\E_TOK;\n";
   }
+};
+
+sub t_basic {
+  my $token = shift;
+  if( $token eq 'long' ) {
+    return <<END
+tflags |= tflags & T_LONG ? T_LONGLONG : T_LONG;
+goto success;
+END
+  }
+  return <<END
+tflags |= T_\U$token\E;
+goto success;
+END
 };
 
 sub t_keywords {

@@ -2,17 +2,17 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/01 11:30:03 +0000 $
-# $Revision: 11 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/17 13:39:07 +0100 $
+# $Revision: 13 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /t/106_parse.t $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 use Test;
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 72 }
+BEGIN { plan tests => 73 }
 
 #===================================================================
 # create object (1 tests)
@@ -240,11 +240,13 @@ sub chkpack
   return 1;
 }
 
-$data = pack 'C*', map rand 256, 1 .. $max_size;
+# don't use random data as it may cause failures
+# for floating point values
+$data = pack 'C*', map { $_ & 0xFF } 1 .. $max_size;
 @fail = ();
 
-for my $id ( @enum_ids, @compound_ids, @typedef_ids ) {
-
+for my $id ( @enum_ids, @compound_ids, @typedef_ids )
+{
   # skip long doubles
   next if grep { $id eq $_ } qw( __convert_long_double float_t double_t );
 
@@ -311,46 +313,47 @@ ok(@fail == 0);
 
 eval {
   %rc = (
-    configure   => $p->configure,
-    include     => $p->Include,
+    configure     => $p->configure,
+    include       => $p->Include,
 
-    enums_s     => scalar $p->enum_names,
-    enums_a     => [$p->enum_names],
-    compounds_s => scalar $p->compound_names,
-    compounds_a => [$p->compound_names],
-    structs_s   => scalar $p->struct_names,
-    structs_a   => [$p->struct_names],
-    unions_s    => scalar $p->union_names,
-    unions_a    => [$p->union_names],
-    typedefs_s  => scalar $p->typedef_names,
-    typedefs_a  => [$p->typedef_names],
+    enums_s       => scalar $p->enum_names,
+    enums_a       => [$p->enum_names],
+    compounds_s   => scalar $p->compound_names,
+    compounds_a   => [$p->compound_names],
+    structs_s     => scalar $p->struct_names,
+    structs_a     => [$p->struct_names],
+    unions_s      => scalar $p->union_names,
+    unions_a      => [$p->union_names],
+    typedefs_s    => scalar $p->typedef_names,
+    typedefs_a    => [$p->typedef_names],
 
-    enum_s      => scalar $p->enum,
-    enum_a      => [$p->enum],
-    compound_s  => scalar $p->compound,
-    compound_a  => [$p->compound],
-    struct_s    => scalar $p->struct,
-    struct_a    => [$p->struct],
-    union_s     => scalar $p->union,
-    union_a     => [$p->union],
-    typedef_s   => scalar $p->typedef,
-    typedef_a   => [$p->typedef],
+    enum_s        => scalar $p->enum,
+    enum_a        => [$p->enum],
+    compound_s    => scalar $p->compound,
+    compound_a    => [$p->compound],
+    struct_s      => scalar $p->struct,
+    struct_a      => [$p->struct],
+    union_s       => scalar $p->union,
+    union_a       => [$p->union],
+    typedef_s     => scalar $p->typedef,
+    typedef_a     => [$p->typedef],
 
-    enum_sx     => scalar $p->enum( $p->enum_names ),
-    enum_ax     => [$p->enum( $p->enum_names )],
-    compound_sx => scalar $p->compound( $p->compound_names ),
-    compound_ax => [$p->compound( $p->compound_names )],
-    struct_sx   => scalar $p->struct( $p->struct_names ),
-    struct_ax   => [$p->struct( $p->struct_names )],
-    union_sx    => scalar $p->union( $p->union_names ),
-    union_ax    => [$p->union( $p->union_names )],
-    typedef_sx  => scalar $p->typedef( $p->typedef_names ),
-    typedef_ax  => [$p->typedef( $p->typedef_names )],
+    enum_sx       => scalar $p->enum( $p->enum_names ),
+    enum_ax       => [$p->enum( $p->enum_names )],
+    compound_sx   => scalar $p->compound( $p->compound_names ),
+    compound_ax   => [$p->compound( $p->compound_names )],
+    struct_sx     => scalar $p->struct( $p->struct_names ),
+    struct_ax     => [$p->struct( $p->struct_names )],
+    union_sx      => scalar $p->union( $p->union_names ),
+    union_ax      => [$p->union( $p->union_names )],
+    typedef_sx    => scalar $p->typedef( $p->typedef_names ),
+    typedef_ax    => [$p->typedef( $p->typedef_names )],
 
-    sizeof      => $p->sizeof( 'AMT' ),
-    offsetof    => $p->offsetof( 'AMT', 'table[2]' ),
-    member_sx   => scalar $p->member( 'AMT', 100 ),
-    member_ax   => [$p->member( 'AMT', 100 )],
+    sizeof        => $p->sizeof( 'AMT' ),
+    typeof        => $p->typeof( 'AMT.table[2]' ),
+    offsetof      => $p->offsetof( 'AMT', 'table[2]' ),
+    member_sx     => scalar $p->member( 'AMT', 100 ),
+    member_ax     => [$p->member( 'AMT', 100 )],
   );
 };
 ok($@,'',"method call failed");
@@ -368,7 +371,7 @@ for( keys %rc ) {
         $fail++;
       }
     }
-    print "# $_ (succ = $succ, fail = $fail)\n";
+    # print "# $_ (succ = $succ, fail = $fail)\n";
   }
   skip( $debug ? '' : 'skip: no debugging', $fail == 0 && $succ > 0 );
 }

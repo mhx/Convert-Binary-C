@@ -2,17 +2,17 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/10 22:27:15 +0000 $
-# $Revision: 11 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/20 04:16:15 +0100 $
+# $Revision: 17 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /t/102_misc.t $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 use Test;
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 107 }
+BEGIN { plan tests => 213 }
 
 #===================================================================
 # perform some average stuff
@@ -278,6 +278,140 @@ ok($d,pack('C*',42,2,3,13,5,6));
 ok($e,pack('C*',1,2,3,4,5,6));
 ok($f,pack('C*',1,42,13,4,5,6));
 
+#------------------------------------------------
+# test pack/unpack/sizeof/typeof for basic types
+#------------------------------------------------
+
+@tests = (
+  ['char',        1                 ],
+  ['short',       $p->ShortSize     ],
+  ['int',         $p->IntSize       ],
+  ['long',        $p->LongSize      ],
+  ['long long',   $p->LongLongSize  ],
+  ['float',       $p->FloatSize     ],
+  ['double',      $p->DoubleSize    ],
+  ['long double', $p->LongDoubleSize],
+);
+
+for( @tests ) {
+  my $size = eval { $p->sizeof( $_->[0] ) };
+  ok( $@, '' );
+  ok( $size, $_->[1] );
+}
+
+ok( $p->sizeof('char'),        1                  );
+ok( $p->sizeof('short'),       $p->ShortSize      );
+ok( $p->sizeof('int'),         $p->IntSize        );
+ok( $p->sizeof('long'),        $p->LongSize       );
+ok( $p->sizeof('long long'),   $p->LongLongSize   );
+ok( $p->sizeof('float'),       $p->FloatSize      );
+ok( $p->sizeof('double'),      $p->DoubleSize     );
+ok( $p->sizeof('long double'), $p->LongDoubleSize );
+
+check_basic( $p );
+
+# must work without parse data, too
+$p->clean;
+check_basic( $p );
+
+#--------------------------------
+# test offsetof in strange cases
+#--------------------------------
+
+eval {
+  $p->configure( IntSize     => 4
+               , LongSize    => 4
+               , PointerSize => 4
+               , EnumSize    => 4
+               , Alignment   => 4
+               )->parse(<<ENDC);
+struct foo {
+  int a;
+  struct bar {
+    int x, y;
+  } ary[5];
+  struct bar {
+    int x, y;
+  } aryary[5][5];
+};
+typedef int a[10];
+typedef struct {
+  char abc;
+  long day;
+  int *ptr;
+} week;
+struct test {
+  week zap[8];
+};
+ENDC
+};
+
+@tests = (
+  ['foo',           '.ary',           4],
+  ['foo.ary[2]',    '.x',             0],
+  ['foo.ary[2]',    '.y',             4],
+  ['foo.ary[2]',    '',               0],
+  ['foo.ary',       '[2].y',         20],
+  ['foo.aryary[2]', '[2].y',         20],
+  ['a',             '[9]',           36],
+  ['test',          '.zap[5].day',   64],
+  ['test.zap[2]',   '.day',           4],
+  ['test',          '.zap[5].day+1', 65],
+);
+
+$SIG{__WARN__} = sub { push @warn, $_[0] };
+ok( $@, '' );
+for( @tests ) {
+  my $off = eval { $p->offsetof( $_->[0], $_->[1] ) };
+  ok( $@, '' );
+  ok( $off, $_->[2] );
+}
+ok( scalar @warn, 1 );
+ok( $warn[0], qr/^Empty string passed as member expression/ );
+
+#------------------------------
+# some simple tests for member
+#------------------------------
+
+@tests = (
+  ['foo',           '.ary[0].x',      4],
+  ['foo.ary[2]',    '.x',             0],
+  ['foo.ary[2]',    '.y',             4],
+  ['foo.ary',       '[2].y',         20],
+  ['foo.aryary[2]', '[2].y',         20],
+  ['a',             '[9]',           36],
+  ['test',          '.zap[5].day',   64],
+  ['test.zap[2]',   '.day',           4],
+  ['test',          '.zap[5].day+1', 65],
+);
+
+@warn = ();
+ok( $@, '' );
+for( @tests ) {
+  my @m = eval { $p->member( $_->[0], $_->[2] ) };
+  ok( $@, '' );
+  ok( scalar @m, 1 );
+  ok( $m[0], $_->[1] );
+}
+ok( scalar @warn, 0 );
+
+
+sub check_basic
+{
+  my $c = shift;
+
+  for my $t ( 'signed char'
+            , 'unsigned short int'
+            , 'long int'
+            , 'signed int'
+            , 'long long'
+            )
+  {
+    ok( eval { $c->typeof( $t ) }, $t );
+    ok( eval { $c->sizeof( $t ) } > 0 );
+    ok( eval { $c->unpack( $t, $c->pack($t, 42) ) }, 42 );
+  }
+}
 
 sub reccmp
 {

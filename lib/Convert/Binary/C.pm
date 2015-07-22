@@ -10,17 +10,17 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/03/17 21:19:19 +0000 $
-# $Revision: 38 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/20 12:47:05 +0100 $
+# $Revision: 43 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 package Convert::Binary::C;
@@ -32,12 +32,9 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = sprintf '%.2f', 0.01*('$Revision: 38 $' =~ /(\d+)/)[0];
-$XS_VERSION =  do { my @r = '$Snapshot: /Convert-Binary-C/0.12 $'
-                            =~ /(\d+\.\d+(?:_\d+)?)/;
-                    @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.13 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
-bootstrap Convert::Binary::C $XS_VERSION;
+bootstrap Convert::Binary::C $VERSION;
 
 # Unfortunately, XS AUTOLOAD isn't supported
 # by stable perl distributions before 5.8.0.
@@ -215,7 +212,7 @@ for the embedded device without any modifications.
 
 =item *
 
-A module that could be configured to match the properties 
+A module that could be configured to match the properties
 of the different compilers and target platforms I was using.
 
 =item *
@@ -267,7 +264,7 @@ You can also search the FAQ using C<perldoc -q>:
 will give you everything you ever wanted to know about Perl
 arrays. But now, let's go on with some real stuff!
 
-=head2 Why Convert::Binary::C?
+=head2 Why use Convert::Binary::C?
 
 Say you want to pack (or unpack) data according to the following
 C structure:
@@ -556,6 +553,148 @@ The L<C<ccconfig>|ccconfig> script, which is bundled with this
 module, aims at automatically determining the correct compiler
 configuration by testing the compiler executable. It works for
 both, native and cross compilers.
+
+=head1 UNDERSTANDING TYPES
+
+This section covers one of the fundamental features of
+Convert::Binary::C. It's how I<type expressions>, referred to
+as TYPEs in the L<method reference|/"METHODS">, are handled
+by the module.
+
+Many of the methods,
+namely L<C<pack>|/"pack">, L<C<unpack>|/"unpack">, L<C<sizeof>|/"sizeof">, L<C<typeof>|/"typeof">, L<C<member>|/"member"> and L<C<offsetof>|/"offsetof">,
+are passed a TYPE to operate on as their first argument.
+
+=head2 Standard Types
+
+These are trivial. Standard types are simply enum names, struct
+names, union names, or typedefs. Almost every method that wants
+a TYPE will accept a standard type.
+
+For enums, structs and unions, the prefixes C<enum>, C<struct> and C<union> are
+optional. However, if a typedef with the same name exists, like in
+
+  struct foo {
+    int bar;
+  };
+  
+  typedef int foo;
+
+you will have to use the prefix to distinguish between the
+struct and the typedef. Otherwise, a typedef is always given
+preference.
+
+=head2 Basic Types
+
+Basic types, or atomic types, are C<int> or C<char>, for example.
+It's possible to use these basic types without having parsed any
+code. You can simply do
+
+  $c = new Convert::Binary::C;
+  $size = $c->sizeof( 'unsigned long' );
+  $data = $c->pack( 'short int', 42 );
+
+Even though the above works fine, it is not possible to define
+more complex types on the fly, so
+
+  $size = $c->sizeof( 'struct { int a, b; }' );
+
+will result in an error.
+
+Basic types are not supported by all methods. For example, it makes
+no sense to use L<C<member>|/"member"> or L<C<offsetof>|/"offsetof"> on
+a basic type. Using L<C<typeof>|/"typeof"> isn't very useful, but
+supported.
+
+=head2 Member Expressions
+
+This is by far the most complex part, depending on the complexity of
+your data structures. Any L<standard type|/"Standard Types"> that
+defines a compound or an array may be followed by a member expression
+to select only a certain part of the data type. Say you have parsed the
+following C code:
+
+  struct foo {
+    long type;
+    struct {
+      short x, y;
+    } array[20];
+  };
+  
+  typedef struct foo matrix[8][8];
+
+You may want to know the size of the C<array> member of C<struct foo>.
+This is quite easy:
+
+  print $c->sizeof( 'foo.array' ), " bytes";
+
+will print
+
+  80 bytes
+
+depending of course on the C<ShortSize> you configured.
+
+If you wanted to unpack only a single column of C<matrix>, that's
+easy as well (and of course it doesn't matter which index you use):
+
+  $column = $c->unpack( 'matrix[2]', $data );
+
+Member expressions can be arbitrarily complex:
+
+  $type = $c->typeof( 'matrix[2][3].array[7].y' );
+  print "the type is $type";
+
+will, for example, print
+
+  the type is short
+
+Member expressions are also used as the second argument
+to L<C<offsetof>|/"offsetof">.
+
+=head2 Offsets
+
+Members returned by the L<C<member>|/"member"> method have an optional
+offset suffix to indicate that the given offset doesn't point to the
+start of that member. For example,
+
+  $member = $c->member( 'matrix', 1431 );
+  print $member;
+
+will print
+
+  [2][1].type+3
+
+If you would use this as a member expression, like in
+
+  $size = $c->sizeof( "matrix $member" );
+
+the offset suffix will simply be ignored. Actually, it will be
+ignored for all methods if it's used in the first argument.
+
+When used in the second argument to L<C<offsetof>|/"offsetof">,
+it will usually do what you mean, i. e. the offset suffix, if
+present, will be considered when determining the offset. This
+behaviour ensures that
+
+  $member = $c->member( 'foo', 43 );
+  $offset = $c->offsetof( 'foo', $member );
+  print "'$member' is located at offset $offset of struct foo";
+
+will always correctly set C<$offset>:
+
+  '.array[9].y+1' is located at offset 43 of struct foo
+
+If this is not what you mean, e. g. because you want to know the
+offset where the member returned by L<C<member>|/"member"> starts,
+you just have to remove the suffix:
+
+  $member =~ s/\+\d+$//;
+  $offset = $c->offsetof( 'foo', $member );
+  print "'$member' is starts at offset $offset of struct foo";
+
+This would then print:
+
+  '.array[9].y' is starts at offset 42 of struct foo
 
 =head1 METHODS
 
@@ -964,12 +1103,12 @@ If you have the following definitions:
     SUNDAY, MONDAY, TUESDAY, WEDNESDAY,
     THURSDAY, FRIDAY, SATURDAY
   } Weekday;
-   
+  
   typedef enum {
     JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY,
     AUGUST, SEPTEMBER, OCTOBER, NOVEMBER, DECEMBER
   } Month;
-   
+  
   typedef struct {
     int     year;
     Month   month;
@@ -1129,7 +1268,7 @@ code:
                   } );
 
 You can specify any valid identifier as hash key, and either
-a valid C keyword or C<undef> as hash value.  
+a valid C keyword or C<undef> as hash value.
 Having configured the object that way, you could parse even
 
   #ifdef __signed__
@@ -1377,15 +1516,17 @@ Using L<C<clone>|/"clone"> is just a lot faster.
 
 =over 8
 
-=item C<def> TYPE
+=item C<def> NAME
 
-If you need to know if a definition for a certain type
+If you need to know if a definition for a certain type name
 exists, use this method. You pass it the name of an enum,
 struct, union or typedef, and it will return a non-empty
 string being either C<"enum">, C<"struct">, C<"union">,
 or C<"typedef"> if there's a definition for the type in
 question, an empty string if there's no such definition,
-or C<undef> if the name is completely unknown.
+or C<undef> if the name is completely unknown. If the
+type can be interpreted as a basic type, C<"basic"> will
+be returned.
 
   use Convert::Binary::C;
   
@@ -1400,7 +1541,9 @@ or C<undef> if the name is completely unknown.
   
   ENDC
   
-  for my $type ( qw( not ptr foo bar xxx ) ) {
+  for my $type ( qw( not ptr foo bar xxx ),
+                 'unsigned long' )
+  {
     my $def = $c->def( $type );
     printf "\$c->def( '$type' )  =>  %s\n",
            defined $def ? "'$def'" : 'undef';
@@ -1413,6 +1556,7 @@ The following would be returned by the L<C<def>|/"def"> method:
   $c->def( 'foo' )  =>  'struct'
   $c->def( 'bar' )  =>  ''
   $c->def( 'xxx' )  =>  undef
+  $c->def( 'unsigned long' )  =>  'basic'
 
 So, if L<C<def>|/"def"> returns a non-empty string, you can safely use
 any other method with that type's name.
@@ -1420,7 +1564,9 @@ any other method with that type's name.
 In cases where the typedef namespace overlaps with the
 namespace of enums/structs/unions, the L<C<def>|/"def"> method
 will give preference to the typedef and will thus return
-the string C<"typedef">.
+the string C<"typedef">. You could however force interpretation
+as an enum, struct or union by putting C<"enum">, C<"struct">
+or C<"union"> in front of the type's name.
 
 =back
 
@@ -1493,7 +1639,7 @@ This would print:
     ]
   };
 
-If TYPE refers to a compound object, you may pack any
+If L<TYPE|/"UNDERSTANDING TYPES"> refers to a compound object, you may pack any
 member of that compound object. Simply add a member string
 to the type name, just as you would access the member in
 C:
@@ -1589,7 +1735,7 @@ previously parsed type definition.
     char    ary[3];
     union {
       short word[2];
-      long  quad;
+      long *quad;
     }       uni;
   };
   ENDC
@@ -1622,7 +1768,7 @@ This would print:
     ]
   };
 
-If TYPE refers to a compound object, you may unpack any
+If L<TYPE|/"UNDERSTANDING TYPES"> refers to a compound object, you may unpack any
 member of that compound object. Simply add a member string
 to the type name, just as you would access the member in
 C:
@@ -1666,27 +1812,174 @@ This would set C<$size> to C<2>.
 
 =back
 
-=head2 member
+=head2 typeof
 
 =over 8
 
-=item C<member> TYPE, OFFSET
+=item C<typeof> TYPE
 
-You can use this method if you want to retrieve the name,
-and optionally the type, of the member that is located at
-a specific offset for a previously parsed type.
+This method will return the type of a C member.
+While this only makes sense for compound types, it's legal
+to also use it for non-compound types.
+If it cannot find the type, it will throw an exception.
+
+The L<C<typeof>|/"typeof"> method can be used on any valid
+member, even on arrays or unnamed types. It will always
+return a string that holds the name (or in case of unnamed
+types only the class) of the type, optionally followed by
+a C<'*'> character to indicate it's a pointer type, and
+optionally followed by one or more array dimensions if
+it's an array type.
+
+  for my $member ( qw( test test.uni test.uni.quad
+                       test.uni.word test.uni.word[1] ) ) {
+    printf "%-16s => '%s'\n", $member, $c->typeof( $member );
+  }
+
+This would print:
+
+  test             => 'struct test'
+  test.uni         => 'union'
+  test.uni.quad    => 'long *'
+  test.uni.word    => 'short [2]'
+  test.uni.word[1] => 'short'
+
+=back
+
+=head2 offsetof
+
+=over 8
+
+=item C<offsetof> TYPE, MEMBER
+
+You can use L<C<offsetof>|/"offsetof"> just like the C macro
+of same denominator. It will simply return the offset (in bytes)
+of L<MEMBER|/"Member Expressions"> relative to L<TYPE|/"UNDERSTANDING TYPES">.
 
   use Convert::Binary::C;
-  use Data::Dumper;
   
-  $c = Convert::Binary::C->new( Alignment => 4, EnumSize => 4 )
+  $c = Convert::Binary::C->new( Alignment   => 4
+                              , LongSize    => 4
+                              , PointerSize => 4
+                              )
                          ->parse( <<'ENDC' );
   typedef struct {
     char abc;
     long day;
     int *ptr;
   } week;
-   
+  
+  struct test {
+    week zap[8];
+  };
+  ENDC
+  
+  @args = (
+    ['test',        'zap[5].day'  ],
+    ['test.zap[2]', 'day'         ],
+    ['test',        'zap[5].day+1'],
+  );
+  
+  for( @args ) {
+    my $offset = eval { $c->offsetof( @$_ ) };
+    printf "\$c->offsetof( '%s', '%s' ) => $offset\n", @$_;
+  }
+
+The final loop will print:
+
+  $c->offsetof( 'test', 'zap[5].day' ) => 64
+  $c->offsetof( 'test.zap[2]', 'day' ) => 4
+  $c->offsetof( 'test', 'zap[5].day+1' ) => 65
+
+=over 2
+
+=item *
+
+The first iteration simply shows that the offset
+of C<zap[5].day> is 64 relative to the beginning
+of C<struct test>.
+
+=item *
+
+You may additionally specify a member for the type
+passed as the first argument, as shown in the second
+iteration.
+
+=item *
+
+Even the L<offset suffix|/"Offsets"> is supported
+by L<C<offsetof>|/"offsetof">, so the third iteration
+will correctly print 65.
+
+=back
+
+Unlike the C macro, L<C<offsetof>|/"offsetof"> also works
+on array types.
+
+  $offset = $c->offsetof( 'test.zap', '[3].ptr+2' );
+  print "offset = $offset";
+
+This will print:
+
+  offset = 46
+
+If L<TYPE|/"UNDERSTANDING TYPES"> is a
+compound, L<MEMBER|/"Member Expressions"> may
+optionally be prefixed with a dot, so
+
+  printf "offset = %d\n", $c->offsetof( 'week', 'day' );
+  printf "offset = %d\n", $c->offsetof( 'week', '.day' );
+
+are both equivalent and will print
+
+  offset = 4
+  offset = 4
+
+This allows to
+
+=over 2
+
+=item *
+
+use the C macro style, without a leading dot, and
+
+=item *
+
+directly use the output of the L<C<member>|/"member"> method,
+which includes a leading dot for compound types, as input for
+the L<MEMBER|/"Member Expressions"> argument.
+
+=back
+
+=back
+
+=head2 member
+
+=over 8
+
+=item C<member> TYPE, OFFSET
+
+You can think of L<C<member>|/"member"> as being the reverse
+of the L<C<offsetof>|/"offsetof"> method. However, as this is
+more complex, there's no equivalent to L<C<member>|/"member"> in
+the C language.
+
+Use this method if you want to retrieve the name of the member
+that is located at a specific offset of a previously parsed type.
+
+  use Convert::Binary::C;
+  
+  $c = Convert::Binary::C->new( Alignment   => 4
+                              , LongSize    => 4
+                              , PointerSize => 4
+                              )
+                         ->parse( <<'ENDC' );
+  typedef struct {
+    char abc;
+    long day;
+    int *ptr;
+  } week;
+  
   struct test {
     week zap[8];
   };
@@ -1695,90 +1988,67 @@ a specific offset for a previously parsed type.
   for my $offset ( 24, 39, 69, 99 ) {
     print "\$c->member( 'test', $offset )";
     my $member = eval { $c->member( 'test', $offset ) };
-    print $@ ? "\n$@" : " => '$member'\n";
+    print $@ ? "\n  exception: $@" : " => '$member'\n";
   }
 
 This will print:
 
-  $c->member( 'test', 24 ) => 'zap[2].abc'
-  $c->member( 'test', 39 ) => 'zap[3]+3'
-  $c->member( 'test', 69 ) => 'zap[5].ptr+1'
+  $c->member( 'test', 24 ) => '.zap[2].abc'
+  $c->member( 'test', 39 ) => '.zap[3]+3'
+  $c->member( 'test', 69 ) => '.zap[5].ptr+1'
   $c->member( 'test', 99 )
-  Offset 99 out of range (0 <= offset < 96) 
+    exception: Offset 99 out of range (0 <= offset < 96) 
+
+=over 2
+
+=item *
 
 The output of the first iteration is obvious. The
-member C<zap[2].abc> is located at offset 16 of C<struct test>.
+member C<zap[2].abc> is located at offset 24 of C<struct test>.
+
+=item *
 
 In the second iteration, the offset points into a region
-of padding bytes, thus no member of C<week> can be
-named and instead of a member name the offset
-relative to C<zap[3]> is appended.
+of padding bytes and thus no member of C<week> can be
+named. Instead of a member name the offset relative
+to C<zap[3]> is appended.
+
+=item *
 
 In the third iteration, the offset points to C<zap[5].ptr>.
-However, C<zap[5].ptr> is located at 44, not at 45,
+However, C<zap[5].ptr> is located at 68, not at 69,
 and thus the remaining offset of 1 is also appended.
+
+=item *
 
 The last iteration causes an exception because the offset
 of 99 is not valid for C<struct test> since the size
 of C<struct test> is only 96.
 
-In list context, the L<C<member>|/"member"> method will also
-return the member's type:
-
-  for my $offset ( 24, 39, 69 ) {
-    print "\$c->member( 'test', $offset ) => ";
-    my($member, $type) = $c->member( 'test', $offset );
-    printf "('$member', %s)\n", defined $type ? "'$type'" : 'undef';
-  }
-
-If the offset points to a region of padding bytes, the
-type will be C<undef>. If the type is a pointer,
-a C<"*"> string will be returned.
-
-  $c->member( 'test', 24 ) => ('zap[2].abc', 'char')
-  $c->member( 'test', 39 ) => ('zap[3]+3', undef)
-  $c->member( 'test', 69 ) => ('zap[5].ptr+1', '*')
-
-If the type cannot be expressed as a string, a reference to
-a definition of that type will be returned. Actually, this
-can only be the case for inlined, unnamed enums:
-
-  $c->parse( <<'ENDC' );
-  struct inlined {
-    long dummy;
-    enum { INSIDE } inside;
-  };
-  ENDC
-  
-  ($member, $type) = $c->member( 'inlined', 6 );
-  print Data::Dumper->Dump( [$member, $type], [qw(member type)] );
-
-This will print:
-
-  $member = 'inside+2';
-  $type = {
-    'enumerators' => {
-      'INSIDE' => 0
-    },
-    'context' => '[buffer](3)',
-    'sign' => 0
-  };
-
-Have a look at the L<C<enum>|/"enum"> method for details on how to
-interpret the returned data structure.
+=back
 
 You can additionally specify a member for the type passed
 as the first argument:
 
-  ($member,$type) = $c->member('test.zap[2]', 6);
-  print "('$member', '$type')\n";
+  $member = $c->member('test.zap[2]', 6);
+  print $member;
 
 This will print:
 
-  ('day+2', 'long')
+  .day+2
+
+Like L<C<offsetof>|/"offsetof">, L<C<member>|/"member"> also
+works on array types:
+
+  $member = $c->member('test.zap', 42);
+  print $member;
+
+This will print:
+
+  [3].day+2
 
 While the behaviour for C<struct>s is quite obvious, the behaviour
-for C<union>s is rather tricky. As an single offset usually references
+for C<union>s is rather tricky. As a single offset usually references
 more than one member of a union, there are certain rules that the
 algorithm uses for determining the I<best> member.
 
@@ -1815,22 +2085,25 @@ As an example, given 4-byte-alignment and the union
     }       melon;
   };
 
-the L<C<member>|/"member"> method would return the following:
+the L<C<member>|/"member"> method would return what is shown in
+the I<Member> column of the following table. The I<Type> column
+shows the result of the L<C<typeof>|/"typeof"> method when passing
+the corresponding member.
 
   Offset   Member               Type
   --------------------------------------
-     0     apple.color[0]       'char'
-     1     apple.color[1]       'char'
-     2     grape[2]             'char'
-     3     melon.weight+3       'long'
-     4     apple.size           'long'
-     5     apple.size+1         'long'
-     6     melon.price[1]       'short'
-     7     apple.size+3         'long'
-     8     apple.taste          'char'
-     9     melon.price[2]+1     'short'
-    10     apple+10             undef
-    11     apple+11             undef
+     0     .apple.color[0]      'char'
+     1     .apple.color[1]      'char'
+     2     .grape[2]            'char'
+     3     .melon.weight+3      'long'
+     4     .apple.size          'long'
+     5     .apple.size+1        'long'
+     6     .melon.price[1]      'short'
+     7     .apple.size+3        'long'
+     8     .apple.taste         'char'
+     9     .melon.price[2]+1    'short'
+    10     .apple+10            'struct'
+    11     .apple+11            'struct'
 
 It's like having a stack of all the union members and looking through
 the stack for the shiniest piece you can see. The beginning of a member
@@ -1846,48 +2119,44 @@ member, while padding regions (denoted by dashes) aren't shiny at all.
 If you look through that stack from top to bottom, you'll end up at
 the parenthesized members.
 
-=back
+Alternatively, if you're not only interested in the I<best> member,
+you can call L<C<member>|/"member"> in list context, which makes it
+return I<all> members referenced by the given offset.
 
-=head2 offsetof
+  Offset   Member               Type
+  --------------------------------------
+     0     .apple.color[0]      'char'
+           .grape[0]            'char'
+           .melon.weight        'long'
+     1     .apple.color[1]      'char'
+           .grape[1]            'char'
+           .melon.weight+1      'long'
+     2     .grape[2]            'char'
+           .melon.weight+2      'long'
+           .apple+2             'struct'
+     3     .melon.weight+3      'long'
+           .apple+3             'struct'
+     4     .apple.size          'long'
+           .melon.price[0]      'short'
+     5     .apple.size+1        'long'
+           .melon.price[0]+1    'short'
+     6     .melon.price[1]      'short'
+           .apple.size+2        'long'
+     7     .apple.size+3        'long'
+           .melon.price[1]+1    'short'
+     8     .apple.taste         'char'
+           .melon.price[2]      'short'
+     9     .melon.price[2]+1    'short'
+           .apple+9             'struct'
+    10     .apple+10            'struct'
+           .melon+10            'struct'
+    11     .apple+11            'struct'
+           .melon+11            'struct'
 
-=over 8
-
-=item C<offsetof> TYPE, MEMBER
-
-You can think of L<C<offsetof>|/"offsetof"> as being the reverse of
-the L<C<member>|/"member"> method. Given the L<C<member>|/"member"> example
-code above,
-
-  @args = (
-    ['test',        'zap[5].day'  ],
-    ['test.zap[2]', 'day'         ],
-    ['test',        'zap[5].day+1'],
-  );
-  
-  for( @args ) {
-    printf "\$c->offsetof( '%s', '%s' )", @$_;
-    my $offset = eval { $c->offsetof( @$_ ) };
-    print $@ ? "\n$@" : " => $offset\n";
-  }
-
-will print:
-
-  $c->offsetof( 'test', 'zap[5].day' ) => 64
-  $c->offsetof( 'test.zap[2]', 'day' ) => 4
-  $c->offsetof( 'test', 'zap[5].day+1' )
-  Invalid character '+' (0x2B) in struct member expression 
-
-The first iteration will simply show that the offset
-of C<zap[5].day> is 64 relative to the beginning
-of C<struct test>.
-
-You may additionally specify a member for the type
-passed as the first argument, as shown in the second
-iteration.
-
-Since the C<+n> syntax isn't allowed by L<C<offsetof>|/"offsetof">, the
-third iteration will not print C<45>, but rather cause
-an exception because of an invalid character being used.
+The first member returned is always the I<best> member. The other
+members are sorted according to the rules given above. This means
+that members referenced without an offset are followed by members
+referenced with an offset. Padding regions will be at the end.
 
 =back
 
@@ -1940,23 +2209,23 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1045159352,
-      'mtime' => 1039024181,
+      'ctime' => 1048627175,
+      'mtime' => 1048627165,
       'size' => 10999
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1045159352,
-      'mtime' => 1039024181,
+      'ctime' => 1048627172,
+      'mtime' => 1048627165,
       'size' => 8400
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1045159352,
-      'mtime' => 1039024181,
+      'ctime' => 1048627172,
+      'mtime' => 1048627165,
       'size' => 657
     },
     '/usr/include/string.h' => {
-      'ctime' => 1045159353,
-      'mtime' => 1039024181,
+      'ctime' => 1048627175,
+      'mtime' => 1048627165,
       'size' => 14226
     },
     '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.2/include/stddef.h' => {
@@ -2076,6 +2345,7 @@ for L<C<enum>|/"enum">, L<C<compound>|/"compound"> and L<C<typedef>|/"typedef"> 
 assume this piece of C code has been parsed:
 
   typedef unsigned long U32;
+  typedef void *any;
   
   enum __socket_type
   {
@@ -2089,8 +2359,8 @@ assume this piece of C code has been parsed:
   
   struct STRUCT_SV {
     void *sv_any;
-    U32	sv_refcnt;
-    U32	sv_flags;
+    U32   sv_refcnt;
+    U32   sv_flags;
   };
   
   typedef union {
@@ -2099,6 +2369,7 @@ assume this piece of C code has been parsed:
       int a;
       int b;
     }   ab[3][4];
+    any ptr;
   } test;
 
 =head2 enum_names
@@ -2160,7 +2431,8 @@ have been parsed.
 
 If a list of enumeration identifiers is passed to the
 method, the returned list will only contain hash
-references for those enumerations.
+references for those enumerations. The enumeration
+identifiers may optionally be prefixed by C<enum>.
 
 If an enumeration identifier cannot be found, a
 warning is issued and the returned list will contain
@@ -2172,8 +2444,8 @@ the method call is not 1. In the latter case, a
 hash reference holding information for the enumeration
 will be returned.
 
-The list returned by the L<C<enum>|/"enum"> method looks similar
-to this:
+The list returned by the L<C<enum>|/"enum"> method looks
+similar to this:
 
   @enum = (
     {
@@ -2186,7 +2458,7 @@ to this:
         'SOCK_DGRAM' => 2
       },
       'identifier' => '__socket_type',
-      'context' => 'definitions.c(3)',
+      'context' => 'definitions.c(4)',
       'sign' => 0
     }
   );
@@ -2274,7 +2546,10 @@ unions) that have been parsed.
 
 If a list of struct/union identifiers is passed to the
 method, the returned list will only contain hash
-references for those compounds.
+references for those compounds. The identifiers may
+optionally be prefixed by C<struct> or C<union>,
+which limits the search to the specified kind of
+compound.
 
 If an identifier cannot be found, a warning is issued
 and the returned list will contain an undefined value
@@ -2293,7 +2568,7 @@ to this:
     {
       'identifier' => 'STRUCT_SV',
       'align' => 1,
-      'context' => 'definitions.c(13)',
+      'context' => 'definitions.c(14)',
       'pack' => 0,
       'type' => 'struct',
       'declarations' => [
@@ -2333,7 +2608,7 @@ to this:
     {
       'identifier' => 'xxx',
       'align' => 1,
-      'context' => 'definitions.c(21)',
+      'context' => 'definitions.c(22)',
       'pack' => 0,
       'type' => 'struct',
       'declarations' => [
@@ -2362,7 +2637,7 @@ to this:
     },
     {
       'align' => 1,
-      'context' => 'definitions.c(19)',
+      'context' => 'definitions.c(20)',
       'pack' => 0,
       'type' => 'union',
       'declarations' => [
@@ -2385,6 +2660,16 @@ to this:
             }
           ],
           'type' => 'struct xxx'
+        },
+        {
+          'declarators' => [
+            {
+              'declarator' => 'ptr',
+              'size' => 4,
+              'offset' => 0
+            }
+          ],
+          'type' => 'any'
         }
       ],
       'size' => 96
@@ -2480,8 +2765,8 @@ which is a lot simpler:
 =item C<struct_names>
 
 Returns a list of all defined struct identifiers.
-This is equivalent to calling L<C<compound_names>|"compound_names">, just that
-it only returns the names of the struct identifiers and
+This is equivalent to calling L<C<compound_names>|"compound_names">, just
+that it only returns the names of the struct identifiers and
 doesn't return the names of the union identifiers.
 
 =back
@@ -2505,8 +2790,8 @@ Like the L<C<compound>|/"compound"> method, but only allows for structs.
 =item C<union_names>
 
 Returns a list of all defined union identifiers.
-This is equivalent to calling L<C<compound_names>|"compound_names">, just that
-it only returns the names of the union identifiers and
+This is equivalent to calling L<C<compound_names>|"compound_names">, just
+that it only returns the names of the union identifiers and
 doesn't return the names of the struct identifiers.
 
 =back
@@ -2573,10 +2858,14 @@ to this:
       'type' => 'unsigned long'
     },
     {
+      'declarator' => '*any',
+      'type' => 'void'
+    },
+    {
       'declarator' => 'test',
       'type' => {
         'align' => 1,
-        'context' => 'definitions.c(19)',
+        'context' => 'definitions.c(20)',
         'pack' => 0,
         'type' => 'union',
         'declarations' => [
@@ -2599,6 +2888,16 @@ to this:
               }
             ],
             'type' => 'struct xxx'
+          },
+          {
+            'declarators' => [
+              {
+                'declarator' => 'ptr',
+                'size' => 4,
+                'offset' => 0
+              }
+            ],
+            'type' => 'any'
           }
         ],
         'size' => 96
@@ -2948,10 +3247,10 @@ and redistribution details refer to F<ctlib/ucpp/README>.
 
 Portions copyright (c) 1989, 1990 James A. Roskind.
 
-Some of the include files used for the F<t/106_parse.t> test
-script are (c) 1991-1999, 2000, 2001 Free Software Foundation,
-Inc. They are neither required to create the binary nor linked
-to the source code of this module in any other way.
+The include files located in F<t/include/include>, which are used
+in some of the test scripts are (c) 1991-1999, 2000, 2001 Free Software
+Foundation, Inc. They are neither required to create the binary nor
+linked to the source code of this module in any other way.
 
 =head1 SEE ALSO
 

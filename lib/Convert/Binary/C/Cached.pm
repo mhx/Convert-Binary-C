@@ -10,17 +10,17 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/03/17 21:20:02 +0000 $
-# $Revision: 12 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/18 22:32:57 +0100 $
+# $Revision: 15 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 package Convert::Binary::C::Cached;
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = sprintf '%.2f', 0.01*('$Revision: 12 $' =~ /(\d+)/)[0];
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.13 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 my %cache;
 
@@ -47,7 +47,7 @@ sub new
     uses_cache => 0,
   };
 
-  @_ % 2 and croak "Number of configuration arguments to new must be equal";
+  @_ % 2 and croak "Number of configuration arguments to new must be even";
 
   @_ and $self->configure( @_ );
 
@@ -205,9 +205,9 @@ sub __parse
 
   if( defined $c->{cache} ) {
     $c->{parsed} and croak "Cannot parse more than once for cached objects";
-  
+
     $c->{$_[0]} = $_[1];
-  
+
     if( $self->__can_use_cache ) {
       my @WARN;
       {

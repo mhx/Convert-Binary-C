@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 19:53:51 +0000 $
-* $Revision: 6 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/17 13:39:04 +0100 $
+* $Revision: 7 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/pragma.y $
 *
 ********************************************************************************
@@ -217,25 +217,25 @@ pragma_pack_args
 	  {
 	    if( VALID_PACK( $1 ) ) {
 	      PSTATE->pack.current = $1;
-            }
+	    }
 	  }
 	| PUSH_TOK ',' CONSTANT
 	  {
 	    if( VALID_PACK( $3 ) ) {
 	      LL_push( PSTATE->pack.stack, packelem_new( PSTATE->pack.current ) );
-              PSTATE->pack.current = $3;
-            }
+	      PSTATE->pack.current = $3;
+	    }
 	  }
 	| POP_TOK
 	  {
-            PackElement *pPack = LL_pop( PSTATE->pack.stack );
-            if( pPack ) {
-              PSTATE->pack.current = pPack->size;
-              packelem_delete( pPack );
-            }
-            else {
-              PSTATE->pack.current = 0;
-            }
+	    PackElement *pPack = LL_pop( PSTATE->pack.stack );
+	    if( pPack ) {
+	      PSTATE->pack.current = pPack->size;
+	      packelem_delete( pPack );
+	    }
+	    else {
+	      PSTATE->pack.current = 0;
+	    }
 	  }
 	;
 

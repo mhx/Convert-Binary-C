@@ -2,17 +2,17 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/10 22:27:14 +0000 $
-# $Revision: 17 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/17 13:39:06 +0100 $
+# $Revision: 18 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /t/101_config.t $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 use Test;
@@ -325,7 +325,7 @@ check_config( '', $_, @tests ) for qw( PointerSize
 check_config( '', $_, @tests ) for qw( FloatSize
                                        DoubleSize
                                        LongDoubleSize );
-                                   
+
 @tests = (
   { in => -1, result => FAIL    },
   { in =>  0, result => FAIL    },
@@ -564,7 +564,7 @@ eval {
   local $SIG{__WARN__} = sub { push @warn, shift };
 
   $p = new Convert::Binary::C %config;
-  
+
   $p->UnsignedChars( 1 )->configure( ShortSize => 4, EnumType => 'Both', EnumSize => 0 )
     ->Include( ['/usr/local/include'] )->DoubleSize( 8 );
 
@@ -585,4 +585,4 @@ ok( compare_config( \%newcfg, $cfg ) );
 
 $debug and $result = checkrc( Convert::Binary::C::__DUMP__( $cfg ) );
 skip( $RDBG, $result );
- 
+

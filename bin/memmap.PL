@@ -9,17 +9,17 @@ print OUT <<'!NO!SUBS!';
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/08 18:57:05 +0000 $
-# $Revision: 1 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/20 04:14:33 +0100 $
+# $Revision: 4 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /bin/memmap.PL $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 #===============================================================================
@@ -126,8 +126,9 @@ sub memmap
   my $afmt = '%0' . 2*$c->PointerSize . 'X';
 
   for my $offset ( 0 .. $c->sizeof( $type ) - 1 ) {
-    my($m, $t) = $c->member( $type, $offset );
+    my $m = $c->member( $type, $offset );
     rindex( $m, '+' ) < 0 or next;
+    my $t = $c->typeof( $type.$m );
     printf "$afmt  %-16s  %s\n", $start+$offset, $t, $m;
   }
 }

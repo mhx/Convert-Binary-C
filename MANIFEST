@@ -27,6 +27,7 @@ ctlib/parser.y
 ctlib/pragma.c
 ctlib/pragma.h
 ctlib/pragma.y
+ctlib/t_basic.c
 ctlib/t_ckeytok.c
 ctlib/t_config.c
 ctlib/t_config.pl
@@ -82,6 +83,7 @@ ctlib/util/tool/test.out
 examples/README
 lib/Convert/Binary/C.pm
 lib/Convert/Binary/C/Cached.pm
+ppport.h
 t/001_init.t
 t/101_config.t
 t/102_misc.t
@@ -100,6 +102,9 @@ t/114_cache.t
 t/115_local.t
 t/116_language.t
 t/117_preproc.t
+t/118_member.t
+t/119_def.t
+t/120_new.t
 t/801_speed.t
 t/802_threads.t
 t/803_debug.t

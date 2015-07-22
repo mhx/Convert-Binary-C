@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/01 11:29:56 +0000 $
-* $Revision: 7 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/12 03:44:13 +0100 $
+* $Revision: 8 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/parser.h $
 *
 ********************************************************************************
@@ -49,14 +49,20 @@ struct lexer_state;
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
+#define get_c_keyword_token CTlib_get_c_keyword_token
 const CKeywordToken *get_c_keyword_token( const char *name );
+
+#define get_skip_token CTlib_get_skip_token
 const CKeywordToken *get_skip_token( void );
 
+#define c_parser_new CTlib_c_parser_new
 ParserState *c_parser_new( const CParseConfig *pCPC, CParseInfo *pCPI,
                            struct lexer_state *pLexer );
 
+#define c_parser_run CTlib_c_parser_run
 int  c_parser_run( ParserState *pState );
 
+#define c_parser_delete CTlib_c_parser_delete
 void c_parser_delete( ParserState *pState );
 
 #endif

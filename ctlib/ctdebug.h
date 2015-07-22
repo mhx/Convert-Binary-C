@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 18:43:22 +0000 $
-* $Revision: 6 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/14 19:59:04 +0100 $
+* $Revision: 7 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/ctdebug.h $
 *
 ********************************************************************************
@@ -73,21 +73,22 @@
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
 #ifdef CTYPE_DEBUGGING
-extern void (*g_CT_dbfunc)(char *, ...);
+extern void (*g_CT_dbfunc)(const char *, ...);
 extern unsigned long g_CT_dbflags;
 #endif
 
 #ifdef CTYPE_DEBUGGING
 
 # ifdef CTYPE_FORMAT_CHECK
-void CT_dbfunc_check( char *str, ... )
+void CT_dbfunc_check( const char *str, ... )
      __attribute__(( __format__( __printf__, 1, 2 ), __noreturn__ ));
 # endif
 
-int SetDebugCType( void (*dbfunc)(char *, ...), void (*dbvprintf)(char *, va_list *),
+int SetDebugCType( void (*dbfunc)(const char *, ...),
+                   void (*dbvprintf)(const char *, va_list *),
                    unsigned long dbflags );
 
-void BisonDebugFunc( void *dummy, char *fmt, ... );
+void BisonDebugFunc( void *dummy, const char *fmt, ... );
 
 #else
 

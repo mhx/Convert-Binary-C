@@ -5,7 +5,16 @@ What's to do?
 for future releases (in no special order):
 ------------------------------------------
 
-* have a typeof() method?
+* more gcov, more tests
+
+* map MemAlloc => malloc / Free => free? / macro? (speed?)
+
+* optimize/cleanup tests
+
+* have a definition() method?
+  Like typedef/compound/enum, but for all of 'em?
+
+* cleanup unsafe values handling
 
 * COPY_LINE ?
 

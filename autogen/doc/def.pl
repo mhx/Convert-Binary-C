@@ -11,7 +11,9 @@ struct foo {
 
 ENDC
 
-for my $type ( qw( not ptr foo bar xxx ) ) {
+for my $type ( qw( not ptr foo bar xxx ),
+               'unsigned long' )
+{
   my $def = $c->def( $type );
   printf "\$c->def( '$type' )  =>  %s\n",
          defined $def ? "'$def'" : 'undef';

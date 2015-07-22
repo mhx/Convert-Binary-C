@@ -2,17 +2,17 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/01 11:30:00 +0000 $
-# $Revision: 7 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/17 13:39:07 +0100 $
+# $Revision: 10 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /t/105_pack.t $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 use Test;
@@ -20,9 +20,12 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 105 }
+BEGIN { plan tests => 167 }
 
-eval { $p = new Convert::Binary::C ByteOrder => 'BigEndian' };
+eval {
+  $p = new Convert::Binary::C ByteOrder     => 'BigEndian'
+                            , UnsignedChars => 0
+};
 ok($@,'',"failed to create Convert::Binary::C object");
 
 eval {
@@ -34,6 +37,10 @@ typedef int scalar;
 typedef int array[1];
 typedef struct { array foo; } hash;
 typedef struct { int foo[1]; } hash2;
+typedef char c_8;
+typedef unsigned char u_8;
+typedef signed char i_8;
+typedef long double ldbl;
 EOF
 };
 ok($@,'',"parse() failed");
@@ -42,8 +49,20 @@ ok($@,'',"parse() failed");
 
 $SIG{__WARN__} = sub { push @warn, $_[0] };
 sub chkwarn {
-  ok( scalar @warn, scalar @_, "wrong number of warnings" );
-  ok( shift @warn, $_ ) for @_;
+  my $fail = 0;
+  if( @warn != @_ ) {
+    print "# wrong number of warnings\n";
+    $fail++;
+  }
+  for( @_ ) {
+    my $w = shift @warn;
+    unless( $w =~ ref($_) ? $_ : qr/\Q$_\E/ ) {
+      print "# wrong warning, expected $_, got $w\n";
+      $fail++;
+    }
+  }
+  if( $fail ) { print "# $_" for @warn }
+  ok( $fail, 0, "warnings check failed" );
   @warn = ();
 }
 
@@ -204,3 +223,73 @@ ok($@,'',"failed in pack");
 chkwarn( qr/'foo' should be an array reference/ );
 ok($packed,'1234');
 
+#===================================================================
+# check unsigned chars (72 tests)
+#===================================================================
+
+my %tests = (
+  c_8             => {
+                       pack   => { in => 255, out => pack('C', 255) },
+                       unpack => { in => pack('C', 255), out => -1 },
+                     },
+  i_8             => {
+                       pack   => { in => 255, out => pack('C', 255) },
+                       unpack => { in => pack('C', 255), out => -1 },
+                     },
+  u_8             => {
+                       pack   => { in => 255, out => pack('C', 255) },
+                       unpack => { in => pack('C', 255), out => 255 },
+                     },
+  'char'          => {
+                       pack   => { in => 255, out => pack('C', 255) },
+                       unpack => { in => pack('C', 255), out => -1 },
+                     },
+  'signed char'   => {
+                       pack   => { in => 255, out => pack('C', 255) },
+                       unpack => { in => pack('C', 255), out => -1 },
+                     },
+  'unsigned char' => {
+                       pack   => { in => 255, out => pack('C', 255) },
+                       unpack => { in => pack('C', 255), out => 255 },
+                     },
+);
+
+uchar_test( %tests );
+$p->UnsignedChars(1);
+$tests{$_}{unpack}{out} = 255 for qw( c_8 char );
+uchar_test( %tests );
+
+
+sub uchar_test
+{
+  my %tests = @_;
+  for my $t ( keys %tests ) {
+    for my $m ( keys %{$tests{$t}} ) {
+      my $res = eval { $p->$m( $t, $tests{$t}{$m}{in} ) };
+      ok($@,'',"failed in $m"); chkwarn;
+      ok($res, $tests{$t}{$m}{out}, "$m( '$t', $tests{$t}{$m}{in} ) != $tests{$t}{$m}{out}");
+    }
+  }
+}
+
+#===================================================================
+# check long doubles (2 tests)
+#===================================================================
+
+eval { $packed = $p->pack('ldbl', 3.14159) };
+ok($@,'',"failed in pack");
+my $null = pack 'C*', (0) x length($packed);
+if( $packed eq $null ) {
+  chkwarn( qr/Cannot pack long doubles/ );
+  eval { $packed = $p->unpack('ldbl', $packed) };
+  ok($@,'',"failed in unpack");
+  chkwarn( qr/Cannot unpack long doubles/ );
+  ok($packed,0.0);
+}
+else {
+  chkwarn();
+  eval { $packed = $p->unpack('ldbl', $packed) };
+  ok($@,'',"failed in unpack");
+  chkwarn();
+  ok( $packed-3.14159 < 0.0001 );
+}

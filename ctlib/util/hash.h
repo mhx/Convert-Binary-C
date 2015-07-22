@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 18:45:51 +0000 $
-* $Revision: 9 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/17 13:39:05 +0100 $
+* $Revision: 11 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/util/hash.h $
 *
 ********************************************************************************
@@ -52,13 +52,13 @@
  *  The HASH_STR_LEN() macro computes the hash sum and
  *  string length of a zero terminated string.
  *
- *  \param hash		Variable that will receive the
+ *  \param hash         Variable that will receive the
  *                      hash sum.
  *
- *  \param str		Pointer to the zero terminated
+ *  \param str          Pointer to the zero terminated
  *                      string.
  *
- *  \param len		Variable that will receive the
+ *  \param len          Variable that will receive the
  *                      string length.
  *
  *  \see HASH_STRING() and HASH_DATA()
@@ -66,21 +66,21 @@
  */
 #define HASH_STR_LEN( hash, str, len )         \
         do {                                   \
-	  register int         _len = 0;       \
-	  register const char *_str = str;     \
-	  register HashSum     _hash = 0;      \
+          register int         _len = 0;       \
+          register const char *_str = str;     \
+          register HashSum     _hash = 0;      \
                                                \
-	  while( *_str ) {                     \
+          while( *_str ) {                     \
             _len++;                            \
-	    _hash += *_str++;                  \
-	    _hash += (_hash << 10);            \
-	    _hash ^= (_hash >> 6);             \
-	  }                                    \
+            _hash += *_str++;                  \
+            _hash += (_hash << 10);            \
+            _hash ^= (_hash >> 6);             \
+          }                                    \
                                                \
-	  _hash += (_hash << 3);               \
-	  _hash ^= (_hash >> 11);              \
-	  (hash) = (_hash + (_hash << 15));    \
-	  (len)  = _len;                       \
+          _hash += (_hash << 3);               \
+          _hash ^= (_hash >> 11);              \
+          (hash) = (_hash + (_hash << 15));    \
+          (len)  = _len;                       \
         } while(0)
 
 /**
@@ -89,10 +89,10 @@
  *  The HASH_STRING() macro computes the hash sum
  *  of a zero terminated string.
  *
- *  \param hash		Variable that will receive the
+ *  \param hash         Variable that will receive the
  *                      hash sum.
  *
- *  \param str		Pointer to the zero terminated
+ *  \param str          Pointer to the zero terminated
  *                      string.
  *
  *  \see HASH_STR_LEN() and HASH_DATA()
@@ -100,18 +100,18 @@
  */
 #define HASH_STRING( hash, str )               \
         do {                                   \
-	  register const char *_str = str;     \
-	  register HashSum     _hash = 0;      \
+          register const char *_str = str;     \
+          register HashSum     _hash = 0;      \
                                                \
-	  while( *_str ) {                     \
-	    _hash += *_str++;                  \
-	    _hash += (_hash << 10);            \
-	    _hash ^= (_hash >> 6);             \
-	  }                                    \
+          while( *_str ) {                     \
+            _hash += *_str++;                  \
+            _hash += (_hash << 10);            \
+            _hash ^= (_hash >> 6);             \
+          }                                    \
                                                \
-	  _hash += (_hash << 3);               \
-	  _hash ^= (_hash >> 11);              \
-	  (hash) = (_hash + (_hash << 15));    \
+          _hash += (_hash << 3);               \
+          _hash ^= (_hash >> 11);              \
+          (hash) = (_hash + (_hash << 15));    \
         } while(0)
 
 /**
@@ -120,31 +120,31 @@
  *  The HASH_DATA() macro computes the hash sum
  *  of a an arbitrary data memory block.
  *
- *  \param hash		Variable that will receive the
+ *  \param hash         Variable that will receive the
  *                      hash sum.
  *
- *  \param len		Length of the data block.
+ *  \param len          Length of the data block.
  *
- *  \param data		Pointer to the data block.
+ *  \param data         Pointer to the data block.
  *
  *  \see HASH_STR_LEN() and HASH_STRING()
  *  \hideinitializer
  */
 #define HASH_DATA( hash, len, data )           \
         do {                                   \
-	  register const char *_data = data;   \
-	  register int         _len  = len;    \
-	  register HashSum     _hash = 0;      \
+          register const char *_data = data;   \
+          register int         _len  = len;    \
+          register HashSum     _hash = 0;      \
                                                \
-	  while( _len-- ) {                    \
-	    _hash += *_data++;                 \
-	    _hash += (_hash << 10);            \
-	    _hash ^= (_hash >> 6);             \
-	  }                                    \
+          while( _len-- ) {                    \
+            _hash += *_data++;                 \
+            _hash += (_hash << 10);            \
+            _hash ^= (_hash >> 6);             \
+          }                                    \
                                                \
-	  _hash += (_hash << 3);               \
-	  _hash ^= (_hash >> 11);              \
-	  (hash) = (_hash + (_hash << 15));    \
+          _hash += (_hash << 3);               \
+          _hash ^= (_hash >> 11);              \
+          (hash) = (_hash + (_hash << 15));    \
         } while(0)
 
 /**
@@ -216,7 +216,7 @@ int        HT_next( const HashTable table, char **pKey, int *pKeylen, void **ppO
 
 #ifdef DEBUG_HASH
 void HT_dump( const HashTable table );
-int  SetDebugHash( void (*dbfunc)(char *, ...), unsigned long dbflags );
+int  SetDebugHash( void (*dbfunc)(const char *, ...), unsigned long dbflags );
 #else
 #define SetDebugHash( func, flags ) 0
 #endif
@@ -236,13 +236,13 @@ int  SetDebugHash( void (*dbfunc)(char *, ...), unsigned long dbflags );
  *  It is safe to use HT_foreach() even if \a hash table handle is NULL.
  *  In that case, the loop won't be executed.
  *
- *  \param pKey		Variable that will receive a pointer
+ *  \param pKey         Variable that will receive a pointer
  *                      to the current hash key string.
  *
- *  \param pObj		Variable that will receive a pointer
+ *  \param pObj         Variable that will receive a pointer
  *                      to the current object.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
  *  \see HT_reset() and HT_next()
  *  \hideinitializer
@@ -258,10 +258,10 @@ int  SetDebugHash( void (*dbfunc)(char *, ...), unsigned long dbflags );
  *  It is safe to use HT_foreach_keys() even if \a hash table handle is NULL.
  *  In that case, the loop won't be executed.
  *
- *  \param pKey		Variable that will receive a pointer
+ *  \param pKey         Variable that will receive a pointer
  *                      to the current hash key string.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
  *  \see HT_foreach() and HT_foreach_values()
  *  \hideinitializer
@@ -277,10 +277,10 @@ int  SetDebugHash( void (*dbfunc)(char *, ...), unsigned long dbflags );
  *  It is safe to use HT_foreach_values() even if \a hash table handle is NULL.
  *  In that case, the loop won't be executed.
  *
- *  \param pObj		Variable that will receive a pointer
+ *  \param pObj         Variable that will receive a pointer
  *                      to the current object.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
  *  \see HT_foreach() and HT_foreach_keys()
  *  \hideinitializer

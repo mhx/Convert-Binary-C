@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/01 11:29:55 +0000 $
-* $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/12 03:44:14 +0100 $
+* $Revision: 5 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/pragma.h $
 *
 ********************************************************************************
@@ -51,9 +51,13 @@ typedef struct {
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
+#define pragma_init CTlib_pragma_init
 void pragma_init( PragmaState *pPragma );
+
+#define pragma_free CTlib_pragma_free
 void pragma_free( PragmaState *pPragma );
 
+#define pragma_parse CTlib_pragma_parse
 int pragma_parse( void *pState );
 
 #endif

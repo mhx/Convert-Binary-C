@@ -1,4 +1,5 @@
 typedef unsigned long U32;
+typedef void *any;
 
 enum __socket_type
 {
@@ -12,8 +13,8 @@ enum __socket_type
 
 struct STRUCT_SV {
   void *sv_any;
-  U32	sv_refcnt;
-  U32	sv_flags;
+  U32   sv_refcnt;
+  U32   sv_flags;
 };
 
 typedef union {
@@ -22,4 +23,5 @@ typedef union {
     int a;
     int b;
   }   ab[3][4];
+  any ptr;
 } test;

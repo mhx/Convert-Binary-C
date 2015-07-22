@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 18:46:22 +0000 $
-* $Revision: 5 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/15 15:54:36 +0100 $
+* $Revision: 7 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/util/memalloc.c $
 *
 ********************************************************************************
@@ -54,8 +54,8 @@ static void debug_check( char *str, ... )
               MEM_DEBUG_FUNC out ;                                        \
           } while(0)
 
-static void (*gs_dbfunc)(char *, ...) = NULL;
-static unsigned long gs_dbflags       = 0;
+static void (*gs_dbfunc)(const char *, ...) = NULL;
+static unsigned long gs_dbflags             = 0;
 
 #else /* !DEBUG_MEMALLOC */
 
@@ -177,7 +177,7 @@ void *_MemReAlloc( register void *p, register size_t size )
     old_size = *((size_t *)p);
 
     if( old_size > size )
-      memset( p + sizeof(size_t) + size, 0xA5, old_size - size );
+      memset( ((char *)p) + sizeof(size_t) + size, 0xA5, old_size - size );
   }
 
   if( size != 0 )
@@ -252,7 +252,7 @@ static void debug_check( char *str __attribute(( __unused__ )), ... )
 }
 #endif
 
-int SetDebugMemAlloc( void (*dbfunc)(char *, ...), unsigned long dbflags )
+int SetDebugMemAlloc( void (*dbfunc)(const char *, ...), unsigned long dbflags )
 {
   gs_dbfunc  = dbfunc;
   gs_dbflags = dbflags;

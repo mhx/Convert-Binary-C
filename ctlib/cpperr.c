@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/20 19:11:17 +0000 $
-* $Revision: 5 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/17 13:39:03 +0100 $
+* $Revision: 7 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/cpperr.c $
 *
 ********************************************************************************
@@ -66,7 +66,7 @@ static PrintFunctions F;
 
 /*******************************************************************************
 *
-*   ROUTINE: SetPrintFunctions
+*   ROUTINE: set_print_functions
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2002
 *   CHANGED BY:                                   ON:
@@ -81,7 +81,7 @@ static PrintFunctions F;
 *
 *******************************************************************************/
 
-void SetPrintFunctions( PrintFunctions *pPF )
+void set_print_functions( PrintFunctions *pPF )
 {
   if( pPF->newstr == NULL ||
       pPF->scatf  == NULL ||
@@ -168,7 +168,7 @@ void ucpp_error( long line, char *fmt, ... )
   if( line >= 0 ) {
     struct stack_context *sc = report_context();
     size_t i;
-    
+
     for( i = 0; sc[i].line >= 0; i++ )
       F.scatf( str, "\n\tincluded from %s:%ld",
                sc[i].long_name ? sc[i].long_name : sc[i].name,

@@ -2,17 +2,17 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/14 20:07:57 +0000 $
-# $Revision: 14 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/20 04:16:16 +0100 $
+# $Revision: 21 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 use Test;
@@ -21,7 +21,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 2238 }
+BEGIN { plan tests => 3382 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -32,10 +32,11 @@ eval_test(q{
   $p->configure;                                           # (1) Useless use of configure in void context
 
   $p->member( 'xxx', 666 );                                # (E) Call to member without parse data
-  $p->def( 'xxx' );                                        # (E) Call to def without parse data
-  $p->pack( 'xxx', {foo=>123} );                           # (E) Call to pack without parse data
-  $p->unpack( 'xxx', 'yyy' );                              # (E) Call to unpack without parse data
-  $p->sizeof( 'xxx' );                                     # (E) Call to sizeof without parse data
+  $p->def( 'xxx' );                                        # (1) Useless use of def in void context
+  $p->pack( 'xxx', {foo=>123} );                           # (1) Useless use of pack in void context
+  $p->unpack( 'xxx', 'yyy' );                              # (1) Useless use of unpack in void context
+  $p->sizeof( 'xxx' );                                     # (1) Useless use of sizeof in void context
+  $p->typeof( 'xxx' );                                     # (1) Useless use of typeof in void context
   $p->offsetof( 'xxx', 'yyy' );                            # (E) Call to offsetof without parse data
   $p->member( 'xxx', 123 );                                # (E) Call to member without parse data
   $p->enum_names;                                          # (E) Call to enum_names without parse data
@@ -51,6 +52,7 @@ eval_test(q{
   $p->dependencies;                                        # (E) Call to dependencies without parse data
   $p->sourcify;                                            # (E) Call to sourcify without parse data
 
+  $p->parse_file( '' );                                    # (E) Cannot find input file ''
   $p->parse_file( 'foobar.c' );                            # (E) Cannot find input file 'foobar.c'
 
   $p->Define(qw( DEFINE=3 DEFINE=2 ), '=');
@@ -63,6 +65,11 @@ eval_test(q{
                                                            # (1) syntax error in #assert
                                                            # (1) unfinished #assert
   $p->Assert([]);
+
+  $x = $p->pack( 'signed int', 1 );                        # no warning
+  $x = $p->unpack( 'signed int', $x );                     # no warning
+  $x = $p->sizeof( 'long long' );                          # no warning
+  $x = $p->typeof( 'long double' );                        # no warning
 
   $p->parse( $code );                                      # (1) macro ... FOO ... redefined
                                                            # (2) (warning) ... trailing garbage in #assert
@@ -90,7 +97,15 @@ eval_test(q{
   $p->FloatSize( 13 );                                     # (E) FloatSize must be 0, 1, 2, 4, 8, 12 or 16, not 13
   $p->FloatSize( 1 );                                      # no warning
 
+  $x = $p->def( '' );                                      # no warning
+  $x = $p->def( 'notthere' );                              # no warning
+  $x = $p->def( 'notthere.yyy' );                          # (1) Ignoring potential member expression ('.yyy') after type name
+  $x = $p->def( 'xxx.yyy' );                               # (1) Ignoring potential member expression ('.yyy') after type name
+  $x = $p->def( 'xxx[yyy]' );                              # (1) Ignoring potential array expression ('[yyy]') after type name
+  $x = $p->def( 'xxx **' );                                # (1) Ignoring garbage ('**') after type name
+
   $p->pack( 'xxx', 'yyy' );                                # (1) Useless use of pack in void context
+  $x = $p->pack( '', 1 );                                  # (E) Cannot find ''
   $x = $p->pack( 'na', 'yyy' );                            # (E) Cannot find 'na'
   $x = $p->pack( 'nodef', 'yyy' );                         # (E) Got no struct declarations in resolution of 'nodef'
   $x = $p->pack( 'xxx', 'yyy' );                           # (E) Got no definition for 'union xxx'
@@ -103,7 +118,14 @@ eval_test(q{
   $p->pack( 'enum enu', 'A', 'xxxx' );                     # (E) Modification of a read-only value attempted
   $x = $p->pack( 'enum enu', 'A', 'xxxx' );                # no warning
 
+  $x = $p->pack( 'test.foo', 23 );                         # (1) 'test.foo' should be an array reference
+  $x = $p->pack( 'test.foo', {} );                         # (1) 'test.foo' should be an array reference
+  $x = $p->pack( 'test.foo', sub { 1 } );                  # (1) 'test.foo' should be an array reference
+  $x = $p->pack( 'test.bar', [] );                         # (1) 'test.bar' should be a scalar value
+  $x = $p->pack( 'test.xxx', {} );                         # (1) 'test.xxx' should be a scalar value
+
   $p->unpack( 'test', $data );                             # (1) Useless use of unpack in void context
+  $x = $p->unpack( '', $data );                            # (E) Cannot find ''
   $x = $p->unpack( 'na', $data );                          # (E) Cannot find 'na'
   $x = $p->unpack( 'nodef', $data );                       # (E) Got no struct declarations in resolution of 'nodef'
   $x = $p->unpack( 'xxx', $data );                         # (E) Got no definition for 'union xxx'
@@ -119,17 +141,19 @@ eval_test(q{
                                                            # (1) Member 'b' used more than once in union defined in [buffer](75)
 
   $p->sizeof( 'na' );                                      # (1) Useless use of sizeof in void context
+  $x = $p->sizeof( '' );                                   # (E) Cannot find ''
   $x = $p->sizeof( 'na' );                                 # (E) Cannot find 'na'
+  $x = $p->sizeof( 'long =' );                             # (E) Cannot find 'long ='
   $x = $p->sizeof( 'nodef' );                              # (E) Got no struct declarations in resolution of 'nodef'
   $x = $p->sizeof( 'xxx' );                                # (E) Got no definition for 'union xxx'
   $x = $p->sizeof( 'hasbf' );                              # (1) Bitfields are unsupported in sizeof('hasbf')
   $x = $p->sizeof( 't_unsafe' );                           # (1) Unsafe values used in sizeof('t_unsafe')
   $x = $p->sizeof( 's_unsafe' );                           # (1) Unsafe values used in sizeof('s_unsafe')
-  $x = $p->sizeof( 'enum enu . foo' );                     # (E) An enum does not have members
-  $x = $p->sizeof( 'enumtype.foo' );                       # (E) An enum does not have members
-  $x = $p->sizeof( 'ptrtype.foo' );                        # (E) A pointer type does not have members
-  $x = $p->sizeof( 'basic.foo' );                          # (E) A basic type does not have members
-  $x = $p->sizeof( 'enumtype [0]' );                       # (E) Invalid character '[' (0x5B) in struct member expression
+  $x = $p->sizeof( 'enum enu . foo' );                     # (E) Cannot access member '. foo' of non-compound type
+  $x = $p->sizeof( 'enumtype.foo' );                       # (E) Cannot access member '.foo' of non-compound type
+  $x = $p->sizeof( 'ptrtype.foo' );                        # (E) Cannot access member '.foo' of pointer type
+  $x = $p->sizeof( 'basic.foo' );                          # (E) Cannot access member '.foo' of non-compound type
+  $x = $p->sizeof( 'enumtype [0]' );                       # (E) Cannot use type as an array
   $x = $p->sizeof( 'test.666' );                           # (E) Struct members must start with a character or an underscore
   $x = $p->sizeof( 'test.foo.d' );                         # (E) Cannot access member '.d' of array type
   $x = $p->sizeof( 'test.bar.d' );                         # (E) Cannot access member '.d' of non-compound type
@@ -138,6 +162,11 @@ eval_test(q{
   $x = $p->sizeof( 'test.xxx[1]' );                        # (E) Cannot use 'xxx' as an array
   $x = $p->sizeof( 'test.bar[1]' );                        # (E) Cannot use 'bar' as an array
   $x = $p->sizeof( 'test.bar()' );                         # (E) Invalid character '(' (0x28) in struct member expression
+  $x = $p->sizeof( 'test.bar+' );                          # (E) Invalid character '+' (0x2B) in struct member expression
+  $x = $p->sizeof( 'test.bar+a' );                         # (E) Invalid character '+' (0x2B) in struct member expression
+  $x = $p->sizeof( 'test.bar a' );                         # (E) Invalid character 'a' (0x61) in struct member expression
+  $x = $p->sizeof( 'test bar' );                           # (E) Invalid character 'b' (0x62) in struct member expression
+  $x = $p->sizeof( 'test.bar+1' );                         # no warning
   $x = $p->sizeof( 'test.foo[1][2' );                      # (E) Incomplete struct member expression
   $x = $p->sizeof( 'test.foo[1][2].d' );                   # (E) Cannot find struct member 'd'
   $x = $p->sizeof( 'test.foo[a]' );                        # (E) Array indices must be constant decimal values
@@ -145,14 +174,47 @@ eval_test(q{
   $x = $p->sizeof( 'test.foo[2]' );                        # (E) Cannot use index 2 into array of size 2
   $x = $p->sizeof( 'test.foo[1][2][0]' );                  # (E) Cannot use 'foo' as a 3-dimensional array
 
+  $p->typeof( 'na' );                                      # (1) Useless use of typeof in void context
+  $x = $p->typeof( '' );                                   # (E) Cannot find ''
+  $x = $p->typeof( 'na' );                                 # (E) Cannot find 'na'
+  $x = $p->typeof( 'nodef' );                              # (E) Got no struct declarations in resolution of 'nodef'
+  $x = $p->typeof( 'xxx' );                                # (E) Got no definition for 'union xxx'
+  $x = $p->typeof( 'enum enu . foo' );                     # (E) Cannot access member '. foo' of non-compound type
+  $x = $p->typeof( 'enumtype.foo' );                       # (E) Cannot access member '.foo' of non-compound type
+  $x = $p->typeof( 'ptrtype.foo' );                        # (E) Cannot access member '.foo' of pointer type
+  $x = $p->typeof( 'basic.foo' );                          # (E) Cannot access member '.foo' of non-compound type
+  $x = $p->typeof( 'enumtype [0]' );                       # (E) Cannot use type as an array
+  $x = $p->typeof( 'test.666' );                           # (E) Struct members must start with a character or an underscore
+  $x = $p->typeof( 'test.foo.d' );                         # (E) Cannot access member '.d' of array type
+  $x = $p->typeof( 'test.bar.d' );                         # (E) Cannot access member '.d' of non-compound type
+  $x = $p->typeof( 'test.yyy.d' );                         # (E) Cannot access member '.d' of pointer type
+  $x = $p->typeof( 'test.ptr.d' );                         # (E) Cannot access member '.d' of pointer type
+  $x = $p->typeof( 'test.xxx[1]' );                        # (E) Cannot use 'xxx' as an array
+  $x = $p->typeof( 'test.bar[1]' );                        # (E) Cannot use 'bar' as an array
+  $x = $p->typeof( 'test.bar()' );                         # (E) Invalid character '(' (0x28) in struct member expression
+  $x = $p->typeof( 'test.bar+' );                          # (E) Invalid character '+' (0x2B) in struct member expression
+  $x = $p->typeof( 'test.bar+a' );                         # (E) Invalid character '+' (0x2B) in struct member expression
+  $x = $p->typeof( 'test.bar+1' );                         # no warning
+  $x = $p->typeof( 'test.foo[1][2' );                      # (E) Incomplete struct member expression
+  $x = $p->typeof( 'test.foo[1][2].d' );                   # (E) Cannot find struct member 'd'
+  $x = $p->typeof( 'test.foo[a]' );                        # (E) Array indices must be constant decimal values
+  $x = $p->typeof( 'test.foo[0x1]' );                      # (E) Index operator not terminated correctly
+  $x = $p->typeof( 'test.foo[2]' );                        # (E) Cannot use index 2 into array of size 2
+  $x = $p->typeof( 'test.foo[1][2][0]' );                  # (E) Cannot use 'foo' as a 3-dimensional array
+
   $p->offsetof( 'xxx', 666 );                              # (1) Useless use of offsetof in void context
+  $x = $p->offsetof( '', 666 );                            # (E) Cannot find ''
   $x = $p->offsetof( 'abc', 666 );                         # (E) Cannot find 'abc'
   $x = $p->offsetof( 'nodef', 666 );                       # (E) Got no struct declarations in resolution of 'nodef'
   $x = $p->offsetof( 'xxx', 666 );                         # (E) Got no definition for 'union xxx'
-  $x = $p->offsetof( 'ptrtype', 666 );                     # (E) Cannot use offsetof on a pointer type
-  $x = $p->offsetof( 'basic', '666' );                     # (E) Cannot use offsetof on a basic type
-  $x = $p->offsetof( 'enu', '666' );                       # (E) Cannot use offsetof on an enum
-  $x = $p->offsetof( 'test', '666' );                      # (E) Struct members must start with a character or an underscore
+  $x = $p->offsetof( 'ptrtype', '666' );                   # (E) Invalid character '6' (0x36) in struct member expression
+  $x = $p->offsetof( 'basic', '666' );                     # (E) Invalid character '6' (0x36) in struct member expression
+  $x = $p->offsetof( 'enu', '666' );                       # (E) Invalid character '6' (0x36) in struct member expression
+  $x = $p->offsetof( 'ptrtype', 'a66' );                   # (E) Cannot access member '.a66' of pointer type
+  $x = $p->offsetof( 'basic', 'a66' );                     # (E) Cannot access member '.a66' of non-compound type
+  $x = $p->offsetof( 'enu', 'a66' );                       # (E) Cannot access member '.a66' of non-compound type
+  $x = $p->offsetof( 'long int', 'a66' );                  # (E) Cannot access member '.a66' of non-compound type
+  $x = $p->offsetof( 'test', 'foo[0][0].666' );            # (E) Struct members must start with a character or an underscore
   $x = $p->offsetof( 'test', 'foo.d' );                    # (E) Cannot access member '.d' of array type
   $x = $p->offsetof( 'test', 'bar.d' );                    # (E) Cannot access member '.d' of non-compound type
   $x = $p->offsetof( 'test', 'yyy.d' );                    # (E) Cannot access member '.d' of pointer type
@@ -169,56 +231,86 @@ eval_test(q{
   $x = $p->offsetof( 'hasbf', 'nobf' );                    # (1) Bitfields are unsupported in offsetof('hasbf')
   $x = $p->offsetof( 's_unsafe', 'foo' );                  # (1) Unsafe values used in offsetof('s_unsafe')
 
+  $x = $p->offsetof( 'test.bar', 'foo' );                  # (E) Cannot access member '.foo' of non-compound type
   $x = $p->offsetof( 'test.arx[3][4]', 'uni[3].str.c' );   # (E) Cannot find struct member 'arx'
   $x = $p->offsetof( 'test.ary[3][4]', 'uni[3].str.c' );   # (E) Cannot use index 3 into array of size 3
   $x = $p->offsetof( 'test.ary[2][4]', 'uni[3].str.c' );   # (E) Cannot use index 4 into array of size 4
   $x = $p->offsetof( 'test.ary[2][3]', 'uni[6].str.c' );   # (E) Cannot use index 6 into array of size 5
   $x = $p->offsetof( 'test.ary[2][3]', 'uni[1].str.c' );   # (E) Cannot find struct member 'c'
   $x = $p->offsetof( 'test.ary[2][3].uni.a', 'xxx' );      # (E) Cannot access member '.a' of array type
-  $x = $p->offsetof( 'test.ary[2][3].uni', 'xxx' );        # (E) Cannot use offsetof on an array type
+  $x = $p->offsetof( 'test.ary[2][3].uni', 'xxx' );        # (E) Cannot access member '.xxx' of array type
   $x = $p->offsetof( 'test.ary[2][3]', 'uni.xxx' );        # (E) Cannot access member '.xxx' of array type
-  $x = $p->offsetof( 'test.ary[2][3].uni[0].a', 'xxx' );   # (E) Cannot use offsetof on an enum
-  $x = $p->offsetof( 'test.ary[2][3].uni[0].str.a', 'b' ); # (E) Cannot use offsetof on a pointer type
+  $x = $p->offsetof( 'test.ary[2][3].uni[0].a', 'xxx' );   # (E) Cannot access member '.xxx' of non-compound type
+  $x = $p->offsetof( 'test.ary[2][3].uni[0].str.a', 'b' ); # (E) Cannot access member '.b' of pointer type
+
+  $x = $p->offsetof( 'test.ary[2][2]', 'uni' );            # no warning
+  $x = $p->offsetof( 'test.ary[2][2]', '' );               # (1) Empty string passed as member expression
+  $x = $p->offsetof( 'test.ary[2][2]', "\t " );            # (1) Empty string passed as member expression
 
   $p->member( 'xxx', 6666 );                               # (1) Useless use of member in void context
+  $x = $p->member( '', 6666 );                             # (E) Cannot find ''
   $x = $p->member( 'abc', 6666 );                          # (E) Cannot find 'abc'
   $x = $p->member( 'nodef', 6666 );                        # (E) Got no struct declarations in resolution of 'nodef'
   $x = $p->member( 'xxx', 6666 );                          # (E) Got no definition for 'union xxx'
   $x = $p->member( 'ptrtype', 6666 );                      # (E) Cannot use member on a pointer type
   $x = $p->member( 'basic', 6666 );                        # (E) Cannot use member on a basic type
+  $x = $p->member( 'long long', 6666 );                    # (E) Cannot use member on a basic type
   $x = $p->member( 'enu', 6666 );                          # (E) Cannot use member on an enum
   $x = $p->member( 'test', 6666 );                         # (E) Offset 6666 out of range
+  $x = $p->member( 'test', -10 );                          # (E) Offset -10 out of range
   $x = $p->member( 'hasbf', 1 );                           # (1) Bitfields are unsupported in member('hasbf')
   $x = $p->member( 's_unsafe', 1 );                        # (1) Unsafe values used in member('s_unsafe')
 
+  $x = $p->member( 'test.bar', 6666 );                     # (E) Cannot use member on a basic type
   $x = $p->member( 'test.arx[3][4]', 6666 );               # (E) Cannot find struct member 'arx'
   $x = $p->member( 'test.ary[3][4]', 6666 );               # (E) Cannot use index 3 into array of size 3
   $x = $p->member( 'test.ary[2][4]', 6666 );               # (E) Cannot use index 4 into array of size 4
   $x = $p->member( 'test.ary[2][3]', 6666 );               # (E) Offset 6666 out of range
   $x = $p->member( 'test.ary[2][3].uni.a', 6666 );         # (E) Cannot access member '.a' of array type
-  $x = $p->member( 'test.ary[2][3].uni', 6666 );           # (E) Cannot use member on an array type
+  $x = $p->member( 'test.ary[2][3].uni', 0 );              # no error
   $x = $p->member( 'test.ary[2][3].uni[0].a', 6666 );      # (E) Cannot use member on an enum
   $x = $p->member( 'test.ary[2][3].uni[0].str.a', 6666 );  # (E) Cannot use member on a pointer type
 
   $p->enum_names;                                          # (1) Useless use of enum_names in void context
   $p->enum;                                                # (1) Useless use of enum in void context
   $x = $p->enum( 'na' );                                   # (1) Cannot find enum 'na'
+  $x = $p->enum( 'enum na' );                              # (1) Cannot find enum 'na'
+  @x = $p->enum( 'enu', '' );                              # (1) Cannot find enum ''
+  $x = $p->enum( 'enum enu' );                             # no warning
 
   $p->compound_names;                                      # (1) Useless use of compound_names in void context
   $p->compound;                                            # (1) Useless use of compound in void context
-  $x = $p->compound( 'na' );                               # (1) Cannot find compound 'na'
+  @x = $p->compound( 'na', '' );                           # (1) Cannot find compound 'na'
+                                                           # (1) Cannot find compound ''
+  $x = $p->compound( 'union na' );                         # (1) Cannot find union 'na'
+  $x = $p->compound( 'struct na' );                        # (1) Cannot find struct 'na'
+  $x = $p->compound( '__hasbf' );                          # no warning
+  $x = $p->compound( 'test' );                             # no warning
+  $x = $p->compound( 'struct __hasbf' );                   # (1) Cannot find struct '__hasbf'
+  $x = $p->compound( 'union test' );                       # (1) Cannot find union 'test'
+  $x = $p->compound( 'union __hasbf' );                    # no warning
+  $x = $p->compound( 'struct test' );                      # no warning
 
   $p->struct_names;                                        # (1) Useless use of struct_names in void context
   $p->struct;                                              # (1) Useless use of struct in void context
   $x = $p->struct( 'na' );                                 # (1) Cannot find struct 'na'
+  $x = $p->struct( 'union na' );                           # (1) Cannot find struct 'union na'
+  $x = $p->struct( 'struct na' );                          # (1) Cannot find struct 'na'
+  $x = $p->struct( '__hasbf' );                            # (1) Cannot find struct '__hasbf'
+  $x = $p->struct( 'struct test' );                        # no warning
 
   $p->union_names;                                         # (1) Useless use of union_names in void context
   $p->union;                                               # (1) Useless use of union in void context
   $x = $p->union( 'na' );                                  # (1) Cannot find union 'na'
+  $x = $p->union( 'union na' );                            # (1) Cannot find union 'na'
+  $x = $p->union( 'struct na' );                           # (1) Cannot find union 'struct na'
+  $x = $p->union( 'test' );                                # (1) Cannot find union 'test'
+  $x = $p->union( 'union __hasbf' );                       # no warning
 
   $p->typedef_names;                                       # (1) Useless use of typedef_names in void context
   $p->typedef;                                             # (1) Useless use of typedef in void context
-  $x = $p->typedef( 'na' );                                # (1) Cannot find typedef 'na'
+  @x = $p->typedef( 'na', '' );                            # (1) Cannot find typedef 'na'
+                                                           # (1) Cannot find typedef ''
 
   $x = $p->pack( 'e_unsafe', 'SAFE' );                     # no warning
   $x = $p->pack( 'e_unsafe', 'GOOD' );                     # no warning

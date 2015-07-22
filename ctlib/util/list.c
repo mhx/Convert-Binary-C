@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 18:46:47 +0000 $
-* $Revision: 6 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/17 13:39:05 +0100 $
+* $Revision: 7 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/util/list.c $
 *
 ********************************************************************************
@@ -194,7 +194,7 @@ static void QuickSort( Link *l, Link *r, int size, LLCompareFunc cmp )
     t = i->pObj;
     i->pObj = j->pObj;
     j->pObj = t;
-    
+
     i = i->next; lp++;
     j = j->prev; rp--;
   }
@@ -247,7 +247,7 @@ LinkedList LL_new( void )
  *  You can also delete a list that is not empty by
  *  using the LL_destroy() function.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
  *  \see LL_new() and LL_destroy()
  */
@@ -267,10 +267,10 @@ void LL_delete( LinkedList list )
  *  optionally calling a destructor function. It will not
  *  free the resources occupied by the list itself.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
- *  \param destroy	Pointer to the destructor function
- *			of the objects contained in the list.
+ *  \param destroy      Pointer to the destructor function
+ *                      of the objects contained in the list.
  *                      You can pass NULL if you don't want
  *                      LL_flush() to call object destructors.
  *
@@ -295,10 +295,10 @@ void LL_flush( LinkedList list, LLDestroyFunc destroy )
  *  occupied by a linked list. However, it will empty the
  *  the list prior to deleting it, like LL_flush().
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
- *  \param destroy	Pointer to the destructor function
- *			of the objects contained in the list.
+ *  \param destroy      Pointer to the destructor function
+ *                      of the objects contained in the list.
  *                      You can pass NULL if you don't want
  *                      LL_destroy() to call object destructors.
  *
@@ -322,10 +322,10 @@ void LL_destroy( LinkedList list, LLDestroyFunc destroy )
  *  need to be cloned as well, you can pass a pointer to
  *  a function that clones each element.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
- *  \param func		Pointer to the cloning function of
- *			the objects contained in the list.
+ *  \param func         Pointer to the cloning function of
+ *                      the objects contained in the list.
  *                      If you pass NULL, the original
  *                      object is stored in the cloned list
  *                      instead of a cloned object.
@@ -357,7 +357,7 @@ LinkedList LL_clone( LinkedList list, LLCloneFunc func )
  *  LL_count() will return the the number of objects that
  *  a linked list contains.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
  *  \return The size of the list or -1 if an invalid handle
  *          was passed.
@@ -380,9 +380,9 @@ int LL_count( const LinkedList list )
  *  If you think of the list as a stack, the function pushes
  *  a new element on top of the stack.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
- *  \param pObj		Pointer to an object associated with
+ *  \param pObj         Pointer to an object associated with
  *                      the new list element. The function
  *                      will not add a new element if this
  *                      is NULL.
@@ -407,7 +407,7 @@ void LL_push( const LinkedList list, void *pObj )
  *  If you think of the list as a stack, the function pops
  *  an element of the stack.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
  *  \return Pointer to the object that was associated with
  *          the element removed from the list. If the list
@@ -433,9 +433,9 @@ void *LL_pop( const LinkedList list )
  *  list, right before the first element. For an empty list
  *  this is equivalent to calling LL_push().
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
- *  \param pObj		Pointer to an object associated with
+ *  \param pObj         Pointer to an object associated with
  *                      the new list element. The function
  *                      will not add a new element if this
  *                      is NULL.
@@ -460,7 +460,7 @@ void LL_unshift( const LinkedList list, void *pObj )
  *  If the list contains only a single element, this is
  *  equivalent to calling LL_pop().
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
  *  \return Pointer to the object that was associated with
  *          the element removed from the list. If the list
@@ -487,9 +487,9 @@ void *LL_shift( const LinkedList list )
  *  If \a item is out of the valid range, the element will
  *  not be added.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
- *  \param item		Position where the new element should
+ *  \param item         Position where the new element should
  *                      be inserted.\n
  *                      A value of 0 will insert
  *                      the new element at the start of the
@@ -502,7 +502,7 @@ void *LL_shift( const LinkedList list )
  *                      add the new element to the end of the
  *                      list.
  *
- *  \param pObj		Pointer to an object associated with
+ *  \param pObj         Pointer to an object associated with
  *                      the new list element. The function
  *                      will not add a new element if this
  *                      is NULL.
@@ -541,9 +541,9 @@ void LL_insert( const LinkedList list, int item, void *pObj )
  *  LL_extract() will remove an arbitrary element from the
  *  list and return a pointer to the associated object.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
- *  \param item		Position of the element that should
+ *  \param item         Position of the element that should
  *                      be extracted.\n
  *                      A value of 0 will extract the first
  *                      element, like LL_shift(). A negative
@@ -583,9 +583,9 @@ void *LL_extract( const LinkedList list, int item )
  *  LL_get() will simply return a pointer to the object
  *  associated with a certain list element.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
- *  \param item		Position of the element. Negative
+ *  \param item         Position of the element. Negative
  *                      positions count backwards from the
  *                      end of the list, so -1 would refer
  *                      to the last element.
@@ -618,13 +618,13 @@ void *LL_get( const LinkedList list, int item )
  *  \a offset from \a list, replace them by the elements in
  *  \a rlist and return a new list holding the extracted elements.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
- *  \param offset	Offset of the first element to extract.
+ *  \param offset       Offset of the first element to extract.
  *                      If negative, counts backwards from the
  *                      end.
  *
- *  \param length	Length of the list to extract. If negative,
+ *  \param length       Length of the list to extract. If negative,
  *                      all remaining elements will be extracted.
  *                      If \a length is larger than the number of
  *                      remaining elements, only the remaining
@@ -632,7 +632,7 @@ void *LL_get( const LinkedList list, int item )
  *                      no elements will be extracted. However,
  *                      an empty list will still be returned.
  *
- *  \param rlist	List that will replace the extracted
+ *  \param rlist        List that will replace the extracted
  *                      elements. If no elements were extracted,
  *                      the elements of \a rlist will just be
  *                      inserted at \a offset. If \a rlist is
@@ -715,7 +715,7 @@ LinkedList LL_splice( const LinkedList list, int offset, int length, LinkedList 
  *  mind that the iterator is reset whenever the list is
  *  modified.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
  *  \see LL_next() and LL_prev()
  */
@@ -736,7 +736,7 @@ void LL_reset( const LinkedList list )
  *  LL_next() will advance to the next element and return a
  *  pointer to the object associated with that element.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
  *  \return Pointer to the object associated with the next
  *          list element.
@@ -762,7 +762,7 @@ void *LL_next( const LinkedList list )
  *  LL_prev() will go back to the previous element and return a
  *  pointer to the object associated with that element.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
  *  \return Pointer to the object associated with the previous
  *          list element.
@@ -788,9 +788,9 @@ void *LL_prev( const LinkedList list )
  *  LL_sort() will sort a list using a quicksort algorithm.
  *  The sorted list will be in ascending order.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
- *  \param cmp		Pointer to a comparison function.
+ *  \param cmp          Pointer to a comparison function.
  *                      This function is called with a pair
  *                      of pointers to objects in the list
  *                      and must return

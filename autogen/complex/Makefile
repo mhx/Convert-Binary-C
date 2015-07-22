@@ -1,6 +1,6 @@
 SHELL     = /bin/bash
 PERL      = perl
-CHECKOUT  = ../checkout.bash
+CHECKOUT  = checkout_file
 CECHO     = $(PERL) -e'use Term::ANSIColor; print color(shift); print @ARGV, color("reset"), "\n"'
 BLUE      = $(CECHO) "blue"
 

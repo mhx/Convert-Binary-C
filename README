@@ -2,11 +2,12 @@ CONTENTS
 
 1. DESCRIPTION
 2. INSTALLATION
-3. DOCUMENTATION
-4. CONFIGURATION
-5. COMPATIBILITY
-6. FEATURES
-7. COPYRIGHT
+3. UPGRADING
+4. DOCUMENTATION
+5. CONFIGURATION
+6. COMPATIBILITY
+7. FEATURES
+8. COPYRIGHT
 
 
 --------------
@@ -52,13 +53,22 @@ since some of the tests are quite time consuming. The time required
 for running the whole test suite depends on your Perl version, the
 features you're building the module with, and of course your machine.
 
-On a 1 GHz/P-III machine, using a multithreaded perl 5.8.0 binary,
-the whole test suite needs about 35 seconds. If the debugging feature
-is enabled, this will increase to almost two minutes, most of which
-is used up by the final memory leak test.
+On a 1 GHz/P-III laptop, using a multithreaded perl 5.8.0 binary, the
+whole test suite runs for about half a minute. If the debugging feature
+is enabled, this will increase by another minute, most of which is used
+up by the final memory leak test.
+
+------------
+3. UPGRADING
+------------
+
+If you are upgrading from a previous release of Convert::Binary::C,
+please check the Changes file. In its current state, the module is
+still subject to changes that may affect compatibility with older
+releases.
 
 ----------------
-3. DOCUMENTATION
+4. DOCUMENTATION
 ----------------
 
 To see the documentation, use the perldoc command:
@@ -87,7 +97,7 @@ you can start the examples like this after building the module:
 Otherwise just run the example scripts like any other Perl script.
 
 ----------------
-4. CONFIGURATION
+5. CONFIGURATION
 ----------------
 
 Configuring a Convert::Binary::C object correctly can be quite
@@ -114,7 +124,7 @@ As the tool is very experimental, any feedback on 'ccconfig'
 is really appreciated!
 
 ----------------
-5. COMPATIBILITY
+6. COMPATIBILITY
 ----------------
 
 The module should build on most of the platforms that Perl runs on.
@@ -142,7 +152,7 @@ Multithreaded perl binaries are explicitly supported, as the module
 is intended to be thread-safe.
 
 -----------
-6. FEATURES
+7. FEATURES
 -----------
 
 You can enable or disable certain features at compile time by adding
@@ -171,7 +181,7 @@ enabled, you would say:
 This will still allow you to pass other 'standard' arguments to Makefile.PL.
 
 ------------
-7. COPYRIGHT
+8. COPYRIGHT
 ------------
 
 Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
@@ -183,8 +193,8 @@ and redistribution details refer to 'ctlib/ucpp/README'.
 
 Portions copyright (c) 1989, 1990 James A. Roskind.
 
-Some of the include files used for the 't/106_parse.t' test
-script are (c) 1991-1999, 2000, 2001 Free Software Foundation,
-Inc. They are neither required to create the binary nor linked
-to the source code of this module in any other way.
+The include files located in 't/include/include', which are used in
+some of the test scripts are (c) 1991-1999, 2000, 2001 Free Software
+Foundation, Inc. They are neither required to create the binary nor
+linked to the source code of this module in any other way.
 

@@ -12,7 +12,7 @@
 * $Author: mhx $
 * $Date: 2003/01/23 21:21:24 +0000 $
 * $Revision: 3 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/util/ccattr.h $
 *
 ********************************************************************************

@@ -2,17 +2,17 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/14 20:06:53 +0000 $
-# $Revision: 14 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/17 13:39:10 +0100 $
+# $Revision: 16 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /t/802_threads.t $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 use Test;
@@ -103,19 +103,19 @@ END
   my @struct_ids   = $p->struct_names;
   my @union_ids    = $p->union_names;
   my @typedef_ids  = $p->typedef_names;
-  
+
   @enum_ids     ==   4 or return "incorrect number of enum identifiers";
   @compound_ids == 134 or return "incorrect number of compound identifiers";
   @struct_ids   == 129 or return "incorrect number of struct identifiers";
   @union_ids    ==   5 or return "incorrect number of union identifiers";
   @typedef_ids  == 301 or return "incorrect number of typedef identifiers";
-  
+
   my @enums     = $p->enum;
   my @compounds = $p->compound;
   my @structs   = $p->struct;
   my @unions    = $p->union;
   my @typedefs  = $p->typedef;
-  
+
   @enums      ==  34 or return "incorrect number of enums";
   @compounds  == 194 or return "incorrect number of compounds";
   @structs    == 175 or return "incorrect number of structs";
@@ -127,10 +127,10 @@ END
   my %size = do { local (@ARGV, $/) = ('t/include/sizeof.pl'); eval <> };
   my $max_size = 0;
   my @fail = ();
-  
+
   foreach( @enum_ids, @compound_ids, @typedef_ids ) {
     my $s = eval { $p->sizeof($_) };
-  
+
     if( $@ ) {
       print "# ($arg) sizeof failed for '$_': $@\n";
     }
@@ -147,43 +147,45 @@ END
       $max_size = $s if $s > $max_size;
       next;
     }
-  
+
     push @fail, $_ unless $s == $size{$_}
   }
-  
+
   @fail == 0 or return "size test failed for [@fail]";
 
-  my $data = pack 'C*', map rand 256, 1 .. $max_size;
+  # don't use random data as it may cause failures
+  # for floating point values
+  my $data = pack 'C*', map { $_ & 0xFF } 1 .. $max_size;
   @fail = ();
-  
+
   for my $id ( @enum_ids, @compound_ids, @typedef_ids ) {
 
     # skip long doubles
     next if grep { $id eq $_ } qw( __convert_long_double float_t double_t );
 
     my $x = eval { $p->unpack( $id, $data ) };
-  
+
     if( $@ ) {
       print "# ($arg) unpack failed for '$id': $@\n";
       push @fail, $id;
       next;
     }
-  
+
     my $packed = eval { $p->pack( $id, $x ) };
-  
+
     if( $@ ) {
       print "# ($arg) pack failed for '$id': $@\n";
       push @fail, $id;
       next;
     }
-  
+
     unless( chkpack( $data, $packed ) ) {
       print "# ($arg) inconsistent pack/unpack data for '$id'\n";
       push @fail, $id;
       next;
     }
   }
-  
+
   @fail == 0 or return "pack test failed for [@fail]\n";
 
   print "# tests ($arg) finished successfully\n";

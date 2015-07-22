@@ -2,17 +2,17 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/02/27 18:27:43 +0000 $
-# $Revision: 5 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/17 13:39:08 +0100 $
+# $Revision: 7 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /t/109_sourcify.t $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 use Test;
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 54 }
+BEGIN { plan tests => 56 }
 
 eval {
   $orig  = new Convert::Binary::C Include => ['t/include/perlinc',
@@ -84,18 +84,33 @@ for my $meth ( qw( enum compound struct union typedef ) ) {
 
 eval {
   $orig->clean->parse( <<ENDC );
+#pragma pack( push, 1 )
 typedef struct { struct B *x; } A;
 typedef struct B { A *x; } B;
+#pragma pack( pop )
+enum buzz { BUZZER };
+struct foo {
+  enum { FOOBAR } bar;
+  enum buzz       baz;
+};
 ENDC
 };
-
 ok($@,'',"failed to parse C code");
 
 eval {
-  $clone[0]->parse( $orig->sourcify );
+  $clone[0]->clean->parse( $orig->sourcify );
 };
 ok($@,'',"failed to parse sourcified code");
 
+eval {
+  $orig->clean->parse( 'typedef struct { ' . 'struct { 'x42 . 'int a;' . ' } a;'x42 . ' } rec;' );
+};
+ok($@,'',"failed to parse C code");
+
+eval {
+  $clone[1]->clean->parse( $orig->sourcify );
+};
+ok($@,'',"failed to parse sourcified code");
 
 sub reccmp
 {

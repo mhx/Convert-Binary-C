@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 18:47:29 +0000 $
-* $Revision: 14 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/17 13:39:04 +0100 $
+* $Revision: 17 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/util/hash.c $
 *
 ********************************************************************************
@@ -73,8 +73,8 @@ struct _HashTable {
               HASH_DEBUG_FUNC out ;                                    \
           } while(0)
 
-static void (*gs_dbfunc)(char *, ...) = NULL;
-static unsigned long gs_dbflags       = 0;
+static void (*gs_dbfunc)(const char *, ...) = NULL;
+static unsigned long gs_dbflags             = 0;
 
 #else /* !DEBUG_HASH */
 
@@ -96,7 +96,7 @@ static unsigned long gs_dbflags       = 0;
 /* normally, one extra byte is allocated per hash key
    to terminate the key with a zero byte              */
 #ifdef NO_TERMINATED_KEYS
-#define TERMINATOR_LENGTH 0 
+#define TERMINATOR_LENGTH 0
 #else
 #define TERMINATOR_LENGTH 1
 #endif
@@ -142,7 +142,7 @@ static void debug_check( char *str, ... )
  *
  *  Using the HT_new() function you create an empty hash table.
  *
- *  \param size		Hash table base size. You can specify
+ *  \param size         Hash table base size. You can specify
  *                      any value between 1 and 16. Depending
  *                      on how many elements you plan to store
  *                      in the hash table, values from 6 to 12
@@ -171,9 +171,9 @@ HashTable HT_new( int size )
  *  Using the HT_new_ex() function you create an empty hash
  *  table and set its flags.
  *
- *  \param size		Hash table base size.
+ *  \param size         Hash table base size.
  *
- *  \param flags	Hash table flags. Currently you can
+ *  \param flags        Hash table flags. Currently you can
  *                      use these flags only to specify the
  *                      hash tables autosize behaviour. Use
  *                      HT_AUTOGROW if you want the hash table
@@ -230,7 +230,7 @@ HashTable HT_new_ex( int size, unsigned long flags )
  *  You can also delete a hash table that is not empty by
  *  using the HT_destroy() function.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
  *  \see HT_new() and HT_destroy()
  */
@@ -262,10 +262,10 @@ void HT_delete( HashTable table )
  *  by the hash table itself, so the hash table handle will
  *  still be valid.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
- *  \param destroy	Pointer to the destructor function
- *			of the objects contained in the hash
+ *  \param destroy      Pointer to the destructor function
+ *                      of the objects contained in the hash
  *                      table.
  *                      You can pass NULL if you don't want
  *                      HT_destroy() to call object destructors.
@@ -317,10 +317,10 @@ void HT_flush( HashTable table, HTDestroyFunc destroy )
  *  destructor function for each element, allowing to free
  *  the resources of the objects stored in the hash table.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
- *  \param destroy	Pointer to the destructor function
- *			of the objects contained in the hash
+ *  \param destroy      Pointer to the destructor function
+ *                      of the objects contained in the hash
  *                      table.
  *                      You can pass NULL if you don't want
  *                      HT_destroy() to call object destructors.
@@ -372,10 +372,10 @@ void HT_destroy( HashTable table, HTDestroyFunc destroy )
  *  need to be cloned as well, you can pass a pointer to
  *  a function that clones each element.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
- *  \param func		Pointer to the cloning function of
- *			the objects contained in the table.
+ *  \param func         Pointer to the cloning function of
+ *                      the objects contained in the table.
  *                      If you pass NULL, the original
  *                      object is stored in the cloned table
  *                      instead of a cloned object.
@@ -400,14 +400,14 @@ HashTable HT_clone( HashTable table, HTCloneFunc func )
     buckets  = 1<<table->size;
     pSrcNode = &table->root[0];
     pDstNode = &clone->root[0];
-  
+
     while( buckets-- > 0 ) {
       node = *pSrcNode++;
       pNode = pDstNode++;
-  
+
       while( node ) {
         cnode = Alloc( HN_SIZE_FIX + node->keylen + TERMINATOR_LENGTH );
-  
+
         cnode->next   = *pNode;
         cnode->pObj   = func ? func( node->pObj ) : node->pObj;
         cnode->hash   = node->hash;
@@ -416,9 +416,9 @@ HashTable HT_clone( HashTable table, HTCloneFunc func )
 #ifndef NO_TERMINATED_KEYS
         cnode->key[cnode->keylen] = '\0';
 #endif
-  
+
         *pNode = cnode;
-  
+
         pNode = &(*pNode)->next;
         node = node->next;
       }
@@ -436,9 +436,9 @@ HashTable HT_clone( HashTable table, HTCloneFunc func )
  *  HT_resize() will allow to resize (shrink or grow) an
  *  existing hash table.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
- *  \param size		New size for the hash table.
+ *  \param size         New size for the hash table.
  *                      This argument is the same as the
  *                      argument passed to HT_new().
  *
@@ -590,7 +590,7 @@ static inline void ht_shrink( HashTable table, int size )
  *  to a hash table. It will list the contents of all hash
  *  buckets and print all keys, hash sums and value pointers.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
  *  \note HT_dump() is only available if the code was compiled
  *        with the \c DEBUG_HASH preprocessor flag.
@@ -639,7 +639,7 @@ void HT_dump( const HashTable table )
  *
  *  HT_size() will return the size of the hash table.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
  *  \return The size of the table or -1 if an invalid handle
  *          was passed. The value is the same as the argument
@@ -664,7 +664,7 @@ int HT_size( const HashTable table )
  *  HT_count() will return the number of objects currently
  *  stored in a hash table.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
  *  \return The number of elements stored in the hash table
  *          or -1 if an invalid handle was passed.
@@ -691,13 +691,13 @@ int HT_count( const HashTable table )
  *  need to be allocated if you store the hash node in the
  *  hash table.
  *
- *  \param key		Pointer to the hash key.
+ *  \param key          Pointer to the hash key.
  *
- *  \param keylen	Length of the hash key in bytes.
+ *  \param keylen       Length of the hash key in bytes.
  *                      May be zero if \p key is a zero
  *                      terminated string.
  *
- *  \param hash		Pre-computed hash sum. If this is
+ *  \param hash         Pre-computed hash sum. If this is
  *                      zero, the hash sum is computed.
  *
  *  \return A handle to the new hash node.
@@ -744,7 +744,7 @@ HashNode HN_new( const char *key, int keylen, HashSum hash )
  *  You cannot free the resources of a hash node that
  *  is still embedded in a hash table.
  *
- *  \param node		Handle to an existing hash node.
+ *  \param node         Handle to an existing hash node.
  *
  *  \see HN_new()
  */
@@ -770,11 +770,11 @@ void HN_delete( HashNode node )
  *  Use this function to store a previously created hash
  *  node in an existing hash table.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
- *  \param node		Handle to an existing hash node.
+ *  \param node         Handle to an existing hash node.
  *
- *  \param pObj		Pointer to an object that will be
+ *  \param pObj         Pointer to an object that will be
  *                      stored as a hash value.
  *
  *  \return Nonzero if the node could be stored, zero
@@ -845,9 +845,9 @@ int HT_storenode( const HashTable table, HashNode node, void *pObj )
  *  hash node will not be freed. The hash node can be
  *  stored in another hash table.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
- *  \param node		Handle to an existing hash node.
+ *  \param node         Handle to an existing hash node.
  *
  *  \return Pointer to the object that was stored as hash
  *          value with the hash node.
@@ -906,9 +906,9 @@ void *HT_fetchnode( const HashTable table, HashNode node )
  *  hash node will be freed. This is like calling
  *  HT_fetchnode() and deleting the node with HN_delete().
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
- *  \param node		Handle to an existing hash node.
+ *  \param node         Handle to an existing hash node.
  *
  *  \return Pointer to the object that was stored as hash
  *          value with the hash node.
@@ -963,18 +963,18 @@ void *HT_rmnode( const HashTable table, HashNode node )
  *  Use this function to store a new key/value pair
  *  in an existing hash table.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
- *  \param key		Pointer to the hash key.
+ *  \param key          Pointer to the hash key.
  *
- *  \param keylen	Length of the hash key in bytes.
+ *  \param keylen       Length of the hash key in bytes.
  *                      May be zero if \p key is a zero
  *                      terminated string.
  *
- *  \param hash		Pre-computed hash sum. If this is
+ *  \param hash         Pre-computed hash sum. If this is
  *                      zero, the hash sum is computed.
  *
- *  \param pObj		Pointer to an object that will be
+ *  \param pObj         Pointer to an object that will be
  *                      stored as a hash value.
  *
  *  \return Nonzero if the node could be stored, zero
@@ -1060,15 +1060,15 @@ int HT_store( const HashTable table, const char *key, int keylen, HashSum hash, 
  *  by the hash node used to store the key/value pair
  *  will be freed.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
- *  \param key		Pointer to a hash key.
+ *  \param key          Pointer to a hash key.
  *
- *  \param keylen	Length of the hash key in bytes.
+ *  \param keylen       Length of the hash key in bytes.
  *                      May be zero if \p key is a zero
  *                      terminated string.
  *
- *  \param hash		Pre-computed hash sum. If this is
+ *  \param hash         Pre-computed hash sum. If this is
  *                      zero, the hash sum is computed.
  *
  *  \return Pointer to the object that was stored as hash
@@ -1154,15 +1154,15 @@ void *HT_fetch( const HashTable table, const char *key, int keylen, HashSum hash
  *  existing hash table. The key/value pair will not be
  *  removed from the hash table.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
- *  \param key		Pointer to a hash key.
+ *  \param key          Pointer to a hash key.
  *
- *  \param keylen	Length of the hash key in bytes.
+ *  \param keylen       Length of the hash key in bytes.
  *                      May be zero if \p key is a zero
  *                      terminated string.
  *
- *  \param hash		Pre-computed hash sum. If this is
+ *  \param hash         Pre-computed hash sum. If this is
  *                      zero, the hash sum is computed.
  *
  *  \return Pointer to the object that is stored as hash
@@ -1236,15 +1236,15 @@ void *HT_get( const HashTable table, const char *key, int keylen, HashSum hash )
  *  Use this function to check if a key is present in an
  *  existing hash table.
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
- *  \param key		Pointer to a hash key.
+ *  \param key          Pointer to a hash key.
  *
- *  \param keylen	Length of the hash key in bytes.
+ *  \param keylen       Length of the hash key in bytes.
  *                      May be zero if \p key is a zero
  *                      terminated string.
  *
- *  \param hash		Pre-computed hash sum. If this is
+ *  \param hash         Pre-computed hash sum. If this is
  *                      zero, the hash sum is computed.
  *
  *  \return Nonzero if the key exists, zero if it doesn't.
@@ -1310,7 +1310,7 @@ int HT_exists( const HashTable table, const char *key, int keylen, HashSum hash 
  *  HT_reset() will reset the hash table's internal iterator.
  *  You must call this function prior to using HT_next().
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
  *  \see HT_next()
  */
@@ -1338,20 +1338,20 @@ void HT_reset( const HashTable table )
  *  you mustn't modify the hash table between consecutive
  *  calls to HT_next().
  *
- *  \param table	Handle to an existing hash table.
+ *  \param table        Handle to an existing hash table.
  *
- *  \param ppKey	Pointer to a variable that will
+ *  \param ppKey        Pointer to a variable that will
  *                      receive a pointer to the hash key.
  *                      May be \c NULL if you don't need
  *                      it. You mustn't modify the memory
  *                      pointed to by that pointer.
  *
- *  \param pKeylen	Pointer to a variable that will
+ *  \param pKeylen      Pointer to a variable that will
  *                      receive the length of the hash key.
  *                      May be \c NULL if you don't need
  *                      it.
  *
- *  \param ppObj	Pointer to a variable that will
+ *  \param ppObj        Pointer to a variable that will
  *                      receive a pointer to the object
  *                      that is stored as hash value.
  *                      May be \c NULL if you don't need
@@ -1388,8 +1388,12 @@ int HT_next( const HashTable table, char **ppKey, int *pKeylen, void **ppObj )
     }
     DEBUG( MAIN, ("going to next bucket\n") );
 
-    table->i.pNode = *table->i.pBucket++;
-    table->i.remain--;
+    if( --table->i.remain > 0 )
+      table->i.pNode = *table->i.pBucket++;
+    else {
+      table->i.pBucket = NULL;
+      table->i.pNode   = NULL;
+    }
 
     DEBUG( MAIN, ("i.remain=%d i.pBucket=%p i.pNode=%p\n",
                   table->i.remain, table->i.pBucket, table->i.pNode) );
@@ -1410,7 +1414,7 @@ static void debug_check( char *str __attribute(( __unused__ )), ... )
 }
 #endif
 
-int SetDebugHash( void (*dbfunc)(char *, ...), unsigned long dbflags )
+int SetDebugHash( void (*dbfunc)(const char *, ...), unsigned long dbflags )
 {
   gs_dbfunc  = dbfunc;
   gs_dbflags = dbflags;

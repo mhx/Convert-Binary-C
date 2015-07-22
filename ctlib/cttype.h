@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/14 20:14:55 +0000 $
-* $Revision: 11 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/12 03:44:13 +0100 $
+* $Revision: 12 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/cttype.h $
 *
 ********************************************************************************
@@ -188,40 +188,66 @@ typedef struct {
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
+#define value_new CTlib_value_new
 Value *value_new( signed long iv, u_32 flags );
+#define value_delete CTlib_value_delete
 void value_delete( Value *pValue );
+#define value_clone CTlib_value_clone
 Value *value_clone( const Value *pSrc );
 
+#define enum_new CTlib_enum_new
 Enumerator *enum_new( char *identifier, int id_len, Value *pValue );
+#define enum_delete CTlib_enum_delete
 void enum_delete( Enumerator *pEnum );
+#define enum_clone CTlib_enum_clone
 Enumerator *enum_clone( const Enumerator *pSrc );
 
+#define enumspec_new CTlib_enumspec_new
 EnumSpecifier *enumspec_new( char *identifier, int id_len, LinkedList enumerators );
+#define enumspec_update CTlib_enumspec_update
 void enumspec_update( EnumSpecifier *pEnumSpec, LinkedList enumerators );
+#define enumspec_delete CTlib_enumspec_delete
 void enumspec_delete( EnumSpecifier *pEnumSpec );
+#define enumspec_clone CTlib_enumspec_clone
 EnumSpecifier *enumspec_clone( const EnumSpecifier *pSrc );
 
+#define decl_new CTlib_decl_new
 Declarator *decl_new( char *identifier, int id_len );
+#define decl_delete CTlib_decl_delete
 void decl_delete( Declarator *pDecl );
+#define decl_clone CTlib_decl_clone
 Declarator *decl_clone( const Declarator *pSrc );
 
+#define structdecl_new CTlib_structdecl_new
 StructDeclaration *structdecl_new( TypeSpec type, LinkedList declarators );
+#define structdecl_delete CTlib_structdecl_delete
 void structdecl_delete( StructDeclaration *pStructDecl );
+#define structdecl_clone CTlib_structdecl_clone
 StructDeclaration *structdecl_clone( const StructDeclaration *pSrc );
 
+#define struct_new CTlib_struct_new
 Struct *struct_new( char *identifier, int id_len, u_32 tflags, unsigned pack,
                     LinkedList declarations );
+#define struct_delete CTlib_struct_delete
 void struct_delete( Struct *pStruct );
+#define struct_clone CTlib_struct_clone
 Struct *struct_clone( const Struct *pSrc );
 
+#define typedef_new CTlib_typedef_new
 Typedef *typedef_new( TypeSpec *pType, Declarator *pDecl );
+#define typedef_delete CTlib_typedef_delete
 void typedef_delete( Typedef *pTypedef );
+#define typedef_clone CTlib_typedef_clone
 Typedef *typedef_clone( const Typedef *pSrc );
 
+#define typedef_list_new CTlib_typedef_list_new
 TypedefList *typedef_list_new( TypeSpec type, LinkedList typedefs );
+#define typedef_list_delete CTlib_typedef_list_delete
 void typedef_list_delete( TypedefList *pTypedefList );
+#define typedef_list_clone CTlib_typedef_list_clone
 TypedefList *typedef_list_clone( const TypedefList *pSrc );
 
+#define get_typedef_list CTlib_get_typedef_list
 TypedefList *get_typedef_list( Typedef *pTypedef );
 
 #endif

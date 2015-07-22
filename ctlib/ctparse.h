@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/10 22:26:46 +0000 $
-* $Revision: 16 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/12 03:44:13 +0100 $
+* $Revision: 17 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
@@ -139,20 +139,31 @@ typedef enum {
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
-int ParseBuffer( const char *filename, const Buffer *pBuf,
-                 const CParseConfig *pCPC, CParseInfo *pCPI );
+#define parse_buffer CTlib_parse_buffer
+int parse_buffer( const char *filename, const Buffer *pBuf,
+                  const CParseConfig *pCPC, CParseInfo *pCPI );
 
-void InitParseInfo( CParseInfo *pCPI );
-void FreeParseInfo( CParseInfo *pCPI );
-void ResetParseInfo( CParseInfo *pCPI );
-void UpdateParseInfo( CParseInfo *pCPI, const CParseConfig *pCPC );
-void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc );
+#define init_parse_info CTlib_init_parse_info
+void init_parse_info( CParseInfo *pCPI );
 
-ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
-                      unsigned *pSize, unsigned *pAlign, unsigned *pItemSize,
-                      u_32 *pFlags );
+#define free_parse_info CTlib_free_parse_info
+void free_parse_info( CParseInfo *pCPI );
 
-void FormatError( CParseInfo *pCPI, char *format, ... );
-void FreeError( CParseInfo *pCPI );
+#define reset_parse_info CTlib_reset_parse_info
+void reset_parse_info( CParseInfo *pCPI );
+
+#define update_parse_info CTlib_update_parse_info
+void update_parse_info( CParseInfo *pCPI, const CParseConfig *pCPC );
+
+#define clone_parse_info CTlib_clone_parse_info
+void clone_parse_info( CParseInfo *pDest, CParseInfo *pSrc );
+
+#define get_type_info CTlib_get_type_info
+ErrorGTI get_type_info( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
+                        unsigned *pSize, unsigned *pAlign, unsigned *pItemSize,
+                        u_32 *pFlags );
+
+#define format_error CTlib_format_error
+void format_error( CParseInfo *pCPI, char *format, ... );
 
 #endif

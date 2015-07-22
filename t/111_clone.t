@@ -2,17 +2,17 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/14 20:07:34 +0000 $
-# $Revision: 5 $
-# $Snapshot: /Convert-Binary-C/0.12 $
+# $Date: 2003/04/17 13:39:08 +0100 $
+# $Revision: 7 $
+# $Snapshot: /Convert-Binary-C/0.13 $
 # $Source: /t/111_clone.t $
 #
 ################################################################################
-# 
+#
 # Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
-# 
+#
 ################################################################################
 
 use Test;
@@ -38,7 +38,7 @@ ok($@,'',"failed to clone empty object");
 ok( reccmp($orig->configure(), $clone->configure()), 1, "wrong configuration" );
 
 eval {
-  my $foo = $clone->def( 'bar' );
+  my $foo = $clone->struct;
 };
 ok( $@, qr/without parse data/, "parse data check failed" );
 

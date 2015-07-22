@@ -1,7 +1,7 @@
 MyObject  *pObj;                      // pointer to an object
 LinkedList list;                      // linked list handle
 
-list = LL_new();                      // create new linked list 
+list = LL_new();                      // create new linked list
 
 LL_push(list, NewObject("Foo", 3));   // push a new object onto the list
 LL_push(list, NewObject("Bar", 2));   // push a new object onto the list

@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/01/23 18:45:50 +0000 $
-* $Revision: 6 $
-* $Snapshot: /Convert-Binary-C/0.12 $
+* $Date: 2003/04/17 13:39:05 +0100 $
+* $Revision: 7 $
+* $Snapshot: /Convert-Binary-C/0.13 $
 * $Source: /ctlib/util/list.h $
 *
 ********************************************************************************
@@ -114,10 +114,10 @@ void         LL_sort( const LinkedList list, LLCompareFunc cmp );
  *  It is safe to use LL_foreach() even if \a list is NULL.
  *  In that case, the loop won't be executed.
  *
- *  \param pObj		Variable that will receive a pointer
+ *  \param pObj         Variable that will receive a pointer
  *                      to the current object.
  *
- *  \param list		Handle to an existing linked list.
+ *  \param list         Handle to an existing linked list.
  *
  *  \see LL_reset() and LL_next()
  *  \hideinitializer
