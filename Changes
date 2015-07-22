@@ -1,4 +1,12 @@
 -------------------------
+Version 0.74 (2009-04-18)
+-------------------------
+
+* fix sourcification of flexible array members (triggered by cpan
+  #45105; thanks to Alexander Ost for being persistent in his
+  attempt to convince me that there's a bug in sourcify)
+
+-------------------------
 Version 0.73 (2009-03-16)
 -------------------------
 

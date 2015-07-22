@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2009/03/15 03:10:52 +0000 $
-* $Revision: 22 $
+* $Date: 2009/04/18 12:38:01 +0100 $
+* $Revision: 23 $
 * $Source: /cbc/sourcify.c $
 *
 ********************************************************************************
@@ -466,7 +466,12 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
             ListIterator ai;
 
             LL_foreach(pValue, ai, pDecl->ext.array)
-              sv_catpvf(s, "[%ld]", pValue->iv);
+            {
+              if (pValue->flags & V_IS_UNDEF)
+                sv_catpvn(s, "[]", 2);
+              else
+                sv_catpvf(s, "[%ld]", pValue->iv);
+            }
           }
         }
       }
@@ -530,7 +535,12 @@ static void add_typedef_list_decl_string(pTHX_ SV *str, TypedefList *pTDL)
       ListIterator ai;
 
       LL_foreach(pValue, ai, pDecl->ext.array)
-        sv_catpvf(str, "[%ld]", pValue->iv);
+      {
+        if (pValue->flags & V_IS_UNDEF)
+          sv_catpvn(str, "[]", 2);
+        else
+          sv_catpvf(str, "[%ld]", pValue->iv);
+      }
     }
   }
 }

@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2009/03/15 03:11:00 +0000 $
-# $Revision: 23 $
+# $Date: 2009/04/18 12:37:07 +0100 $
+# $Revision: 24 $
 # $Source: /tests/209_sourcify.t $
 #
 ################################################################################
@@ -118,10 +118,14 @@ for my $meth ( qw( enum compound struct union typedef macro ) ) {
        join( ',', sort $clone[$c]->$meth_names() ),
        "parsed names differ in $meth_names ($c)" );
 
-    ok( scalar grep $_, map {
-          print "# checking \$clone[$c]->$meth( \"$_\" )\n";
-          reccmp($orig->$meth($_), $clone[$c]->$meth($_))
-        } @orig_names );
+    my @failed = map {
+                   print "# checking \$clone[$c]->$meth( \"$_\" )\n";
+                   reccmp($orig->$meth($_), $clone[$c]->$meth($_)) ? () : $_
+                 } @orig_names;
+
+    print "# $_\n" for @failed;
+
+    ok(scalar @failed, 0, "$meth failed cloning");
   }
 }
 
@@ -167,7 +171,13 @@ sub reccmp
 {
   my($ref, $val) = @_;
 
-  ref $ref or return $ref eq $val;
+  unless (ref $ref) {
+    return 1 unless defined $ref || defined $val;
+    return 0 unless defined $ref && defined $val;
+    my $r = $ref eq $val;
+    print "# $ref ne $val\n" unless $r;
+    return $r;
+  }
 
   if( ref $ref eq 'ARRAY' ) {
     @$ref == @$val or return 0;
