@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/21 09:18:41 +0000 $
-# $Revision: 18 $
+# $Date: 2005/05/07 14:08:14 +0100 $
+# $Revision: 19 $
 # $Source: /token/config.pl $
 #
 ################################################################################
@@ -49,6 +49,7 @@ use Devel::Tokenizer::C;
   HasCPPComments
   HasMacroVAARGS
   OrderMembers
+  Bitfields
 );
 
 @sourcify = qw(

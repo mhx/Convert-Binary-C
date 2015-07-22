@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:39 +0000 $
-* $Revision: 4 $
+* $Date: 2005/04/22 21:33:41 +0100 $
+* $Revision: 8 $
 * $Source: /cbc/typeinfo.c $
 *
 ********************************************************************************
@@ -105,7 +105,7 @@ static SV *get_type_spec_def(pTHX_ TypeSpec *pTSpec)
       return NEW_SV_PV_CONST("enum <NULL>");
   }
 
-  if (flags & (T_STRUCT | T_UNION))
+  if (flags & T_COMPOUND)
   {
     Struct *pStruct = (Struct *) pTSpec->ptr;
     const char *type = flags & T_UNION ? "union" : "struct";
@@ -155,7 +155,7 @@ static SV *get_enumerators_def(pTHX_ LinkedList enumerators)
   LL_foreach(pEnum, enumerators)
   {
     SV *val = newSViv(pEnum->value.iv);
-    if (hv_store(hv, pEnum->identifier, strlen(pEnum->identifier), val, 0) == NULL)
+    if (hv_store(hv, pEnum->identifier, CTT_IDLEN(pEnum), val, 0) == NULL)
       SvREFCNT_dec(val);
   }
 
@@ -189,21 +189,26 @@ static SV *get_declarators_def(pTHX_ LinkedList declarators)
     HV *hv = newHV();
     Value *pValue;
 
-    if (pDecl->bitfield_size >= 0)
+    if (pDecl->bitfield_flag)
     {
       HV_STORE_CONST(hv, "declarator", newSVpvf("%s:%d",
                      pDecl->identifier[0] != '\0' ? pDecl->identifier : "",
-                     pDecl->bitfield_size));
+                     pDecl->ext.bitfield.bits));
     }
     else
     {
       SV *sv = newSVpvf("%s%s", pDecl->pointer_flag ? "*" : "", pDecl->identifier);
 
-      LL_foreach(pValue, pDecl->array)
-        if (pValue->flags & V_IS_UNDEF)
-          sv_catpvn(sv, "[]", 2);
-        else
-          sv_catpvf(sv, "[%ld]", pValue->iv);
+      if (pDecl->array_flag)
+      {
+        LL_foreach(pValue, pDecl->ext.array)
+        {
+          if (pValue->flags & V_IS_UNDEF)
+            sv_catpvn(sv, "[]", 2);
+          else
+            sv_catpvf(sv, "[%ld]", pValue->iv);
+        }
+      }
 
       HV_STORE_CONST(hv, "declarator", sv);
       HV_STORE_CONST(hv, "offset", newSViv(pDecl->offset));
@@ -282,11 +287,16 @@ SV *get_typedef_def(pTHX_ Typedef *pTypedef)
   HV *hv = newHV();
   SV *sv = newSVpvf("%s%s", pDecl->pointer_flag ? "*" : "", pDecl->identifier);
 
-  LL_foreach(pValue, pDecl->array)
-    if (pValue->flags & V_IS_UNDEF)
-      sv_catpvn(sv, "[]", 2);
-    else
-      sv_catpvf(sv, "[%ld]", pValue->iv);
+  if (pDecl->array_flag)
+  {
+    LL_foreach(pValue, pDecl->ext.array)
+    {
+      if (pValue->flags & V_IS_UNDEF)
+        sv_catpvn(sv, "[]", 2);
+      else
+        sv_catpvf(sv, "[%ld]", pValue->iv);
+    }
+  }
 
   HV_STORE_CONST(hv, "declarator", sv);
   HV_STORE_CONST(hv, "type", get_type_spec_def(aTHX_ pTypedef->pType));

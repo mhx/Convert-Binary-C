@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:39 +0000 $
-* $Revision: 12 $
+* $Date: 2005/05/16 18:24:25 +0100 $
+* $Revision: 26 $
 * $Source: /cbc/pack.c $
 *
 ********************************************************************************
@@ -46,51 +46,31 @@
 /* macros for buffer manipulation */
 /*--------------------------------*/
 
-#define ALIGN_BUFFER(align)                                                    \
-          STMT_START {                                                         \
-            unsigned _align = (unsigned)(align) > PACK->alignment              \
-                            ? PACK->alignment : (align);                       \
-            assert(_align > 0);                                                \
-            if (PACK->align_base % _align)                                     \
-            {                                                                  \
-              _align -= PACK->align_base % _align;                             \
-              PACK->align_base += _align;                                      \
-              PACK->buf.pos    += _align;                                      \
-              PACK->bufptr     += _align;                                      \
-            }                                                                  \
-          } STMT_END
+#define PACKPOS    PACK->buf.pos
+#define PACKLEN    PACK->buf.length
+#define pPACKBUF  (PACK->buf.buffer + PACKPOS)
 
 #define CHECK_BUFFER(size)                                                     \
           STMT_START {                                                         \
-            if (PACK->buf.pos + (size) > PACK->buf.length)                     \
+            if (PACKPOS + (size) > PACKLEN)                                    \
             {                                                                  \
-              PACK->buf.pos = PACK->buf.length;                                \
+              PACKPOS = PACKLEN;                                               \
               return newSV(0);                                                 \
             }                                                                  \
           } STMT_END
 
 #define GROW_BUFFER(size, reason)                                              \
           STMT_START {                                                         \
-            unsigned long _required_ = PACK->buf.pos + (size);                 \
-            if (_required_ > PACK->buf.length)                                 \
+            unsigned long _required_ = PACKPOS + (size);                       \
+            if (_required_ > PACKLEN)                                          \
             {                                                                  \
               CT_DEBUG(MAIN, ("Growing output SV from %ld to %ld bytes due "   \
-                              "to %s", PACK->buf.length, _required_, reason)); \
+                              "to %s", PACKLEN, _required_, reason));          \
               PACK->buf.buffer = SvGROW(PACK->bufsv, _required_ + 1);          \
               SvCUR_set(PACK->bufsv, _required_);                              \
-              Zero(PACK->buf.buffer + PACK->buf.length,                        \
-                   _required_ + 1 - PACK->buf.length, char);                   \
-              PACK->buf.length = _required_;                                   \
-              PACK->bufptr     = PACK->buf.buffer + PACK->buf.pos;             \
+              Zero(PACK->buf.buffer + PACKLEN, _required_ + 1 - PACKLEN, char);\
+              PACKLEN = _required_;                                            \
             }                                                                  \
-          } STMT_END
-
-#define INC_BUFFER(size)                                                       \
-          STMT_START {                                                         \
-            assert(PACK->buf.pos + (size) <= PACK->buf.length);                \
-            PACK->align_base += size;                                          \
-            PACK->buf.pos    += size;                                          \
-            PACK->bufptr     += size;                                          \
           } STMT_END
 
 /*----------------*/
@@ -125,22 +105,26 @@ static FPType get_fp_type(u_32 flags);
 static void store_float_sv(pPACKARGS, unsigned size, u_32 flags, SV *sv);
 static SV *fetch_float_sv(pPACKARGS, unsigned size, u_32 flags);
 
-static void store_int_sv(pPACKARGS, unsigned size, unsigned sign, SV *sv);
-static SV *fetch_int_sv(pPACKARGS, unsigned size, unsigned sign);
+static void store_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldInfo *pBI, SV *sv);
+static SV *fetch_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldInfo *pBI);
 
 static unsigned load_size(const CBC *THIS, u_32 *pFlags);
 
 static void pack_pointer(pPACKARGS, SV *sv);
-static void pack_struct(pPACKARGS, Struct *pStruct, SV *sv);
-static void pack_enum(pPACKARGS, EnumSpecifier *pEnumSpec, SV *sv);
-static void pack_basic(pPACKARGS, u_32 flags, SV *sv);
+static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv);
+static void pack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldInfo *pBI, SV *sv);
+static void pack_basic(pPACKARGS, u_32 flags, const BitfieldInfo *pBI, SV *sv);
 static void pack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags, SV *sv);
+static void pack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension,
+                                   const BitfieldInfo *pBI, SV *sv);
 
 static SV *unpack_pointer(pPACKARGS);
-static SV *unpack_struct(pPACKARGS, Struct *pStruct, HV *hash);
-static SV *unpack_enum(pPACKARGS, EnumSpecifier *pEnumSpec);
-static SV *unpack_basic(pPACKARGS, u_32 flags);
+static SV *unpack_struct(pPACKARGS, const Struct *pStruct, HV *hash);
+static SV *unpack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldInfo *pBI);
+static SV *unpack_basic(pPACKARGS, u_32 flags, const BitfieldInfo *pBI);
 static SV *unpack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags);
+static SV *unpack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension,
+                                    const BitfieldInfo *pBI);
 
 static SV *hook_call_typespec(pTHX_ SV *self, const TypeSpec *pTS,
                               enum HookId hook_id, SV *in, int mortal);
@@ -214,11 +198,11 @@ static FPType get_fp_type(u_32 flags)
             u_8   c[sizeof(ftype)];                                            \
           } _u;                                                                \
           int _i;                                                              \
-          u_8 *_p = (u_8 *) PACK->bufptr;                                      \
+          u_8 *_p = (u_8 *) pPACKBUF;                                          \
           _u.f = (ftype) SvNV(sv);                                             \
           if (THIS->as.bo == CBC_NATIVE_BYTEORDER)                             \
           {                                                                    \
-            for (_i = 0; _i < sizeof(ftype); _i++)                             \
+            for (_i = 0; _i < (int)sizeof(ftype); _i++)                        \
               *_p++ = _u.c[_i];                                                \
           }                                                                    \
           else   /* swap */                                                    \
@@ -234,7 +218,7 @@ static FPType get_fp_type(u_32 flags)
         STMT_START {                                                           \
           if (size == sizeof(ftype))                                           \
           {                                                                    \
-            u_8 *_p = (u_8 *) PACK->bufptr;                                    \
+            u_8 *_p = (u_8 *) pPACKBUF;                                        \
             ftype _v = (ftype) SvNV(sv);                                       \
             Copy(&_v, _p, 1, ftype);                                           \
           }                                                                    \
@@ -325,10 +309,10 @@ finish:
             u_8   c[sizeof(ftype)];                                            \
           } _u;                                                                \
           int _i;                                                              \
-          u_8 *_p = (u_8 *) PACK->bufptr;                                      \
+          u_8 *_p = (u_8 *) pPACKBUF;                                          \
           if (THIS->as.bo == CBC_NATIVE_BYTEORDER)                             \
           {                                                                    \
-            for (_i = 0; _i < sizeof(ftype); _i++)                             \
+            for (_i = 0; _i < (int)sizeof(ftype); _i++)                        \
               _u.c[_i] = *_p++;                                                \
           }                                                                    \
           else   /* swap */                                                    \
@@ -345,7 +329,7 @@ finish:
         STMT_START {                                                           \
           if (size == sizeof(ftype))                                           \
           {                                                                    \
-            u_8 *_p = (u_8 *) PACK->bufptr;                                    \
+            u_8 *_p = (u_8 *) pPACKBUF;                                        \
             ftype _v;                                                          \
             Copy(_p, &_v, 1, ftype);                                           \
             value = (NV) _v;                                                   \
@@ -430,7 +414,7 @@ finish:
 *
 *******************************************************************************/
 
-static void store_int_sv(pPACKARGS, unsigned size, unsigned sign, SV *sv)
+static void store_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldInfo *pBI, SV *sv)
 {
   IntValue iv;
 
@@ -448,7 +432,7 @@ static void store_int_sv(pPACKARGS, unsigned size, unsigned sign, SV *sv)
 #if ARCH_NATIVE_64_BIT_INTEGER
       iv.value.s = val;
 #else
-      iv.value.s.h = 0;
+      iv.value.s.h = val < 0 ? -1 : 0;
       iv.value.s.l = val;
 #endif
     }
@@ -465,7 +449,8 @@ static void store_int_sv(pPACKARGS, unsigned size, unsigned sign, SV *sv)
     }
   }
 
-  store_integer(size, PACK->bufptr, &THIS->as, &iv);
+  store_integer(size, pBI ? pBI->bits : 0, pBI ? pBI->pos : 0,
+                pPACKBUF, &THIS->as, &iv);
 }
 
 /*******************************************************************************
@@ -497,7 +482,7 @@ static void store_int_sv(pPACKARGS, unsigned size, unsigned sign, SV *sv)
 #define __TO_UV(x) newSViv((IV) (x))
 #endif
 
-static SV *fetch_int_sv(pPACKARGS, unsigned size, unsigned sign)
+static SV *fetch_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldInfo *pBI)
 {
   IntValue iv;
   char buffer[32];
@@ -519,7 +504,8 @@ static SV *fetch_int_sv(pPACKARGS, unsigned size, unsigned sign)
 
 #endif
 
-  fetch_integer(size, sign, PACK->bufptr, &THIS->as, &iv);
+  fetch_integer(size, sign, pBI ? pBI->bits : 0, pBI ? pBI->pos : 0,
+                pPACKBUF, &THIS->as, &iv);
 
   if (iv.string)
     return newSVpv(iv.string, 0);
@@ -559,8 +545,8 @@ static unsigned load_size(const CBC *THIS, u_32 *pFlags)
   flags = *pFlags;
 
 #define LOAD_SIZE(type)                                                        \
-        size = THIS->cfg.type ## _size ? THIS->cfg.type ## _size               \
-                                       : CTLIB_ ## type ## _SIZE
+        size = THIS->cfg.layout.type ## _size ? THIS->cfg.layout.type ## _size \
+                                              : CTLIB_ ## type ## _SIZE
 
   if (flags & T_VOID)  /* XXX: do we want void ? */
     size = 1;
@@ -606,17 +592,15 @@ static unsigned load_size(const CBC *THIS, u_32 *pFlags)
 
 static void pack_pointer(pPACKARGS, SV *sv)
 {
-  unsigned size = THIS->cfg.ptr_size ? THIS->cfg.ptr_size : sizeof(void *);
+  unsigned size = THIS->cfg.layout.ptr_size
+                  ? THIS->cfg.layout.ptr_size : sizeof(void *);
 
   CT_DEBUG(MAIN, (XSCLASS "::pack_pointer( THIS=%p, sv=%p )", THIS, sv));
 
-  ALIGN_BUFFER(size);
   GROW_BUFFER(size, "insufficient space");
 
   if (DEFINED(sv) && !SvROK(sv))
-    store_int_sv(aPACKARGS, size, 0, sv);
-
-  INC_BUFFER(size);
+    store_int_sv(aPACKARGS, size, 0, NULL, sv);
 }
 
 /*******************************************************************************
@@ -636,17 +620,14 @@ static void pack_pointer(pPACKARGS, SV *sv)
 *
 *******************************************************************************/
 
-static void pack_struct(pPACKARGS, Struct *pStruct, SV *sv)
+static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv)
 {
   StructDeclaration *pStructDecl;
   Declarator        *pDecl;
   long               pos;
-  unsigned           old_align, old_base;
 
   CT_DEBUG(MAIN, (XSCLASS "::pack_struct( THIS=%p, pStruct=%p, sv=%p )",
            THIS, pStruct, sv));
-
-  ALIGN_BUFFER(pStruct->align);
 
   if (pStruct->tags)
   {
@@ -663,11 +644,7 @@ static void pack_struct(pPACKARGS, Struct *pStruct, SV *sv)
     }
   }
 
-  pos              = PACK->buf.pos;
-  old_align        = PACK->alignment;
-  old_base         = PACK->align_base;
-  PACK->alignment  = pStruct->pack ? pStruct->pack : CPC_ALIGNMENT(&THIS->cfg);
-  PACK->align_base = 0;
+  pos = PACKPOS;
 
   if (DEFINED(sv))
   {
@@ -685,25 +662,32 @@ static void pack_struct(pPACKARGS, Struct *pStruct, SV *sv)
         {
           LL_foreach(pDecl, pStructDecl->declarators)
           {
-            size_t id_len = strlen(pDecl->identifier);
+            size_t id_len = CTT_IDLEN(pDecl);
 
             if (id_len > 0)
             {
               SV **e = hv_fetch(h, pDecl->identifier, id_len, 0);
+              BitfieldInfo *pBI;
 
               if (e)
                 SvGETMAGIC(*e);
 
               IDLP_SET_ID(pDecl->identifier);
 
-              pack_type(aPACKARGS, &pStructDecl->type, pDecl, 0, e ? *e : NULL);
-            }
+              assert(pDecl->offset >= 0);
+              PACKPOS = pos + pDecl->offset;
 
-            if (pStruct->tflags & T_UNION)
-            {
-              PACK->bufptr  = PACK->buf.buffer + pos;
-              PACK->buf.pos = pos;
-              PACK->align_base = 0;
+              if (pDecl->bitfield_flag)
+              {
+                pBI = &pDecl->ext.bitfield;
+                /* assert(pBI->bits > 0);   TODO: is this true at all? I don't think so... */
+                /* assert(pBI->pos >= 0);
+                   assert(pBI->size > 0);   TODO: not true yet  */
+              }
+              else
+                pBI = NULL;
+
+              pack_type_i(aPACKARGS, &pStructDecl->type, pDecl, 0, pBI, e ? *e : NULL);
             }
           }
         }
@@ -715,16 +699,12 @@ static void pack_struct(pPACKARGS, Struct *pStruct, SV *sv)
 
           IDLP_POP;
 
+          assert(pStructDecl->offset >= 0);
+          PACKPOS = pos + pStructDecl->offset;
+
           pack_struct(aPACKARGS, (Struct *) pTS->ptr, sv);
 
           IDLP_PUSH(ID);
-
-          if (pStruct->tflags & T_UNION)
-          {
-            PACK->bufptr     = PACK->buf.buffer + pos;
-            PACK->buf.pos    = pos;
-            PACK->align_base = 0;
-          }
         }
       }
 
@@ -734,11 +714,6 @@ static void pack_struct(pPACKARGS, Struct *pStruct, SV *sv)
       WARN((aTHX_ "'%s' should be a hash reference",
             IDListToStr(aTHX_ &(PACK->idl))));
   }
-
-  PACK->alignment  = old_align;
-  PACK->align_base = old_base + pStruct->size;
-  PACK->buf.pos    = pos + pStruct->size;
-  PACK->bufptr     = PACK->buf.buffer + PACK->buf.pos;
 }
 
 /*******************************************************************************
@@ -758,15 +733,16 @@ static void pack_struct(pPACKARGS, Struct *pStruct, SV *sv)
 *
 *******************************************************************************/
 
-static void pack_enum(pPACKARGS, EnumSpecifier *pEnumSpec, SV *sv)
+static void pack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldInfo *pBI, SV *sv)
 {
-  unsigned size = GET_ENUM_SIZE(pEnumSpec);
+  unsigned size = pBI ? pBI->size : GET_ENUM_SIZE(pEnumSpec);
   IV value = 0;
 
-  CT_DEBUG(MAIN, (XSCLASS "::pack_enum( THIS=%p, pEnumSpec=%p, sv=%p )",
-           THIS, pEnumSpec, sv));
+  CT_DEBUG(MAIN, (XSCLASS "::pack_enum( THIS=%p, pEnumSpec=%p, pBI=%p sv=%p )",
+           THIS, pEnumSpec, pBI, sv));
 
-  ALIGN_BUFFER(size);
+  if (pBI && pBI->size == 0)   /* TODO: temporary workaround */
+    return;             /* TODO: handle bitfields */
 
   if (pEnumSpec->tags)
   {
@@ -778,6 +754,7 @@ static void pack_enum(pPACKARGS, EnumSpecifier *pEnumSpec, SV *sv)
 
     if ((tag = find_tag(pEnumSpec->tags, CBC_TAG_FORMAT)) != NULL)
     {
+      assert(pBI == NULL);
       pack_format(aPACKARGS, tag, size, 0, sv);
       return;
     }
@@ -828,10 +805,9 @@ static void pack_enum(pPACKARGS, EnumSpecifier *pEnumSpec, SV *sv)
     iv.value.s.l = value;
 #endif
 
-    store_integer(size, PACK->bufptr, &THIS->as, &iv);
+    store_integer(size, pBI ? pBI->bits : 0, pBI ? pBI->pos : 0,
+                  pPACKBUF, &THIS->as, &iv);
   }
-
-  INC_BUFFER(size);
 }
 
 /*******************************************************************************
@@ -851,30 +827,32 @@ static void pack_enum(pPACKARGS, EnumSpecifier *pEnumSpec, SV *sv)
 *
 *******************************************************************************/
 
-static void pack_basic(pPACKARGS, u_32 flags, SV *sv)
+static void pack_basic(pPACKARGS, u_32 flags, const BitfieldInfo *pBI, SV *sv)
 {
   unsigned size;
 
-  CT_DEBUG(MAIN, (XSCLASS "::pack_basic( THIS=%p, flags=0x%08lX, sv=%p )",
-           THIS, (unsigned long) flags, sv));
+  CT_DEBUG(MAIN, (XSCLASS "::pack_basic( THIS=%p, flags=0x%08lX, pBI=%p sv=%p )",
+           THIS, (unsigned long) flags, pBI, sv));
 
-  CT_DEBUG(MAIN, ("buffer.pos=%lu, buffer.length=%lu",
-           PACK->buf.pos, PACK->buf.length));
+  if (pBI && pBI->size == 0)   /* TODO: temporary workaround */
+    return;             /* TODO: handle bitfields */
 
-  size = load_size(THIS, &flags);
+  CT_DEBUG(MAIN, ("buffer.pos=%lu, buffer.length=%lu", PACKPOS, PACKLEN));
 
-  ALIGN_BUFFER(size);
+  size = pBI ? pBI->size : load_size(THIS, &flags);
+
   GROW_BUFFER(size, "insufficient space");
 
   if (DEFINED(sv) && !SvROK(sv))
   {
     if (flags & (T_DOUBLE | T_FLOAT))
+    {
+      assert(pBI == NULL);
       store_float_sv(aPACKARGS, size, flags, sv);
+    }
     else
-      store_int_sv(aPACKARGS, size, (flags & T_UNSIGNED) == 0, sv);
+      store_int_sv(aPACKARGS, size, (flags & T_UNSIGNED) == 0, pBI, sv);
   }
-
-  INC_BUFFER(size);
 }
 
 /*******************************************************************************
@@ -942,19 +920,182 @@ static void pack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags, SV 
     switch (format->flags)
     {
       case CBC_TAG_FORMAT_BINARY:
-        Copy(p, PACK->bufptr, len, char);
+        Copy(p, pPACKBUF, len, char);
         break;
 
       case CBC_TAG_FORMAT_STRING:
-        strncpy(PACK->bufptr, p, len);
+        strncpy(pPACKBUF, p, len);
         break;
 
       default:
         fatal("Unknown format (%d)", format->flags);
     }
   }
+}
 
-  INC_BUFFER(size);
+/*******************************************************************************
+*
+*   ROUTINE: pack_type_i
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void pack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
+                                   int dimension, const BitfieldInfo *pBI, SV *sv)
+{
+  int dim;
+
+  CT_DEBUG(MAIN, (XSCLASS "::pack_type_i( THIS=%p, pTS=%p, pDecl=%p, "
+           "dimension=%d, pBI=%p, sv=%p )", THIS, pTS, pDecl, dimension, pBI, sv));
+
+  if (pDecl && dimension == 0 && pDecl->tags)
+  {
+    CtTag *tag;
+
+    if ((tag = find_tag(pDecl->tags, CBC_TAG_HOOKS)) != NULL)
+      sv = hook_call(aTHX_ PACK->self, "", pDecl->identifier,
+                     tag->any, HOOKID_pack, sv, 1);
+
+    if ((tag = find_tag(pDecl->tags, CBC_TAG_FORMAT)) != NULL)
+    {
+      int size;
+      u_32 flags = 0;
+
+      assert(pBI == NULL);
+
+      /* check if it's an incomplete array type */
+      if (pDecl->array_flag && pDecl->size == 0)
+      {
+        dim  = LL_count(pDecl->ext.array);
+        size = pDecl->item_size;
+
+        while (dim-- > 1)
+          size *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
+
+        flags |= PACK_FLEXIBLE;
+      }
+      else
+        size = pDecl->size;
+
+      assert(size > 0);
+
+      pack_format(aPACKARGS, tag, size, flags, sv);
+
+      return;
+    }
+  }
+
+  assert(pDecl == NULL || pDecl->bitfield_flag == 0 || pBI != NULL);
+
+  if (pDecl && pDecl->array_flag && dimension < (dim = LL_count(pDecl->ext.array)))
+  {
+    SV *ary;
+    int size = pDecl->item_size;
+
+    assert(size > 0);
+    assert(pBI == NULL);
+
+    if (DEFINED(sv) && SvROK(sv) && SvTYPE(ary = SvRV(sv)) == SVt_PVAV)
+    {
+      Value *v = (Value *) LL_get(pDecl->ext.array, dimension);
+      long i, s;
+      unsigned long pos;
+      AV *a = (AV *) ary;
+
+      while (dim-- > dimension + 1)
+        size *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
+
+      if (v->flags & V_IS_UNDEF)
+      {
+        assert(dimension == 0);
+        s = av_len(a)+1;
+        GROW_BUFFER(s*size, "incomplete array type");
+      }
+      else
+        s = v->iv;
+
+      IDLP_PUSH(IX);
+
+      pos = PACKPOS;
+
+      for (i = 0; i < s; ++i)
+      {
+        SV **e = av_fetch(a, i, 0);
+
+        if (e)
+          SvGETMAGIC(*e);
+
+        IDLP_SET_IX(i);
+
+        PACKPOS = pos + i * size;
+
+        pack_type_i(aPACKARGS, pTS, pDecl, dimension+1, NULL, e ? *e : NULL);
+      }
+
+      IDLP_POP;
+    }
+    else
+    {
+      if (DEFINED(sv))
+        WARN((aTHX_ "'%s' should be an array reference",
+                    IDListToStr(aTHX_ &(PACK->idl))));
+
+      /* this is safe with flexible array members */
+      while (dim-- > dimension)
+        size *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
+
+      GROW_BUFFER(size, "insufficient space");
+    }
+  }
+  else if (pDecl && pDecl->pointer_flag)
+  {
+    assert(pBI == NULL);
+
+    if (DEFINED(sv) && SvROK(sv))
+      WARN((aTHX_ "'%s' should be a scalar value",
+                  IDListToStr(aTHX_ &(PACK->idl))));
+    sv = hook_call_typespec(aTHX_ PACK->self, pTS, HOOKID_pack_ptr, sv, 1);
+    pack_pointer(aPACKARGS, sv);
+  }
+  else if (pTS->tflags & T_TYPE)
+  {
+    Typedef *pTD = pTS->ptr;
+    pack_type_i(aPACKARGS, pTD->pType, pTD->pDecl, 0, pBI, sv);
+  }
+  else if(pTS->tflags & T_COMPOUND)
+  {
+    Struct *pStruct = (Struct *) pTS->ptr;
+
+    assert(pBI == NULL);
+
+    if (pStruct->declarations == NULL)
+      WARN_UNDEF_STRUCT(pStruct);
+    else
+      pack_struct(aPACKARGS, pStruct, sv);
+  }
+  else
+  {
+    if (DEFINED(sv) && SvROK(sv))
+      WARN((aTHX_ "'%s' should be a scalar value",
+                  IDListToStr(aTHX_ &(PACK->idl))));
+
+    CT_DEBUG(MAIN, ("SET '%s' @ %lu", pDecl ? pDecl->identifier : "", PACKPOS));
+
+    if (pTS->tflags & T_ENUM)
+      pack_enum(aPACKARGS, pTS->ptr, pBI, sv);
+    else
+      pack_basic(aPACKARGS, pTS->tflags, pBI, sv);
+  }
 }
 
 /*******************************************************************************
@@ -976,19 +1117,14 @@ static void pack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags, SV 
 
 static SV *unpack_pointer(pPACKARGS)
 {
-  SV *sv;
-  unsigned size = THIS->cfg.ptr_size ? THIS->cfg.ptr_size : sizeof(void *);
+  unsigned size = THIS->cfg.layout.ptr_size
+                  ? THIS->cfg.layout.ptr_size : sizeof(void *);
 
   CT_DEBUG(MAIN, (XSCLASS "::unpack_pointer( THIS=%p )", THIS));
 
-  ALIGN_BUFFER(size);
   CHECK_BUFFER(size);
 
-  sv = fetch_int_sv(aPACKARGS, size, 0);
-
-  INC_BUFFER(size);
-
-  return sv;
+  return fetch_int_sv(aPACKARGS, size, 0, NULL);
 }
 
 /*******************************************************************************
@@ -1008,21 +1144,18 @@ static SV *unpack_pointer(pPACKARGS)
 *
 *******************************************************************************/
 
-static SV *unpack_struct(pPACKARGS, Struct *pStruct, HV *hash)
+static SV *unpack_struct(pPACKARGS, const Struct *pStruct, HV *hash)
 {
   StructDeclaration *pStructDecl;
   Declarator        *pDecl;
   HV                *h = hash;
   long               pos;
   int                ordered;
-  unsigned           old_align, old_base;
   SV                *sv;
   CtTag             *hooks = NULL;
 
   CT_DEBUG(MAIN, (XSCLASS "::unpack_struct( THIS=%p, pStruct=%p, hash=%p )",
            THIS, pStruct, hash));
-
-  ALIGN_BUFFER(pStruct->align);
 
   if (pStruct->tags)
   {
@@ -1042,11 +1175,7 @@ static SV *unpack_struct(pPACKARGS, Struct *pStruct, HV *hash)
   if (h == NULL)
     h = ordered ? newHV_indexed(aTHX_ THIS) :  newHV();
 
-  pos              = PACK->buf.pos;
-  old_align        = PACK->alignment;
-  old_base         = PACK->align_base;
-  PACK->alignment  = pStruct->pack ? pStruct->pack : CPC_ALIGNMENT(&THIS->cfg);
-  PACK->align_base = 0;
+  pos = PACKPOS;
 
   LL_foreach(pStructDecl, pStruct->declarations)
   {
@@ -1054,7 +1183,7 @@ static SV *unpack_struct(pPACKARGS, Struct *pStruct, HV *hash)
     {
       LL_foreach(pDecl, pStructDecl->declarators)
       {
-        U32 klen = strlen(pDecl->identifier);
+        U32 klen = CTT_IDLEN(pDecl);
 
         if (klen > 0)
         {
@@ -1069,20 +1198,31 @@ static SV *unpack_struct(pPACKARGS, Struct *pStruct, HV *hash)
           }
           else
           {
-            SV *value = unpack_type(aPACKARGS, &pStructDecl->type, pDecl, 0);
-            SV **didstore = hv_store(h, pDecl->identifier, klen, value, 0);
+            SV *value, **didstore;
+            BitfieldInfo *pBI;
+
+            assert(pDecl->offset >= 0);
+            PACKPOS = pos + pDecl->offset;
+  
+            if (pDecl->bitfield_flag)
+            {
+              pBI = &pDecl->ext.bitfield;
+              /* assert(pBI->bits > 0);   TODO: is this true at all? I don't think so... */
+              /* assert(pBI->pos >= 0);
+                 assert(pBI->size > 0);   TODO: not true yet  */
+            }
+            else
+              pBI = NULL;
+
+            value = unpack_type_i(aPACKARGS, &pStructDecl->type, pDecl, 0, pBI);
+            didstore = hv_store(h, pDecl->identifier, klen, value, 0);
+
             if (ordered)
               SvSETMAGIC(value);
+
             if (!didstore)
               SvREFCNT_dec(value);
           }
-        }
-
-        if (pStruct->tflags & T_UNION)
-        {
-          PACK->bufptr     = PACK->buf.buffer + pos;
-          PACK->buf.pos    = pos;
-          PACK->align_base = 0;
         }
       }
     }
@@ -1092,21 +1232,12 @@ static SV *unpack_struct(pPACKARGS, Struct *pStruct, HV *hash)
 
       FOLLOW_AND_CHECK_TSPTR(pTS);
 
-      (void) unpack_struct(aPACKARGS, (Struct *) pTS->ptr, h);
+      assert(pStructDecl->offset >= 0);
+      PACKPOS = pos + pStructDecl->offset;
 
-      if (pStruct->tflags & T_UNION)
-      {
-        PACK->bufptr     = PACK->buf.buffer + pos;
-        PACK->buf.pos    = pos;
-        PACK->align_base = 0;
-      }
+      (void) unpack_struct(aPACKARGS, (Struct *) pTS->ptr, h);
     }
   }
-
-  PACK->alignment  = old_align;
-  PACK->align_base = old_base + pStruct->size;
-  PACK->buf.pos    = pos + pStruct->size;
-  PACK->bufptr     = PACK->buf.buffer + PACK->buf.pos;
 
   if (hash)
     return NULL;
@@ -1139,18 +1270,20 @@ handle_unpack_hook:
 *
 *******************************************************************************/
 
-static SV *unpack_enum(pPACKARGS, EnumSpecifier *pEnumSpec)
+static SV *unpack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const BitfieldInfo *pBI)
 {
   Enumerator *pEnum;
-  unsigned size = GET_ENUM_SIZE(pEnumSpec);
+  unsigned size = pBI ? pBI->size : GET_ENUM_SIZE(pEnumSpec);
   IV value;
   SV *sv;
   CtTag *hooks = NULL;
+  IntValue iv;
 
-  CT_DEBUG(MAIN, (XSCLASS "::unpack_enum( THIS=%p, pEnumSpec=%p )",
-                 THIS, pEnumSpec));
+  CT_DEBUG(MAIN, (XSCLASS "::unpack_enum( THIS=%p, pEnumSpec=%p, pBI=%p )",
+                 THIS, pEnumSpec, pBI));
 
-  ALIGN_BUFFER(size);
+  if (pBI && pBI->size == 0)   /* TODO: temporary workaround */
+    return newSV(0);    /* TODO: handle bitfields */
 
   if (pEnumSpec->tags)
   {
@@ -1160,6 +1293,7 @@ static SV *unpack_enum(pPACKARGS, EnumSpecifier *pEnumSpec)
 
     if ((format = find_tag(pEnumSpec->tags, CBC_TAG_FORMAT)) != NULL)
     {
+      assert(pBI == NULL);
       sv = unpack_format(aPACKARGS, format, size, 0);
       goto handle_unpack_hook;
     }
@@ -1167,11 +1301,12 @@ static SV *unpack_enum(pPACKARGS, EnumSpecifier *pEnumSpec)
 
   CHECK_BUFFER(size);
 
+  iv.string = NULL;
+  fetch_integer(size, pEnumSpec->tflags & T_SIGNED, pBI ? pBI->bits : 0,
+                pBI ? pBI->pos : 0, pPACKBUF, &THIS->as, &iv);
+
   if (pEnumSpec->tflags & T_SIGNED) /* TODO: handle (un)/signed correctly */
   {
-    IntValue iv;
-    iv.string = NULL;
-    fetch_integer(size, 1, PACK->bufptr, &THIS->as, &iv);
 #if ARCH_NATIVE_64_BIT_INTEGER
     value = iv.value.s;
 #else
@@ -1180,17 +1315,12 @@ static SV *unpack_enum(pPACKARGS, EnumSpecifier *pEnumSpec)
   }
   else
   {
-    IntValue iv;
-    iv.string = NULL;
-    fetch_integer(size, 0, PACK->bufptr, &THIS->as, &iv);
 #if ARCH_NATIVE_64_BIT_INTEGER
     value = iv.value.u;
 #else
     value = iv.value.u.l;
 #endif
   }
-
-  INC_BUFFER(size);
 
   if (THIS->enumType == ET_INTEGER)
     sv = newSViv(value);
@@ -1259,30 +1389,29 @@ handle_unpack_hook:
 *
 *******************************************************************************/
 
-static SV *unpack_basic(pPACKARGS, u_32 flags)
+static SV *unpack_basic(pPACKARGS, u_32 flags, const BitfieldInfo *pBI)
 {
   unsigned size;
-  SV *sv;
 
-  CT_DEBUG(MAIN, (XSCLASS "::unpack_basic( THIS=%p, flags=0x%08lX )",
-                  THIS, (unsigned long) flags));
+  CT_DEBUG(MAIN, (XSCLASS "::unpack_basic( THIS=%p, flags=0x%08lX, pBI=%p )",
+                  THIS, (unsigned long) flags, pBI));
 
-  CT_DEBUG(MAIN, ("buffer.pos=%lu, buffer.length=%lu",
-                  PACK->buf.pos, PACK->buf.length));
+  if (pBI && pBI->size == 0)   /* TODO: temporary workaround */
+    return newSV(0);    /* TODO: handle bitfields */
 
-  size = load_size(THIS, &flags);
+  CT_DEBUG(MAIN, ("buffer.pos=%lu, buffer.length=%lu", PACKPOS, PACKLEN));
 
-  ALIGN_BUFFER(size);
+  size = pBI ? pBI->size : load_size(THIS, &flags);
+
   CHECK_BUFFER(size);
 
   if (flags & (T_FLOAT | T_DOUBLE))
-    sv = fetch_float_sv(aPACKARGS, size, flags);
+  {
+    assert(pBI == NULL);
+    return fetch_float_sv(aPACKARGS, size, flags);
+  }
   else
-    sv = fetch_int_sv(aPACKARGS, size, (flags & T_UNSIGNED) == 0);
-
-  INC_BUFFER(size);
-
-  return sv;
+    return fetch_int_sv(aPACKARGS, size, (flags & T_UNSIGNED) == 0, pBI);
 }
 
 /*******************************************************************************
@@ -1310,16 +1439,16 @@ static SV *unpack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags)
                   "size=%u, flags=0x%lX )", THIS, (unsigned long) format->flags,
                   size, (unsigned long) flags));
 
-  if (PACK->buf.pos + size > PACK->buf.length)
+  if (PACKPOS + size > PACKLEN)
     return newSVpvn("", 0);
 
   if (flags & PACK_FLEXIBLE)
   {
     unsigned remain;
 
-    assert(PACK->buf.pos <= PACK->buf.length);
+    assert(PACKPOS <= PACKLEN);
 
-    remain = PACK->buf.length - PACK->buf.pos;
+    remain = PACKLEN - PACKPOS;
 
     if (remain % size)
       remain -= remain % size;
@@ -1330,18 +1459,19 @@ static SV *unpack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags)
   switch (format->flags)
   {
     case CBC_TAG_FORMAT_BINARY:
-      sv = newSVpvn(PACK->bufptr, size);
+      sv = newSVpvn(pPACKBUF, size);
       break; 
 
     case CBC_TAG_FORMAT_STRING:
       {
         unsigned n;
+        const char *buf = pPACKBUF;
 
         for (n = 0; n < size; n++)
-          if (PACK->bufptr[n] == '\0')
+          if (buf[n] == '\0')
             break;
 
-        sv = newSVpvn(PACK->bufptr, n);
+        sv = newSVpvn(pPACKBUF, n);
       }
       break;
 
@@ -1349,9 +1479,156 @@ static SV *unpack_format(pPACKARGS, CtTag *format, unsigned size, u_32 flags)
       fatal("Unknown format (%d)", format->flags);
   }
 
-  INC_BUFFER(size);
-
   return sv;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: unpack_type_i
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static SV *unpack_type_i(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
+                                    int dimension, const BitfieldInfo *pBI)
+{
+  SV *rv = NULL;
+  CtTag *hooks = NULL;
+  int dim;
+
+  CT_DEBUG(MAIN, (XSCLASS "::unpack_type_i( THIS=%p, pTS=%p, pDecl=%p, "
+                  "dimension=%d, pBI=%p )", THIS, pTS, pDecl, dimension, pBI));
+
+  if (pDecl && dimension == 0 && pDecl->tags)
+  {
+    CtTag *format;
+
+    hooks = find_tag(pDecl->tags, CBC_TAG_HOOKS);
+
+    if ((format = find_tag(pDecl->tags, CBC_TAG_FORMAT)) != NULL)
+    {
+      int size;
+      u_32 flags = 0;
+
+      assert(pBI == NULL);
+
+      /* check if it's an incomplete array type */
+      if (pDecl->array_flag && pDecl->size == 0)
+      {
+        dim  = LL_count(pDecl->ext.array);
+        size = pDecl->item_size;
+
+        while (dim-- > 1)
+          size *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
+
+        flags |= PACK_FLEXIBLE;
+      }
+      else
+        size = pDecl->size;
+
+      assert(size > 0);
+
+      rv = unpack_format(aPACKARGS, format, size, flags);
+
+      goto handle_unpack_hook;
+    }
+  }
+
+  assert(pDecl == NULL || pDecl->bitfield_flag == 0 || pBI != NULL);
+
+  if (pDecl && pDecl->array_flag && dimension < (dim = LL_count(pDecl->ext.array)))
+  {
+    AV *a = newAV();
+    Value *v = (Value *) LL_get(pDecl->ext.array, dimension);
+    long i, s;
+    unsigned long pos;
+    int size = pDecl->item_size;
+
+    assert(size > 0);
+    assert(pBI == NULL);
+
+    while (dim-- > dimension + 1)
+      size *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
+
+    if (v->flags & V_IS_UNDEF)
+    {
+      assert(dimension == 0);
+      s = ((PACKLEN - PACKPOS) + (size - 1)) / size;
+    }
+    else
+      s = v->iv;
+
+    av_extend(a, s-1);
+
+    pos = PACKPOS;
+
+    for (i = 0; i < s; ++i)
+    {
+      PACKPOS = pos + i * size;
+      av_store(a, i, unpack_type_i(aPACKARGS, pTS, pDecl, dimension+1, NULL));
+    }
+
+    rv = newRV_noinc((SV *) a);
+  }
+  else if (pDecl && pDecl->pointer_flag)
+  {
+    assert(pBI == NULL);
+
+    rv = unpack_pointer(aPACKARGS);
+    rv = hook_call_typespec(aTHX_ PACK->self, pTS, HOOKID_unpack_ptr, rv, 0);
+  }
+  else if (pTS->tflags & T_TYPE)
+  {
+    Typedef *pTD = pTS->ptr;
+    rv = unpack_type_i(aPACKARGS, pTD->pType, pTD->pDecl, 0, pBI);
+  }
+  else if (pTS->tflags & T_COMPOUND)
+  {
+    Struct *pStruct = pTS->ptr;
+
+    assert(pBI == NULL);
+
+    if (pStruct->declarations == NULL)
+    {
+      WARN_UNDEF_STRUCT(pStruct);
+      rv = newSV(0);
+    }
+    else
+      rv = unpack_struct(aPACKARGS, pTS->ptr, NULL);
+  }
+  else
+  {
+    CT_DEBUG(MAIN, ("GET '%s' @ %lu", pDecl ? pDecl->identifier : "", PACKPOS));
+
+    if (pTS->tflags & T_ENUM)
+      rv = unpack_enum(aPACKARGS, pTS->ptr, pBI);
+    else
+      rv = unpack_basic(aPACKARGS, pTS->tflags, pBI);
+  }
+
+  assert(rv != NULL);
+
+handle_unpack_hook:
+
+  if (hooks)
+  {
+    assert(pDecl != NULL);
+
+    rv = hook_call(aTHX_ PACK->self, "", pDecl->identifier,
+                   hooks->any, HOOKID_unpack, rv, 0);
+  }
+
+  return rv;
 }
 
 /*******************************************************************************
@@ -1385,7 +1662,7 @@ static SV *hook_call_typespec(pTHX_ SV *self, const TypeSpec *pTS,
     tags = p->pDecl->tags;
     pre  = "";
   }
-  else if (pTS->tflags & (T_STRUCT|T_UNION))
+  else if (pTS->tflags & T_COMPOUND)
   {
     const Struct *p = pTS->ptr;
 
@@ -1433,172 +1710,9 @@ static SV *hook_call_typespec(pTHX_ SV *self, const TypeSpec *pTS,
 *
 *******************************************************************************/
 
-void pack_type(pPACKARGS, TypeSpec *pTS, Declarator *pDecl, int dimension, SV *sv)
+void pack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension, SV *sv)
 {
-  CT_DEBUG(MAIN, (XSCLASS "::pack_type( THIS=%p, pTS=%p, pDecl=%p, "
-           "dimension=%d, sv=%p )", THIS, pTS, pDecl, dimension, sv));
-
-  if (pDecl && dimension == 0 && pDecl->tags)
-  {
-    CtTag *tag;
-
-    if ((tag = find_tag(pDecl->tags, CBC_TAG_HOOKS)) != NULL)
-      sv = hook_call(aTHX_ PACK->self, "", pDecl->identifier,
-                     tag->any, HOOKID_pack, sv, 1);
-
-    if ((tag = find_tag(pDecl->tags, CBC_TAG_FORMAT)) != NULL)
-    {
-      unsigned size, align, item;
-      u_32 flags = 0;
-      int dim;
-      ErrorGTI err;
-
-      err = get_type_info(&THIS->cfg, pTS, pDecl, &size, &align, &item, NULL);
-      if (err != GTI_NO_ERROR)
-        croak_gti(aTHX_ err, IDListToStr(aTHX_ &(PACK->idl)), 1);
-
-      ALIGN_BUFFER(align);
-
-      dim = LL_count(pDecl->array);
-
-      /* check if it's an incomplete array type */
-      if (dim > 0 && ((Value *) LL_get(pDecl->array, 0))->flags & V_IS_UNDEF)
-      {
-        while (dim-- > 1)
-          item *= ((Value *) LL_get(pDecl->array, dim))->iv;
-
-        size   = item;
-        flags |= PACK_FLEXIBLE;
-      }
-
-      pack_format(aPACKARGS, tag, size, flags, sv);
-
-      return;
-    }
-  }
-
-  if (pDecl && dimension < LL_count(pDecl->array))
-  {
-    SV *ary;
-
-    if (DEFINED(sv) && SvROK(sv) && SvTYPE(ary = SvRV(sv)) == SVt_PVAV)
-    {
-      Value *v = (Value *) LL_get(pDecl->array, dimension);
-      long i, s;
-      AV *a = (AV *) ary;
-
-      if (v->flags & V_IS_UNDEF)
-      {
-        unsigned size, align;
-        int dim;
-        ErrorGTI err;
-
-        assert(dimension == 0);
-
-        s = av_len(a)+1;
-
-        /* eventually we need to grow the SV buffer */
-
-        err = get_type_info(&THIS->cfg, pTS, pDecl, NULL, &align, &size, NULL);
-        if (err != GTI_NO_ERROR)
-          croak_gti(aTHX_ err, IDListToStr(aTHX_ &(PACK->idl)), 1);
-
-        ALIGN_BUFFER(align);
-
-        dim = LL_count(pDecl->array);
-
-        while (dim-- > 1)
-          size *= ((Value *) LL_get(pDecl->array, dim))->iv;
-
-        GROW_BUFFER(s*size, "incomplete array type");
-      }
-      else
-        s = v->iv;
-
-      IDLP_PUSH(IX);
-
-      for (i = 0; i < s; ++i)
-      {
-        SV **e = av_fetch(a, i, 0);
-
-        if (e)
-          SvGETMAGIC(*e);
-
-        IDLP_SET_IX(i);
-
-        pack_type(aPACKARGS, pTS, pDecl, dimension+1, e ? *e : NULL);
-      }
-
-      IDLP_POP;
-    }
-    else
-    {
-      unsigned size, align;
-      int dim;
-      ErrorGTI err;
-
-      if (DEFINED(sv))
-        WARN((aTHX_ "'%s' should be an array reference",
-                    IDListToStr(aTHX_ &(PACK->idl))));
-
-      err = get_type_info(&THIS->cfg, pTS, pDecl, NULL, &align, &size, NULL);
-      if (err != GTI_NO_ERROR)
-        croak_gti(aTHX_ err, IDListToStr(aTHX_ &(PACK->idl)), 1);
-
-      ALIGN_BUFFER(align);
-
-      dim = LL_count(pDecl->array);
-
-      /* this is safe with flexible array members */
-      while (dim-- > dimension)
-        size *= ((Value *) LL_get(pDecl->array, dim))->iv;
-
-      GROW_BUFFER(size, "insufficient space");
-      INC_BUFFER(size);
-    }
-  }
-  else
-  {
-    if (pDecl && pDecl->pointer_flag)
-    {
-      if (DEFINED(sv) && SvROK(sv))
-        WARN((aTHX_ "'%s' should be a scalar value",
-                    IDListToStr(aTHX_ &(PACK->idl))));
-      sv = hook_call_typespec(aTHX_ PACK->self, pTS, HOOKID_pack_ptr, sv, 1);
-      pack_pointer(aPACKARGS, sv);
-    }
-    else if (pDecl && pDecl->bitfield_size >= 0)
-    {
-      /* unsupported */
-    }
-    else if (pTS->tflags & T_TYPE)
-    {
-      Typedef *pTD = pTS->ptr;
-      pack_type(aPACKARGS, pTD->pType, pTD->pDecl, 0, sv);
-    }
-    else if(pTS->tflags & (T_STRUCT | T_UNION))
-    {
-      Struct *pStruct = (Struct *) pTS->ptr;
-      if (pStruct->declarations == NULL)
-        WARN_UNDEF_STRUCT(pStruct);
-      else
-        pack_struct(aPACKARGS, pStruct, sv);
-    }
-    else
-    {
-      if (DEFINED(sv) && SvROK(sv))
-        WARN((aTHX_ "'%s' should be a scalar value",
-                    IDListToStr(aTHX_ &(PACK->idl))));
-
-      CT_DEBUG(MAIN, ("SET '%s' @ %lu", pDecl ? pDecl->identifier : "",
-                                        PACK->buf.pos ));
-
-      if (pTS->tflags & T_ENUM)
-        pack_enum(aPACKARGS, pTS->ptr, sv);
-      else
-        pack_basic(aPACKARGS, pTS->tflags, sv);
-    }
-  }
+  pack_type_i(aPACKARGS, pTS, pDecl, dimension, NULL, sv);
 }
 
 /*******************************************************************************
@@ -1618,138 +1732,8 @@ void pack_type(pPACKARGS, TypeSpec *pTS, Declarator *pDecl, int dimension, SV *s
 *
 *******************************************************************************/
 
-SV *unpack_type(pPACKARGS, TypeSpec *pTS, Declarator *pDecl, int dimension)
+SV *unpack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension)
 {
-  SV *rv = NULL;
-  CtTag *hooks = NULL;
-
-  CT_DEBUG(MAIN, (XSCLASS "::unpack_type( THIS=%p, pTS=%p, pDecl=%p, "
-                          "dimension=%d )", THIS, pTS, pDecl, dimension));
-
-  if (pDecl && dimension == 0 && pDecl->tags)
-  {
-    CtTag *format;
-
-    hooks = find_tag(pDecl->tags, CBC_TAG_HOOKS);
-
-    if ((format = find_tag(pDecl->tags, CBC_TAG_FORMAT)) != NULL)
-    {
-      unsigned size, align, item;
-      u_32 flags = 0;
-      int dim;
-      ErrorGTI err;
-
-      err = get_type_info(&THIS->cfg, pTS, pDecl, &size, &align, &item, NULL);
-      if (err != GTI_NO_ERROR)
-        croak_gti(aTHX_ err, IDListToStr(aTHX_ &(PACK->idl)), 1);
-
-      ALIGN_BUFFER(align);
-
-      dim = LL_count(pDecl->array);
-
-      /* check if it's an incomplete array type */
-      if (dim > 0 && ((Value *) LL_get(pDecl->array, 0))->flags & V_IS_UNDEF)
-      {
-        while (dim-- > 1)
-          item *= ((Value *) LL_get(pDecl->array, dim))->iv;
-
-        size   = item;
-        flags |= PACK_FLEXIBLE;
-      }
-
-      assert(size > 0);
-
-      rv = unpack_format(aPACKARGS, format, size, flags);
-
-      goto handle_unpack_hook;
-    }
-  }
-
-  if (pDecl && dimension < LL_count(pDecl->array))
-  {
-    AV *a = newAV();
-    Value *v = (Value *) LL_get(pDecl->array, dimension);
-    long i, s;
-
-    if (v->flags & V_IS_UNDEF)
-    {
-      unsigned size, align;
-      int dim;
-      ErrorGTI err;
-
-      assert(dimension == 0);
-
-      err = get_type_info(&THIS->cfg, pTS, pDecl, NULL, &align, &size, NULL);
-      if (err != GTI_NO_ERROR)
-        croak_gti(aTHX_ err, IDListToStr(aTHX_ &(PACK->idl)), 1);
-
-      ALIGN_BUFFER(align);
-
-      dim = LL_count(pDecl->array);
-
-      while (dim-- > 1)
-        size *= ((Value *) LL_get(pDecl->array, dim))->iv;
-
-      s = ((PACK->buf.length - PACK->buf.pos) + (size - 1)) / size;
-
-      CT_DEBUG(MAIN, ("s=%ld (buf.length=%ld, buf.pos=%ld, size=%ld)",
-                      s, PACK->buf.length, PACK->buf.pos, size));
-    }
-    else
-      s = v->iv;
-
-    av_extend(a, s-1);
-
-    for (i=0; i<s; ++i)
-      av_store(a, i, unpack_type(aPACKARGS, pTS, pDecl, dimension+1));
-
-    rv = newRV_noinc((SV *) a);
-  }
-  else if (pDecl && pDecl->pointer_flag)
-  {
-    rv = unpack_pointer(aPACKARGS);
-    rv = hook_call_typespec(aTHX_ PACK->self, pTS, HOOKID_unpack_ptr, rv, 0);
-  }
-  else if (pDecl && pDecl->bitfield_size >= 0)  /* unsupported */
-    rv = newSV(0);
-  else if (pTS->tflags & T_TYPE)
-  {
-    Typedef *pTD = pTS->ptr;
-    rv = unpack_type(aPACKARGS, pTD->pType, pTD->pDecl, 0);
-  }
-  else if (pTS->tflags & (T_STRUCT | T_UNION))
-  {
-    Struct *pStruct = pTS->ptr;
-    if (pStruct->declarations == NULL)
-    {
-      WARN_UNDEF_STRUCT( pStruct );
-      rv = newSV(0);
-    }
-    else
-      rv = unpack_struct(aPACKARGS, pTS->ptr, NULL);
-  }
-  else
-  {
-    CT_DEBUG(MAIN, ("GET '%s' @ %lu", pDecl ? pDecl->identifier : "", PACK->buf.pos));
-
-    if (pTS->tflags & T_ENUM)
-      rv = unpack_enum(aPACKARGS, pTS->ptr);
-    else
-      rv = unpack_basic(aPACKARGS, pTS->tflags);
-  }
-
-  assert(rv != NULL);
-
-handle_unpack_hook:
-
-  if (hooks)
-  {
-    assert(pDecl != NULL);
-
-    rv = hook_call(aTHX_ PACK->self, "", pDecl->identifier,
-                   hooks->any, HOOKID_unpack, rv, 0);
-  }
-
-  return rv;
+  return unpack_type_i(aPACKARGS, pTS, pDecl, dimension, NULL);
 }
 

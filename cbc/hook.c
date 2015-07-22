@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:39 +0000 $
-* $Revision: 8 $
+* $Date: 2005/03/10 20:47:09 +0000 $
+* $Revision: 9 $
 * $Source: /cbc/hook.c $
 *
 ********************************************************************************
@@ -235,7 +235,7 @@ void hook_update(TypeHooks *dst, const TypeHooks *src)
   {
     if (hook_dst->sub != hook_src->sub)
     {
-      if (hook_src->sub);
+      if (hook_src->sub)
         SvREFCNT_inc(hook_src->sub);
       if (hook_dst->sub)
         SvREFCNT_dec(hook_dst->sub);
@@ -243,7 +243,7 @@ void hook_update(TypeHooks *dst, const TypeHooks *src)
 
     if (hook_dst->arg != hook_src->arg)
     {
-      if (hook_src->arg);
+      if (hook_src->arg)
         SvREFCNT_inc(hook_src->arg);
       if (hook_dst->arg)
         SvREFCNT_dec(hook_dst->arg);

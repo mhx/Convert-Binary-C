@@ -1,0 +1,9 @@
+# HP-UX spe192 B.11.11 U 9000/800 1839940656 unlimited-user license
+# GCC (hppa2.0w-hp-hpux11.11/3.4.2)
+gcc_plain        =>  -- gcc -c -o %o %c
+gcc_pack         =>  -- gcc -DPACK_PAREN -c -o %o %c
+
+# HP compilers
+cc_plain         =>  -- cc -Ae -c -o %o %c
+aCC_plain        =>  -- aCC -c -o %o %c
+aCC_pack         =>  -- aCC -DPACK_NO_PAREN -c -o %o %c

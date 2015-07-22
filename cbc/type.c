@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:38 +0000 $
-* $Revision: 9 $
+* $Date: 2005/04/22 12:51:53 +0100 $
+* $Revision: 15 $
 * $Source: /cbc/type.c $
 *
 ********************************************************************************
@@ -216,19 +216,26 @@ int get_member_info(pTHX_ CBC *THIS, const char *name, MemberInfo *pMI)
     }
     else if (mi.type.ptr == NULL)
     {
-      ErrorGTI err;
+      Declarator *pDecl = basic_types_get_declarator(THIS->basic, mi.type.tflags);
 
+      if (pDecl == NULL)
+      {
+        SV *str = NULL;
+        get_basic_type_spec_string(aTHX_ &str, mi.type.tflags);
+        sv_2mortal(str);
+        Perl_croak(aTHX_ "Unsupported basic type '%s'", SvPV_nolen(str));
+      }
+
+      if (pDecl->size < 0)
+        (void) THIS->cfg.get_type_info(&THIS->cfg.layout, &mi.type, NULL,
+                                       "si", &pDecl->size, &pDecl->item_size);
+
+      pMI->pDecl  = pDecl;
       pMI->type   = mi.type;
       pMI->flags  = 0;
       pMI->level  = 0;
       pMI->offset = 0;
-      pMI->pDecl  = basic_types_get_declarator(THIS->basic, mi.type.tflags);
-
-      err = get_type_info(&THIS->cfg, &mi.type, NULL, &pMI->size,
-                          NULL, NULL, &pMI->flags);
-
-      if (err != GTI_NO_ERROR)
-        croak_gti(aTHX_ err, name, 0);
+      pMI->size   = pDecl->size;
     }
     else
     {
@@ -240,9 +247,10 @@ int get_member_info(pTHX_ CBC *THIS, const char *name, MemberInfo *pMI)
           {
             /* TODO: get rid of get_type_info, add flags to size */
             ErrorGTI err;
-            err = get_type_info(&THIS->cfg, ((Typedef *) ptr)->pType,
-                                ((Typedef *) ptr)->pDecl, &pMI->size, NULL,
-                                NULL, &pMI->flags);
+            err = THIS->cfg.get_type_info(&THIS->cfg.layout, ((Typedef *) ptr)->pType,
+                                          ((Typedef *) ptr)->pDecl,
+                                          "sf", &pMI->size, &pMI->flags);
+
             if (err != GTI_NO_ERROR)
               croak_gti(aTHX_ err, name, 0);
           }
@@ -394,22 +402,24 @@ SV *get_type_name_string(pTHX_ const MemberInfo *pMI)
 
   if (pMI->pDecl != NULL)
   {
-    if (pMI->pDecl->bitfield_size >= 0)
-      sv_catpvf(sv, " :%d", pMI->pDecl->bitfield_size);
+    if (pMI->pDecl->bitfield_flag)
+      sv_catpvf(sv, " :%d", pMI->pDecl->ext.bitfield.bits);
     else
     {
       if (pMI->pDecl->pointer_flag)
         sv_catpv(sv, " *");
 
-      if (pMI->pDecl->array)
+      if (pMI->pDecl->array_flag)
       {
         int level = pMI->level;
-        if (level < LL_count(pMI->pDecl->array))
+        int count = LL_count(pMI->pDecl->ext.array);
+
+        if (level < count)
         {
           sv_catpv(sv, " ");
-          while (level < LL_count(pMI->pDecl->array))
+          while (level < count)
           {
-            Value *pValue = LL_get(pMI->pDecl->array, level);
+            Value *pValue = LL_get(pMI->pDecl->ext.array, level);
 
             if (pValue->flags & V_IS_UNDEF)
               sv_catpvn(sv, "[]", 2);
@@ -456,7 +466,7 @@ int is_typedef_defined(Typedef *pTypedef)
       return 1;
   }
 
-  if (pTypedef->pType->tflags & (T_STRUCT | T_UNION))
+  if (pTypedef->pType->tflags & T_COMPOUND)
     return ((Struct*) pTypedef->pType->ptr)->declarations != NULL;
 
   if (pTypedef->pType->tflags & T_ENUM)
@@ -496,7 +506,7 @@ void check_allowed_types(pTHX_ const MemberInfo *pMI, const char *method, U32 al
   int               level = 0;
 
   if (pType->tflags & T_TYPE &&
-      (pDecl == NULL || (!pDecl->pointer_flag && LL_count(pDecl->array) == 0)))
+      (pDecl == NULL || (!pDecl->pointer_flag && !pDecl->array_flag)))
   {
     do
     {
@@ -506,14 +516,14 @@ void check_allowed_types(pTHX_ const MemberInfo *pMI, const char *method, U32 al
     }
     while (!pDecl->pointer_flag &&
            pType->tflags & T_TYPE &&
-           LL_count(pDecl->array) == 0);
+           pDecl->array_flag == 0);
   }
   else
     level = pMI->level;
 
   if (pDecl != NULL)
   {
-    if (pDecl->array && level < LL_count(pDecl->array))
+    if (pDecl->array_flag && level < LL_count(pDecl->ext.array))
       CHECK_ALLOWED(ARRAYS, "an array type");
 
     if (pDecl->pointer_flag)

@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/01/23 11:49:29 +0000 $
-# $Revision: 6 $
+# $Date: 2005/05/07 14:20:23 +0100 $
+# $Revision: 7 $
 # $Source: /t/132_native.t $
 #
 ################################################################################
@@ -46,18 +46,28 @@ ok($@, '');
 ok($s2 > 0);
 ok($s == $s2);
 
-for (qw( PointerSize IntSize CharSize ShortSize LongSize LongLongSize
-         FloatSize DoubleSize LongDoubleSize Alignment CompoundAlignment )) {
-  my $nat = $c->native($_);
-  ok($nat, Convert::Binary::C::native($_));
-  print "# native($_) = $nat\n";
-  if (exists $Config{lc $_}) {
-    print "#   found \$Config{\L$_\E}\n";
-    ok($Config{lc $_}, $c->native($_));
+$warn_utf8 = 0;
+
+for my $prop (qw( PointerSize IntSize CharSize ShortSize LongSize LongLongSize
+                  FloatSize DoubleSize LongDoubleSize Alignment CompoundAlignment )) {
+  my $nat = $c->native($prop);
+  ok($nat, Convert::Binary::C::native($prop));
+  print "# native($prop) = $nat\n";
+  my $cfgvar = lc $prop;
+  if (exists $Config{$cfgvar}) {
+    print "#   found \$Config{$cfgvar}\n";
+    my $val = $Config{$cfgvar};
+    if ($val =~ /^\d+$/) {
+      ok($val, $c->native($prop));
+      next;
+    }
+    warn " *** Your perl seems to have broken UTF-8 support ***\n"
+        if $ENV{LANG} =~ /utf/i and not $warn_utf8++;
+    $val =~ s/\n/\\n/g;
+    $val =~ s/\r/\\r/g;
+    print "#   \$Config{$cfgvar} looks broken: [$val]\n";
   }
-  else {
-    ok($c->native($_), qr/^(?:1|2|4|8|12|16)$/);
-  }
+  ok($c->native($prop), qr/^(?:1|2|4|8|12|16)$/);
 }
 
 ok($c->native('EnumSize'), qr/^(?:-1|0|1|2|4|8)$/);

@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:36 +0000 $
-* $Revision: 5 $
+* $Date: 2005/05/07 14:05:18 +0100 $
+* $Revision: 7 $
 * $Source: /cbc/object.c $
 *
 ********************************************************************************
@@ -92,33 +92,37 @@ CBC *cbc_new(pTHX)
   if (hv_store(THIS->hv, "", 0, sv, 0) == NULL)
     fatal("Couldn't store THIS into object.");
   
-  THIS->as.bo                  = CBC_DEFAULT_BYTEORDER;
-  THIS->enumType               = CBC_DEFAULT_ENUMTYPE;
-  THIS->ixhash                 = NULL;
-  THIS->flags                  = 0;
+  THIS->as.bo                         = CBC_DEFAULT_BYTEORDER;
+  THIS->enumType                      = CBC_DEFAULT_ENUMTYPE;
+  THIS->ixhash                        = NULL;
+  THIS->flags                         = 0;
 
-  THIS->basic                  = basic_types_new();
+  THIS->basic                         = basic_types_new();
 
-  THIS->cfg.includes           = LL_new();
-  THIS->cfg.defines            = LL_new();
-  THIS->cfg.assertions         = LL_new();
-  THIS->cfg.disabled_keywords  = LL_new();
-  THIS->cfg.keyword_map        = HT_new(1);
-  THIS->cfg.ptr_size           = CBC_DEFAULT_PTR_SIZE;
-  THIS->cfg.enum_size          = CBC_DEFAULT_ENUM_SIZE;
-  THIS->cfg.int_size           = CBC_DEFAULT_INT_SIZE;
-  THIS->cfg.char_size          = CBC_DEFAULT_CHAR_SIZE;
-  THIS->cfg.short_size         = CBC_DEFAULT_SHORT_SIZE;
-  THIS->cfg.long_size          = CBC_DEFAULT_LONG_SIZE;
-  THIS->cfg.long_long_size     = CBC_DEFAULT_LONG_LONG_SIZE;
-  THIS->cfg.float_size         = CBC_DEFAULT_FLOAT_SIZE;
-  THIS->cfg.double_size        = CBC_DEFAULT_DOUBLE_SIZE;
-  THIS->cfg.long_double_size   = CBC_DEFAULT_LONG_DOUBLE_SIZE;
-  THIS->cfg.alignment          = CBC_DEFAULT_ALIGNMENT;
-  THIS->cfg.compound_alignment = CBC_DEFAULT_COMPOUND_ALIGNMENT;
-  THIS->cfg.keywords           = HAS_ALL_KEYWORDS;
-  THIS->cfg.flags              = HAS_CPP_COMMENTS
-                               | HAS_MACRO_VAARGS;
+  THIS->cfg.layout.ptr_size           = CBC_DEFAULT_PTR_SIZE;
+  THIS->cfg.layout.enum_size          = CBC_DEFAULT_ENUM_SIZE;
+  THIS->cfg.layout.int_size           = CBC_DEFAULT_INT_SIZE;
+  THIS->cfg.layout.char_size          = CBC_DEFAULT_CHAR_SIZE;
+  THIS->cfg.layout.short_size         = CBC_DEFAULT_SHORT_SIZE;
+  THIS->cfg.layout.long_size          = CBC_DEFAULT_LONG_SIZE;
+  THIS->cfg.layout.long_long_size     = CBC_DEFAULT_LONG_LONG_SIZE;
+  THIS->cfg.layout.float_size         = CBC_DEFAULT_FLOAT_SIZE;
+  THIS->cfg.layout.double_size        = CBC_DEFAULT_DOUBLE_SIZE;
+  THIS->cfg.layout.long_double_size   = CBC_DEFAULT_LONG_DOUBLE_SIZE;
+  THIS->cfg.layout.alignment          = CBC_DEFAULT_ALIGNMENT;
+  THIS->cfg.layout.compound_alignment = CBC_DEFAULT_COMPOUND_ALIGNMENT;
+  THIS->cfg.layout.bflayouter         = bl_create("Generic");
+
+  THIS->cfg.get_type_info             = get_type_info_generic;
+  THIS->cfg.layout_compound           = layout_compound_generic;
+  THIS->cfg.includes                  = LL_new();
+  THIS->cfg.defines                   = LL_new();
+  THIS->cfg.assertions                = LL_new();
+  THIS->cfg.disabled_keywords         = LL_new();
+  THIS->cfg.keyword_map               = HT_new(1);
+  THIS->cfg.keywords                  = HAS_ALL_KEYWORDS;
+  THIS->cfg.flags                     = HAS_CPP_COMMENTS
+                                      | HAS_MACRO_VAARGS;
 
   init_parse_info(&THIS->cpi);
 
@@ -154,6 +158,8 @@ void cbc_delete(pTHX_ CBC *THIS)
   basic_types_delete(THIS->basic);
 
   HT_destroy(THIS->cfg.keyword_map, NULL);
+
+  THIS->cfg.layout.bflayouter->m->destroy(THIS->cfg.layout.bflayouter);
 
   Safefree(THIS);
 }
@@ -191,6 +197,9 @@ CBC *cbc_clone(pTHX_ const CBC *THIS)
   clone->basic = basic_types_clone(THIS->basic);
 
   clone->cfg.keyword_map = HT_clone(THIS->cfg.keyword_map, NULL);
+
+  clone->cfg.layout.bflayouter =
+      THIS->cfg.layout.bflayouter->m->clone(THIS->cfg.layout.bflayouter);
 
   init_parse_info(&clone->cpi);
   clone_parse_info(&clone->cpi, &THIS->cpi);

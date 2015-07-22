@@ -36,17 +36,19 @@ my @hosts = (
   { ip => '192.233.54.170', prompt => $PROMPT },        # 5.6.1 hppa-linux
   # { ip => '192.233.54.174', prompt => $PROMPT },        # 5.6.1 ia64-linux
   # { ip => '192.233.54.175', prompt => $PROMPT },  # broken perl installation
-  # { ip => '192.233.54.176', prompt => $PROMPT },  # broken perl installation
-  # { ip => '192.233.54.177', prompt => $PROMPT },        # 5.6.1 ia64-linux
+  { ip => '192.233.54.176', prompt => $PROMPT, perl => 'perl5.8.0' },  # 5.8.0 parisc-hpux
+  { ip => '192.233.54.177', prompt => $PROMPT },        # 5.6.1 ia64-linux
   # { ip => '192.233.54.178', prompt => $PROMPT },        # 5.6.1 ia64-linux
 
   { ip => '192.233.54.188', prompt => $PROMPT },        # 5.8.1 i386-linux-thread-multi
 
   # { ip => '192.233.54.191', prompt => $PROMPT },  # 
-  # { ip => '192.233.54.192', prompt => $PROMPT },  # 
+  { ip => '192.233.54.192', prompt => $PROMPT, perl => 'perl5.8.0' },  #    HP-UX 11
 
   # { ip => '192.233.54.206', prompt => $PROMPT },        # 5.8.0 alpha-dec_osf
   # { ip => '192.233.54.207', prompt => $PROMPT },        # 5.8.0 alpha-dec_osf
+
+  { ip => '192.233.54.208', prompt => $PROMPT },        # 5.8.0 alpha-dec_osf
 
   # { ip => '192.233.54.222', prompt => $PROMPT },        # 5.6.1 i386-linux
   # { ip => '192.233.54.223', prompt => $PROMPT },        # 5.6.1 i386-linux
@@ -120,13 +122,14 @@ END
 sub version
 {
   my($host) = @_;
+  my $perl = $host->{perl} || 'perl';
 
   print "checking version on $host->{ip}\n";
 
   my @lines = run_script( $host, 20, <<END );
 uname -a
-perl -v
-perl -V
+$perl -v
+$perl -V
 END
 
   my $f = new IO::File;
@@ -138,6 +141,7 @@ END
 sub test_compile
 {
   my($host, $file) = @_;
+  my $perl = $host->{perl} || 'perl';
   my($dist) = $file =~ /([^\/]+)\.tar\.gz$/;
 
   print "compiling $file on $host->{ip}\n";
@@ -148,23 +152,24 @@ rm -rf $dist
 gzip -dc $HOMEDIR/$file | tar xvf -
 cd $dist
 uname -a
-perl -v
-perl -V
+$perl -v
+$perl -V
 touch Makefile.PL
-perl Makefile.PL
+$perl Makefile.PL
 make
-make test HARNESS_NOTTY=1 && perl -I$HOMEDIR/lib -MTest::Reporter -e'Test::Reporter->new(grade=>"pass", distribution=>"$dist", dir=>"$HOMEDIR/reports")->write'
-perl -Mblib bin/ccconfig --nostatus
-perl -Mblib bin/ccconfig --nostatus --norun
+make test HARNESS_NOTTY=1
+# make test HARNESS_NOTTY=1 && perl -I$HOMEDIR/lib -MTest::Reporter -e'Test::Reporter->new(grade=>"pass", distribution=>"$dist", dir=>"$HOMEDIR/reports")->write'
+$perl -Mblib bin/ccconfig --nostatus
+$perl -Mblib bin/ccconfig --nostatus --norun
 make realclean
-# perl Makefile.PL enable-debug
-# make
-# make test HARNESS_NOTTY=1
-# make realclean
-# perl Makefile.PL enable-debug
-# CBC_USELONGLONG=0 CBC_USE64BIT=0 make
-# make test HARNESS_NOTTY=1
-# make realclean
+$perl Makefile.PL enable-debug
+make
+make test HARNESS_NOTTY=1
+make realclean
+$perl Makefile.PL enable-debug
+CBC_USELONGLONG=0 CBC_USE64BIT=0 make
+make test HARNESS_NOTTY=1
+make realclean
 cd ..
 rm -rf $dist
 END

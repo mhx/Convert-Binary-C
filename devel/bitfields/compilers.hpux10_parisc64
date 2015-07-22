@@ -1,0 +1,17 @@
+# GCC
+gcc_plain        =>  -- gcc -DPACK_PAREN -c -o %o %c
+
+# HP compilers
+cc_plain         =>  -- cc -Ae -c -o %o %c
+aCC_plain        =>  -- aCC -DPACK_NO_PAREN -c -o %o %c
+
+# Cross compilers
+dcc_plain        =>  -- dcc -c -o %o %c                          # cross-compiler, big-endian
+dcc_pack         =>  -- dcc -DPACK_PAREN -c -o %o %c             # cross-compiler, big-endian
+dcc_pack1        =>  -- dcc -X88=1 -DPACK_PAREN -c -o %o %c      # cross-compiler, big-endian
+dcc_pack2        =>  -- dcc -X88=2 -DPACK_PAREN -c -o %o %c      # cross-compiler, big-endian
+dcc_pack4        =>  -- dcc -X88=4 -DPACK_PAREN -c -o %o %c      # cross-compiler, big-endian
+dcc_pack8        =>  -- dcc -X88=8 -DPACK_PAREN -c -o %o %c      # cross-compiler, big-endian
+
+# cc68k's implementation of bitfields seems _very_ broken
+# cc68k_plain      =>  -- cc68k -c -o %o %c                      # cross-compiler, big-endian

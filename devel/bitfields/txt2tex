@@ -1,0 +1,122 @@
+#!/usr/bin/perl -w
+use IO::File;
+use Getopt::Std;
+use Data::Dumper;
+use strict;
+
+sub slurp ($) { my $fh = new IO::File $_[0] or die "$_[0]: $!\n"; <$fh> }
+sub sslurp ($) { my $fh = new IO::File $_[0] or die "$_[0]: $!\n"; local $/; <$fh> }
+
+my %opt = ( s => 0 );
+getopts('s', \%opt) or die;
+
+my @systems = map { /compilers\.(.*)/ ?
+                    ( { name      => $1,
+                        resdir    => "results/$1",
+                        cfgdir    => "configs/$1",
+                        compilers => $_,
+                       }) : () } sort glob "compilers.*";
+
+my @code = map { /^\s*(.*?)\s*$/s } split /-{20,}/, sslurp 'bitfields.c';
+my @cfgitems = qw( ByteOrder Alignment CompoundAlignment
+                   CharSize ShortSize IntSize LongSize
+                   PointerSize UnsignedChars EnumSize );
+my %CFG;
+
+for my $sys ( @systems ) {
+  unless( -d $sys->{resdir} ) {
+    print STDERR "no results for $sys->{name}\n";
+    $sys->{compilers} = [];
+    next;
+  }
+
+  $sys->{compilers} = [ map {
+                          /^([^#]*?)\s*=>\s*([^#]*?)\s*(?:#\s*(.*?)\s*)?$/
+                          ? { name    => $1,
+                              resfile => "$sys->{resdir}/$1.txt",
+                              cdargs  => $2,
+                              system  => $sys->{name},
+                              comment => $3 || '',
+                              config  => eval { require "$sys->{cfgdir}/$1.cfg" } || {},
+                            } : ()
+                        } slurp $sys->{compilers} ];
+
+  for my $cc ( @{$sys->{compilers}} ) {
+    my @results = split /={20,}/, sslurp $cc->{resfile};
+    s/[\r\n]+/\n/g for @results;
+    chomp( $cc->{cmdline} = shift @results );
+    for( @results ) { my %h; @h{qw(type bits)} = /([^\n]+)\n(.*)\n$/s; $_ = \%h }
+    $cc->{results} = \@results;
+    my %conf = map { ($_ => $cc->{config}{$_}) } @cfgitems;
+    my $key = join ',', map { "$_=" . (defined $conf{$_} ? $conf{$_} : "UNKNOWN") } @cfgitems;
+    $CFG{$key} ||= { config => \%conf, compilers => [] };
+    push @{$CFG{$key}{compilers}}, $cc;
+  }
+}
+
+for my $key (sort keys %CFG) {
+  my $cfg = $CFG{$key};
+
+  my $dump = Data::Dumper->Dump([$cfg->{config}], ['*config']);
+  my @compilers = sort map { $_->{name} } @{$cfg->{compilers}};
+  $_ =~ s/_/-/g for @compilers;
+  my $items = join '', map { "\\item{$_}\n" } @compilers;
+
+  print <<END;
+\\newpage
+\\section{$compilers[0]}
+\\normalsize
+\\begin{itemize}
+$items
+\\end{itemize}
+\\begin{verbatim}
+$dump
+\\end{verbatim}
+END
+
+  for my $ix ( 0 .. $#code ) {
+    print <<END;
+\\newpage
+\\small
+\\begin{verbatim}
+$code[$ix]
+\\end{verbatim}
+\\footnotesize
+\\vfill
+\\begin{tabular*}{283mm}{\@{}l|l\@{}}
+\\hline
+END
+
+    my @bits;
+    my %bits;
+
+    for my $cc ( @{$cfg->{compilers}} ) {
+      my @b = ('N/A', 'N/A');
+      my $comment = '';
+      my $bits = $cc->{results}[$ix]{bits} || '';
+
+      if( $bits ) {
+        $code[$ix] =~ /$cc->{results}[$ix]{type}/
+          or die "consistency check failed!\n";
+        $cc->{comment} and $comment = ", $cc->{comment}";
+        @b = map { "\\verb=$_=" } split /\n/, $bits;
+      }
+
+      exists $bits{$bits} and @b = ('', '');
+      push @{ $opt{s} ? $bits{$bits} : \@bits }, <<END;
+\\verb#$cc->{cmdline}#         & $b[0] \\\\
+\\verb#($cc->{system}$comment)# & $b[1]
+END
+    }
+
+    if( $opt{s} ) {
+      push @bits, join "\\\\\n", @{$bits{$_}}
+        for sort keys %bits
+    }
+
+    print join( "\\\\\\hline\n", @bits ), <<END;
+\\\\\\hline
+\\end{tabular*}
+END
+  }
+}

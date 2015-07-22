@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/21 09:18:42 +0000 $
-# $Revision: 2 $
+# $Date: 2005/04/22 12:51:54 +0100 $
+# $Revision: 4 $
 # $Source: /xsubs/sizeof.xs $
 #
 ################################################################################
@@ -40,7 +40,7 @@ CBC::sizeof(type)
     if (!get_member_info(aTHX_ THIS, type, &mi))
       Perl_croak(aTHX_ "Cannot find '%s'", type);
 
-    if (mi.pDecl && mi.pDecl->bitfield_size >= 0)
+    if (mi.pDecl && mi.pDecl->bitfield_flag)
       Perl_croak(aTHX_ "Cannot use %s on bitfields", method);
 
     if (mi.flags)

@@ -1,0 +1,9 @@
+# HP-UX spe176 B.11.23 U ia64 0391833941 unlimited-user license
+# GCC (ia64-hp-hpux11.23/3.4.3)
+gcc_plain        =>  -- gcc -c -o %o %c
+gcc_pack         =>  -- gcc -DPACK_PAREN -c -o %o %c
+
+# HP compilers
+cc_plain         =>  -- cc -Ae -c -o %o %c
+aCC_plain        =>  -- aCC -c -o %o %c
+aCC_pack         =>  -- aCC -DPACK_NO_PAREN -c -o %o %c

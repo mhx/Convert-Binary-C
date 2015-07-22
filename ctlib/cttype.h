@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/01/23 11:49:40 +0000 $
-* $Revision: 17 $
+* $Date: 2005/04/22 21:33:40 +0100 $
+* $Revision: 24 $
 * $Source: /ctlib/cttype.h $
 *
 ********************************************************************************
@@ -68,6 +68,7 @@
 #define T_ENUM                         0x00000200
 #define T_STRUCT                       0x00000400
 #define T_UNION                        0x00000800
+#define T_COMPOUND                     (T_STRUCT | T_UNION)
 
 #define T_TYPE                         0x00001000
 #define T_TYPEDEF                      0x00002000
@@ -104,12 +105,12 @@
           if (_p) {                                                            \
             switch (GET_CTYPE(_p)) {                                           \
               case TYP_ENUM:                                                   \
-                if (((Struct *) _p)->refcount < ~((unsigned)0))                \
-                  ((Struct *) _p)->refcount++;                                 \
-                break;                                                         \
-              case TYP_STRUCT:                                                 \
                 if (((EnumSpecifier *) _p)->refcount < ~((unsigned)0))         \
                   ((EnumSpecifier *) _p)->refcount++;                          \
+                break;                                                         \
+              case TYP_STRUCT:                                                 \
+                if (((Struct *) _p)->refcount < ~((unsigned)0))                \
+                  ((Struct *) _p)->refcount++;                                 \
                 break;                                                         \
               default:                                                         \
                 break;                                                         \
@@ -123,18 +124,21 @@
           if (_p) {                                                            \
             switch (GET_CTYPE(_p)) {                                           \
               case TYP_ENUM:                                                   \
-                if (((Struct *) _p)->refcount > 0)                             \
-                  ((Struct *) _p)->refcount--;                                 \
-                break;                                                         \
-              case TYP_STRUCT:                                                 \
                 if (((EnumSpecifier *) _p)->refcount > 0)                      \
                   ((EnumSpecifier *) _p)->refcount--;                          \
+                break;                                                         \
+              case TYP_STRUCT:                                                 \
+                if (((Struct *) _p)->refcount > 0)                             \
+                  ((Struct *) _p)->refcount--;                                 \
                 break;                                                         \
               default:                                                         \
                 break;                                                         \
             }                                                                  \
           }                                                                    \
         } while (0)
+
+#define CTT_IDLEN(ptr)  ((ptr)->id_len < 255 ? (ptr)->id_len                   \
+                         : 255 + strlen((ptr)->identifier + 255))
 
 /*===== TYPEDEFS =============================================================*/
 
@@ -168,6 +172,7 @@ typedef struct {
 
 typedef struct {
   Value       value;
+  unsigned char id_len;
   char        identifier[1];
 } Enumerator;
 
@@ -179,15 +184,28 @@ typedef struct {
   ContextInfo context;
   LinkedList  enumerators;
   CtTagList   tags;
+  unsigned char id_len;
   char        identifier[1];
 } EnumSpecifier;
 
 typedef struct {
-  int         pointer_flag;
-  int         bitfield_size;
-  int         offset, size;
-  LinkedList  array;
+  unsigned char size;     /* size (in bytes), usually same as Declarator.size */
+  unsigned char bits;     /* size (in bits) of the bitfield                   */
+  unsigned char pos;      /* pos (in bits) of the bitfield (relative to LSB)  */
+} BitfieldInfo;
+
+typedef struct {
+  signed      offset        : 29;
+  unsigned    pointer_flag  :  1;
+  unsigned    array_flag    :  1;
+  unsigned    bitfield_flag :  1;
+  signed      size, item_size;
   CtTagList   tags;
+  union {
+    LinkedList   array;
+    BitfieldInfo bitfield;
+  }           ext;
+  unsigned char id_len;
   char        identifier[1];
 } Declarator;
 
@@ -206,12 +224,13 @@ typedef struct {
   CTType      ctype;
   u_32        tflags;
   unsigned    refcount;
-  unsigned    align;
+  unsigned    align : 16;
+  unsigned    pack  : 16;
   unsigned    size;
-  unsigned    pack;
   ContextInfo context;
   LinkedList  declarations;
   CtTagList   tags;
+  unsigned char id_len;
   char        identifier[1];
 } Struct;
 

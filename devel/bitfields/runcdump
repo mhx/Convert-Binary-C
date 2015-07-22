@@ -1,0 +1,22 @@
+#!/usr/bin/perl -w
+use strict;
+use File::Path;
+use Getopt::Long;
+
+my %OPT = ( tests => 0 );
+GetOptions(\%OPT, qw( tests )) or exit 2;
+
+my $res = $ARGV[0];
+$res =~ s/.*compilers\.//;
+my $out = $OPT{tests} ? "tests/$res" : "results/$res";
+-d $out or mkpath( [$out] ) or die "$out: $!";
+
+while( <> ) {
+  s/\s*#.*//;
+  /^(.*?)\s*=>\s*(.*?)\s*$/ or next;
+  print "running $1 on $^O\n";
+  my @opts;
+  push @opts, qw( --noheader --generate-tests ) if $OPT{tests};
+  system "$^X -- cdump @opts $2 < bitfields.c > $out/$1.txt"
+    and die "Ooops...";
+}

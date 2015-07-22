@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/21 09:18:42 +0000 $
-# $Revision: 2 $
+# $Date: 2005/04/01 23:11:01 +0100 $
+# $Revision: 4 $
 # $Source: /xsubs/pack.xs $
 #
 ################################################################################
@@ -105,13 +105,9 @@ CBC::pack(type, data = &PL_sv_undef, string = NULL)
     pack.self       = ST(0);
     pack.bufsv      = RETVAL;
 
-    pack.bufptr     =
     pack.buf.buffer = buffer;
     pack.buf.length = mi.size;
     pack.buf.pos    = 0;
-
-    pack.align_base = 0;
-    pack.alignment  = CPC_ALIGNMENT(&THIS->cfg);
 
     IDLIST_INIT(&pack.idl);
     IDLIST_PUSH(&pack.idl, ID);
@@ -169,7 +165,6 @@ CBC::unpack(type, string)
     pack.self       = ST(0);
     pack.buf.buffer = SvPV(string, len);
     pack.buf.length = len;
-    pack.alignment  = CPC_ALIGNMENT(&THIS->cfg);
 
     if (GIMME_V == G_SCALAR)
     {
@@ -193,12 +188,8 @@ CBC::unpack(type, string)
 
       for (i = 0; i < count; i++)
       {
-        pack.buf.pos    = i*mi.size;
-        pack.bufptr     = pack.buf.buffer + pack.buf.pos;
-        pack.align_base = 0;
-
-        sva[i] = unpack_type(aTHX_ THIS, &pack, &mi.type,
-                             mi.pDecl, mi.level);
+        pack.buf.pos = i*mi.size;
+        sva[i] = unpack_type(aTHX_ THIS, &pack, &mi.type, mi.pDecl, mi.level);
       }
 
       EXTEND(SP, count);

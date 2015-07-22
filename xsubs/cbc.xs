@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/21 09:18:44 +0000 $
-# $Revision: 2 $
+# $Date: 2005/05/19 18:54:02 +0100 $
+# $Revision: 3 $
 # $Source: /xsubs/cbc.xs $
 #
 ################################################################################
@@ -60,6 +60,8 @@ CBC::new(...)
 
       for (i = 1; i < items; i += 2)
         (void) handle_option(aTHX_ THIS, ST(i), ST(i+1), NULL);
+
+      post_configure_update(aTHX_ THIS);
 
       if (gs_OrderMembers && THIS->flags & CBC_ORDER_MEMBERS)
         load_indexed_hash_module(aTHX_ THIS);

@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:40 +0000 $
-* $Revision: 7 $
+* $Date: 2005/05/03 16:40:18 +0100 $
+* $Revision: 12 $
 * $Source: /cbc/sourcify.c $
 *
 ********************************************************************************
@@ -82,7 +82,7 @@ static void check_define_type(pTHX_ SourcifyConfig *pSC, SV *str, TypeSpec *pTS)
 
 static void add_type_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s,
                                      TypeSpec *pTS, int level, SourcifyState *pSS);
-static void add_enum_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s,
+static void add_enum_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *s,
                                      EnumSpecifier *pES, int level, SourcifyState *pSS);
 static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s,
                                        Struct *pStruct, int level, SourcifyState *pSS);
@@ -146,7 +146,7 @@ static void check_define_type(pTHX_ SourcifyConfig *pSC, SV *str, TypeSpec *pTS)
     if (pES && (pES->tflags & T_ALREADY_DUMPED) == 0)
       add_enum_spec_string(aTHX_ pSC, str, pES);
   }
-  else if (flags & (T_STRUCT|T_UNION))
+  else if (flags & T_COMPOUND)
   {
     Struct *pStruct = (Struct *) pTS->ptr;
 
@@ -205,10 +205,10 @@ static void add_type_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s,
         sv_catpvf(s, "enum %s", pES->identifier);
       }
       else
-        add_enum_spec_string_rec(aTHX_ pSC, str, s, pES, level, pSS);
+        add_enum_spec_string_rec(aTHX_ pSC, s, pES, level, pSS);
     }
   }
-  else if (flags & (T_STRUCT|T_UNION))
+  else if (flags & T_COMPOUND)
   {
     Struct *pStruct = (Struct *) pTS->ptr;
 
@@ -249,7 +249,7 @@ static void add_type_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s,
 *
 *******************************************************************************/
 
-static void add_enum_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s,
+static void add_enum_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *s,
                                      EnumSpecifier *pES, int level, SourcifyState *pSS)
 {
   CT_DEBUG(MAIN, (XSCLASS "::add_enum_spec_string_rec( pES=(identifier=\"%s\"),"
@@ -432,18 +432,17 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
         else
           sv_catpv(s, ", ");
 
-        if (pDecl->bitfield_size >= 0)
+        if (pDecl->bitfield_flag)
         {
-          sv_catpvf(s, "%s:%d", pDecl->identifier[0] != '\0'
-                                ? pDecl->identifier : "",
-                                pDecl->bitfield_size);
+          sv_catpvf(s, "%s:%d", pDecl->identifier, pDecl->ext.bitfield.bits);
         }
         else {
           sv_catpvf(s, "%s%s", pDecl->pointer_flag ? "*" : "",
                                pDecl->identifier);
 
-          LL_foreach(pValue, pDecl->array)
-            sv_catpvf(s, "[%ld]", pValue->iv);
+          if (pDecl->array_flag)
+            LL_foreach(pValue, pDecl->ext.array)
+              sv_catpvf(s, "[%ld]", pValue->iv);
         }
       }
 
@@ -500,8 +499,9 @@ static void add_typedef_list_decl_string(pTHX_ SV *str, TypedefList *pTDL)
 
     sv_catpvf(str, "%s%s", pDecl->pointer_flag ? "*" : "", pDecl->identifier);
 
-    LL_foreach(pValue, pDecl->array)
-      sv_catpvf(str, "[%ld]", pValue->iv);
+    if (pDecl->array_flag)
+      LL_foreach(pValue, pDecl->ext.array)
+        sv_catpvf(str, "[%ld]", pValue->iv);
   }
 }
 
@@ -576,7 +576,7 @@ static void add_enum_spec_string(pTHX_ SourcifyConfig *pSC, SV *str, EnumSpecifi
   ss.flags = 0;
   ss.pack  = 0;
 
-  add_enum_spec_string_rec(aTHX_ pSC, str, s, pES, 0, &ss);
+  add_enum_spec_string_rec(aTHX_ pSC, s, pES, 0, &ss);
   sv_catpv(s, ";\n");
   sv_catsv(str, s);
 
@@ -744,7 +744,7 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
           ident = pES->identifier;
         }
       }
-      else if (tflags & (T_STRUCT|T_UNION))
+      else if (tflags & T_COMPOUND)
       {
         Struct *pStruct = (Struct *) pTDL->type.ptr;
         if (pStruct && pStruct->identifier[0] != '\0')
@@ -774,7 +774,7 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
     if (pTDL->type.ptr != NULL)
       if (((pTDL->type.tflags & T_ENUM) &&
            ((EnumSpecifier *) pTDL->type.ptr)->identifier[0] == '\0') ||
-          ((pTDL->type.tflags & (T_STRUCT|T_UNION)) &&
+          ((pTDL->type.tflags & T_COMPOUND) &&
            ((Struct *) pTDL->type.ptr)->identifier[0] == '\0') ||
           (pTDL->type.tflags & T_TYPE))
       {

@@ -11,8 +11,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/01/23 11:49:41 +0000 $
-* $Revision: 14 $
+* $Date: 2005/05/02 17:59:50 +0100 $
+* $Revision: 15 $
 * $Source: /ctlib/pragma.y $
 *
 ********************************************************************************
@@ -77,14 +77,6 @@
 typedef struct {
   unsigned size;
 } PackElement;
-
-
-/*===== STATIC FUNCTION PROTOTYPES ===========================================*/
-
-static inline int          pragma_lex( void *pYYLVAL, PragmaState *pState );
-
-static        PackElement *packelem_new( unsigned size );
-static        void         packelem_delete( PackElement *pPack );
 
 
 /*===== EXTERNAL VARIABLES ===================================================*/
@@ -188,6 +180,17 @@ static const int tokentab[] = {
   int ival;
 }
 
+%{
+
+/*===== STATIC FUNCTION PROTOTYPES ===========================================*/
+
+static inline int          pragma_lex(YYSTYPE *plval, PragmaState *pState);
+
+static        PackElement *packelem_new(unsigned size);
+static        void         packelem_delete(PackElement *pPack);
+
+%}
+
 %token <ival> CONSTANT
 
 %token PACK_TOK
@@ -214,27 +217,27 @@ pragma_pack
 pragma_pack_args
 	: CONSTANT
 	  {
-	    if( VALID_PACK( $1 ) ) {
+	    if (VALID_PACK($1))
 	      PSTATE->pack.current = $1;
-	    }
 	  }
 	| PUSH_TOK ',' CONSTANT
 	  {
-	    if( VALID_PACK( $3 ) ) {
-	      LL_push( PSTATE->pack.stack, packelem_new( PSTATE->pack.current ) );
+	    if (VALID_PACK($3))
+	    {
+	      LL_push(PSTATE->pack.stack, packelem_new(PSTATE->pack.current));
 	      PSTATE->pack.current = $3;
 	    }
 	  }
 	| POP_TOK
 	  {
-	    PackElement *pPack = LL_pop( PSTATE->pack.stack );
-	    if( pPack ) {
+	    PackElement *pPack = LL_pop(PSTATE->pack.stack);
+	    if (pPack)
+	    {
 	      PSTATE->pack.current = pPack->size;
-	      packelem_delete( pPack );
+	      packelem_delete(pPack);
 	    }
-	    else {
+	    else
 	      PSTATE->pack.current = 0;
-	    }
 	  }
 	;
 
@@ -263,7 +266,7 @@ static PackElement *packelem_new( unsigned size )
 {
   PackElement *pPack;
 
-  AllocF( PackElement *, pPack, sizeof( PackElement ) );
+  AllocF(PackElement *, pPack, sizeof(PackElement));
 
   pPack->size = size;
 
@@ -287,10 +290,10 @@ static PackElement *packelem_new( unsigned size )
 *
 *******************************************************************************/
 
-static void packelem_delete( PackElement *pPack )
+static void packelem_delete(PackElement *pPack)
 {
-  if( pPack )
-    Free( pPack );
+  if (pPack)
+    Free(pPack);
 }
 
 /*******************************************************************************
@@ -310,23 +313,24 @@ static void packelem_delete( PackElement *pPack )
 *
 *******************************************************************************/
 
-static inline int pragma_lex( void *pYYLVAL, PragmaState *pState )
+static inline int pragma_lex(YYSTYPE *plval, PragmaState *pState)
 {
-  YYSTYPE *plval = (YYSTYPE *) pYYLVAL;
   int token, rval;
 
   CT_DEBUG( PRAGMA, ("pragma_lex()"));
 
-  while( (token = (int) *pState->str++) != 0 ) {
-    switch( token ) {
+  while ((token = (int) *pState->str++) != 0)
+  {
+    switch (token)
+    {
       case NUMBER:
         {
           char *num = pState->str;
 
-          pState->str = strchr( num, PRAGMA_TOKEN_END ) + 1;
-          plval->ival = strtol( num, NULL, 0 );
+          pState->str = strchr(num, PRAGMA_TOKEN_END) + 1;
+          plval->ival = strtol(num, NULL, 0);
 
-          CT_DEBUG( PRAGMA, ("pragma - constant: %d", plval->ival) );
+          CT_DEBUG(PRAGMA, ("pragma - constant: %d", plval->ival));
 
           return CONSTANT;
         }
@@ -347,7 +351,7 @@ static inline int pragma_lex( void *pYYLVAL, PragmaState *pState )
         }
 
       default:
-        if( (rval = tokentab[token]) != 0 )
+        if ((rval = tokentab[token]) != 0)
           return rval;
 
         break;
@@ -377,9 +381,9 @@ static inline int pragma_lex( void *pYYLVAL, PragmaState *pState )
 *
 *******************************************************************************/
 
-void pragma_init( PragmaState *pPragma )
+void pragma_init(PragmaState *pPragma)
 {
-  CT_DEBUG( PRAGMA, ("pragma_init") );
+  CT_DEBUG(PRAGMA, ("pragma_init"));
   pPragma->pack.stack   = LL_new();
   pPragma->pack.current = 0;
 }
@@ -401,11 +405,12 @@ void pragma_init( PragmaState *pPragma )
 *
 *******************************************************************************/
 
-void pragma_free( PragmaState *pPragma )
+void pragma_free(PragmaState *pPragma)
 {
-  if( pPragma ) {
-    CT_DEBUG( PRAGMA, ("pragma_free") );
-    LL_destroy( pPragma->pack.stack, (LLDestroyFunc) packelem_delete );
+  if (pPragma)
+  {
+    CT_DEBUG(PRAGMA, ("pragma_free"));
+    LL_destroy(pPragma->pack.stack, (LLDestroyFunc) packelem_delete);
   }
 }
 

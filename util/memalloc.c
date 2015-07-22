@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/14 17:43:16 +0000 $
-* $Revision: 23 $
+* $Date: 2005/05/01 20:59:32 +0100 $
+* $Revision: 24 $
 * $Source: /util/memalloc.c $
 *
 ********************************************************************************
@@ -250,11 +250,15 @@ static void trace_leaks( void )
           gs_memstat.total_blocks--;
           gs_memstat.total_bytes -= p->size;
 
+#ifdef MEMALLOC_FREE_BLOCKS_AT_EXIT
           UTIL_FREE( (void *) p->ptr );
+#endif
         }
       }
 
+#ifdef MEMALLOC_FREE_BLOCKS_AT_EXIT
       UTIL_FREE( buck->block );
+#endif
     }
     else {
       assert( buck->size == 0 );

@@ -1,0 +1,19 @@
+# Various gcc's
+# gcc2953_plain    =>  -- gcc-2.95.3 -c -o %o %c    # broken
+gcc41_plain      =>  -- gcc-4.1 -c -o %o %c
+gcc41_pack       =>  -- gcc-4.1 -DPACK_PAREN -c -o %o %c
+hppagcc33_plain  =>  -- hppa64-linux-gcc-3.3 -c -o %o %c                 # cross-compiler, big-endian
+hppagcc33_pack   =>  -- hppa64-linux-gcc-3.3 -DPACK_PAREN -c -o %o %c    # cross-compiler, big-endian
+vaxgcc33_plain   =>  -- vax-gcc-3.3 -c -o %o %c                          # cross-compiler, little-endian
+vaxgcc33_pack    =>  -- vax-gcc-3.3 -DPACK_PAREN -c -o %o %c             # cross-compiler, little-endian
+armgcc34_plain   =>  -- arm-linux-elf-gcc-3.4.0 -c -o %o %c              # cross-compiler, little-endian
+armgcc34_pack    =>  -- arm-linux-elf-gcc-3.4.0 -DPACK_PAREN -c -o %o %c # cross-compiler, little-endian
+
+# Intel C compiler for Linux
+icc80_plain      =>  -- icc -c -o %o %c
+icc80_pack       =>  -- icc -DPACK_PAREN -c -o %o %c
+icc80_pack01     =>  -- icc -Zp1 -DPACK_PAREN -c -o %o %c
+icc80_pack02     =>  -- icc -Zp2 -DPACK_PAREN -c -o %o %c
+icc80_pack04     =>  -- icc -Zp4 -DPACK_PAREN -c -o %o %c
+icc80_pack08     =>  -- icc -Zp8 -DPACK_PAREN -c -o %o %c
+icc80_pack16     =>  -- icc -Zp16 -DPACK_PAREN -c -o %o %c

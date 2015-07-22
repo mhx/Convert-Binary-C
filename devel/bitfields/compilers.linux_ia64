@@ -1,0 +1,4 @@
+# Linux spe177.testdrive.hp.com 2.6.9-5.0.3.EL
+# GCC (ia64-redhat-linux/3.4.3)
+gcc_plain        =>  -- gcc -c -o %o %c
+gcc_pack         =>  -- gcc -DPACK_PAREN -c -o %o %c

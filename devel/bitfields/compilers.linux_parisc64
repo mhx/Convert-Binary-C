@@ -1,0 +1,4 @@
+# Linux spe170 2.4.17-64
+# GCC (hppa-linux/3.0.4)
+gcc_plain        =>  -- gcc -c -o %o %c
+gcc_pack         =>  -- gcc -DPACK_PAREN -c -o %o %c

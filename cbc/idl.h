@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/01/23 11:49:35 +0000 $
-* $Revision: 3 $
+* $Date: 2005/03/10 21:20:12 +0000 $
+* $Revision: 4 $
 * $Source: /cbc/idl.h $
 *
 ********************************************************************************
@@ -40,7 +40,7 @@
         STMT_START {                                                           \
           if ((size) > (idl)->max)                                             \
           {                                                                    \
-            int grow = ((size)+(IDLIST_GRANULARITY-1))/IDLIST_GRANULARITY;     \
+            unsigned grow = ((size)+(IDLIST_GRANULARITY-1))/IDLIST_GRANULARITY;\
             grow *= IDLIST_GRANULARITY;                                        \
             Renew((idl)->list, grow, struct IDList_list);                      \
             (idl)->max = grow;                                                 \
@@ -73,6 +73,7 @@
 
 #define IDLIST_POP(idl)                                                        \
         STMT_START {                                                           \
+          assert((idl)->count > 0);                                            \
           if (--(idl)->count > 0)                                              \
             (idl)->cur--;                                                      \
           else                                                                 \
@@ -83,7 +84,7 @@
 /*===== TYPEDEFS =============================================================*/
 
 typedef struct {
-  int count, max;
+  unsigned count, max;
   struct IDList_list {
     enum { IDL_ID, IDL_IX } choice;
     union {

@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/01/23 11:49:37 +0000 $
-# $Revision: 26 $
+# $Date: 2005/05/23 15:22:59 +0100 $
+# $Revision: 27 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.58 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.58_01 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 sub new
 {
@@ -237,16 +237,27 @@ sub __can_use_cache
   my $self = shift;
   my $fh = new IO::File;
 
-  -e $self->{cache} and -s _ or return 0;
+  unless (-e $self->{cache} and -s _) {
+    $ENV{CBCC_DEBUG} and print STDERR "CBCC: cache file '$self->{cache}' doesn't exist or is empty\n";
+    return 0;
+  }
 
   unless ($fh->open($self->{cache})) {
     $^W and carp "Cannot open '$self->{cache}': $!";
+    $ENV{CBCC_DEBUG} and print STDERR "CBCC: cannot open cache file '$self->{cache}'\n";
     return 0;
   }
 
   my @config = do {
-    defined(my $config = <$fh>) or return 0;
-    $config =~ /^#if\s+0/ or return 0;
+    my $config;
+    unless (defined($config = <$fh>)) {
+      $ENV{CBCC_DEBUG} and print STDERR "CBCC: cannot read configuration\n";
+      return 0;
+    }
+    unless ($config =~ /^#if\s+0/) {
+      $ENV{CBCC_DEBUG} and print STDERR "CBCC: invalid configuration\n";
+      return 0;
+    }
     local $/ = $/.'#endif';
     chomp($config = <$fh>);
     $config =~ s/^\*//gms;
@@ -254,28 +265,45 @@ sub __can_use_cache
   };
 
   # corrupt config
-  @config % 2 and return 0;
+  if (@config % 2) {
+    $ENV{CBCC_DEBUG} and print STDERR "CBCC: broken configuration\n";
+    return 0;
+  }
 
   my %config = @config;
 
   my $what = exists $self->{code} ? 'code' : 'file';
 
-  exists $config{$what}
-      and $config{$what} eq $self->{$what}
-      and __reccmp($config{cfg}, $self->configure)
-      or return 0;
+  unless (exists $config{$what} and
+          $config{$what} eq $self->{$what} and
+          __reccmp($config{cfg}, $self->configure)) {
+    if ($ENV{CBCC_DEBUG}) {
+      print STDERR "CBCC: configuration has changed\n";
+      print STDERR "CBCC: what='$what', \$config{$what}='$config{$what}' \$self->{$what}='$self->{$what}'\n";
+      my $dump = Data::Dumper->Dump([$config{cfg}, $self->configure], ['config', 'self']);
+      $dump =~ s/^/CBCC: /mg;
+      print STDERR $dump;
+    }
+    return 0;
+  }
 
   while (my($file, $spec) = each %{$config{files}}) {
-    -e $file or return 0;
+    unless (-e $file) {
+      $ENV{CBCC_DEBUG} and print STDERR "CBCC: file '$file' deleted\n";
+      return 0;
+    }
     my($size, $mtime, $ctime) = (stat(_))[7,9,10];
-    $spec->{size} == $size
-      and $spec->{mtime} == $mtime
-      and $spec->{ctime} == $ctime
-      or return 0;
+    unless ($spec->{size} == $size and
+            $spec->{mtime} == $mtime and
+            $spec->{ctime} == $ctime) {
+      $ENV{CBCC_DEBUG} and print STDERR "CBCC: size/mtime/ctime of '$file' changed\n";
+      return 0;
+    }
   }
 
   $self->{files} = $config{files};
 
+  $ENV{CBCC_DEBUG} and print STDERR "CBCC: '$self->{cache}' is usable\n";
   return 1;
 }
 

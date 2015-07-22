@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:40 +0000 $
-* $Revision: 7 $
+* $Date: 2005/04/02 11:13:06 +0100 $
+* $Revision: 9 $
 * $Source: /cbc/util.c $
 *
 ********************************************************************************
@@ -277,20 +277,8 @@ void croak_gti(pTHX_ ErrorGTI error, const char *name, int warnOnly)
     case GTI_NO_ERROR:
       return;
 
-    case GTI_TYPEDEF_IS_NULL:
-      errstr = "NULL pointer to typedef";
-      break;
-
-    case GTI_NO_ENUM_SIZE:
-      errstr = "Got no enum size";
-      break;
-
     case GTI_NO_STRUCT_DECL:
       errstr = "Got no struct declarations";
-      break;
-
-    case GTI_STRUCT_IS_NULL:
-      errstr = "NULL pointer to struct/union";
       break;
 
     default:
@@ -472,7 +460,7 @@ char *string_new(const char *str)
 
   if (str != NULL)
   {
-    int len = strlen(str) + 1;
+    size_t len = strlen(str) + 1;
     New(0, cpy, len, char);
     Copy(str, cpy, len, char);
   }

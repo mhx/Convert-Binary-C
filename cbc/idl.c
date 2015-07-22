@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/12/25 18:50:35 +0000 $
-* $Revision: 1 $
+* $Date: 2005/03/10 21:20:11 +0000 $
+* $Revision: 2 $
 * $Source: /cbc/idl.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -75,7 +75,7 @@
 const char *IDListToStr(pTHX_ IDList *idl)
 {
   SV *sv;
-  int i;
+  unsigned i;
   struct IDList_list *cur;
 
   sv = sv_2mortal(newSVpvn("", 0));

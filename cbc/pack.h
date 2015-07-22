@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/01/23 11:49:36 +0000 $
-* $Revision: 3 $
+* $Date: 2005/04/19 19:52:55 +0100 $
+* $Revision: 6 $
 * $Source: /cbc/pack.h $
 *
 ********************************************************************************
@@ -45,9 +45,6 @@
 /*===== TYPEDEFS =============================================================*/
 
 typedef struct {
-  char         *bufptr;
-  unsigned      alignment;
-  unsigned      align_base;
   Buffer        buf;
   IDList        idl;
   SV           *bufsv;
@@ -58,9 +55,9 @@ typedef struct {
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
 #define pack_type CBC_pack_type
-void pack_type(pPACKARGS, TypeSpec *pTS, Declarator *pDecl, int dimension, SV *sv);
+void pack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension, SV *sv);
 
 #define unpack_type CBC_unpack_type
-SV *unpack_type(pPACKARGS, TypeSpec *pTS, Declarator *pDecl, int dimension);
+SV *unpack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl, int dimension);
 
 #endif

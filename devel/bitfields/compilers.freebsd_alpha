@@ -1,0 +1,4 @@
+# FreeBSD spe149.testdrive.hp.com 5.3-RELEASE FreeBSD 5.3-RELEASE
+# GCC (gcc version 3.4.2 [FreeBSD] 20040728)
+gcc_plain        =>  -- gcc -c -o %o %c
+gcc_pack         =>  -- gcc -DPACK_PAREN -c -o %o %c

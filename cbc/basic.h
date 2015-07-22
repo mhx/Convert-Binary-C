@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/01/21 15:54:42 +0000 $
-* $Revision: 1 $
+* $Date: 2005/04/02 16:01:46 +0100 $
+* $Revision: 2 $
 * $Source: /cbc/basic.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -51,6 +51,9 @@ void basic_types_delete(BasicTypes bt);
 
 #define basic_types_clone CBC_basic_types_clone
 BasicTypes basic_types_clone(const BasicTypes src);
+
+#define basic_types_reset CBC_basic_types_reset
+void basic_types_reset(BasicTypes bt);
 
 #define basic_types_get_declarator CBC_basic_types_get_declarator
 Declarator *basic_types_get_declarator(BasicTypes bt, unsigned tflags);

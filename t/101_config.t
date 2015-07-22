@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/01/23 11:49:29 +0000 $
-# $Revision: 25 $
+# $Date: 2005/05/23 10:04:14 +0100 $
+# $Revision: 28 $
 # $Source: /t/101_config.t $
 #
 ################################################################################
@@ -561,7 +561,8 @@ ok( $@, qr/Invalid method some_method called.*$thisfile/ );
   'PointerSize' => 4,
   'LongLongSize' => 8,
   'LongDoubleSize' => 12,
-  'OrderMembers' => 0
+  'OrderMembers' => 0,
+  'Bitfields' => { Engine => 'Simple', BlockSize => 2 }
 );
 
 eval {
@@ -600,7 +601,8 @@ ok( compare_config( \%config, $cfg ) );
   'PointerSize' => 2,
   'LongLongSize' => 8,
   'LongDoubleSize' => 12,
-  'OrderMembers' => 0
+  'OrderMembers' => 0,
+  'Bitfields' => { Engine => 'Simple', BlockSize => 4 }
 );
 
 @warn = ();
@@ -621,6 +623,8 @@ eval {
     ->KeywordMap( {'__signed__' => 'signed', '__restrict' => undef} );
 
   $p->CharSize(2);
+
+  $p->Bitfields( { BlockSize => 4 } );
 
   $cfg = $p->configure;
 };

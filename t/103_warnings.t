@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/08 19:56:25 +0000 $
-# $Revision: 54 $
+# $Date: 2005/05/19 15:40:35 +0100 $
+# $Revision: 56 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 6106 }
+BEGIN { plan tests => 6098 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -222,7 +222,7 @@ eval_test(q{
 
   $x = $p->pack('unsigned char', 42);                           # no warning
   $x = $p->pack('double', 42);                                  # no warning
-  $x = $p->pack('short double', 42);                            # (1) Unsupported floating point type 'short double' in pack
+  $x = $p->pack('short double', 42);                            # (E) Unsupported basic type 'short double'
   $x = $p->pack('fp_unsupp', 42);                               # (1) Unsupported floating point type 'short float' in pack
 
   $x = $p->pack('hasbf.bf', {});                                # (1) Bitfields are unsupported in pack('hasbf.bf')
@@ -247,10 +247,10 @@ eval_test(q{
 
   $x = $p->unpack('unsigned char', 'x'x100);                    # no warning
   $x = $p->unpack('double', 'x'x100);                           # no warning
-  $x = $p->unpack('signed float', 'x'x100);                     # (1) Unsupported floating point type 'signed float' in unpack
+  $x = $p->unpack('signed float', 'x'x100);                     # (E) Unsupported basic type 'signed float'
   $x = $p->unpack('fp_unsupp', 'x'x100);                        # (1) Unsupported floating point type 'short float' in unpack
 
-  $x = $p->unpack('hasbf.bf', '');                              # (1) Bitfields are unsupported in unpack('hasbf.bf')
+  $x = $p->unpack('hasbf.bf', 'x'x100);                         # (1) Bitfields are unsupported in unpack('hasbf.bf')
 
   $p->initializer('test');                                      # (1) Useless use of initializer in void context
   $p->initializer('test', $data);                               # (1) Useless use of initializer in void context

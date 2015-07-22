@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:38 +0000 $
-* $Revision: 2 $
+* $Date: 2005/05/19 18:53:43 +0100 $
+* $Revision: 3 $
 * $Source: /cbc/option.h $
 *
 ********************************************************************************
@@ -53,5 +53,8 @@ SV *get_configuration(pTHX_ CBC *THIS);
 
 #define get_native_property CBC_get_native_property
 SV *get_native_property(pTHX_ const char *property);
+
+#define post_configure_update CBC_post_configure_update
+void post_configure_update(pTHX_ CBC *THIS);
 
 #endif

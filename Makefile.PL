@@ -3,8 +3,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/16 21:10:13 +0000 $
-# $Revision: 70 $
+# $Date: 2005/05/20 15:33:32 +0100 $
+# $Revision: 76 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -90,12 +90,14 @@ $BISON = $Config{bison} || 'bison';
   cbc/typeinfo
   cbc/util
 
+  ctlib/bitfields
   ctlib/byteorder
   ctlib/cterror
   ctlib/ctparse
   ctlib/cttags
   ctlib/cttype
   ctlib/fileinfo
+  ctlib/layout
   ctlib/parser
   ctlib/pragma
 
@@ -176,7 +178,7 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
   ) : (),
   '$mem-check' => {
                enabled => 0,
-               e_flags => [qw( MEM_DEBUG DEBUG_MEMALLOC TRACE_MEMALLOC )],
+               e_flags => [qw( MEM_DEBUG DEBUG_MEMALLOC TRACE_MEMALLOC AUTOPURGE_MEMALLOC )],
                d_flags => [qw()],
              },
 );
@@ -404,6 +406,12 @@ sub MY::postamble
       dst => ['token/t_hookid.h',
               'token/t_hookid.c'],
     },
+    {
+      cmd => '$(PERL) {src} {dst}',
+      src => 'token/blproperty.pl',
+      dst => ['token/t_blproperty.h',
+              'token/t_blproperty.c'],
+    },
   );
 
   my(@gen, @old_dst, @old_src, @missing);
@@ -478,6 +486,12 @@ ENDWARN
 
   my $postamble = shift->SUPER::postamble(@_);
   $postamble .= "\nregen:\n\t" . join("\n\t", @gen) . "\n";
+
+  $postamble .= <<END;
+
+ctags:
+	\@ctags -f tags --totals=yes */*.[chy]
+END
 
   if( $::Config{ccflags} =~ /-DDEBUGGING\b/ ) {
     my $sym = $::MODULE;

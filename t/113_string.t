@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/01/23 11:49:34 +0000 $
-# $Revision: 6 $
+# $Date: 2005/05/14 21:13:00 +0100 $
+# $Revision: 7 $
 # $Source: /t/113_string.t $
 #
 ################################################################################
@@ -19,12 +19,12 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 79 }
+BEGIN { plan tests => 91 }
 
 eval {
   $C{B} = new Convert::Binary::C LongSize     => 4,
-                                  LongLongSize => 8,
-                                  ByteOrder    => 'BigEndian';
+                                 LongLongSize => 8,
+                                 ByteOrder    => 'BigEndian';
 };
 ok($@,'',"failed to create Convert::Binary::C object");
 
@@ -140,6 +140,13 @@ for my $test ( @tests ) {
     L => "073155270454721221401",
   },
   {
+    name => 'bin',
+    type => 'u_64',
+    str  => pack("C*", 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0x0E),
+    B => "0b100100011010001010110011110001001101010111100110100001110",
+    L => "0b111011001101101010111000100101100111010001010010001100000001",
+  },
+  {
     name => 'dec',
     type => 'u_32',
     str  => pack("C*", 0x00, 0xaf, 0xfe, 0x00),
@@ -159,6 +166,13 @@ for my $test ( @tests ) {
     str  => pack("C*", 0x00, 0xaf, 0xfe, 0x00),
     B => "053777000",
     L => "077527400",
+  },
+  {
+    name => 'bin',
+    type => 'u_32',
+    str  => pack("C*", 0x00, 0xaf, 0xfe, 0x00),
+    B => "0b101011111111111000000000",
+    L => "0b111111101010111100000000",
   },
 );
 

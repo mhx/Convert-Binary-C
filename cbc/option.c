@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:38 +0000 $
-* $Revision: 6 $
+* $Date: 2005/05/19 18:53:42 +0100 $
+* $Revision: 9 $
 * $Source: /cbc/option.c $
 *
 ********************************************************************************
@@ -61,6 +61,7 @@ static const StringOption *get_string_option(pTHX_ const StringOption *options,
 static void disabled_keywords(pTHX_ LinkedList *current, SV *sv, SV **rval,
                               u_32 *pKeywordMask);
 static void keyword_map(pTHX_ HashTable *current, SV *sv, SV **rval);
+static void bitfields_option(pTHX_ BitfieldLayouter *layouter, SV *sv, SV **rval);
 
 
 /*===== EXTERNAL VARIABLES ===================================================*/
@@ -427,6 +428,219 @@ static void keyword_map(pTHX_ HashTable *current, SV *sv, SV **rval)
   }
 }
 
+#undef FAIL_CLEAN
+
+/*******************************************************************************
+*
+*   ROUTINE: bitfields_option
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: May 2005
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+#define FAIL_CLEAN(x)                                                          \
+        STMT_START {                                                           \
+          if (bl_new)                                                          \
+            bl_new->m->destroy(bl_new);                                        \
+          Perl_croak x;                                                        \
+        } STMT_END
+
+static void bitfields_option(pTHX_ BitfieldLayouter *layouter, SV *sv, SV **rval)
+{
+  BitfieldLayouter bl_new = NULL;
+  BitfieldLayouter bl = *layouter;
+
+  if(sv)
+  {
+    if (SvROK(sv))
+    {
+      sv = SvRV(sv);
+
+      if (SvTYPE(sv) == SVt_PVHV)
+      {
+        HV *hv = (HV *) sv;
+        HE *entry;
+        SV **engine = hv_fetch(hv, "Engine", 6, 0);
+        int noptions;
+        const BLOption *options;
+
+        if (engine && *engine)
+        {
+          const char *name = SvPV_nolen(*engine);
+          bl = bl_new = bl_create(name);
+          if (bl_new == NULL)
+            Perl_croak(aTHX_ "Unknown bitfield layout engine '%s'", name);
+        }
+
+        (void) hv_iterinit(hv);
+
+        options = bl->m->options(bl, &noptions);
+
+        while ((entry = hv_iternext(hv)) != NULL)
+        {
+          SV *value;
+          I32 keylen;
+          int i;
+          const char *prop_string = hv_iterkey(entry, &keylen);
+          BLProperty prop;
+          BLPropValue prop_value;
+          const BLOption *opt = NULL;
+          enum BLError error;
+
+          if (strEQ(prop_string, "Engine"))
+            continue;
+
+          prop = bl_property(prop_string);
+
+          for (i = 0; i < noptions; i++)
+            if (options[i].prop == prop)
+            {
+              opt = &options[i];
+              break;
+            }
+
+          if (opt == NULL)
+            FAIL_CLEAN((aTHX_ "Invalid option '%s' for bitfield layout engine '%s'",
+                              prop_string, bl->m->class_name(bl)));
+
+          value = hv_iterval(hv, entry);
+          prop_value.type = opt->type;
+
+          switch (opt->type)
+          {
+            case BLPVT_INT:
+              prop_value.v.v_int = SvIV(value);
+
+              if (opt->nval)
+              {
+                const BLPropValInt *pval = opt->pval;
+
+                for (i = 0; i < opt->nval; i++)
+                  if (pval[i] == prop_value.v.v_int)
+                    break;
+              }
+              break;
+
+            case BLPVT_STR:
+              prop_value.v.v_str = bl_propval(SvPV_nolen(value));
+
+              if (opt->nval)
+              {
+                const BLPropValStr *pval = opt->pval;
+
+                for (i = 0; i < opt->nval; i++)
+                  if (pval[i] == prop_value.v.v_str)
+                    break;
+              }
+              break;
+
+            default:
+              fatal("unknown opt->type (%d) in bitfields_option()", opt->type);
+              break;
+          }
+
+          if (opt->nval && i == opt->nval)
+            FAIL_CLEAN((aTHX_ "Invalid value '%s' for option '%s'",
+                              SvPV_nolen(value), prop_string));
+
+          error = bl->m->set(bl, prop, &prop_value);
+
+          switch (error)
+          {
+            case BLE_NO_ERROR:
+              break;
+
+            case BLE_INVALID_PROPERTY:
+              FAIL_CLEAN((aTHX_ "Invalid value '%s' for option '%s'",
+                                SvPV_nolen(value), prop_string));
+              break;
+
+            default:
+              fatal("unknown error code (%d) returned by set method", error);
+              break;
+          }
+        }
+
+        if (bl_new)
+        {
+          (*layouter)->m->destroy(*layouter);
+          *layouter = bl_new;
+        }
+      }
+      else
+        Perl_croak(aTHX_ "Bitfields wants a hash reference");
+    }
+    else
+      Perl_croak(aTHX_ "Bitfields wants a hash reference");
+  }
+
+  if (rval)
+  {
+    int noptions;
+    const BLOption *opt;
+    int i;
+    HV *hv = newHV();
+    SV *sv = newSVpv(bl->m->class_name(bl), 0);
+
+    if (hv_store(hv, "Engine", 6, sv, 0) == NULL)
+      SvREFCNT_dec(sv);
+
+    opt = bl->m->options(bl, &noptions);
+
+    for (i = 0; i < noptions; i++, opt++)
+    {
+      BLPropValue value;
+      enum BLError error;
+      const char *prop_string;
+
+      error = bl->m->get(bl, opt->prop, &value);
+
+      if (error != BLE_NO_ERROR)
+        fatal("unexpected error (%d) returned by get method", error);
+
+      assert(value.type == opt->type);
+
+      switch (opt->type)
+      {
+        case BLPVT_INT:
+          sv = newSViv(value.v.v_int);
+          break;
+
+        case BLPVT_STR:
+          {
+            const char *valstr = bl_propval_string(value.v.v_str);
+            assert(valstr != NULL);
+            sv = newSVpv(valstr, 0);
+          }
+          break;
+
+        default:
+          fatal("unknown opt->type (%d) in bitfields_option()", opt->type);
+          break;
+      }
+
+      prop_string = bl_property_string(opt->prop);
+      assert(prop_string != NULL);
+
+      if (hv_store(hv, prop_string, strlen(prop_string), sv, 0) == NULL)
+        SvREFCNT_dec(sv);
+    }
+
+    *rval = newRV_noinc((SV *) hv);
+  }
+}
+
+#undef FAIL_CLEAN
+
 /*******************************************************************************
 *
 *   ROUTINE: get_config_option
@@ -585,15 +799,15 @@ void handle_string_list(pTHX_ const char *option, LinkedList list, SV *sv, SV **
               if (check_integer_option(aTHX_ name ## Option,                   \
                                        sizeof(name ## Option) / sizeof(IV),    \
                                        sv_val, &val, #name))                   \
-                UPDATE(cfg.config, val);                                       \
+                UPDATE(config, val);                                           \
             }                                                                  \
             if (rval)                                                          \
-              *rval = newSViv(THIS->cfg.config);                               \
+              *rval = newSViv(THIS->config);                                   \
             break;
 
 #define STRLIST_OPTION(name, config)                                           \
           case OPTION_ ## name :                                               \
-            handle_string_list(aTHX_ #name, THIS->cfg.config, sv_val, rval);   \
+            handle_string_list(aTHX_ #name, THIS->config, sv_val, rval);       \
             changes = sv_val != NULL;                                          \
             break;
 
@@ -613,22 +827,22 @@ int handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval)
 
     INTFLAG_OPTION(OrderMembers,   CBC_ORDER_MEMBERS )
 
-    IVAL_OPTION(PointerSize,       ptr_size          )
-    IVAL_OPTION(EnumSize,          enum_size         )
-    IVAL_OPTION(IntSize,           int_size          )
-    IVAL_OPTION(CharSize,          char_size         )
-    IVAL_OPTION(ShortSize,         short_size        )
-    IVAL_OPTION(LongSize,          long_size         )
-    IVAL_OPTION(LongLongSize,      long_long_size    )
-    IVAL_OPTION(FloatSize,         float_size        )
-    IVAL_OPTION(DoubleSize,        double_size       )
-    IVAL_OPTION(LongDoubleSize,    long_double_size  )
-    IVAL_OPTION(Alignment,         alignment         )
-    IVAL_OPTION(CompoundAlignment, compound_alignment)
+    IVAL_OPTION(PointerSize,       cfg.layout.ptr_size          )
+    IVAL_OPTION(EnumSize,          cfg.layout.enum_size         )
+    IVAL_OPTION(IntSize,           cfg.layout.int_size          )
+    IVAL_OPTION(CharSize,          cfg.layout.char_size         )
+    IVAL_OPTION(ShortSize,         cfg.layout.short_size        )
+    IVAL_OPTION(LongSize,          cfg.layout.long_size         )
+    IVAL_OPTION(LongLongSize,      cfg.layout.long_long_size    )
+    IVAL_OPTION(FloatSize,         cfg.layout.float_size        )
+    IVAL_OPTION(DoubleSize,        cfg.layout.double_size       )
+    IVAL_OPTION(LongDoubleSize,    cfg.layout.long_double_size  )
+    IVAL_OPTION(Alignment,         cfg.layout.alignment         )
+    IVAL_OPTION(CompoundAlignment, cfg.layout.compound_alignment)
 
-    STRLIST_OPTION(Include, includes  )
-    STRLIST_OPTION(Define,  defines   )
-    STRLIST_OPTION(Assert,  assertions)
+    STRLIST_OPTION(Include, cfg.includes  )
+    STRLIST_OPTION(Define,  cfg.defines   )
+    STRLIST_OPTION(Assert,  cfg.assertions)
 
     OPTION(DisabledKeywords)
       disabled_keywords(aTHX_ &THIS->cfg.disabled_keywords, sv_val, rval,
@@ -665,6 +879,11 @@ int handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval)
         const StringOption *pOpt = GET_STR_OPTION(EnumType, THIS->enumType, NULL);
         *rval = newSVpv(CONST_CHAR(pOpt->string), 0);
       }
+    ENDOPT
+
+    OPTION(Bitfields)
+      bitfields_option(aTHX_ &THIS->cfg.layout.bflayouter, sv_val, rval);
+      changes = sv_val != NULL;
     ENDOPT
 
     INVALID_OPTION
@@ -715,11 +934,11 @@ int handle_option(pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval)
 #define INTFLAG_OPTION(name, flag)  FLAG_OPTION(flags, name, flag)
 
 #define STRLIST_OPTION(name, config)                                           \
-          handle_string_list(aTHX_ #name, THIS->cfg.config, NULL, &sv);        \
+          handle_string_list(aTHX_ #name, THIS->config, NULL, &sv);            \
           HV_STORE_CONST(hv, #name, sv);
 
 #define IVAL_OPTION(name, config)                                              \
-          sv = newSViv(THIS->cfg.config);                                      \
+          sv = newSViv(THIS->config);                                          \
           HV_STORE_CONST(hv, #name, sv);
 
 #define STRING_OPTION(name, value)                                             \
@@ -738,29 +957,32 @@ SV *get_configuration(pTHX_ CBC *THIS)
 
   INTFLAG_OPTION(OrderMembers,   CBC_ORDER_MEMBERS )
 
-  IVAL_OPTION(PointerSize,       ptr_size          )
-  IVAL_OPTION(EnumSize,          enum_size         )
-  IVAL_OPTION(IntSize,           int_size          )
-  IVAL_OPTION(CharSize,          char_size         )
-  IVAL_OPTION(ShortSize,         short_size        )
-  IVAL_OPTION(LongSize,          long_size         )
-  IVAL_OPTION(LongLongSize,      long_long_size    )
-  IVAL_OPTION(FloatSize,         float_size        )
-  IVAL_OPTION(DoubleSize,        double_size       )
-  IVAL_OPTION(LongDoubleSize,    long_double_size  )
-  IVAL_OPTION(Alignment,         alignment         )
-  IVAL_OPTION(CompoundAlignment, compound_alignment)
+  IVAL_OPTION(PointerSize,       cfg.layout.ptr_size          )
+  IVAL_OPTION(EnumSize,          cfg.layout.enum_size         )
+  IVAL_OPTION(IntSize,           cfg.layout.int_size          )
+  IVAL_OPTION(CharSize,          cfg.layout.char_size         )
+  IVAL_OPTION(ShortSize,         cfg.layout.short_size        )
+  IVAL_OPTION(LongSize,          cfg.layout.long_size         )
+  IVAL_OPTION(LongLongSize,      cfg.layout.long_long_size    )
+  IVAL_OPTION(FloatSize,         cfg.layout.float_size        )
+  IVAL_OPTION(DoubleSize,        cfg.layout.double_size       )
+  IVAL_OPTION(LongDoubleSize,    cfg.layout.long_double_size  )
+  IVAL_OPTION(Alignment,         cfg.layout.alignment         )
+  IVAL_OPTION(CompoundAlignment, cfg.layout.compound_alignment)
 
-  STRLIST_OPTION(Include,          includes         )
-  STRLIST_OPTION(Define,           defines          )
-  STRLIST_OPTION(Assert,           assertions       )
-  STRLIST_OPTION(DisabledKeywords, disabled_keywords)
+  STRLIST_OPTION(Include,          cfg.includes         )
+  STRLIST_OPTION(Define,           cfg.defines          )
+  STRLIST_OPTION(Assert,           cfg.assertions       )
+  STRLIST_OPTION(DisabledKeywords, cfg.disabled_keywords)
 
   keyword_map(aTHX_ &THIS->cfg.keyword_map, NULL, &sv);
   HV_STORE_CONST(hv, "KeywordMap", sv);
 
   STRING_OPTION(ByteOrder, THIS->as.bo   )
   STRING_OPTION(EnumType,  THIS->enumType)
+
+  bitfields_option(aTHX_ &THIS->cfg.layout.bflayouter, NULL, &sv);
+  HV_STORE_CONST(hv, "Bitfields", sv);
 
   return newRV_noinc((SV *) hv);
 }
@@ -853,5 +1075,49 @@ SV *get_native_property(pTHX_ const char *property)
     default:
       return NULL;
   }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: post_configure_update
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: May 2005
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void post_configure_update(pTHX_ CBC *THIS)
+{
+  BitfieldLayouter bl = THIS->cfg.layout.bflayouter;
+  BLPropValue val = { BLPVT_STR };
+  enum BLError error;
+
+  switch (THIS->as.bo)
+  {
+    case AS_BO_BIG_ENDIAN:
+      val.v.v_str = BLPV_BIG_ENDIAN;
+      break;
+
+    case AS_BO_LITTLE_ENDIAN:
+      val.v.v_str = BLPV_LITTLE_ENDIAN;
+      break;
+
+    default:
+      fatal("invalid byte-order in post_configure_update()");
+      break;
+  }
+
+  error = bl->m->set(bl, BLP_BYTE_ORDER, &val);
+
+  if (error != BLE_NO_ERROR)
+    fatal("set byte-order failed for '%s' (%d)", bl->m->class_name(bl), error);
 }
 

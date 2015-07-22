@@ -1,0 +1,28 @@
+#!/usr/bin/perl -w
+use Data::Dumper;
+use strict;
+
+my @master = split /-{20,}/, do { local $/; <> };
+my @code;
+
+for my $m ( @master ) {
+  if( $m =~ /\/\*\s*dontprocess\s*\*\// ) {
+    push @code, $m;
+    next;
+  }
+  my($head,$members,$tail) = $m =~ /^(.*?^struct\s+\w+\s*\{\s*?^)([^}]+)(.*)$/ms
+                             or die "regex won't match...";
+  my @memb = split /^/m, $members;
+
+  for my $prefix ( '', qw( char short int long ) ) {
+    my @m;
+    $prefix and push @m, "  $prefix a;\n";
+    for my $cur ( @memb ) {
+      push @m, $cur;
+      $prefix and $m[-1] =~ s/\b([a-z])\b/my$l=$1;++$l/e;
+      push @code, join '', $head, @m, $tail;
+    }
+  }
+}
+
+print join '-'x40, @code;

@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/06 15:09:52 +0000 $
-* $Revision: 8 $
+* $Date: 2005/04/22 12:51:50 +0100 $
+* $Revision: 11 $
 * $Source: /cbc/cbc.h $
 *
 ********************************************************************************
@@ -274,8 +274,9 @@
 /*-------------------------*/
 
 #define GET_ENUM_SIZE(pES)                                                     \
-          (THIS->cfg.enum_size > 0 ? (unsigned) THIS->cfg.enum_size            \
-                                 : (pES)->sizes[-THIS->cfg.enum_size]) 
+          (THIS->cfg.layout.enum_size > 0                                      \
+            ? (unsigned) THIS->cfg.layout.enum_size                            \
+            : (pES)->sizes[-THIS->cfg.layout.enum_size]) 
 
 /*------------------------------------------------*/
 /* this is needed quite often for unnamed structs */
@@ -290,7 +291,7 @@
             {                                                                  \
               if (_pT && _pT->pType->tflags & T_TYPE                           \
                       && _pT->pDecl->pointer_flag == 0                         \
-                      && LL_count(_pT->pDecl->array) == 0)                     \
+                      && _pT->pDecl->array_flag == 0)                          \
                 _pT = (Typedef *) _pT->pType->ptr;                             \
               else                                                             \
                 break;                                                         \
@@ -298,7 +299,7 @@
             (pTS) = _pT->pType;                                                \
           }                                                                    \
                                                                                \
-          if (((pTS)->tflags & (T_STRUCT | T_UNION)) == 0)                     \
+          if (((pTS)->tflags & T_COMPOUND) == 0)                               \
             fatal("Unnamed member was not struct or union (type=0x%08X) "      \
                   "in %s line %d", (pTS)->tflags, __FILE__, __LINE__);         \
                                                                                \

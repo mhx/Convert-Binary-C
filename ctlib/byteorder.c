@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/01/23 11:49:40 +0000 $
-* $Revision: 11 $
+* $Date: 2005/05/16 10:37:20 +0100 $
+* $Revision: 18 $
 * $Source: /ctlib/byteorder.c $
 *
 ********************************************************************************
@@ -25,6 +25,7 @@
 /*===== GLOBAL INCLUDES ======================================================*/
 
 #include <ctype.h>
+#include <assert.h>
 
 
 /*===== LOCAL INCLUDES =======================================================*/
@@ -49,13 +50,13 @@
 /* big endian systems */
 /*--------------------*/
 
-#define GET_LE_WORD( ptr, value, sign )                                        \
+#define GET_LE_WORD(ptr, value, sign)                                          \
           value = (sign ## _16)                                                \
                   ( ( (u_16) *( (const u_8 *) ((ptr)+0) ) <<  0)               \
                   | ( (u_16) *( (const u_8 *) ((ptr)+1) ) <<  8)               \
                   )
 
-#define GET_LE_LONG( ptr, value, sign )                                        \
+#define GET_LE_LONG(ptr, value, sign)                                          \
           value = (sign ## _32)                                                \
                   ( ( (u_32) *( (const u_8 *) ((ptr)+0) ) <<  0)               \
                   | ( (u_32) *( (const u_8 *) ((ptr)+1) ) <<  8)               \
@@ -65,7 +66,7 @@
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define GET_LE_LONGLONG( ptr, value, sign )                                    \
+#define GET_LE_LONGLONG(ptr, value, sign)                                      \
           value = (sign ## _64)                                                \
                   ( ( (u_64) *( (const u_8 *) ((ptr)+0) ) <<  0)               \
                   | ( (u_64) *( (const u_8 *) ((ptr)+1) ) <<  8)               \
@@ -79,25 +80,25 @@
 
 #endif
 
-#define SET_LE_WORD( ptr, value )                                              \
+#define SET_LE_WORD(ptr, value)                                                \
           do {                                                                 \
             register u_16 v = value;                                           \
             *((u_8 *) ((ptr)+0)) = (u_8) ((v >>  0) & 0xFF);                   \
             *((u_8 *) ((ptr)+1)) = (u_8) ((v >>  8) & 0xFF);                   \
-          } while(0)
+          } while (0)
 
-#define SET_LE_LONG( ptr, value )                                              \
+#define SET_LE_LONG(ptr, value)                                                \
           do {                                                                 \
             register u_32 v = value;                                           \
             *((u_8 *) ((ptr)+0)) = (u_8) ((v >>  0) & 0xFF);                   \
             *((u_8 *) ((ptr)+1)) = (u_8) ((v >>  8) & 0xFF);                   \
             *((u_8 *) ((ptr)+2)) = (u_8) ((v >> 16) & 0xFF);                   \
             *((u_8 *) ((ptr)+3)) = (u_8) ((v >> 24) & 0xFF);                   \
-          } while(0)
+          } while (0)
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define SET_LE_LONGLONG( ptr, value )                                          \
+#define SET_LE_LONGLONG(ptr, value)                                            \
           do {                                                                 \
             register u_64 v = value;                                           \
             *((u_8 *) ((ptr)+0)) = (u_8) ((v >>  0) & 0xFF);                   \
@@ -108,54 +109,55 @@
             *((u_8 *) ((ptr)+5)) = (u_8) ((v >> 40) & 0xFF);                   \
             *((u_8 *) ((ptr)+6)) = (u_8) ((v >> 48) & 0xFF);                   \
             *((u_8 *) ((ptr)+7)) = (u_8) ((v >> 56) & 0xFF);                   \
-          } while(0)
+          } while (0)
 
 #endif
 
 #ifdef CAN_UNALIGNED_ACCESS
 
-#define GET_BE_WORD( ptr, value, sign ) \
+#define GET_BE_WORD(ptr, value, sign) \
           value = (sign ## _16) ( *( (const u_16 *) (ptr) ) )
 
-#define GET_BE_LONG( ptr, value, sign ) \
+#define GET_BE_LONG(ptr, value, sign) \
           value = (sign ## _32) ( *( (const u_32 *) (ptr) ) )
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define GET_BE_LONGLONG( ptr, value, sign ) \
+#define GET_BE_LONGLONG(ptr, value, sign) \
           value = (sign ## _64) ( *( (const u_64 *) (ptr) ) )
 
 #endif
 
-#define SET_BE_WORD( ptr, value ) \
+#define SET_BE_WORD(ptr, value) \
           *( (u_16 *) (ptr) ) = (u_16) value
 
-#define SET_BE_LONG( ptr, value ) \
+#define SET_BE_LONG(ptr, value) \
           *( (u_32 *) (ptr) ) = (u_32) value
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define SET_BE_LONGLONG( ptr, value ) \
+#define SET_BE_LONGLONG(ptr, value) \
           *( (u_64 *) (ptr) ) = (u_64) value
 
 #endif
 
 #else
 
-#define GET_BE_WORD( ptr, value, sign )                                        \
+#define GET_BE_WORD(ptr, value, sign)                                          \
           do {                                                                 \
-            if( ((unsigned long) (ptr)) % 2 )                                  \
+            if (((unsigned long) (ptr)) % 2)                                   \
               value = (sign ## _16)                                            \
                       ( ( (u_16) *( (const u_8 *) ((ptr)+0) ) <<  8)           \
                       | ( (u_16) *( (const u_8 *) ((ptr)+1) ) <<  0)           \
                       );                                                       \
             else                                                               \
               value = (sign ## _16) ( *( (const u_16 *) (ptr) ) );             \
-          } while(0)
+          } while (0)
 
-#define GET_BE_LONG( ptr, value, sign )                                        \
+#define GET_BE_LONG(ptr, value, sign)                                          \
           do {                                                                 \
-            switch( ((unsigned long) (ptr)) % 4 ) {                            \
+            switch (((unsigned long) (ptr)) % 4)                               \
+            {                                                                  \
               case 0:                                                          \
                 value = (sign ## _32) ( *( (const u_32 *) (ptr) ) );           \
                 break;                                                         \
@@ -175,11 +177,11 @@
                         );                                                     \
                 break;                                                         \
             }                                                                  \
-          } while(0)
+          } while (0)
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define GET_BE_LONGLONG( ptr, value, sign )                                    \
+#define GET_BE_LONGLONG(ptr, value, sign)                                      \
           do {                                                                 \
             value = (sign ## _64)                                              \
                     ( ( (u_64) *( (const u_8 *)  ((ptr)+0) ) << 56)            \
@@ -191,24 +193,26 @@
                     | ( (u_64) *( (const u_8 *)  ((ptr)+6) ) <<  8)            \
                     | ( (u_64) *( (const u_8 *)  ((ptr)+7) ) <<  0)            \
                     );                                                         \
-          } while(0)
+          } while (0)
 
 #endif
 
-#define SET_BE_WORD( ptr, value )                                              \
+#define SET_BE_WORD(ptr, value)                                                \
           do {                                                                 \
-            if( ((unsigned long) (ptr)) % 2 ) {                                \
+            if (((unsigned long) (ptr)) % 2)                                   \
+            {                                                                  \
               register u_16 v = (u_16) value;                                  \
               *((u_8 *) ((ptr)+0)) = (u_8) ((v >> 8) & 0xFF);                  \
               *((u_8 *) ((ptr)+1)) = (u_8) ((v >> 0) & 0xFF);                  \
             }                                                                  \
             else                                                               \
               *( (u_16 *) (ptr) ) = (u_16) value;                              \
-          } while(0)
+          } while (0)
 
-#define SET_BE_LONG( ptr, value )                                              \
+#define SET_BE_LONG(ptr, value)                                                \
           do {                                                                 \
-            switch( ((unsigned long) (ptr)) % 4 ) {                            \
+            switch (((unsigned long) (ptr)) % 4)                               \
+            {                                                                  \
               case 0:                                                          \
                 *( (u_32 *) (ptr) ) = (u_32) value;                            \
                 break;                                                         \
@@ -230,11 +234,11 @@
                 }                                                              \
                 break;                                                         \
             }                                                                  \
-          } while(0)
+          } while (0)
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define SET_BE_LONGLONG( ptr, value )                                          \
+#define SET_BE_LONGLONG(ptr, value)                                            \
           do {                                                                 \
             register u_64 v = value;                                           \
             *((u_8 *) ((ptr)+0)) = (u_8) ((v >> 56) & 0xFF);                   \
@@ -245,7 +249,7 @@
             *((u_8 *) ((ptr)+5)) = (u_8) ((v >> 16) & 0xFF);                   \
             *((u_8 *) ((ptr)+6)) = (u_8) ((v >>  8) & 0xFF);                   \
             *((u_8 *) ((ptr)+7)) = (u_8) ((v >>  0) & 0xFF);                   \
-          } while(0)
+          } while (0)
 
 #endif
 
@@ -257,13 +261,13 @@
 /* little endian systems */
 /*-----------------------*/
 
-#define GET_BE_WORD( ptr, value, sign )                                        \
+#define GET_BE_WORD(ptr, value, sign)                                          \
           value = (sign ## _16)                                                \
                   ( ( (u_16) *( (const u_8 *) ((ptr)+0) ) <<  8)               \
                   | ( (u_16) *( (const u_8 *) ((ptr)+1) ) <<  0)               \
                   )
 
-#define GET_BE_LONG( ptr, value, sign )                                        \
+#define GET_BE_LONG(ptr, value, sign)                                          \
           value = (sign ## _32)                                                \
                   ( ( (u_32) *( (const u_8 *) ((ptr)+0) ) << 24)               \
                   | ( (u_32) *( (const u_8 *) ((ptr)+1) ) << 16)               \
@@ -273,7 +277,7 @@
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define GET_BE_LONGLONG( ptr, value, sign )                                    \
+#define GET_BE_LONGLONG(ptr, value, sign)                                      \
           value = (sign ## _64)                                                \
                   ( ( (u_64) *( (const u_8 *) ((ptr)+0) ) << 56)               \
                   | ( (u_64) *( (const u_8 *) ((ptr)+1) ) << 48)               \
@@ -287,25 +291,25 @@
 
 #endif
 
-#define SET_BE_WORD( ptr, value )                                              \
+#define SET_BE_WORD(ptr, value)                                                \
           do {                                                                 \
             register u_16 v = (u_16) value;                                    \
             *((u_8 *) ((ptr)+0)) = (u_8) ((v >>  8) & 0xFF);                   \
             *((u_8 *) ((ptr)+1)) = (u_8) ((v >>  0) & 0xFF);                   \
-          } while(0)
+          } while (0)
 
-#define SET_BE_LONG( ptr, value )                                              \
+#define SET_BE_LONG(ptr, value)                                                \
           do {                                                                 \
             register u_32 v = (u_32) value;                                    \
             *((u_8 *) ((ptr)+0)) = (u_8) ((v >> 24) & 0xFF);                   \
             *((u_8 *) ((ptr)+1)) = (u_8) ((v >> 16) & 0xFF);                   \
             *((u_8 *) ((ptr)+2)) = (u_8) ((v >>  8) & 0xFF);                   \
             *((u_8 *) ((ptr)+3)) = (u_8) ((v >>  0) & 0xFF);                   \
-          } while(0)
+          } while (0)
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define SET_BE_LONGLONG( ptr, value )                                          \
+#define SET_BE_LONGLONG(ptr, value)                                            \
           do {                                                                 \
             register u_64 v = value;                                           \
             *((u_8 *) ((ptr)+0)) = (u_8) ((v >> 56) & 0xFF);                   \
@@ -316,54 +320,55 @@
             *((u_8 *) ((ptr)+5)) = (u_8) ((v >> 16) & 0xFF);                   \
             *((u_8 *) ((ptr)+6)) = (u_8) ((v >>  8) & 0xFF);                   \
             *((u_8 *) ((ptr)+7)) = (u_8) ((v >>  0) & 0xFF);                   \
-          } while(0)
+          } while (0)
 
 #endif
 
 #ifdef CAN_UNALIGNED_ACCESS
 
-#define GET_LE_WORD( ptr, value, sign ) \
+#define GET_LE_WORD(ptr, value, sign) \
           value = (sign ## _16) ( *( (const u_16 *) (ptr) ) )
 
-#define GET_LE_LONG( ptr, value, sign ) \
+#define GET_LE_LONG(ptr, value, sign) \
           value = (sign ## _32) ( *( (const u_32 *) (ptr) ) )
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define GET_LE_LONGLONG( ptr, value, sign ) \
+#define GET_LE_LONGLONG(ptr, value, sign) \
           value = (sign ## _64) ( *( (const u_64 *) (ptr) ) )
 
 #endif
 
-#define SET_LE_WORD( ptr, value ) \
+#define SET_LE_WORD(ptr, value) \
           *( (u_16 *) (ptr) ) = (u_16) value
 
-#define SET_LE_LONG( ptr, value ) \
+#define SET_LE_LONG(ptr, value) \
           *( (u_32 *) (ptr) ) = (u_32) value
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define SET_LE_LONGLONG( ptr, value ) \
+#define SET_LE_LONGLONG(ptr, value) \
           *( (u_64 *) (ptr) ) = (u_64) value
 
 #endif
 
 #else
 
-#define GET_LE_WORD( ptr, value, sign )                                        \
+#define GET_LE_WORD(ptr, value, sign)                                          \
           do {                                                                 \
-            if( ((unsigned long) (ptr)) % 2 )                                  \
+            if (((unsigned long) (ptr)) % 2)                                   \
               value = (sign ## _16)                                            \
                       ( ( (u_16) *( (const u_8 *) ((ptr)+0) ) <<  0)           \
                       | ( (u_16) *( (const u_8 *) ((ptr)+1) ) <<  8)           \
                       );                                                       \
             else                                                               \
               value = (sign ## _16) ( *( (const u_16 *) (ptr) ) );             \
-          } while(0)
+          } while (0)
 
-#define GET_LE_LONG( ptr, value, sign )                                        \
+#define GET_LE_LONG(ptr, value, sign)                                          \
           do {                                                                 \
-            switch( ((unsigned long) (ptr)) % 4 ) {                            \
+            switch (((unsigned long) (ptr)) % 4)                               \
+            {                                                                  \
               case 0:                                                          \
                 value = (sign ## _32) ( *( (const u_32 *) (ptr) ) );           \
                 break;                                                         \
@@ -383,11 +388,11 @@
                         );                                                     \
                 break;                                                         \
             }                                                                  \
-          } while(0)
+          } while (0)
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define GET_LE_LONGLONG( ptr, value, sign )                                    \
+#define GET_LE_LONGLONG(ptr, value, sign)                                      \
           do {                                                                 \
             value = (sign ## _64)                                              \
                     ( ( (u_64) *( (const u_8 *)  ((ptr)+0) ) <<  0)            \
@@ -399,24 +404,26 @@
                     | ( (u_64) *( (const u_8 *)  ((ptr)+6) ) << 48)            \
                     | ( (u_64) *( (const u_8 *)  ((ptr)+7) ) << 56)            \
                     );                                                         \
-          } while(0)
+          } while (0)
 
 #endif
 
-#define SET_LE_WORD( ptr, value )                                              \
+#define SET_LE_WORD(ptr, value)                                                \
           do {                                                                 \
-            if( ((unsigned long) (ptr)) % 2 ) {                                \
+            if (((unsigned long) (ptr)) % 2)                                   \
+            {                                                                  \
               register u_16 v = (u_16) value;                                  \
               *((u_8 *) ((ptr)+0)) = (u_8) ((v >> 0) & 0xFF);                  \
               *((u_8 *) ((ptr)+1)) = (u_8) ((v >> 8) & 0xFF);                  \
             }                                                                  \
             else                                                               \
               *( (u_16 *) (ptr) ) = (u_16) value;                              \
-          } while(0)
+          } while (0)
 
-#define SET_LE_LONG( ptr, value )                                              \
+#define SET_LE_LONG(ptr, value)                                                \
           do {                                                                 \
-            switch( ((unsigned long) (ptr)) % 4 ) {                            \
+            switch (((unsigned long) (ptr)) % 4)                               \
+            {                                                                  \
               case 0:                                                          \
                 *( (u_32 *) (ptr) ) = (u_32) value;                            \
                 break;                                                         \
@@ -438,11 +445,11 @@
                 }                                                              \
                 break;                                                         \
             }                                                                  \
-          } while(0)
+          } while (0)
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define SET_LE_LONGLONG( ptr, value )                                          \
+#define SET_LE_LONGLONG(ptr, value)                                            \
           do {                                                                 \
             register u_64 v = value;                                           \
             *((u_8 *) ((ptr)+0)) = (u_8) ((v >>  0) & 0xFF);                   \
@@ -453,7 +460,7 @@
             *((u_8 *) ((ptr)+5)) = (u_8) ((v >> 40) & 0xFF);                   \
             *((u_8 *) ((ptr)+6)) = (u_8) ((v >> 48) & 0xFF);                   \
             *((u_8 *) ((ptr)+7)) = (u_8) ((v >> 56) & 0xFF);                   \
-          } while(0)
+          } while (0)
 
 #endif
 
@@ -465,20 +472,29 @@
 
 #endif /* ARCH_NATIVE_BYTEORDER */
 
-#define GET_BE_BYTE( ptr, value, sign )                                        \
+#define GET_BE_BYTE(ptr, value, sign) \
           value = *((const sign ## _8 *) (ptr))
 
-#define GET_LE_BYTE( ptr, value, sign )                                        \
+#define GET_LE_BYTE(ptr, value, sign) \
           value = *((const sign ## _8 *) (ptr))
 
-#define SET_BE_BYTE( ptr, value )                                              \
+#define SET_BE_BYTE(ptr, value) \
           *((u_8 *) (ptr)) = (u_8) value
 
-#define SET_LE_BYTE( ptr, value )                                              \
+#define SET_LE_BYTE(ptr, value) \
           *((u_8 *) (ptr)) = (u_8) value
+
+#define ALL_64_BITS (~((u_64) 0)) 
+#define ALL_32_BITS (~((u_32) 0)) 
 
 
 /*===== TYPEDEFS =============================================================*/
+
+enum shift_direction {
+  SHIFT_LEFT,
+  SHIFT_RIGHT
+};
+
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 
@@ -490,8 +506,8 @@
 
 /*===== STATIC FUNCTIONS =====================================================*/
 
-static int integer2string( IntValue *pInt );
-static void string2integer( IntValue *pInt );
+static int  integer2string(IntValue *pInt);
+static void string2integer(IntValue *pInt);
 
 
 /*===== FUNCTIONS ============================================================*/
@@ -505,7 +521,7 @@ static void string2integer( IntValue *pInt );
 *
 ********************************************************************************
 *
-* DESCRIPTION: Turn a dec/hex/oct string into an integer.
+* DESCRIPTION: Turn an integer into a string.
 *
 *   ARGUMENTS:
 *
@@ -513,7 +529,7 @@ static void string2integer( IntValue *pInt );
 *
 *******************************************************************************/
 
-static int integer2string( IntValue *pInt )
+static int integer2string(IntValue *pInt)
 {
 #if ARCH_NATIVE_64_BIT_INTEGER
   register u_64 val;
@@ -524,14 +540,15 @@ static int integer2string( IntValue *pInt )
   int stack[20], len, sp;
   char *pStr = pInt->string;
 
-  if( pStr == NULL )
+  if (pStr == NULL)
     return 0;
 
   len = sp = 0;
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-  if( pInt->sign && pInt->value.s < 0 ) {
+  if (pInt->sign && pInt->value.s < 0)
+  {
     val = -pInt->value.s;
     *pStr++ = '-';
     len++;
@@ -539,7 +556,7 @@ static int integer2string( IntValue *pInt )
   else
     val = pInt->value.u;
 
-  while( val > 0 )
+  while (val > 0)
     stack[sp++] = val % 10, val /= 10;
 
 #else
@@ -547,18 +564,20 @@ static int integer2string( IntValue *pInt )
   hval = pInt->value.u.h;
   lval = pInt->value.u.l;
 
-  if( pInt->sign && pInt->value.s.h < 0 ) {
+  if (pInt->sign && pInt->value.s.h < 0)
+  {
     *pStr++ = '-';
     len++;
 
-    if( lval-- == 0 )
+    if (lval-- == 0)
       hval--;
 
     hval = ~hval;
     lval = ~lval;
   }
 
-  while( hval > 0 ) {
+  while (hval > 0)
+  {
     static const u_32 CDIV[10] = {
       0x00000000, 0x19999999, 0x33333333, 0x4CCCCCCC, 0x66666666,
       0x80000000, 0x99999999, 0xB3333333, 0xCCCCCCCC, 0xE6666666
@@ -572,28 +591,29 @@ static int integer2string( IntValue *pInt )
     lmod += CMOD[umod];
     tval  = CDIV[umod];
 
-    if( lmod >= 10 )
+    if (lmod >= 10)
       lmod -= 10, tval++;
 
     lval += tval;
 
-    if( lval < tval )
+    if (lval < tval)
       hval++;
 
     stack[sp++] = lmod;
   }
 
-  while( lval > 0 )
+  while (lval > 0)
     stack[sp++] = lval % 10, lval /= 10;
 
 #endif
 
   len += sp;
 
-  if( sp == 0 )
+  if (sp == 0)
     *pStr++ = '0';
-  else while( sp-- > 0 )
-    *pStr++ = (char) ('0' + stack[sp]);
+  else
+    while(sp-- > 0)
+      *pStr++ = (char) ('0' + stack[sp]);
 
   *pStr = '\0';
 
@@ -617,7 +637,7 @@ static int integer2string( IntValue *pInt )
 *
 *******************************************************************************/
 
-static void string2integer( IntValue *pInt )
+static void string2integer(IntValue *pInt)
 {
   register int val;
   register const char *pStr = pInt->string;
@@ -630,21 +650,27 @@ static void string2integer( IntValue *pInt )
 
   pInt->sign = 0;
 
-  while( isspace( *pStr ) )  /* ignore leading whitespace */
+  while (isspace(*pStr))  /* ignore leading whitespace */
     pStr++;
 
-  switch( *pStr ) {
+  switch (*pStr)
+  {
     default : break;
     case '-': pInt->sign = 1;
-    case '+': while( isspace( *++pStr ) );
+    case '+': while(isspace(*++pStr));
   }
 
-  if( *pStr == '0' ) {  /* seems to be hex or octal */
-    if( *++pStr == 'x' ) {  /* must be hex */
-      while( isxdigit( val = *++pStr ) ) {
-        if( isdigit( val ) )
+  if (*pStr == '0')  /* seems to be hex or octal */
+  {
+    pStr++;
+
+    if (*pStr == 'x')  /* must be hex */
+    {
+      while (isxdigit(val = *++pStr))
+      {
+        if (isdigit(val))
           val -= (int) '0';
-        else if( isupper( val ) )
+        else if (isupper(val))
           val -= (int) 'A' - 10;
         else
           val -= (int) 'a' - 10;
@@ -659,12 +685,35 @@ static void string2integer( IntValue *pInt )
         lval = (lval << 4) | (val & 0xF);
 
 #endif
-
       }
     }
-    else {  /* must be octal */
-      while( isdigit( val = *pStr++ ) ) {
-        val -= (int) '0';
+    else if (*pStr == 'b')  /* must be binary */
+    {
+      pStr++;
+
+      while (*pStr == '0' || *pStr == '1')
+      {
+        val = (int) (*pStr - '0');
+
+#if ARCH_NATIVE_64_BIT_INTEGER
+
+        iv = (iv << 1) | (val & 0x1);
+
+#else
+
+        hval = (hval << 1) | (lval >> 31);
+        lval = (lval << 1) | (val & 0x1);
+
+#endif
+
+        pStr++;
+      }
+    }
+    else  /* must be octal */
+    {
+      while (isdigit(*pStr) && *pStr != '8' && *pStr != '9')
+      {
+        val = (int) (*pStr - '0');
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
@@ -677,28 +726,33 @@ static void string2integer( IntValue *pInt )
 
 #endif
 
+        pStr++;
       }
     }
   }
-  else {  /* must be decimal */
+  else  /* must be decimal */
+  {
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-    while( isdigit( val = *pStr++ ) )
+    while (isdigit(val = *pStr++))
       iv = 10*iv + (val - (int) '0');
 
 #else
 
     register u_32 temp;
 
-    do {
-      if( !isdigit( val = *pStr++ ) )
+    do
+    {
+      if (!isdigit(val = *pStr++))
         goto end_of_string;
 
       lval = 10*lval + (val - (int) '0');
-    } while( lval < 429496729 );
+    }
+    while (lval < 429496729);
 
-    while( isdigit( val = *pStr++ ) ) {
+    while (isdigit(val = *pStr++))
+    {
       hval = ((hval << 3) | (lval >> 29))
            + ((hval << 1) | (lval >> 31));
 
@@ -706,12 +760,12 @@ static void string2integer( IntValue *pInt )
 
       temp = lval + (lval << 2);
 
-      if( temp < lval )
+      if (temp < lval)
         hval++;
 
       lval = temp + (int) (val - '0');
 
-      if( lval < temp )
+      if (lval < temp)
         hval++;
     }
 
@@ -721,7 +775,7 @@ static void string2integer( IntValue *pInt )
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-  if( pInt->sign )
+  if (pInt->sign)
     pInt->value.s = -iv;
   else
     pInt->value.u = iv;
@@ -730,17 +784,213 @@ static void string2integer( IntValue *pInt )
 
   end_of_string:
 
-  if( pInt->sign && (hval || lval) ) {
-    if( lval-- == 0 )
+  if (pInt->sign && (hval || lval))
+  {
+    if (lval-- == 0)
       hval--;
 
     pInt->value.u.h = ~hval;
     pInt->value.u.l = ~lval;
   }
-  else {
+  else
+  {
     pInt->value.u.h = hval;
     pInt->value.u.l = lval;
   }
+
+#endif
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: shift_integer
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Apr 2005
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Bit-shift an u_64 value left or right.
+*
+*   ARGUMENTS:
+*
+*     RETURNS: 
+*
+*******************************************************************************/
+
+static void shift_integer(u_64 *pval, unsigned bits, enum shift_direction dir)
+{
+  assert(bits <= 64);
+
+#if ARCH_NATIVE_64_BIT_INTEGER
+
+  switch (dir)
+  {
+    case SHIFT_LEFT:
+      *pval <<= bits;
+      break;
+
+    case SHIFT_RIGHT:
+      *pval >>= bits;
+      break;
+  }
+
+#else
+
+  switch (dir)
+  {
+    case SHIFT_LEFT:
+      if (bits >= 32)
+      {
+        pval->h = pval->l << (bits - 32);
+        pval->l = 0;
+      }
+      else
+      {
+        pval->h = (pval->h << bits) | (pval->l >> (32 - bits));
+        pval->l <<= bits;
+      }
+      break;
+
+    case SHIFT_RIGHT:
+      if (bits >= 32)
+      {
+        pval->l = pval->h >> (bits - 32);
+        pval->h = 0;
+      }
+      else
+      {
+        pval->l = (pval->l >> bits) | (pval->h << (32 - bits));
+        pval->h >>= bits;
+      }
+      break;
+  }
+
+#endif
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: mask_integer
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Apr 2005
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Bit-mask an u_64 value.
+*
+*   ARGUMENTS:
+*
+*     RETURNS: 
+*
+*******************************************************************************/
+
+static void mask_integer(u_64 *pval, unsigned bits, unsigned shift, int extend_msb)
+{
+  u_64 mask;
+  const unsigned msb = bits + shift - 1;
+
+  assert(bits <= 64);
+  assert(shift <= 64);
+  assert((bits + shift) <= 64);
+
+#if ARCH_NATIVE_64_BIT_INTEGER
+
+  mask = (ALL_64_BITS >> (64 - bits)) << shift;
+  *pval &= mask;
+
+  if (extend_msb && bits > 0)
+    if (*pval & (((u_64)1) << msb))
+      *pval |= ALL_64_BITS << msb;
+
+#else
+
+  if (bits > 32)
+  {
+    mask.h = (ALL_32_BITS >> (64 - bits));
+    mask.l = ALL_32_BITS;
+  }
+  else
+  {
+    mask.h = 0;
+    mask.l = (ALL_32_BITS >> (32 - bits));
+  }
+
+  if (shift > 0)
+    shift_integer(&mask, shift, SHIFT_LEFT);
+
+  pval->h &= mask.h;
+  pval->l &= mask.l;
+
+  if (extend_msb && bits > 0)
+  {
+    if (msb >= 32)
+    {
+      if (pval->h & (((u_32)1) << (msb - 32)))
+        pval->h |= ALL_32_BITS << (msb - 32);
+    }
+    else
+    {
+      if (pval->l & (((u_32)1) << msb))
+      {
+        pval->h  = ALL_32_BITS;
+        pval->l |= ALL_32_BITS << msb;
+      }
+    }
+  }
+
+#endif
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: merge_integer
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Apr 2005
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Merge an u_64 value into another one.
+*
+*   ARGUMENTS:
+*
+*     RETURNS: 
+*
+*******************************************************************************/
+
+static void merge_integer(u_64 *dest, const u_64 *src, unsigned bits, unsigned shift)
+{
+  u_64 mask;
+
+  assert(bits <= 64);
+  assert(shift <= 64);
+  assert((bits + shift) <= 64);
+
+#if ARCH_NATIVE_64_BIT_INTEGER
+
+  mask = (ALL_64_BITS >> (64 - bits)) << shift;
+  *dest = (*dest & (~mask)) | (*src & mask);
+
+#else
+
+  if (bits > 32)
+  {
+    mask.h = (ALL_32_BITS >> (64 - bits));
+    mask.l = ALL_32_BITS;
+  }
+  else
+  {
+    mask.h = 0;
+    mask.l = (ALL_32_BITS >> (32 - bits));
+  }
+
+  if (shift > 0)
+    shift_integer(&mask, shift, SHIFT_LEFT);
+
+  dest->h = (dest->h & (~mask.h)) | (src->h & mask.h);
+  dest->l = (dest->l & (~mask.l)) | (src->l & mask.l);
 
 #endif
 }
@@ -759,7 +1009,7 @@ static void string2integer( IntValue *pInt )
 *   ARGUMENTS:
 *
 *     RETURNS: Zero if the string doesn't hold an interpretable number.
-*              The base (i.e. 8, 10 or 16) if the string is a number.
+*              The base (i.e. 2, 8, 10 or 16) if the string is a number.
 *
 *******************************************************************************/
 
@@ -771,27 +1021,40 @@ int string_is_integer(const char *pStr)
   while (isspace(*pStr))
     pStr++;
 
-  switch (*pStr) {
+  switch (*pStr)
+  {
     default : break;
     case '-':
     case '+': while (isspace(*++pStr));
   }
 
-  if (*pStr == '0') {  /* seems to be hex or octal */
+  if (*pStr == '0')  /* seems to be hex or octal */
+  {
     pStr++;
-    if (*pStr == 'x') {  /* must be hex */
+
+    if (*pStr == 'x')  /* must be hex */
+    {
       pStr++;
       while (isxdigit(*pStr))
         pStr++;
       rval = 16;
     }
-    else {  /* must be octal */
+    else if (*pStr == 'b')  /* must be binary */
+    {
+      pStr++;
+      while (*pStr == '0' || *pStr == '1')
+        pStr++;
+      rval = 2;
+    }
+    else  /* must be octal */
+    {
       while (isdigit(*pStr) && *pStr != '8' && *pStr != '9')
         pStr++;
       rval = 8;
     }
   }
-  else {  /* must be decimal */
+  else  /* must be decimal */
+  {
     while (isdigit(*pStr))
       pStr++;
     rval = 10;
@@ -823,68 +1086,74 @@ int string_is_integer(const char *pStr)
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define FETCH( bo, what )                                                      \
+#define FETCH(bo, what)                                                        \
         do {                                                                   \
-          if( sign )                                                           \
-            GET_ ## bo ## _ ## what ( ptr, pIV->value.s, i );                  \
+          if (sign)                                                            \
+            GET_ ## bo ## _ ## what (ptr, iv.value.s, i);                      \
           else                                                                 \
-            GET_ ## bo ## _ ## what ( ptr, pIV->value.u, u );                  \
-        } while(0)
+            GET_ ## bo ## _ ## what (ptr, iv.value.u, u);                      \
+        } while (0)
 
 #else
 
-#define FETCH( bo, what )                                                      \
+#define FETCH(bo, what)                                                        \
         do {                                                                   \
-          if( sign ) {                                                         \
-            GET_ ## bo ## _ ## what ( ptr, pIV->value.s.l, i );                \
-            pIV->value.s.h = ((i_32) pIV->value.s.l) < 0 ? -1 : 0;             \
+          if(sign)                                                             \
+          {                                                                    \
+            GET_ ## bo ## _ ## what (ptr, iv.value.s.l, i);                    \
+            iv.value.s.h = ((i_32) iv.value.s.l) < 0 ? -1 : 0;                 \
           }                                                                    \
-          else {                                                               \
-            GET_ ## bo ## _ ## what ( ptr, pIV->value.u.l, u );                \
-            pIV->value.u.h = 0;                                                \
+          else                                                                 \
+          {                                                                    \
+            GET_ ## bo ## _ ## what (ptr, iv.value.u.l, u);                    \
+            iv.value.u.h = 0;                                                  \
           }                                                                    \
-        } while(0)
+        } while (0)
 
 #endif
 
-void fetch_integer( unsigned size, unsigned sign, const void *src,
-                    const ArchSpecs *pAS, IntValue *pIV )
+void fetch_integer(unsigned size, unsigned sign, unsigned bits, unsigned shift,
+                   const void *src, const ArchSpecs *pAS, IntValue *pIV)
 {
   register const u_8 *ptr = (const u_8 *) src;
+  IntValue iv = *pIV;
 
-  switch( size ) {
+  switch (size)
+  {
     case 1:
-      FETCH( BE, BYTE );
+      FETCH(BE, BYTE);
       break;
 
     case 2:
-      if( pAS->bo == AS_BO_BIG_ENDIAN )
-        FETCH( BE, WORD );
+      if (pAS->bo == AS_BO_BIG_ENDIAN)
+        FETCH(BE, WORD);
       else
-        FETCH( LE, WORD );
+        FETCH(LE, WORD);
       break;
 
     case 4:
-      if( pAS->bo == AS_BO_BIG_ENDIAN )
-        FETCH( BE, LONG );
+      if (pAS->bo == AS_BO_BIG_ENDIAN)
+        FETCH(BE, LONG);
       else
-        FETCH( LE, LONG );
+        FETCH(LE, LONG);
       break;
 
     case 8:
 #if ARCH_NATIVE_64_BIT_INTEGER
-      if( pAS->bo == AS_BO_BIG_ENDIAN )
-        FETCH( BE, LONGLONG );
+      if (pAS->bo == AS_BO_BIG_ENDIAN)
+        FETCH(BE, LONGLONG);
       else
-        FETCH( LE, LONGLONG );
+        FETCH(LE, LONGLONG);
 #else
-      if( pAS->bo == AS_BO_BIG_ENDIAN ) {
-        GET_BE_LONG( ptr,   pIV->value.u.h, u );
-        GET_BE_LONG( ptr+4, pIV->value.u.l, u );
+      if (pAS->bo == AS_BO_BIG_ENDIAN)
+      {
+        GET_BE_LONG(ptr,   iv.value.u.h, u);
+        GET_BE_LONG(ptr+4, iv.value.u.l, u);
       }
-      else {
-        GET_LE_LONG( ptr,   pIV->value.u.l, u );
-        GET_LE_LONG( ptr+4, pIV->value.u.h, u );
+      else
+      {
+        GET_LE_LONG(ptr,   iv.value.u.l, u);
+        GET_LE_LONG(ptr+4, iv.value.u.h, u);
       }
 #endif
       break;
@@ -893,10 +1162,20 @@ void fetch_integer( unsigned size, unsigned sign, const void *src,
       break;
   }
 
-  pIV->sign = sign;
+  iv.sign = sign;
 
-  if( pIV->string )
-    (void) integer2string( pIV );
+  if (bits > 0)
+  {
+    if (shift > 0)
+      shift_integer(&iv.value.u, shift, SHIFT_RIGHT);
+
+    mask_integer(&iv.value.u, bits, 0, sign);
+  }
+
+  if (iv.string)
+    (void) integer2string(&iv);
+
+  *pIV = iv;
 }
 
 #undef FETCH
@@ -920,61 +1199,81 @@ void fetch_integer( unsigned size, unsigned sign, const void *src,
 
 #if ARCH_NATIVE_64_BIT_INTEGER
 
-#define STORE( bo, what )                                                      \
+#define STORE(bo, what)                                                        \
         do {                                                                   \
-          SET_ ## bo ## _ ## what ( ptr, pIV->value.u );                       \
-        } while(0)
+          SET_ ## bo ## _ ## what (ptr, iv.value.u);                           \
+        } while (0)
 
 #else
 
-#define STORE( bo, what )                                                      \
+#define STORE(bo, what)                                                        \
         do {                                                                   \
-          SET_ ## bo ## _ ## what ( ptr, pIV->value.u.l );                     \
-        } while(0)
+          SET_ ## bo ## _ ## what (ptr, iv.value.u.l);                         \
+        } while (0)
 
 #endif
 
-void store_integer( unsigned size, void *dest,
-                    const ArchSpecs *pAS, IntValue *pIV )
+void store_integer(unsigned size, unsigned bits, unsigned shift,
+                   void *dest, const ArchSpecs *pAS, const IntValue *pIV)
 {
   register u_8 *ptr = (u_8 *) dest;
+  IntValue iv = *pIV;
 
-  if( pIV->string )
-    string2integer( pIV );
+  if (iv.string)
+    string2integer(&iv);
 
-  switch( size ) {
+  if (bits > 0)
+  {
+    IntValue orig;
+
+    orig.string = NULL;
+
+    fetch_integer(size, 0, 0, 0, dest, pAS, &orig);
+
+    if (shift > 0)
+      shift_integer(&iv.value.u, shift, SHIFT_LEFT);
+
+    merge_integer(&orig.value.u, &iv.value.u, bits, shift);
+
+    iv = orig;
+  }
+
+  switch (size)
+  {
     case 1:
-      STORE( BE, BYTE );
+      STORE(BE, BYTE);
       break;
 
     case 2:
-      if( pAS->bo == AS_BO_BIG_ENDIAN )
-        STORE( BE, WORD );
+      if (pAS->bo == AS_BO_BIG_ENDIAN)
+        STORE(BE, WORD);
       else
-        STORE( LE, WORD );
+        STORE(LE, WORD);
       break;
 
     case 4:
-      if( pAS->bo == AS_BO_BIG_ENDIAN )
-        STORE( BE, LONG );
+      if (pAS->bo == AS_BO_BIG_ENDIAN)
+        STORE(BE, LONG);
       else
-        STORE( LE, LONG );
+        STORE(LE, LONG);
       break;
 
     case 8:
 #if ARCH_NATIVE_64_BIT_INTEGER
-      if( pAS->bo == AS_BO_BIG_ENDIAN )
-        STORE( BE, LONGLONG );
+      if (pAS->bo == AS_BO_BIG_ENDIAN)
+        STORE(BE, LONGLONG);
       else
-        STORE( LE, LONGLONG );
+        STORE(LE, LONGLONG);
 #else
-      if( pAS->bo == AS_BO_BIG_ENDIAN ) {
-        SET_BE_LONG( ptr,   pIV->value.u.h );
-        SET_BE_LONG( ptr+4, pIV->value.u.l );
+      if (pAS->bo == AS_BO_BIG_ENDIAN)
+      {
+        SET_BE_LONG(ptr,   iv.value.u.h);
+        SET_BE_LONG(ptr+4, iv.value.u.l);
       }
-      else {
-        SET_LE_LONG( ptr,   pIV->value.u.l );
-        SET_LE_LONG( ptr+4, pIV->value.u.h );
+      else
+      {
+        SET_LE_LONG(ptr,   iv.value.u.l);
+        SET_LE_LONG(ptr+4, iv.value.u.h);
       }
 #endif
       break;

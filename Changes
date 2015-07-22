@@ -1,3 +1,46 @@
+----------------------------
+Version 0.58_01 (2005-05-23)
+----------------------------
+
+  === THIS IS A   N O N - S T A B L E   BETA RELEASE ===
+
+* bitfields are now supported; since bitfield implementations
+  differ from compiler to compiler (sometimes significantly),
+  the bitfield layouting engine can be exchanged at runtime;
+  bitfield support is, however, still considered experimental
+
+* the memory used by internal data structures as well
+  as the number of malloc/free calls has been reduced
+  by about 15 percent; besides saving memory, this also
+  makes parsing and cloning a bit faster
+
+* the whole pack()/unpack() engine was re-doing the work
+  that has previously been done by the compound layouter;
+  this redundancy has been removed, making the code more
+  readable (and a little bit faster)
+
+* the compound layouter implementation has been separated
+  and can now be exchanged at runtime (which is currently
+  unused as there's only one implementation)
+
+* the bison parser is now making use of the %destructor
+  feature introduced recently; this makes the parser code
+  a lot easier to read and maintain, and makes the parser
+  a bit faster; you need at least bison-2.0a to regenerate
+  the files
+
+* when packing 'string' numbers, the 0b... syntax is now
+  supported for binary numbers
+
+* ccconfig's interface and internals have been updated
+
+* ccconfig now has a lot more options that hopefully allow
+  you to test compilers with strange commandline interface
+
+* ccconfig is now more robust against compiler failures
+
+* lots of minor tweaks and fixes
+
 -------------------------
 Version 0.58 (2005-02-21)
 -------------------------

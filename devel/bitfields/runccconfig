@@ -1,0 +1,20 @@
+#!/usr/bin/perl -w
+use strict;
+use File::Path;
+
+my $res = $ARGV[0];
+$res =~ s/.*compilers\.//;
+my $out = "configs/$res";
+-d $out or mkpath( [$out] ) or die "$out: $!";
+
+while( <> ) {
+  s/\s*#.*//;
+  my($name, $args) = /^(.*?)\s*=>\s*(.*?)\s*$/ or next;
+  print "running ccconfig for $name on $^O\n";
+  $args =~ s/.*?--\s+//;
+  $args =~ s/\s+[-\/]c\s+[-\/]o\s+.*$//;
+  $args =~ s/\s+%[co].*$//;
+  my($cc, @args) = split ' ', $args;
+  system "$^X -- ccconfig -c $cc -f require -o $out/$name.cfg --nostatus -- @args 2>$out/$name.log"
+    and die "Ooops...";
+}

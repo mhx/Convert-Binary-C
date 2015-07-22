@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/01/23 11:49:40 +0000 $
-* $Revision: 21 $
+* $Date: 2005/04/22 21:46:09 +0100 $
+* $Revision: 27 $
 * $Source: /ctlib/cttype.c $
 *
 ********************************************************************************
@@ -42,14 +42,16 @@
 
 #define CONSTRUCT_OBJECT( type, name )                                         \
   type *name;                                                                  \
-  AllocF( type *, name, sizeof( type ) )
+  AllocF( type *, name, sizeof( type ) );                                      \
+  PROFILE_ADD(type, sizeof(type))
 
 #define CLONE_OBJECT( type, dest, src )                                        \
   type *dest;                                                                  \
   if( (src) == NULL )                                                          \
     return NULL;                                                               \
   AllocF( type *, dest, sizeof( type ) );                                      \
-  memcpy( dest, src, sizeof( type ) )
+  memcpy( dest, src, sizeof( type ) );                                         \
+  PROFILE_ADD(type, sizeof(type))
 
 #define CONSTRUCT_OBJECT_IDENT( type, name )                                   \
   type *name;                                                                  \
@@ -61,18 +63,65 @@
     name->identifier[id_len] = '\0';                                           \
   }                                                                            \
   else                                                                         \
-    name->identifier[0] = '\0'
+    name->identifier[0] = '\0';                                                \
+  name->id_len = (unsigned char) (id_len < 255 ? id_len : 255);                \
+  PROFILE_ADD(type, offsetof( type, identifier ) + id_len + 1)
 
 #define CLONE_OBJECT_IDENT( type, dest, src )                                  \
   type *dest;                                                                  \
   size_t count = offsetof( type, identifier ) + 1;                             \
   if( (src) == NULL )                                                          \
     return NULL;                                                               \
-  if( src->identifier[0] )                                                     \
-    count += strlen( src->identifier );                                        \
+  if( src->id_len )                                                            \
+    count += CTT_IDLEN( src );                                                 \
   AllocF( type *, dest, count );                                               \
-  memcpy( dest, src, count )
+  memcpy( dest, src, count );                                                  \
+  PROFILE_ADD(type, count)
 
+#define DELETE_OBJECT_IDENT(type, ptr)                                         \
+        do {                                                                   \
+          PROFILE_DEL(type, offsetof(type, identifier) + CTT_IDLEN(ptr) + 1);  \
+          Free(ptr);                                                           \
+        } while (0)
+
+#define DELETE_OBJECT(type, ptr)                                               \
+        do {                                                                   \
+          PROFILE_DEL(type, sizeof(type));                                     \
+          Free(ptr);                                                           \
+        } while (0)
+
+#ifdef CTLIB_PROFILE_MEM
+
+#define PROFILE_ADD(ix, size)                                                  \
+        do {                                                                   \
+          struct MemProfile *p = &gs_profile[PROFILE_ ## ix];                  \
+          p->total++;                                                          \
+          p->mtotal += size;                                                   \
+          if (++p->cur > p->max)                                               \
+            p->max = p->cur;                                                   \
+          p->mcur += size;                                                     \
+          if (p->mcur > p->mmax)                                               \
+            p->mmax = p->mcur;                                                 \
+          if (!gs_profile_init)                                                \
+          {                                                                    \
+            gs_profile_init = 1;                                               \
+            (void) atexit(profile_dump);                                       \
+          }                                                                    \
+        } while (0)
+
+#define PROFILE_DEL(ix, size)                                                  \
+        do {                                                                   \
+          struct MemProfile *p = &gs_profile[PROFILE_ ## ix];                  \
+          p->cur--;                                                            \
+          p->mcur -= size;                                                     \
+        } while (0)
+
+#else
+
+#define PROFILE_ADD(ix, size)  (void)0
+#define PROFILE_DEL(ix, size)  (void)0
+
+#endif
 
 /*===== TYPEDEFS =============================================================*/
 
@@ -84,7 +133,63 @@
 
 /*===== STATIC VARIABLES =====================================================*/
 
+#ifdef CTLIB_PROFILE_MEM
+
+enum {
+  PROFILE_Value,
+  PROFILE_Enumerator,
+  PROFILE_EnumSpecifier,
+  PROFILE_Declarator,
+  PROFILE_StructDeclaration,
+  PROFILE_Struct,
+  PROFILE_Typedef,
+  PROFILE_TypedefList,
+  PROFILE_MAX,
+};
+
+static struct MemProfile {
+  const char *name;
+  int size;
+  long total, cur, max;
+  long mtotal, mcur, mmax;
+} gs_profile[PROFILE_MAX] = {
+#define PROFTYPE(type) { #type, sizeof(type) }
+  PROFTYPE(Value),
+  PROFTYPE(Enumerator),
+  PROFTYPE(EnumSpecifier),
+  PROFTYPE(Declarator),
+  PROFTYPE(StructDeclaration),
+  PROFTYPE(Struct),
+  PROFTYPE(Typedef),
+  PROFTYPE(TypedefList)
+#undef PROFTYPE
+};
+
+int gs_profile_init = 0;
+
+#endif
+
 /*===== STATIC FUNCTIONS =====================================================*/
+
+#ifdef CTLIB_PROFILE_MEM
+
+void profile_dump(void)
+{
+  int i;
+  struct MemProfile *p = &gs_profile[0];
+
+  fprintf(stderr, "\n\n=== MEMORY PROFILE ===\n\n");
+
+  for (i = 0; i < PROFILE_MAX; i++, p++)
+    fprintf(stderr, "%-20s (%3d bytes): total=%6ld (%9ld bytes) / "
+                    "cur=%6ld (%9ld bytes) / max=%6ld (%9ld bytes)\n",
+                    p->name, p->size, p->total, p->mtotal, p->cur,
+                    p->mcur, p->max, p->mmax);
+
+  fprintf(stderr, "\n======================\n\n");
+}
+
+#endif
 
 /*===== FUNCTIONS ============================================================*/
 
@@ -140,7 +245,7 @@ void value_delete( Value *pValue )
   CT_DEBUG( TYPE, ("type::value_delete( pValue=%p )", pValue) );
 
   if( pValue )
-    Free( pValue );
+    DELETE_OBJECT(Value, pValue);
 }
 
 /*******************************************************************************
@@ -231,7 +336,7 @@ void enum_delete( Enumerator *pEnum )
                    pEnum, pEnum ? pEnum->identifier : "") );
 
   if( pEnum )
-    Free( pEnum );
+    DELETE_OBJECT_IDENT(Enumerator, pEnum);
 }
 
 /*******************************************************************************
@@ -406,7 +511,7 @@ void enumspec_delete(EnumSpecifier *pEnumSpec)
   {
     LL_destroy(pEnumSpec->enumerators, (LLDestroyFunc) enum_delete);
     delete_taglist(&pEnumSpec->tags);
-    Free(pEnumSpec);
+    DELETE_OBJECT_IDENT(EnumSpecifier, pEnumSpec);
   }
 }
 
@@ -461,12 +566,17 @@ Declarator *decl_new(char *identifier, int id_len)
 {
   CONSTRUCT_OBJECT_IDENT(Declarator, pDecl);
 
-  pDecl->array         = LL_new();
-  pDecl->pointer_flag  =  0;
-  pDecl->bitfield_size = -1;
-  pDecl->offset        = -1;
-  pDecl->size          = -1;
-  pDecl->tags          = NULL;
+  pDecl->offset            = -1;
+  pDecl->size              = -1;
+  pDecl->item_size         = -1;
+  pDecl->tags              = NULL;
+  pDecl->ext.array         = NULL;
+  pDecl->ext.bitfield.size =  0;
+  pDecl->ext.bitfield.bits =  0;
+  pDecl->ext.bitfield.pos  =  0;
+  pDecl->pointer_flag      =  0;
+  pDecl->array_flag        =  0;
+  pDecl->bitfield_flag     =  0;
 
   CT_DEBUG(TYPE, ("type::decl_new( identifier=\"%s\" ) = %p",
                   pDecl->identifier, pDecl));
@@ -498,9 +608,10 @@ void decl_delete(Declarator *pDecl)
 
   if (pDecl)
   {
-    LL_destroy(pDecl->array, (LLDestroyFunc) value_delete);
+    if (pDecl->array_flag)
+      LL_destroy(pDecl->ext.array, (LLDestroyFunc) value_delete);
     delete_taglist(&pDecl->tags);
-    Free(pDecl);
+    DELETE_OBJECT_IDENT(Declarator, pDecl);
   }
 }
 
@@ -528,8 +639,10 @@ Declarator *decl_clone(const Declarator *pSrc)
   CT_DEBUG(TYPE, ("type::decl_clone( pSrc=%p [identifier=\"%s\"] ) = %p",
                   pSrc, pSrc ? pSrc->identifier : "", pDest));
 
-  pDest->array = LL_clone(pSrc->array, (LLCloneFunc) value_clone);
-  pDest->tags  = clone_taglist(pSrc->tags);
+  if (pSrc->array_flag)
+    pDest->ext.array = LL_clone(pSrc->ext.array, (LLCloneFunc) value_clone);
+
+  pDest->tags = clone_taglist(pSrc->tags);
 
   return pDest;
 }
@@ -591,7 +704,7 @@ void structdecl_delete( StructDeclaration *pStructDecl )
 
   if( pStructDecl ) {
     LL_destroy( pStructDecl->declarators, (LLDestroyFunc) decl_delete );
-    Free( pStructDecl );
+    DELETE_OBJECT(StructDeclaration, pStructDecl);
   }
 }
 
@@ -687,7 +800,7 @@ void struct_delete(Struct *pStruct)
   {
     LL_destroy(pStruct->declarations, (LLDestroyFunc) structdecl_delete);
     delete_taglist(&pStruct->tags);
-    Free(pStruct);
+    DELETE_OBJECT_IDENT(Struct, pStruct);
   }
 }
 
@@ -778,7 +891,7 @@ void typedef_delete( Typedef *pTypedef )
 
   if( pTypedef ) {
     decl_delete( pTypedef->pDecl );
-    Free( pTypedef );
+    DELETE_OBJECT(Typedef, pTypedef);
   }
 }
 
@@ -865,7 +978,7 @@ void typedef_list_delete( TypedefList *pTypedefList )
 
   if( pTypedefList ) {
     LL_destroy( pTypedefList->typedefs, (LLDestroyFunc) typedef_delete );
-    Free( pTypedefList );
+    DELETE_OBJECT(TypedefList, pTypedefList);
   }
 }
 

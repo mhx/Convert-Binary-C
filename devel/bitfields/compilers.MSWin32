@@ -1,0 +1,7 @@
+# Microsoft C compiler
+cl_plain      =>  --obj-ext .obj -- cl /nologo /DPACK_PAREN /c /o %o %c
+cl_pack01     =>  --obj-ext .obj -- cl /nologo /Zp1 /DPACK_PAREN /c /o %o %c
+cl_pack02     =>  --obj-ext .obj -- cl /nologo /Zp2 /DPACK_PAREN /c /o %o %c
+cl_pack04     =>  --obj-ext .obj -- cl /nologo /Zp4 /DPACK_PAREN /c /o %o %c
+cl_pack08     =>  --obj-ext .obj -- cl /nologo /Zp8 /DPACK_PAREN /c /o %o %c
+cl_pack16     =>  --obj-ext .obj -- cl /nologo /Zp16 /DPACK_PAREN /c /o %o %c

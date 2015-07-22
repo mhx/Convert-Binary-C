@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/01/23 11:49:41 +0000 $
-* $Revision: 9 $
+* $Date: 2005/04/19 19:52:29 +0100 $
+* $Revision: 10 $
 * $Source: /ctlib/byteorder.h $
 *
 ********************************************************************************
@@ -60,11 +60,11 @@ typedef struct {
 int string_is_integer(const char *pStr);
 
 #define fetch_integer CTlib_fetch_integer
-void fetch_integer( unsigned size, unsigned sign, const void *src,
-                    const ArchSpecs *pAS, IntValue *pIV );
+void fetch_integer(unsigned size, unsigned sign, unsigned bits, unsigned shift,
+                   const void *src, const ArchSpecs *pAS, IntValue *pIV);
 
 #define store_integer CTlib_store_integer
-void store_integer( unsigned size, void *dest,
-                    const ArchSpecs *pAS, IntValue *pIV );
+void store_integer(unsigned size, unsigned bits, unsigned shift,
+                   void *dest, const ArchSpecs *pAS, const IntValue *pIV);
 
 #endif

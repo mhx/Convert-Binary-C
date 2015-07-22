@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/01/21 15:54:40 +0000 $
-* $Revision: 1 $
+* $Date: 2005/04/02 16:01:44 +0100 $
+* $Revision: 2 $
 * $Source: /cbc/basic.c $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -174,6 +174,35 @@ BasicTypes basic_types_clone(const BasicTypes src)
     bt->ti[i].pDecl = decl_clone(src->ti[i].pDecl);
 
   return bt;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: basic_types_reset
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Apr 2005
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+void basic_types_reset(BasicTypes bt)
+{
+  int i;
+
+  for (i = 0; i < NUM_BT_NAMES; i++)
+  {
+    Declarator *pDecl = bt->ti[i].pDecl;
+    pDecl->size      = -1;
+    pDecl->item_size = -1;
+  }
 }
 
 /*******************************************************************************

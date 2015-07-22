@@ -1,0 +1,7 @@
+# OSF1 spe208.testdrive.hp.com V5.1 2650 alpha
+# GCC (alphaev56-dec-osf5.1/3.3)
+gcc_plain        =>  -- gcc -c -o %o %c
+gcc_pack         =>  -- gcc -DPACK_PAREN -c -o %o %c
+
+# HP compilers
+cc_plain         =>  -- cc -c -o %o %c

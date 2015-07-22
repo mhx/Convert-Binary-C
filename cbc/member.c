@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:38 +0000 $
-* $Revision: 5 $
+* $Date: 2005/04/22 21:33:41 +0100 $
+* $Revision: 10 $
 * $Source: /cbc/member.c $
 *
 ********************************************************************************
@@ -117,13 +117,13 @@ static void get_ams_struct(pTHX_ Struct *pStruct, SV *name, int level, AMSInfo *
       LL_foreach(pDecl, pStructDecl->declarators)
       {
         /* skip unnamed bitfield members right here */
-        if (pDecl->bitfield_size >= 0 && pDecl->identifier[0] == '\0')
+        if (pDecl->bitfield_flag && pDecl->identifier[0] == '\0')
           continue;
 
         if (name)
         {
           SvCUR_set(name, len+1);
-          sv_catpvn_nomg(name, pDecl->identifier, strlen(pDecl->identifier));
+          sv_catpvn_nomg(name, pDecl->identifier, CTT_IDLEN(pDecl));
         }
 
         get_ams_type(aTHX_ &pStructDecl->type, pDecl, 0, name, level+1, info);
@@ -167,9 +167,9 @@ static void get_ams_type(pTHX_ TypeSpec *pTS, Declarator *pDecl, int dimension,
            "name='%s', level=%d, info=%p )", pTS, pDecl, dimension,
            name ? SvPV_nolen(name) : "", level, info));
 
-  if (pDecl && dimension < LL_count(pDecl->array))
+  if (pDecl && pDecl->array_flag && dimension < LL_count(pDecl->ext.array))
   {
-    Value *pValue = (Value *) LL_get(pDecl->array, dimension);
+    Value *pValue = (Value *) LL_get(pDecl->ext.array, dimension);
 
     if ((pValue->flags & V_IS_UNDEF) == 0)
     {
@@ -218,7 +218,7 @@ static void get_ams_type(pTHX_ TypeSpec *pTS, Declarator *pDecl, int dimension,
       Typedef *pTD = (Typedef *) pTS->ptr;
       get_ams_type(aTHX_ pTD->pType, pTD->pDecl, 0, name, level, info);
     }
-    else if (pTS->tflags & (T_STRUCT | T_UNION))
+    else if (pTS->tflags & T_COMPOUND)
     {
       Struct *pStruct = pTS->ptr;
 
@@ -288,13 +288,16 @@ static GMSRV append_member_string_rec(pTHX_ const TypeSpec *pType, const Declara
 
       size = pDecl->size;
 
-      LL_foreach(pValue, pDecl->array)
+      if (pDecl->array_flag)
       {
-        size /= pValue->iv;
-        index = offset/size;
-        CT_DEBUG(MAIN, ("Appending array size [%d]", index));
-        sv_catpvf(sv, "[%d]", index);
-        offset -= index*size;
+        LL_foreach(pValue, pDecl->ext.array)
+        {
+          size /= pValue->iv;
+          index = offset/size;
+          CT_DEBUG(MAIN, ("Appending array size [%d]", index));
+          sv_catpvf(sv, "[%d]", index);
+          offset -= index*size;
+        }
       }
 
       if (pDecl->pointer_flag || (pType->tflags & T_TYPE) == 0)
@@ -308,12 +311,12 @@ static GMSRV append_member_string_rec(pTHX_ const TypeSpec *pType, const Declara
       }
       while (!pDecl->pointer_flag &&
              pType->tflags & T_TYPE &&
-             LL_count(pDecl->array) == 0);
+             pDecl->array_flag == 0);
     }
   }
 
   if ((pDecl == NULL || !pDecl->pointer_flag) &&
-      pType->tflags & (T_STRUCT | T_UNION))
+      pType->tflags & T_COMPOUND)
     return get_member_string_rec(aTHX_ pType->ptr, offset, offset, sv, pInfo);
 
   if (offset > 0)
@@ -656,14 +659,14 @@ SV *get_member_string(pTHX_ const MemberInfo *pMI, int offset, GMSInfo *pInfo)
   sv = newSVpvn("", 0);
 
   /* handle array remainder here */
-  if (pMI->pDecl && pMI->pDecl->array &&
-      pMI->level < (dim = LL_count(pMI->pDecl->array)))
+  if (pMI->pDecl && pMI->pDecl->array_flag &&
+      pMI->level < (dim = LL_count(pMI->pDecl->ext.array)))
   {
     int i, index, size = pMI->size;
 
     for (i = pMI->level; i < dim; i++)
     {
-      size /= ((Value *) LL_get(pMI->pDecl->array, i))->iv;
+      size /= ((Value *) LL_get(pMI->pDecl->ext.array, i))->iv;
       index = offset / size;
       sv_catpvf(sv, "[%d]", index);
       offset -= index*size;
@@ -785,11 +788,13 @@ int get_member(pTHX_ CBC *THIS, const MemberInfo *pMI, const char *member,
 
     if (level > 0)
     {
+      assert(pDecl->array_flag);
+
       if (size < 0)
-        fatal( "pDecl->size is not initialized in get_member()" );
+        fatal("pDecl->size is not initialized in get_member()");
 
       for (i = 0; i < level; i++)
-        size /= ((Value *) LL_get(pDecl->array, i))->iv;
+        size /= ((Value *) LL_get(pDecl->ext.array, i))->iv;
     }
   }
 
@@ -856,64 +861,66 @@ int get_member(pTHX_ CBC *THIS, const MemberInfo *pMI, const char *member,
           err = "Index operator not terminated correctly";
           goto error;
         }
-
-        if (level >= LL_count(pDecl->array))
-        {
-          TRUNC_ELEM;
-          (void) sprintf(err = errbuf,
-                         "Cannot use '%s' as a %d-dimensional array",
-                         elem, level+1);
-          goto error;
-        }
         else
         {
-          Value *pValue;
-          int index, dim;
+          int dim;
 
-          pValue = (Value *) LL_get(pDecl->array, level);
-          index  = atoi(ixstr);
+          assert(pDecl->array_flag);
 
-          CT_DEBUG(MAIN, ("INDEX: \"%d\"", index));
+          dim = LL_count(pDecl->ext.array);
 
-          if (pValue->flags & V_IS_UNDEF)
+          if (level >= dim)
           {
-            ErrorGTI err;
-            unsigned esize;
-
-            err = get_type_info(&THIS->cfg, pType, pDecl, NULL, NULL, &esize, NULL);
-            if (err != GTI_NO_ERROR)
-              croak_gti(aTHX_ err, member, 1);
-
-            dim = LL_count(pDecl->array);
-
-            while (dim-- > level+1)
-              esize *= ((Value *) LL_get(pDecl->array, dim))->iv;
-
-            size = (int) esize;
+            TRUNC_ELEM;
+            (void) sprintf(err = errbuf,
+                           "Cannot use '%s' as a %d-dimensional array",
+                           elem, level+1);
+            goto error;
           }
           else
           {
-            dim = pValue->iv;
+            Value *pValue;
+            int index;
 
-            if (index >= dim)
+            pValue = (Value *) LL_get(pDecl->ext.array, level);
+            index  = atoi(ixstr);
+
+            CT_DEBUG(MAIN, ("INDEX: \"%d\"", index));
+
+            if (pValue->flags & V_IS_UNDEF)
             {
-              (void) sprintf(err = errbuf,
-                             "Cannot use index %d into array of size %d",
-                             index, dim );
-              goto error;
+              size = pDecl->item_size;
+
+              if (size <= 0)
+                fatal("pDecl->item_size is not initialized in get_member()");
+
+              while (dim-- > level+1)
+                size *= ((Value *) LL_get(pDecl->ext.array, dim))->iv;
+            }
+            else
+            {
+              dim = pValue->iv;
+
+              if (index >= dim)
+              {
+                (void) sprintf(err = errbuf,
+                               "Cannot use index %d into array of size %d",
+                               index, dim );
+                goto error;
+              }
+
+              if (size < 0)
+                fatal("size is not initialized in get_member()");
+
+              size /= dim;
             }
 
             if (size < 0)
               fatal("size is not initialized in get_member()");
 
-            size /= dim;
+            offset += index * size;
+            level++;
           }
-
-          if (size < 0)
-            fatal("size is not initialized in get_member()");
-
-          offset += index * size;
-          level++;
         }
 
         state = ST_SEARCH;
@@ -921,12 +928,12 @@ int get_member(pTHX_ CBC *THIS, const MemberInfo *pMI, const char *member,
 
       case ST_SEARCH:
         CT_DEBUG(MAIN, ("SEARCH: level=%d, dim=%d", level,
-                       pDecl ? LL_count(pDecl->array) : 0));
+                 pDecl && pDecl->array_flag ? LL_count(pDecl->ext.array) : 0));
 
         PROPAGATE_FLAGS(pType->tflags);
 
         if (pDecl && !pDecl->pointer_flag && pType->tflags & T_TYPE &&
-            level == LL_count(pDecl->array))
+            level == (pDecl->array_flag ? LL_count(pDecl->ext.array) : 0))
         {
           do
           {
@@ -936,7 +943,7 @@ int get_member(pTHX_ CBC *THIS, const MemberInfo *pMI, const char *member,
           }
           while (!pDecl->pointer_flag &&
                  pType->tflags & T_TYPE &&
-                 LL_count(pDecl->array) == 0);
+                 pDecl->array_flag == 0);
 
           size  = pDecl->size;
           level = 0;
@@ -989,11 +996,11 @@ int get_member(pTHX_ CBC *THIS, const MemberInfo *pMI, const char *member,
             /* fall through */
 
           case '.':
-            if (pDecl && level < LL_count(pDecl->array))
+            if (pDecl && pDecl->array_flag && level < LL_count(pDecl->ext.array))
               CANNOT_ACCESS_MEMBER("array");
             else if (pDecl && pDecl->pointer_flag)
               CANNOT_ACCESS_MEMBER("pointer");
-            else if (pType->tflags & (T_STRUCT | T_UNION))
+            else if (pType->tflags & T_COMPOUND)
             {
               pStruct = (Struct *) pType->ptr;
               PROPAGATE_FLAGS( pStruct->tflags );
@@ -1005,7 +1012,7 @@ int get_member(pTHX_ CBC *THIS, const MemberInfo *pMI, const char *member,
             break;
 
           case '[':
-            if (pDecl == NULL || (level == 0 && LL_count(pDecl->array) == 0))
+            if (pDecl == NULL || (level == 0 && pDecl->array_flag == 0))
             {
               if (elem[0] != '\0')
               {
@@ -1050,7 +1057,9 @@ int get_member(pTHX_ CBC *THIS, const MemberInfo *pMI, const char *member,
   }
 
   CT_DEBUG(MAIN, ("FINISHED: typespec=[ptr=%p, flags=0x%X], pDecl=%p[dim=%d], level=%d, offset=%d, size=%d",
-                  pType->ptr, pType->tflags, pDecl, pDecl ? LL_count(pDecl->array) : 0, level, offset, size));
+                  pType->ptr, pType->tflags, pDecl,
+                  pDecl && pDecl->array_flag ? LL_count(pDecl->ext.array) : 0,
+                  level, offset, size));
 
   if (pMIout)
   {

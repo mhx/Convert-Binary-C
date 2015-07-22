@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/01/23 11:49:31 +0000 $
-# $Revision: 18 $
+# $Date: 2005/05/23 10:31:57 +0100 $
+# $Revision: 19 $
 # $Source: /t/901_memory.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C;
 $^W = 1;
 
 BEGIN {
-  @files = grep /[1-7]\d{2}_[a-z]+\.t$/i, <t/*.t>;
+  @files = grep /[1-4]\d{2}_[a-z]+\.t$/i, <t/*.t>;
   plan tests => 1 + 9*@files
 }
 

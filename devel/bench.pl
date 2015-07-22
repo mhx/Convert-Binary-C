@@ -29,12 +29,13 @@ my $c = new Convert::Binary::C ByteOrder    => 'BigEndian',
                                                 't/include/include'];
 
 $c->parse_file( 't/include/include.c' )->parse_file( 'devel/bench.h' );
+my $type = 'forfaulture';
 
-my $d = 'x' x $c->sizeof( 'aaa' );
-my $p = $c->unpack( 'aaa', $d );
-my @o = (0 .. $c->sizeof('aaa')-1);
-my @m = map { $c->member( 'aaa', $_ ) } @o;
-my @a = map { 'aaa'.$_ } @m;
+my $d = 'x' x $c->sizeof( $type );
+my $p = $c->unpack( $type, $d );
+my @o = (0 .. $c->sizeof($type)-1);
+my @m = map { $c->member( $type, $_ ) } @o;
+my @a = map { $type.$_ } @m;
 
 my %tests = (
 
@@ -59,35 +60,35 @@ my %tests = (
                   },
 
   pack         => sub {
-                    my $x = $c->pack( 'aaa', $p );
+                    my $x = $c->pack( $type, $p );
                   },
 
   init_zero    => sub {
-                    my $x = $c->initializer( 'aaa.fiw' );
+                    my $x = $c->initializer( "$type.fluey" );
                   },
 
   init_full    => sub {
-                    my $x = $c->initializer( 'aaa.fiw', $p->{fiw} );
+                    my $x = $c->initializer( "$type.fluey", $p->{fiw} );
                   },
 
   unpack       => sub {
-                    my $x = $c->unpack( 'aaa', $d );
+                    my $x = $c->unpack( $type, $d );
                   },
 
   member       => sub {
-                    for my $o ( @o ) { my $x = $c->member( 'aaa', $o ) }
+                    for my $o ( @o ) { my $x = $c->member( $type, $o ) }
                   },
 
   member_l     => sub {
-                    for my $o ( @o ) { my @x = $c->member( 'aaa', $o ) }
+                    for my $o ( @o ) { my @x = $c->member( $type, $o ) }
                   },
 
   member_a     => sub {
-                    my @x = $c->member( 'aaa' );
+                    my @x = $c->member( $type );
                   },
 
   offsetof     => sub {
-                    for my $m ( @m ) { my $x = $c->offsetof( 'aaa', $m ) }
+                    for my $m ( @m ) { my $x = $c->offsetof( $type, $m ) }
                   },
 
   typeof       => sub {

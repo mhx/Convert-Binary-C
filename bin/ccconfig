@@ -11,8 +11,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/01/23 12:48:15 +0000 $
-# $Revision: 57 $
+# $Date: 2005/05/12 20:10:37 +0100 $
+# $Revision: 58 $
 # $Source: /bin/ccconfig $
 #
 ################################################################################
@@ -29,14 +29,17 @@ use Data::Dumper;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = ('$Snapshot: /Convert-Binary-C/0.58 $' =~ /([^\/\s]+)\s*\$$/)[0];
+my $VERSION = ('$Snapshot: /Convert-Binary-C/0.58_01 $' =~ /([^\/\s]+)\s*\$$/)[0];
 my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT = (
   'output-format' => 'dumper',
 );
 
 unless( GetOptions( \%OPT, qw(
-          cc|c=s ppout|p=s temp|t=s output-file|o=s output-format|f=s
+          cc|c=s inc-path|I=s@ basename=s
+          output-file|o=s output-format|f=s
+          preprocess=s compile-obj=s compile-exe=s
+          obj-ext=s exe-ext=s c-ext=s pp-ext=s
           version debug quiet status! run! delete!
       ) ) ) {
   # poor man's pod2usage...
@@ -75,11 +78,13 @@ if (exists $OPT{'output-file'}) {
 my %format = (
   dumper  => sub {
                my $cfg = shift;
+               local $Data::Dumper::Sortkeys = 1;
                return Data::Dumper->Dump([$cfg], ['*config']);
              },
   require => sub {
                my $cfg = shift;
                local $Data::Dumper::Indent = 1;
+               local $Data::Dumper::Sortkeys = 1;
                my $dump = Data::Dumper->Dump([$cfg], ['config']);
                $dump =~ s/.*(?={)//;
                return $dump;
@@ -117,11 +122,10 @@ exit 0;
 
 package Compiler::Config;
 
-use IPC::Open3;
 use IO::File;
 use Data::Dumper;
 use Text::Wrap;
-use File::Basename;
+use Text::ParseWords;
 use Carp;
 use strict;
 
@@ -321,15 +325,16 @@ sub new
 {
   my $class = shift;
   my $self = bless {
-    'headers' => [&ANSI_headers],
-    'ppline'  => qr/^\s*#\s*(?:line\s*)?(\d+)\s*"([^"]*)"/,
-    'debug'   => 0,
-    'quiet'   => 0,
-    'status'  => 1,
-    'run'     => 1,
-    'delete'  => 1,
-    'temp'    => '_t_e_s_t.c',
-    'timeout' => 30,
+    'headers'     => [&ANSI_headers],
+    'ppline'      => qr/^\s*#\s*(?:line\s*)?(\d+)\s*"([^"]*)"/,   # TODO: make configurable?
+    'debug'       => 0,
+    'quiet'       => 0,
+    'status'      => 1,
+    'run'         => 1,
+    'delete'      => 1,
+    'timeout'     => 30,
+    'basename'    => '_t_e_s_t',
+    'c-ext'       => '.c',
     @_
   }, $class;
 
@@ -426,7 +431,7 @@ sub get_config
 
   for my $hdr ( @{$self->{headers}} ) {
     my $found = 0;
-    for my $inc ( @{$self->{inc_path}} ) {
+    for my $inc ( @{$self->{'inc-path'}} ) {
       if( -e $inc.$hdr ) {
         $found = 1;
         last;
@@ -551,15 +556,20 @@ sub get_config
   if( exists $self->{cpp_comments} ) {
     $cfg{HasCPPComments} = $self->{cpp_comments};
   }
-  if( exists $self->{inc_path} and @{$self->{inc_path}} > 0 ) {
-    $cfg{Include} = [ map { s/[\\\/]+$//; $_ } @{$self->{inc_path}} ];
+  if( exists $self->{'inc-path'} and @{$self->{'inc-path'}} > 0 ) {
+    $cfg{Include} = [ map { s/[\\\/]+$//; $_ } @{$self->{'inc-path'}} ];
   }
 
   keys %{$self->{preasserted}} and $cfg{Assert} = [sort keys %{$self->{preasserted}}];
 
+  unless (keys %cfg) {
+    $self->_msg("\nI could not get any useful compiler information.");
+    $self->_quit;
+  }
+
   $self->_msg( "\nTesting configuration..." );
 
-  $self->_debug( Data::Dumper->Dump( [\%def, \%predef, \%cfg], [qw(*def *predef *cfg)] ) );
+  $self->_debug(sub { Data::Dumper->Dump( [\%def, \%predef, \%cfg], [qw(*def *predef *cfg)] ) });
 
   # First, check if the configuration works without additional defines
 
@@ -568,7 +578,7 @@ sub get_config
   keys %predef and $cfg{Define} = $define->( \%predef );
 
   my $res = $self->check_config( \%cfg, @headers );
-  $self->_debug( Data::Dumper->Dump( [$res], [qw(res)] ) );
+  $self->_debug(sub { Data::Dumper->Dump( [$res], [qw(res)] ) });
 
   if( $res->{code} == SUCCESS ) {
     $failures = @{$res->{fail}};
@@ -609,7 +619,7 @@ sub get_config
   keys %predef and $cfg{Define} = $define->( \%predef );
 
   my $newres = $self->check_config( \%cfg, @headers );
-  $self->_debug( Data::Dumper->Dump( [$res], [qw(res)] ) );
+  $self->_debug(sub { Data::Dumper->Dump( [$res], [qw(res)] ) });
 
   if( $res->{code} != SUCCESS ) {
     $res = $newres;
@@ -658,7 +668,7 @@ sub get_config
     keys %predef and $cfg{Define} = $define->( \%predef );
 
     $newres = $self->check_config( \%cfg, @headers );
-    $self->_debug( Data::Dumper->Dump( [$res], [qw(res)] ) );
+    $self->_debug(sub { Data::Dumper->Dump( [$res], [qw(res)] ) });
 
     if( $newres->{code} == SUCCESS and @{$newres->{fail}} <= $failures
                                    and @{$newres->{warnings}} <= $warnings ) {
@@ -710,32 +720,32 @@ finish:
       if( $self->{float_format} eq 'IEEE' ) {
         Convert::Binary::C::feature('ieeefp') or $self->_msg( <<ENDMSG );
 
-ATTENTION: The floating point format used by the currently tested
-           compiler appears to be IEEE, but Convert::Binary::C was
-           built without the 'ieeefp' feature. Don't try to handle
+ATTENTION: The floating point format used by the tested compiler
+           appears to be IEEE, but Convert::Binary::C was built
+           without the 'ieeefp' feature. Don't try to handle
            any floating point values in this configuration.
 ENDMSG
       }
       elsif( $self->{float_format} eq 'native' ) {
         Convert::Binary::C::feature('ieeefp') and $self->_msg( <<ENDMSG );
 
-ATTENTION: The currently tested compiler does not seem to use IEEE
-           floating point format. Instead, the format I found was
-           compatible with the floating point format used natively
-           by your machine. For some reason, Convert::Binary::C
-           was built with the 'ieeefp' feature, which is not very
-           clever if my tests were correct. However, don't try to
-           handle any floating point values in this configuration.
+ATTENTION: The tested compiler does not seem to use IEEE floating
+           point format. Instead, the format I found was compatible
+           with the floating point format used natively by your
+           machine. For some reason, Convert::Binary::C was built
+           with the 'ieeefp' feature, which is not very clever if
+           my tests were correct. However, don't try to handle any
+           floating point values in this configuration.
 ENDMSG
       }
       else {
         $self->_msg( <<ENDMSG );
 
-ATTENTION: The currently tested compiler does not seem to use IEEE
-           floating point format, nor does it seem to use a format
-           compatible with the floating point format used natively
-           by your machine. Don't try to handle any floating point
-           values with Convert::Binary::C for this configuration.
+ATTENTION: The tested compiler does not seem to use IEEE floating
+           point format, nor does it seem to use a format compatible
+           with the floating point format used natively by your
+           machine. Don't try to handle any floating point values
+           with Convert::Binary::C in this configuration.
 ENDMSG
       }
     }
@@ -764,11 +774,12 @@ sub cleanup
 {
   my $self = shift;
   if( $self->{'delete'} ) {
-    for( qw( temp obj exe ) ) {
-      exists $self->{$_} and -e $self->{$_} and unlink $self->{$_};
+    for( qw( c pp obj exe ) ) {
+      my $meth = "_${_}file";
+      my $file = $self->$meth();
+      -e $file and unlink $file;
     }
-    my $base = $self->_basename;
-    for( glob "$base.*" ) { -e and unlink }
+    for( glob "$self->{basename}.*" ) { -e and unlink }
   }
 }
 
@@ -777,13 +788,26 @@ sub run_checks
   my $self = shift;
   my $asserts;
 
-  $self->{inc_path}           = $self->_run_incpath;
-  ($self->{names}, $asserts)  = $self->_names( $self->{inc_path} );
+  if ($self->{'inc-path'}) {
+    for (@{$self->{'inc-path'}}) {
+      $_ .= _OS('file-sep') unless /[:\/\\]$/
+    }
+  }
+  elsif ($self->{can_read_ppout}) {
+    $self->{'inc-path'} = $self->_run_incpath;
+  }
+  else {
+    $self->{'inc-path'} = [];
+  }
 
-  $self->{predefined}         = $self->_get_predefined( $self->{names} );
-  $self->{preasserted}        = $self->_get_preasserted( $asserts );
+  ($self->{names}, $asserts)  = $self->_names( $self->{'inc-path'} );
 
-  if( $self->{can_compile} ) {
+  if ($self->{can_preprocess}) {
+    $self->{predefined}         = $self->_get_predefined( $self->{names} );
+    $self->{preasserted}        = $self->_get_preasserted( $asserts );
+  }
+
+  if ($self->{can_compile} || $self->{can_run}) {
     $self->{invalid_keywords}   = $self->_get_invalid_keywords;
     $self->{keyword_map}        = $self->_get_keyword_map;
     $self->{cpp_comments}       = $self->_get_cpp_comments;
@@ -795,7 +819,7 @@ sub run_checks
     $self->{compound_alignment} = $self->_get_compound_alignment;
 
     # run _after_ byteorder test
-    $self->{float_format}     = $self->_get_float_format;
+    $self->{float_format}       = $self->_get_float_format;
   }
 }
 
@@ -827,32 +851,20 @@ sub _test_type
 
   $self->_temp( <<ENDC );
 struct _t_e_s_t_ {
-  char _a_[16];
+  unsigned char _a_[16];
   $type _x_;
-  char _z_[16];
-};
-
-struct _t_e_s_t_ _g_x = {
+  unsigned char _z_[16];
+} _g_x = {
   { $c_begin },
   $init,
   { $c_end }
 };
-
-struct _t_e_s_t_ func()
-{
-  struct _t_e_s_t_ x = {
-    { $c_begin },
-    $init,
-    { $c_end }
-  };
-  return x;
-}
 ENDC
 
   my $res = $self->_compile_temp;
   $res->{status} and return undef;
 
-  my $fh = new IO::File $self->{obj} or return undef;
+  my $fh = new IO::File $self->_objfile or return undef;
   binmode $fh;
 
   my $obj = do { local $/; <$fh> };
@@ -896,7 +908,7 @@ ENDC
 
     my $res = $self->_build_temp;
 
-    if( -e $self->{exe} ) {
+    if( -e $self->_exefile ) {
       local $self->{fatal} = 0;
       $res = $self->_run_temp;
     }
@@ -1078,7 +1090,7 @@ ENDC
 
   my $res = $self->_build_temp;
 
-  if( -e $self->{exe} ) {
+  if( -e $self->_exefile ) {
     local $self->{fatal} = 0;
     $res = $self->_run_temp;
   }
@@ -1208,7 +1220,7 @@ ENDC
 
   my $res = $self->_build_temp;
 
-  if( -e $self->{exe} ) {
+  if( -e $self->_exefile ) {
     local $self->{fatal} = 0;
     $res = $self->_run_temp;
   }
@@ -1311,7 +1323,7 @@ sub _get_basic_sizes
   $self->_msg( "Got size information for the following types:" );
   $self->_wrapped_list( sort @{[map {y/ /_/; $_} keys %sizes]} );
 
-  $self->_debug( Data::Dumper->Dump( [\%sizes], ['*sizes'] ) );
+  $self->_debug(sub { Data::Dumper->Dump( [\%sizes], ['*sizes'] ) });
 
   \%sizes;
 }
@@ -1338,7 +1350,7 @@ ENDC
 
   my $res = $self->_build_temp;
 
-  if( $res->{status} == 0 and -e $self->{exe} ) {
+  if( $res->{status} == 0 and -e $self->_exefile ) {
     {
       local $self->{fatal} = 0;
       $res = $self->_run_temp;
@@ -1443,7 +1455,7 @@ ENDC
 
   my $res = $self->_build_temp;
 
-  if( $res->{status} == 0 and -e $self->{exe} ) {
+  if( $res->{status} == 0 and -e $self->_exefile ) {
     {
       local $self->{fatal} = 0;
       $res = $self->_run_temp;
@@ -1547,9 +1559,10 @@ sub _get_cpp_comments
   $self->_temp( <<ENDC );
 extern int // nothing here
        i;
+int main(void) { return 0; }  /* keep _build happy */
 ENDC
 
-  my $res = $self->_compile_temp;
+  my $res = $self->_compile_or_build_temp;
 
   if( $res->{status} ) {
     $self->_msg( "No, it doesn't." );
@@ -1586,9 +1599,10 @@ sub _get_keyword_map
 
     $self->_temp( <<ENDC );
 typedef struct $key { int foo; } $key;
+int main(void) { return 0; }  /* keep _build happy */
 ENDC
 
-    my $res = $self->_compile_temp;
+    my $res = $self->_compile_or_build_temp;
 
     $res->{status} and push @known, $key;
   }
@@ -1603,7 +1617,7 @@ ENDC
     $self->_msg( "None." );
   }
 
-  $self->_debug( Data::Dumper->Dump( [\@known], ['*known'] ) );
+  $self->_debug(sub { Data::Dumper->Dump( [\@known], ['*known'] ) });
 
   my $remap = join '|', @remap;
 
@@ -1632,9 +1646,10 @@ sub _get_invalid_keywords
 
     $self->_temp( <<ENDC );
 typedef struct $key { int foo; } $key;
+int main(void) { return 0; }  /* keep _build happy */
 ENDC
 
-    my $res = $self->_compile_temp;
+    my $res = $self->_compile_or_build_temp;
 
     $res->{status} == 0 and push @invalid, $key;
   }
@@ -1649,7 +1664,7 @@ ENDC
     $self->_msg( "Your compiler recognizes all keywords." );
   }
 
-  $self->_debug( Data::Dumper->Dump( [\@invalid], ['*invalid'] ) );
+  $self->_debug(sub { Data::Dumper->Dump( [\@invalid], ['*invalid'] ) });
 
   \@invalid;
 }
@@ -1679,7 +1694,7 @@ ENDC
 
   $self->_temp( $code );
 
-  my $res = $self->_runpp_temp;
+  my $res = $self->_preprocess_temp;
 
   if( $res->{status} ) {
     $self->_msg( "Your compiler doesn't seem to like assertions." );
@@ -1688,7 +1703,7 @@ ENDC
 
   my %results;
 
-  for my $line ( @{$res->{stdout}} ) {
+  for my $line ($self->_read_pp($res)) {
     chomp $line;
     next if $line =~ /^\s*#/;
     next if $line =~ /^\s*$/;
@@ -1753,7 +1768,7 @@ ENDC
 
     $self->_temp( $code );
 
-    my $res = $self->_runpp_temp;
+    my $res = $self->_preprocess_temp;
 
     if( $res->{status} ) {
       $self->_work_done;
@@ -1762,7 +1777,7 @@ ENDC
       return {};
     }
 
-    my $out = join '', @{$res->{stdout}};
+    my $out = join '', $self->_read_pp($res);
 
     while( $out =~ /"\s*([^\s"]+)\s*"\s*;\s*\(\s*([^\r\n]+?)\s*\)\s*;/g ) {
       $results{$1} = $2;
@@ -1793,7 +1808,7 @@ ENDC
     $self->_msg( "Your compiler doesn't seem to define anything." );
   }
 
-  $self->_debug( Data::Dumper->Dump( [\%results], ['*results'] ) );
+  $self->_debug(sub { Data::Dumper->Dump( [\%results], ['*results'] ) });
 
   \%results;
 }
@@ -1813,14 +1828,14 @@ sub _incpath_main
     $self->_temp( <<TEMP );
 #include <$hdr>
 TEMP
-    my $res = $self->_runpp_temp;
+    my $res = $self->_preprocess_temp;
 
     if( $res->{status} ) {
       $quiet or $self->_msg("Compiler choked on including '$hdr'. Maybe a missing ANSI header...");
       next;
     }
 
-    for my $line ( @{$res->{stdout}} ) {
+    for my $line ($self->_read_pp($res)) {
       if( $line =~ $self->{ppline} ) {
         my $file = $2;
         if( $file =~ /^(.*)\Q$hdr\E$/ ) {
@@ -1885,7 +1900,7 @@ sub _run_incpath
       }
     }
 
-    $self->_debug( Data::Dumper->Dump( [\%resolve], ['*resolve'] ) );
+    $self->_debug(sub { Data::Dumper->Dump( [\%resolve], ['*resolve'] ) });
 
     my($i,$j);
     my @h = grep { @{$resolve{$_}} > 1 } keys %resolve;
@@ -1906,7 +1921,7 @@ sub _run_incpath
 
   $self->_work_done;
 
-  $self->_debug( Data::Dumper->Dump( [\@inc], ['*inc'] ) );
+  $self->_debug(sub { Data::Dumper->Dump( [\@inc], ['*inc'] ) });
 
   $self->_msg( "The include path appears to be:" );
   $self->_msg( "  ($_) $inc[$_-1]" ) for 1 .. @inc;
@@ -1951,7 +1966,7 @@ sub _names
     }
   }
 
-  $self->_debug( Data::Dumper->Dump([\%files], ['*files']) );
+  $self->_debug(sub { Data::Dumper->Dump([\%files], ['*files']) });
 
   $ff = keys %files;
   my $fs = 0;
@@ -1997,7 +2012,7 @@ sub _names
   }
 
   $self->_work_done;
-  $self->{debug} and $self->_debug( Data::Dumper->Dump([\@names, \%asserts], [qw(*names *asserts)]) );
+  $self->{debug} and $self->_debug(sub { Data::Dumper->Dump([\@names, \%asserts], [qw(*names *asserts)]) });
 
   $assertions = $assertions ? " and $assertions potential assertions" : '';
   $self->_msg( sprintf "Found %d potential macro names$assertions.", scalar @names );
@@ -2011,138 +2026,160 @@ sub _names
 #
 ########################################################################
 
-sub _basename
-{
-  my $self = shift;
-  my($base) = fileparse( $self->{temp}, '\.[cC][^.]*' );
-  $base;
-}
-
 sub _configure
 {
   my $self = shift;
-  my $res;
 
-  $self->_msg( "Checking if your compiler works..." );
+  ### Purpose of _configure:
+  ### Populate these options unless set by the user and
+  ### check if they do what they're supposed to.
+  ###
+  ###   --cc             the C compiler
+  ###   --preprocess     how to get preprocessor output from the compiler
+  ###   --compile-obj    how to compile C file to object file
+  ###   --compile-exe    how to compile C file to executable file
+  ###
+  ### TODO: detect a.out. (Probably glob <*> before and after running the compiler?)
 
-  my $line = 'char*lotr="Very useful, no doubt, that was to Saruman; yet it seems that he was not content.";';
+  ### Save user values...
 
-  $self->_temp( <<TEMP );
-$line
-TEMP
+  my $user = {};
 
-  my $user_ppout = exists $self->{ppout};
-
-  my $ccfg = {
-    cc      => [ 'cc', 'gcc', 'icc' ],
-    ppout   => [ '-E', '-c -E' ],
-    ccflags => [@{$self->{ccflags}}],
-  };
-
-  $^O eq 'MSWin32' and unshift @{$ccfg->{cc}}, 'cl';
-
-  my $tcfg = {};
-
-  for my $c ( qw( cc ppout ) ) {
-    if( exists $self->{$c} ) {
-      $tcfg->{$c} = $self->{$c};
-      @{$ccfg->{$c}} = grep $_ ne $self->{$c}, @{$ccfg->{$c}};
-      unshift @{$ccfg->{$c}}, $self->{$c};
-    }
+  for my $c (qw( cc preprocess compile-obj compile-exe )) {
+    $user->{$c} = $self->{$c} if exists $self->{$c};
   }
 
-  $self->_debug( Data::Dumper->Dump([$tcfg,$ccfg], ['*tcfg','*ccfg']) );
+  ### Let's go!
 
-  $self->{ppout} = shift @{$ccfg->{ppout}};
+  $self->_cleanup_basename;
+  $self->_msg("Checking if your compiler works...");
 
+  ### First, try to find a working CC that we can run...
+
+  my @CC = exists $user->{cc} ? ($user->{cc}) : (qw( cc gcc icc cl ));
+
+  my $res;
   my $didnotrun;
+  my $fullcc;
 
   do {
-    my $ccname = shift @{$ccfg->{cc}};
-    my $fullcc = which( $ccname );
-    $self->{cc} = $fullcc || $ccname;
-    $res = $self->_runpp_temp;
-    $didnotrun = $res->{didnotrun};
-
-    if( $didnotrun and defined $tcfg->{cc} and $tcfg->{cc} eq $ccname ) {
-      if( defined $fullcc ) {
-        $self->_msg( "It seems your compiler '$self->{cc}' did not run." );
+    my $ccname = shift @CC;
+    $fullcc = which($ccname);
+    $fullcc = $ccname if !defined $fullcc && -x $ccname;
+    $didnotrun = 1;
+    if (defined $fullcc) {
+      $self->{cc} = $fullcc;
+      $res = $self->_runprog($self->{cc});
+      $didnotrun = $res->{didnotrun};
+    }
+    if ($didnotrun and exists $user->{cc}) {
+      if (defined $fullcc) {
+        $self->_msg("It seems your compiler '$self->{cc}' did not run.");
       }
       else {
-        $self->_msg( "I could not find your compiler '$self->{cc}'." );
+        $self->_msg("I could not find your compiler '$self->{cc}'.");
       }
-      $self->_msg( "\nI'll try to run some other compilers..." );
+      $self->_quit;
     }
-  } while( $didnotrun && @{$ccfg->{cc}} );
+  } while ($didnotrun && @CC);
 
-  if( $didnotrun ) {
-    $self->_msg( "None of the compilers I know seemed to run." );
+  if ($didnotrun) {
+    $self->_msg("None of the compilers I know seemed to run.");
+    $self->_msg("Try specifying a compiler using the --cc option.");
     $self->_quit;
   };
 
-  $self->_msg( "Found a working compiler at $self->{cc}\n" );
+  $self->_msg("Found a working compiler at $self->{cc}\n");
 
-  my @ppout = ($self->{ppout}, @{$ccfg->{ppout}});
-  my($have_source, $have_ppline);
-  my $modified = 0;
+  ### Ok, so we have a compiler. Let's see how to get preprocessor output...
 
-  while(1) {
+  my $line = 'char*lotr="Very useful, no doubt, that was to Saruman; yet it seems that he was not content.";';
+
+  $self->_temp(<<TEMP);
+$line
+TEMP
+
+  my @PP  = exists $user->{preprocess} ? ($user->{preprocess}) : ('-E %c |', '-c -E %c |', '-sp %c');
+  my @PPE = exists $user->{'pp-ext'}   ? ($user->{'pp-ext'})   : ('.i', '.p');
+
+  my($have_source, $have_ppline, $pp_ext);
+
+  do {
     $have_source = 0;
     $have_ppline = 0;
 
-    $res = $self->_runpp_temp;
+    $self->{preprocess} = shift @PP;
 
-    for( @{$res->{stdout}} ) {
-      /\Q$line/                                        and $have_source = 1;
-      $_ =~ $self->{ppline} && $2 =~ /\Q$self->{temp}/ and $have_ppline = 1;
+    $res = $self->_preprocess_temp;
+    for my $ext (@PPE) {
+      $self->{'pp-ext'} = $ext;
+      if (-f $self->_ppfile) {
+        $pp_ext = $ext;
+        last;
+      }
     }
-    $have_source and $have_ppline and last;
+    my @ppout = $self->_read_pp($res);
 
-    $modified = 1;
+    for (@ppout) {
+      /\Q$line/                                            and $have_source = 1;
+      $_ =~ $self->{ppline} && $2 =~ /\Q$self->{basename}/ and $have_ppline = 1;
+    }
+  } while (!$have_source && @PP);
 
-    if( @{$ccfg->{ppout}} ) {
-      $self->{ppout} = shift @{$ccfg->{ppout}};
-    }
-    elsif( @{$self->{ccflags}} ) {
-      $self->{ccflags} = [];
-      $ccfg->{ppout} = [@ppout];
-      $self->{ppout} = shift @{$ccfg->{ppout}};
-    }
-    else {
-      $self->_msg( "I couldn't figure out how to get preprocessor output from the compiler." );
-      $self->_quit;
-    }
-  };
+  $self->{'pp-ext'} = $pp_ext || '';
+  $self->{can_preprocess} = $have_source;
+  $self->{can_read_ppout} = $have_ppline;
 
-  if( $user_ppout and $modified ) {
-    $self->_msg( "I had to modify the compiler flags to get preprocessor output:" );
-    $self->_msg( "  ccflags: @{$self->{ccflags}}" );
-    $self->_msg( "  ppout  : $self->{ppout}" );
+  if (!$self->{can_preprocess}) {
+    $self->_msg("I couldn't figure out how to get usable preprocessor output from the compiler.");
+  }
+  else {
+    $self->_msg("I can get preprocessor output using rule [$self->{preprocess}].");
+    $self->_msg("But I don't understand the preprocessor output.")
+        unless $self->{can_read_ppout};
   }
 
-  my $base = $self->_basename;
-  $self->{exe} = $base;
-  $self->{obj} = $base;
+  ### Compile/build executable files
 
-  my $windows = $^O eq 'MSWin32' || $^O eq 'cygwin';
+  $self->{can_compile} = 0;
+  $self->{can_build}   = 0;
+  $self->{can_run}     = 0;
 
-  $self->{exe} .= '.exe' if $windows;
-  $self->{obj} .= $windows ? '.obj' : '.o';
-
+  $self->_cleanup_basename;
   $self->_temp( <<TEMP );
 extern int i;
 TEMP
 
-  $res = $self->_compile_temp;
+  my @CCO = exists $user->{'compile-obj'} ? ($user->{'compile-obj'}) : ('-c -o %o %c', '%c');
+  my @OBJ = exists $user->{'obj-ext'}     ? ($user->{'obj-ext'})     : @{_OS('obj-ext')};
+  my $obj_ext;
 
-  $self->{can_compile} = $res->{didnotrun} == 0 && $res->{status} == 0;
-  $self->{can_build}   = 0;
-  $self->{can_run}     = 0;
+  do {
+    $self->{'compile-obj'} = shift @CCO;
+    undef $obj_ext;
+    for my $ext (@OBJ) {
+      $self->{'obj-ext'} = $ext;
+      $res = $self->_compile_temp;
+      if (-f $self->_objfile) {
+        $obj_ext = $ext;
+        last;
+      }
+    }
+    $self->{can_compile} = $res->{didnotrun} == 0 && $res->{status} == 0 && defined $obj_ext;
+  } while (!$self->{can_compile} && @CCO);
 
-  if( $self->{can_compile} ) {
-    $self->_msg("I can compile object files with $self->{cc}.");
-    if( $self->{run} ) {
-      $self->_temp( <<TEMP );
+  $self->{'obj-ext'} = $obj_ext || '';
+
+  if ($self->{can_compile}) {
+    $self->_msg("I can compile object files using rule [$self->{'compile-obj'}].");
+  }
+  else {
+    $self->_msg("I cannot compile object files.");
+  }
+
+  if ($self->{run}) {
+    $self->_cleanup_basename;
+    $self->_temp(<<TEMP);
 #include <stdio.h>
 int main()
 {
@@ -2151,34 +2188,73 @@ int main()
 }
 TEMP
 
-      $res = $self->_build_temp;
-  
-      $self->{can_build} = -e $self->{exe} && $res->{didnotrun} == 0 && $res->{status} == 0;
-  
-      if( $self->{can_build} ) {
-        $self->_msg("I can also build executable files.");
-        $res = $self->_run_temp;
-  
-        $self->{can_run} = $res->{didnotrun} == 0 && $res->{status} == 0
-                           && grep /Hello World/, @{$res->{stdout}};
-  
-        if( $self->{can_run} ) {
-          $self->_msg("And I can run the executables. Great!");
-        }
-        else {
-          $self->_msg("But I cannot run the executables. That should be fine, too.");
+    my @CCE = exists $user->{'compile-exe'} ? ($user->{'compile-exe'}) : ('-o %e %c');
+    my @EXE = exists $user->{'exe-ext'}     ? ($user->{'exe-ext'})     : @{_OS('exe-ext')};
+    my $exe_ext;
+
+    do {
+      $self->{'compile-exe'} = shift @CCE;
+      undef $exe_ext;
+      for my $ext (@EXE) {
+        $self->{'exe-ext'} = $ext;
+        $res = $self->_build_temp;
+        if (-f $self->_exefile) {
+          $exe_ext = $ext;
+          last;
         }
       }
+      $self->{can_build} = $res->{didnotrun} == 0 && $res->{status} == 0 && defined $exe_ext;
+    } while (!$self->{can_build} && @CCE);
+  
+    $self->{'exe-ext'} = $exe_ext || '';
+
+    if ($self->{can_build}) {
+      if ($self->{can_compile}) {
+        $self->_msg("I can also build executable files using rule [$self->{'compile-exe'}].");
+      }
       else {
-        $self->_msg("But I cannot build executable files. No big deal.");
+        $self->_msg("But it seems I can build executable files using rule [$self->{'compile-exe'}].");
+      }
+      $res = $self->_run_temp;
+  
+      $self->{can_run} = $res->{didnotrun} == 0 && $res->{status} == 0
+                         && grep /Hello World/, @{$res->{stdout}};
+  
+      if ($self->{can_run}) {
+        $self->_msg("And I can run the executables. Great!");
+      }
+      else {
+        $self->_msg("But I cannot run the executables. That should be fine, too.");
       }
     }
     else {
-      $self->_msg("No need to check if I can build executables.");
+      if ($self->{can_compile}) {
+        $self->_msg("But I cannot build executable files. No big deal.");
+      }
+      else {
+        $self->_msg("And I cannot build executable files. Sigh.");
+      }
     }
   }
   else {
-    $self->_msg("I cannot compile object files.");
+    $self->_msg("No need to check if I can build executables.");
+  }
+  
+  $self->_cleanup_basename;
+
+  $self->_debug(sub { Data::Dumper->Dump( [$self], [qw(self)] ) });
+
+  unless ($self->{can_preprocess} || $self->{can_compile} || $self->{can_run}) {
+    my @opt = map { "--$_" } grep { !exists $user->{$_} }
+              qw( preprocess compile-obj compile-exe );
+
+    if (@opt) {
+      my $last = pop @opt;
+      my $opt = @opt ? join(', ', @opt) . " and $last options" : "$last option";
+      $self->_msg_wrapped("\nTry using the $opt to specify compiler behaviour.");
+    }
+
+    $self->_quit;
   }
 }
 
@@ -2188,30 +2264,96 @@ TEMP
 #
 ########################################################################
 
+sub _OS
+{
+  my $prop = shift;
+  my %os = (
+    (map { ( $_ => {
+      'obj-ext' => ['.obj', '.o'],
+      'exe-ext' => ['.exe', ''],
+      'file-sep' => '\\',
+    } ) } qw( MSWin32 dos os2 ) ),
+  );
+  my %def = (
+    'obj-ext' => ['.o', '.obj'],
+    'exe-ext' => ['', '.exe'],
+    'file-sep' => '/',
+  );
+
+  return exists $os{$^O} ? $os{$^O}{$prop} : $def{$prop};
+}
+
+sub _cleanup_basename
+{
+  my $self = shift;
+  my %seen;
+  my @basefiles = grep !$seen{$_}++, glob "$self->{basename}*";
+  push @basefiles, grep !$seen{$_}++, glob "$self->{basename}.*";
+  $self->_debug("cleaning up: @basefiles\n");
+  unlink @basefiles;
+}
+
 sub _unique
 {
   my %unique;
   grep !$unique{$_}++, @_;
 }
 
+sub _cfile
+{
+  my $self = shift;
+  return $self->{basename} . ($self->{'c-ext'} || '');
+}
+
+sub _ppfile
+{
+  my $self = shift;
+  return $self->{basename} . ($self->{'pp-ext'} || '');
+}
+
+sub _objfile
+{
+  my $self = shift;
+  return $self->{basename} . ($self->{'obj-ext'} || '');
+}
+
+sub _exefile
+{
+  my $self = shift;
+  return $self->{basename} . ($self->{'exe-ext'} || '');
+}
+
+sub _read_pp
+{
+  my($self, $res) = @_;
+
+  if ($self->{preprocess} =~ /\|$/) {
+    return @{$res->{stdout}};
+  }
+
+  my $f = new IO::File $self->_ppfile or return;
+
+  return <$f>;
+}
+
 sub _temp
 {
   my $self = shift;
-  $self->_debug( "creating temporary file '$self->{temp}'\n" );
-  if( -e $self->{temp} ) {
-    unlink $self->{temp}
-      or croak "Could not remove temporary file '$self->{temp}': $!\n";
+  my $temp = $self->_cfile;
+  $self->_debug( "creating temporary file '$temp'\n" );
+  if (-e $temp) {
+    unlink $temp
+        or croak "Could not remove temporary file '$temp': $!\n";
   }
-  my $f = new IO::File ">$self->{temp}";
-  defined $f
-    or croak "Could not open temporary file '$self->{temp}': $!\n";
-  $f->print( @_ );
+  my $f = new IO::File ">$temp"
+      or croak "Could not open temporary file '$temp': $!\n";
+  $f->print(@_);
 }
 
 sub _quit
 {
   my $self = shift;
-  $self->_msg( "Sorry, cannot continue." );
+  $self->_msg("\nSorry, cannot continue.");
   $self->cleanup;
   exit(1);
 }
@@ -2219,39 +2361,55 @@ sub _quit
 sub _run_temp
 {
   my $self = shift;
-  $self->_runprog( "./$self->{exe}" );
+  $self->_runprog( "." . _OS('file-sep') . $self->_exefile );
+}
+
+sub _interpolate
+{
+  my($self, $template) = @_;
+  my %replace = (
+    c => $self->_cfile,
+    o => $self->_objfile,
+    e => $self->_exefile,
+    i => $self->_ppfile,
+  );
+  my $match = join '|', keys %replace;
+  $template =~ s/\s+\|$//;
+  $template =~ s/%($match)/$replace{$1}/g;
+  return shellwords($template);
+}
+
+sub _compile_or_build_temp
+{
+  my $self = shift;
+  my $meth = $self->{can_compile} ? '_compile_temp' : '_build_temp';
+  $self->$meth();
 }
 
 sub _build_temp
 {
   my $self = shift;
-  unlink $self->{exe};  # make sure exe is removed
-  $self->_runcc( '-o', $self->{exe}, $self->{temp} );
+  unlink $self->_exefile if -f $self->_exefile;  # make sure exe is removed
+  $self->_runcc($self->_interpolate($self->{'compile-exe'}));
 }
 
 sub _compile_temp
 {
   my $self = shift;
-  unlink $self->{obj};  # make sure obj is removed
-  $self->_runcc( '-o', $self->{obj}, '-c', $self->{temp} );
+  unlink $self->_objfile if -f $self->_objfile;  # make sure obj is removed
+  $self->_runcc($self->_interpolate($self->{'compile-obj'}));
 }
 
-sub _runpp_temp
+sub _preprocess_temp
 {
   my $self = shift;
-  $self->_runpp( $self->{temp} );
-}
-
-sub _runpp
-{
-  my $self = shift;
-  $self->_runcc( $self->{ppout}, @_ );
+  $self->_runcc($self->_interpolate($self->{'preprocess'}));
 }
 
 sub _runcc
 {
   my $self = shift;
-  $self->_runprog( $self->{cc}, @{$self->{ccflags}}, @_ );
+  $self->_runprog($self->{cc}, @{$self->{ccflags}}, @_);
 }
 
 sub _runprog
@@ -2262,13 +2420,9 @@ sub _runprog
 
   eval { alarm 10; alarm 0; };
   my $has_alarm = $@ eq '';
+  my $tmp = '_t_m_p_';
 
   $self->_debug( "running '$prog @args'\n" );
-
-  my(@sout, @serr);
-  local(*W, *S, *E);
-
-  my $pid = open3(\*W, \*S, \*E, $prog, @args);
 
   eval {
     local $SIG{ALRM};
@@ -2278,29 +2432,37 @@ sub _runprog
       alarm $self->{timeout};
     }
 
-    @sout = <S>;
-    @serr = <E>;
-
-    waitpid($pid, 0);
+    system "$prog @args >$tmp.out 2>$tmp.err";
 
     $has_alarm and alarm 0;
   };
 
-  $@ eq "TIMEOUT\n" and kill $pid;
-
   my %rval = (
     status => $? >> 8,
-    stdout => \@sout,
-    stderr => \@serr,
   );
+
+  for my $p (qw(out err)) {
+    my $file = "$tmp.$p";
+    my @lines;
+    if (-f $file) {
+      {
+        my $fh = IO::File->new($file);
+        if (defined $fh) {
+          @lines = <$fh>;
+        }
+      }
+      unlink $file;
+    }
+    $rval{"std$p"} = \@lines;
+  }
 
   $rval{didnotrun} = 0;
 
-  if( @serr && $serr[0] =~ /^Can't exec "\Q$prog\E":/ ) {
+  if( @{$rval{stdout}} && $rval{stdout}[0] =~ /^Can't exec "\Q$prog\E":/ ) {
     $rval{didnotrun} = 1;
   }
 
-  if( $^O eq 'MSWin32' && $rval{status} == 1 ) {
+  if( $^O eq 'MSWin32' && @{$rval{stdout}} == 0 && @{$rval{stderr}} == 0 && $rval{status} == 1 ) {
     $rval{didnotrun} = 1;
   }
 
@@ -2311,7 +2473,7 @@ sub _runprog
   $? & 128 and $rval{core}   = 1;
   $? & 127 and $rval{signal} = $? & 127;
 
-  $self->{debug} and $self->_debug( Data::Dumper->Dump( [\%rval], ['*rval'] ) );
+  $self->{debug} and $self->_debug(sub { Data::Dumper->Dump( [\%rval], ['*rval'] ) });
 
   if( $self->{__int__} ) {
     $self->_msg( "\n\nInterrupted..." );
@@ -2405,7 +2567,7 @@ sub _msg_wrapped
     $string .= "($sub:$line): ";
   }
   $string .= join '', @_, "\n";
-  print STDERR wrap( '  ', '   ', $string );
+  print STDERR wrap('', '', $string);
 }
 
 sub _wrapped_list
@@ -2435,7 +2597,10 @@ sub _debug
   $self->{debug} or return;
   my @args = @_;
   my (undef,undef,$line,$sub) = caller 1;
-  s/^/DEBUG | /gms for @args;
+  for (@args) {
+    $_ = $_->() if ref $_ eq 'CODE';
+    s/^/DEBUG | /gms;
+  }
   print STDERR "DEBUG @ $sub:$line\n", @args;
 }
 
@@ -2520,15 +2685,6 @@ I<options>:
   --cc             compiler   compiler executable to test
                               default: auto-determined
   
-  -p
-  --ppout          flag       compiler option for sending
-                              preprocessor output to stdout
-                              default: -E
-  
-  -t
-  --temp           file       name of the temporary test file
-                              default: _t_e_s_t.c
-  
   -o
   --output-file    file       output filename
                               default: output to stdout
@@ -2537,10 +2693,23 @@ I<options>:
   --output-format  format     output format
                               default: dumper
 
+  --basename       name       basename of the temporary test files
+                              default: _t_e_s_t
+
+  -I
+  --inc-path       path       manually set compiler include path
+
+  --preprocess     rule       compiler rule for preprocessing
+  --compile-obj    rule       compiler rule for compiling objects
+  --compile-exe    rule       compiler rule for compiling executables
+
+  --c-ext          ext        extension of C source files
+  --pp-ext         ext        extension of preprocessor output files
+  --obj-ext        ext        extension of object files
+  --exe-ext        ext        extension of executable files
+
   --nodelete                  don't delete temporary files
-  
   --norun                     don't try to run executables
-  
   --quiet                     don't display anything
   --nostatus                  don't display status indicator
   
@@ -2548,15 +2717,23 @@ I<options>:
   
   --debug                     debug mode
 
+Placeholders allowed in compiler rules:
+
+  %c    C source file
+  %o    object file
+  %e    executable file
+  %i    preprocessor output file
+  |     result is written to stdout (only at end of rule)
+
 =head1 DESCRIPTION
 
 C<ccconfig> will try to determine a usable configuration for
-Convert::Binary::C from testing a compiler executable.
-It is not necessary that the binaries generated by the compiler
-can be executed, so C<ccconfig> can be used for cross-compilers.
+Convert::Binary::C from testing a compiler executable. It is not
+necessary that the binaries generated by the compiler can be
+executed, so C<ccconfig> can also be used for cross-compilers.
 
-The tool is still experimental, and you should neither rely
-on its results without checking, nor expect it to work in your
+This tool is still experimental, and you should neither rely
+on its output without checking, nor expect it to work in your
 environment.
 
 =head1 OPTIONS
@@ -2565,18 +2742,8 @@ environment.
 
 This option allows you to explicitly specify a compiler
 executable. This is especially useful if you don't want
-to use your system compiler.
-
-=head2 C<--ppout> flag
-
-This option tells C<ccconfig> which flag must be used to
-make the compiler write the preprocessor output to standard
-output. The default is C<-E>, which is correct for many
-compilers.
-
-=head2 C<--temp> file
-
-Allows you to change the name of the temporary test file.
+to use your system compiler. If this options is not given,
+C<ccconfig> tries to guess a compiler.
 
 =head2 C<--output-file> file
 
@@ -2593,6 +2760,89 @@ The following formats are currently supported:
 
 The default is C<dumper>.
 
+=head2 C<--basename> name
+
+Allows you to change the base name of the temporary test files.
+This is used along with the various C<-ext> options to build
+the filenames of C source files, preprocessor output files,
+object files and executables.
+
+=head2 C<--inc-path> path
+
+This option allows you to manually set the include path of the
+compiler. This is useful if C<ccconfig> cannot determine the
+include path automatically, most probably because it cannot
+parse the preprocessor output. This option can be specified
+more than once.
+
+=head2 C<--preprocess> rule
+
+Using this option, you can specify a I<rule> that C<ccconfig>
+uses to run the compiler to get preprocessor output. Most
+compilers write the preprocessor output to standard output
+when given the C<-E> option, i.e.
+
+  cc -E foo.c
+
+will preprocess F<foo.c> to standard output. The corresponding
+rule for C<ccconfig> would be:
+
+  ccconfig --preprocess='-E %c |'
+
+The <%c> will be replaced with the C source filename, and the
+pipe symbol signals that the result will be written to standard
+output.
+
+The following placeholders can be used in C<ccconfig> rules:
+
+  %c    C source file
+  %o    object file
+  %e    executable file
+  %i    preprocessor output file
+
+Usually, C<ccconfig> tries to figure out the correct rules on
+its own.
+
+=head2 C<--compile-obj> rule
+
+Like C<--preprocess>, this option allows you to define a rule
+for how to compile an object file. For most compilers, this rule
+will be something like
+
+  ccconfig --compile-obj='-c -o %o %c'
+
+=head2 C<--compile-exe> rule
+
+Like C<--preprocess>, this option allows you to define a rule
+for how to compile an executable file. For most compilers, this
+rule will be something like
+
+  ccconfig --compile-exe='-o %e %c'
+
+Note that it is sufficient to specify either C<--compile-obj>
+or C<--compile-exe>. So if your compiler can only create object
+files, that's just fine.
+
+=head2 C<--c-ext>
+
+This option is used along with C<--basename> to build the name
+of a C source file. This is usually set to C<.c>.
+ 
+=head2 C<--pp-ext>
+
+This option is used along with C<--basename> to build the name
+of a preprocessor output file.
+ 
+=head2 C<--obj-ext>
+
+This option is used along with C<--basename> to build the name
+of an object file.
+ 
+=head2 C<--exe-ext>
+
+This option is used along with C<--basename> to build the name
+of an executable file.
+ 
 =head2 C<--nodelete>
 
 Don't attempt to delete temporary files that have been created
@@ -2643,8 +2893,8 @@ Normally, a simple
 without arguments is enough if you want the configuration for
 your system compiler. While C<ccconfig> is running, it will
 write lots of status information to C<stderr>. When it's done,
-it will write a Perl hash table to C<stdout> which can be
-directly used as a configuration for Convert::Binary::C.
+it will usually dump a Perl hash table to C<stdout> which can
+be directly used as a configuration for Convert::Binary::C.
 
 If you want the configuration for a different compiler,
 or C<ccconfig> cannot determine your system compiler

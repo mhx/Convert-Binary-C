@@ -2,10 +2,68 @@
 What's to do?
 =============
 
+* extend sizeof() to support size of bitfields with .bits notation???
+
+* add SignedBitfields (or UnsignedBitfields) option (not to
+  the layouter, but to the CBC object; this is not a layout
+  feature)
+
+* test bitfields with unnamed structs (the M$ specific beast)
+  => should be ok, as far as we've seen with gcc
+
+* test bitfield layouter configuration (i.e. invalid properties,
+  invalid values)
+
+* add probes for bitfield behaviour to ccconfig
+
+* compile with normal perl and -Wall will show some interesting
+  warnings (uninit, unused, ...)
+    => try gcc-4.1
+
+* parser tests: negative array index
+    => make parse error?
+
+* turn REFCOUNT_INC / _DEC into functions?
+
+* eliminate croak_gti()?
+
+* check for potential memory leaks:
+
+    - IDLIST_INIT in pack(), what if pack_type() croaks?
+                             can it croak() at all?
+
+  for example when a hook dies!! => leaks memory!  ==> FIX!!!
+
+    => use G_EVAL for call_sv ??
+    => use garbage collector ?
+    => wrap all calls in XCPT_ macros?
+
+* update test runtime in README
+
+* cleanup remaining TODOs
+
+
 for future releases (in no special order):
 ------------------------------------------
 
+* redirect stderr of test 901 (use same tricks as in D::PPP)
+
 * remove deprecated hooks methods
+
+* we need much better parser tests...
+
+* can we simplify _expressions in the parser with %prec ?
+
+* instrument both parser.y and pragma.y with %printers ?
+
+* improve errors with locations (see bison.pdf) ?
+
+* parse expressions into a tree
+
+   => write an optimizer for the tree that simplifies
+      constant arithmetics
+
+   => really short-circuit on boolean expressions
 
 * more 'basic type objects' tests
 
@@ -26,8 +84,6 @@ for future releases (in no special order):
 * port docs to Text::GenDoc (release T::G first ;-)
 
 * handle Cray behaviour
-
-* make byteorder.[ch] work with "binary" strings (0b01001)
 
 * support conversion to new 5.10 (un)pack templates
 

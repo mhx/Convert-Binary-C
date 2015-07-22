@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:39 +0000 $
-* $Revision: 4 $
+* $Date: 2005/04/22 21:33:40 +0100 $
+* $Revision: 8 $
 * $Source: /cbc/init.c $
 *
 ********************************************************************************
@@ -136,19 +136,17 @@ static void get_init_str_struct(pTHX_ CBC *THIS, Struct *pStruct, SV *init,
     {
       LL_foreach(pDecl, pStructDecl->declarators)
       {
-        size_t id_len;
         SV **e;
 
         /* skip unnamed bitfield members right here */
-        if (pDecl->bitfield_size >= 0 && pDecl->identifier[0] == '\0')
+        if (pDecl->bitfield_flag && pDecl->identifier[0] == '\0')
           continue;
 
         /* skip flexible array members */
-        if (pDecl->bitfield_size < 0 && pDecl->size == 0 && LL_count(pDecl->array))
+        if (pDecl->array_flag && pDecl->size == 0)
           continue;
 
-        id_len = strlen(pDecl->identifier);
-        e = hash ? hv_fetch(hash, pDecl->identifier, id_len, 0) : NULL;
+        e = hash ? hv_fetch(hash, pDecl->identifier, CTT_IDLEN(pDecl), 0) : NULL;
         if(e)
           SvGETMAGIC(*e);
 
@@ -208,10 +206,10 @@ static void get_init_str_type(pTHX_ CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
            "dimension=%d, init=%p, idl=%p, level=%d, string=%p )",
            THIS, pTS, pDecl, dimension, init, idl, level, string));
 
-  if (pDecl && dimension < LL_count(pDecl->array))
+  if (pDecl && pDecl->array_flag && dimension < LL_count(pDecl->ext.array))
   {
     AV *ary = NULL;
-    long i, s = ((Value *) LL_get(pDecl->array, dimension))->iv;
+    long i, s = ((Value *) LL_get(pDecl->ext.array, dimension))->iv;
     int first = 1;
 
     if (DEFINED(init))
@@ -253,7 +251,7 @@ static void get_init_str_type(pTHX_ CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
       Typedef *pTD = (Typedef *) pTS->ptr;
       get_init_str_type(aTHX_ THIS, pTD->pType, pTD->pDecl, 0, init, idl, level, string);
     }
-    else if(pTS->tflags & (T_STRUCT|T_UNION))
+    else if(pTS->tflags & T_COMPOUND)
     {
       Struct *pStruct = pTS->ptr;
       if (pStruct->declarations == NULL)

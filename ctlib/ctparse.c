@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/06 21:47:30 +0000 $
-* $Revision: 47 $
+* $Date: 2005/04/04 20:19:01 +0100 $
+* $Revision: 52 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -69,7 +69,6 @@
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 
 static char *get_path_name( const char *dir, const char *file );
-static void update_struct( const CParseConfig *pCPC, Struct *pStruct );
 
 
 /*===== EXTERNAL VARIABLES ===================================================*/
@@ -80,172 +79,10 @@ static void update_struct( const CParseConfig *pCPC, Struct *pStruct );
 CParseInfo *g_current_cpi;
 #endif
 
-int native_alignment          = 0;
-int native_compound_alignment = 0;
-
 
 /*===== STATIC VARIABLES =====================================================*/
 
 /*===== STATIC FUNCTIONS =====================================================*/
-
-/*******************************************************************************
-*
-*   ROUTINE: update_struct
-*
-*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
-*   CHANGED BY:                                   ON:
-*
-********************************************************************************
-*
-* DESCRIPTION:
-*
-*   ARGUMENTS:
-*
-*     RETURNS:
-*
-*******************************************************************************/
-
-static void update_struct( const CParseConfig *pCPC, Struct *pStruct )
-{
-  StructDeclaration *pStructDecl;
-  Declarator        *pDecl;
-  unsigned           size, align, alignment;
-  u_32               flags;
-
-  CT_DEBUG( CTLIB, ("update_struct( %s ), got %d struct declaration(s)",
-            pStruct->identifier[0] ? pStruct->identifier : "<no-identifier>",
-            LL_count(pStruct->declarations)) );
-
-  if( pStruct->declarations == NULL ) {
-    CT_DEBUG( CTLIB, ("no struct declarations in update_struct") );
-    return;
-  }
-
-  alignment = pStruct->pack ? pStruct->pack : CPC_ALIGNMENT(pCPC);
-
-  pStruct->align = alignment < CPC_COMPOUND_ALIGNMENT(pCPC)
-                 ? alignment : CPC_COMPOUND_ALIGNMENT(pCPC);
-
-  LL_foreach( pStructDecl, pStruct->declarations ) {
-
-    CT_DEBUG( CTLIB, ("%d declarators in struct declaration, tflags=0x%08lX ptr=%p",
-              LL_count(pStructDecl->declarators),
-              (unsigned long) pStructDecl->type.tflags, pStructDecl->type.ptr) );
-
-    pStructDecl->offset = pStruct->tflags & T_STRUCT ? -1 : 0;
-    pStructDecl->size   = 0;
-
-    if( pStructDecl->declarators ) {
-
-      LL_foreach( pDecl, pStructDecl->declarators ) {
-        CT_DEBUG( CTLIB, ("current declarator [%s]",
-                  pDecl->identifier[0] ? pDecl->identifier : "<no-identifier>") );
-
-        get_type_info( pCPC, &pStructDecl->type, pDecl, &size, &align, NULL, &flags );
-        CT_DEBUG( CTLIB, ("declarator size=%d, align=%d, flags=0x%08lX",
-                          size, align, (unsigned long) flags) );
-
-        if( (flags & T_HASBITFIELD) || pDecl->bitfield_size >= 0 ) {
-          CT_DEBUG( CTLIB, ("found bitfield '%s' in '%s %s'",
-                    pDecl->identifier[0] ? pDecl->identifier : "<no-identifier>",
-                    pStruct->tflags & T_STRUCT ? "struct" : "union",
-                    pStruct->identifier[0] ? pStruct->identifier : "<no-identifier>") );
-
-          pStruct->tflags |= T_HASBITFIELD;
-        }
-
-        if( flags & T_UNSAFE_VAL ) {
-          CT_DEBUG( CTLIB, ("unsafe values in '%s %s'",
-                    pStruct->tflags & T_STRUCT ? "struct" : "union",
-                    pStruct->identifier[0] ? pStruct->identifier : "<no-identifier>") );
-
-          pStruct->tflags |= T_UNSAFE_VAL;
-        }
-
-        pDecl->size = size;
-
-        if( align > alignment )
-          align = alignment;
-
-        if( align > pStruct->align )
-          pStruct->align = align;
-
-        if( pStruct->tflags & T_STRUCT ) {
-          unsigned mod = pStruct->size % align;
-
-          if( mod )
-            pStruct->size += align - mod;
-
-          if( pStructDecl->offset < 0 )
-            pStructDecl->offset = pStruct->size;
-
-          pDecl->offset = pStruct->size;
-          pStruct->size += size;
-        }
-        else /* T_UNION */ {
-          pDecl->offset = 0;
-
-          if( size > pStruct->size )
-            pStruct->size = size;
-        }
-      }
-
-    }
-    else /* unnamed struct/union */ {
-
-      CT_DEBUG( CTLIB, ("current declaration is an unnamed struct/union") );
-
-      get_type_info( pCPC, &pStructDecl->type, NULL, &size, &align, NULL, &flags );
-      CT_DEBUG( CTLIB, ("unnamed struct/union: size=%d, align=%d, flags=0x%08lX",
-                        size, align, (unsigned long) flags) );
-
-      if( flags & T_HASBITFIELD ) {
-        CT_DEBUG( CTLIB, ("found bitfield in unnamed struct/union") );
-        pStruct->tflags |= T_HASBITFIELD;
-      }
-
-      if( flags & T_UNSAFE_VAL ) {
-        CT_DEBUG( CTLIB, ("unsafe values in unnamed struct/union") );
-        pStruct->tflags |= T_UNSAFE_VAL;
-      }
-
-      if( align > alignment )
-        align = alignment;
-
-      if( align > pStruct->align )
-        pStruct->align = align;
-
-      if( pStruct->tflags & T_STRUCT ) {
-        unsigned mod = pStruct->size % align;
-
-        if( mod )
-          pStruct->size += align - mod;
-
-        if( pStructDecl->offset < 0 )
-          pStructDecl->offset = pStruct->size;
-
-        pStruct->size += size;
-      }
-      else /* T_UNION */ {
-        if( size > pStruct->size )
-          pStruct->size = size;
-      }
-    }
-
-    if( pStructDecl->offset < 0 )
-      pStructDecl->offset = pStruct->size;
-
-    pStructDecl->size = pStruct->size - pStructDecl->offset;
-
-  }
-
-  if( pStruct->size % pStruct->align )
-    pStruct->size += pStruct->align - pStruct->size % pStruct->align;
-
-  CT_DEBUG( CTLIB, ("update_struct( %s ): size=%d, align=%d",
-            pStruct->identifier[0] ? pStruct->identifier : "<no-identifier>",
-            pStruct->size, pStruct->align) );
-}
 
 /*******************************************************************************
 *
@@ -669,7 +506,8 @@ void reset_parse_info( CParseInfo *pCPI )
                     LL_count( pCPI->structs )) );
 
   /* clear size and align fields */
-  LL_foreach( pStruct, pCPI->structs ) {
+  LL_foreach( pStruct, pCPI->structs )
+  {
     CT_DEBUG( CTLIB, ("resetting struct '%s':", pStruct->identifier[0] ?
                       pStruct->identifier : "<no-identifier>" ) );
 
@@ -679,7 +517,10 @@ void reset_parse_info( CParseInfo *pCPI )
 
   LL_foreach( pTDL, pCPI->typedef_lists )
     LL_foreach( pTD, pTDL->typedefs )
-      pTD->pDecl->size = -1;
+    {
+      pTD->pDecl->size      = -1;
+      pTD->pDecl->item_size = -1;
+    }
 }
 
 /*******************************************************************************
@@ -699,31 +540,37 @@ void reset_parse_info( CParseInfo *pCPI )
 *
 *******************************************************************************/
 
-void update_parse_info( CParseInfo *pCPI, const CParseConfig *pCPC )
+void update_parse_info(CParseInfo *pCPI, const CParseConfig *pCPC)
 {
   Struct *pStruct;
   TypedefList *pTDL;
   Typedef *pTD;
 
-  CT_DEBUG( CTLIB, ("ctparse::update_parse_info(): got %d struct(s)",
-                    LL_count( pCPI->structs )) );
+  CT_DEBUG(CTLIB, ("ctparse::update_parse_info(): got %d struct(s)",
+                   LL_count(pCPI->structs)));
 
   /* compute size and alignment */
-  LL_foreach( pStruct, pCPI->structs ) {
-    CT_DEBUG( CTLIB, ("updating struct '%s':", pStruct->identifier[0] ?
-                      pStruct->identifier : "<no-identifier>") );
+  LL_foreach (pStruct, pCPI->structs)
+  {
+    CT_DEBUG(CTLIB, ("updating struct '%s':", pStruct->identifier[0] ?
+                     pStruct->identifier : "<no-identifier>"));
 
-    if( pStruct->align == 0 )
-      update_struct( pCPC, pStruct );
+    if (pStruct->align == 0)
+      pCPC->layout_compound(&pCPC->layout, pStruct);
   }
 
-  LL_foreach( pTDL, pCPI->typedef_lists )
-    LL_foreach( pTD, pTDL->typedefs )
-      if( pTD->pDecl->size < 0 ) {
-        unsigned size;
-        if( get_type_info( pCPC, pTD->pType, pTD->pDecl, &size,
-	                   NULL, NULL, NULL ) == GTI_NO_ERROR )
-          pTD->pDecl->size = (int) size;
+  LL_foreach (pTDL, pCPI->typedef_lists)
+    LL_foreach (pTD, pTDL->typedefs)
+      if (pTD->pDecl->size < 0)
+      {
+        unsigned size, item_size;
+
+        if (pCPC->get_type_info(&pCPC->layout, pTD->pType, pTD->pDecl,
+                                "si", &size, &item_size) == GTI_NO_ERROR)
+        {
+          pTD->pDecl->size      = (int) size;
+          pTD->pDecl->item_size = (int) item_size;
+        }
       }
 }
 
@@ -923,305 +770,4 @@ void clone_parse_info( CParseInfo *pDest, const CParseInfo *pSrc )
 }
 
 #undef PTR_NOT_FOUND
-
-/*******************************************************************************
-*
-*   ROUTINE: get_type_info
-*
-*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
-*   CHANGED BY:                                   ON:
-*
-********************************************************************************
-*
-* DESCRIPTION:
-*
-*   ARGUMENTS:
-*
-*     RETURNS:
-*
-*******************************************************************************/
-
-ErrorGTI get_type_info( const CParseConfig *pCPC, const TypeSpec *pTS,
-                        const Declarator *pDecl, unsigned *pSize,
-                        unsigned *pAlign, unsigned *pItemSize, u_32 *pFlags )
-{
-  u_32 flags = pTS->tflags;
-  void *tptr = pTS->ptr;
-  unsigned size;
-  ErrorGTI err = GTI_NO_ERROR;
-
-  CT_DEBUG( CTLIB, ("ctparse::get_type_info( pCPC=%p, pTS=%p "
-                    "[flags=0x%08lX, ptr=%p], pDecl=%p, pFlags=%p )",
-                    pCPC, pTS, (unsigned long) flags, tptr, pDecl, pFlags) );
-
-  if( pFlags )
-    *pFlags = 0;
-
-  if( pDecl && pDecl->pointer_flag ) {
-    CT_DEBUG( CTLIB, ("pointer flag set") );
-    size = pCPC->ptr_size ? pCPC->ptr_size : CTLIB_POINTER_SIZE;
-    if( pAlign )
-      *pAlign = size;
-  }
-  else if( pDecl && pDecl->bitfield_size >= 0 ) {
-    size = 0;
-    if( pAlign )
-      *pAlign = 1;
-  }
-  else if( flags & T_TYPE ) {
-    CT_DEBUG( CTLIB, ("T_TYPE flag set") );
-    if( tptr ) {
-      Typedef *pTypedef = (Typedef *) tptr;
-      if( pFlags ) {
-        u_32 flags;
-        err = get_type_info( pCPC, pTypedef->pType, pTypedef->pDecl, &size,
-                             pAlign, NULL, &flags );
-        *pFlags |= flags;
-      }
-      else
-        err = get_type_info( pCPC, pTypedef->pType, pTypedef->pDecl, &size,
-                             pAlign, NULL, NULL );
-    }
-    else {
-      CT_DEBUG( CTLIB, ("NULL pointer to typedef in get_type_info") );
-      size = pCPC->int_size ? pCPC->int_size : sizeof( int );
-      if( pAlign )
-        *pAlign = size;
-      err = GTI_TYPEDEF_IS_NULL;
-    }
-  }
-  else if( flags & T_ENUM ) {
-    CT_DEBUG( CTLIB, ("T_ENUM flag set") );
-    if( pCPC->enum_size > 0 || tptr ) {
-      size = pCPC->enum_size > 0
-           ? (unsigned) pCPC->enum_size
-           : ((EnumSpecifier *) tptr)->sizes[-pCPC->enum_size];
-    }
-    else {
-      CT_DEBUG( CTLIB, ("neither enum_size (%d) nor enum pointer (%p) in get_type_info",
-                        pCPC->enum_size, tptr) );
-      size = pCPC->int_size ? pCPC->int_size : sizeof( int );
-      err = GTI_NO_ENUM_SIZE;
-    }
-
-    if( pAlign )
-      *pAlign = size;
-  }
-  else if( flags & (T_STRUCT|T_UNION) ) {
-    CT_DEBUG( CTLIB, ("T_STRUCT or T_UNION flag set") );
-    if( tptr ) {
-      Struct *pStruct = (Struct *) tptr;
-
-      if( pStruct->declarations == NULL ) {
-        CT_DEBUG( CTLIB, ("no struct declarations in get_type_info") );
-        size = pCPC->int_size ? pCPC->int_size : sizeof( int );
-        if( pAlign )
-          *pAlign = size;
-        err = GTI_NO_STRUCT_DECL;
-      }
-      else {
-        if( pStruct->align == 0 )
-          update_struct( pCPC, pStruct );
-
-        size = pStruct->size;
-        if( pAlign )
-          *pAlign = pStruct->align;
-      }
-
-      if( pFlags )
-        *pFlags |= pStruct->tflags & (T_HASBITFIELD | T_UNSAFE_VAL);
-    }
-    else {
-      CT_DEBUG( CTLIB, ("NULL pointer to struct/union in get_type_info") );
-      size = pCPC->int_size ? pCPC->int_size : sizeof( int );
-      if( pAlign )
-        *pAlign = size;
-      err = GTI_STRUCT_IS_NULL;
-    }
-  }
-  else {
-    CT_DEBUG( CTLIB, ("only basic type flags set") );
-
-#define LOAD_SIZE( type ) \
-        size = pCPC->type ## _size ? pCPC->type ## _size : CTLIB_ ## type ## _SIZE
-
-    if( flags & T_VOID )  /* XXX: do we want void ? */
-      size = 1;
-    else if( (flags & (T_LONG|T_DOUBLE)) == (T_LONG|T_DOUBLE) )
-      LOAD_SIZE( long_double );
-    else if( flags & T_LONGLONG ) LOAD_SIZE( long_long );
-    else if( flags & T_FLOAT )    LOAD_SIZE( float );
-    else if( flags & T_DOUBLE )   LOAD_SIZE( double );
-    else if( flags & T_CHAR )     LOAD_SIZE( char );
-    else if( flags & T_SHORT )    LOAD_SIZE( short );
-    else if( flags & T_LONG )     LOAD_SIZE( long );
-    else                          LOAD_SIZE( int );
-
-#undef LOAD_SIZE
-
-    if( pAlign )
-      *pAlign = size;
-  }
-
-  if( pItemSize )
-    *pItemSize = size;
-
-  if( pSize ) {
-    if( pDecl && pDecl->array ) {
-      Value *pValue;
-
-      CT_DEBUG( CTLIB, ("processing array [%p]", pDecl->array) );
-
-      LL_foreach( pValue, pDecl->array ) {
-        CT_DEBUG( CTLIB, ("[%ld]", pValue->iv) );
-        size *= pValue->iv;
-        if( pFlags && IS_UNSAFE_VAL( *pValue ) )
-          *pFlags |= T_UNSAFE_VAL;
-      }
-    }
-
-    *pSize = size;
-  }
-
-  CT_DEBUG( CTLIB, ("ctparse::get_type_info( size(%p)=%d, align(%p)=%d, "
-                    "item(%p)=%d, flags(%p)=0x%08lX ) finished",
-                    pSize, pSize ? *pSize : 0, pAlign, pAlign ? *pAlign : 0,
-                    pItemSize, pItemSize ? *pItemSize : 0,
-                    pFlags, (unsigned long) (pFlags ? *pFlags : 0)) );
-
-  return err;
-}
-
-/*******************************************************************************
-*
-*   ROUTINE: get_native_alignment
-*
-*   WRITTEN BY: Marcus Holland-Moritz             ON: Aug 2004
-*   CHANGED BY:                                   ON:
-*
-********************************************************************************
-*
-* DESCRIPTION: Determine the native struct member alignment and store it to
-*              the global native_alignment.
-*
-*   ARGUMENTS:
-*
-*     RETURNS:
-*
-*******************************************************************************/
-
-#define CHECK_NATIVE_ALIGNMENT(type)                                           \
-        do {                                                                   \
-          struct _align { char a; type b; };                                   \
-          int off = offsetof(struct _align, b);                                \
-          if (off > align)                                                     \
-            align = off;                                                       \
-        } while (0)
-
-int get_native_alignment(void)
-{
-  int align = 0;
-
-  CHECK_NATIVE_ALIGNMENT(int);
-  CHECK_NATIVE_ALIGNMENT(int *);
-  CHECK_NATIVE_ALIGNMENT(long);
-  CHECK_NATIVE_ALIGNMENT(float);
-  CHECK_NATIVE_ALIGNMENT(double);
-#if ARCH_HAVE_LONG_LONG
-  CHECK_NATIVE_ALIGNMENT(long long);
-#endif
-#if ARCH_HAVE_LONG_DOUBLE
-  CHECK_NATIVE_ALIGNMENT(long double);
-#endif
-
-  native_alignment = align;
-
-  return align;
-}
-
-#undef CHECK_NATIVE_ALIGNMENT
-
-/*******************************************************************************
-*
-*   ROUTINE: get_native_compound_alignment
-*
-*   WRITTEN BY: Marcus Holland-Moritz             ON: Aug 2004
-*   CHANGED BY:                                   ON:
-*
-********************************************************************************
-*
-* DESCRIPTION: Determine the native compound alignment and store it to the
-*              global native_compound_alignment.
-*
-*   ARGUMENTS:
-*
-*     RETURNS:
-*
-*******************************************************************************/
-
-int get_native_compound_alignment(void)
-{
-  struct _align {
-    char a;
-    struct {
-      char x;
-    }    b;
-  };
-
-  int align = offsetof(struct _align, b);
-
-  native_compound_alignment = align;
-
-  return align;
-}
-
-/*******************************************************************************
-*
-*   ROUTINE: get_native_enum_size
-*
-*   WRITTEN BY: Marcus Holland-Moritz             ON: Aug 2004
-*   CHANGED BY:                                   ON:
-*
-********************************************************************************
-*
-* DESCRIPTION: Determine the native enum size.
-*
-*   ARGUMENTS:
-*
-*     RETURNS:
-*
-*******************************************************************************/
-
-int get_native_enum_size(void)
-{
-  enum pbyte { PB1 =      0, PB2 =   255 };
-  enum nbyte { NB1 =   -128, NB2 =   127 };
-  enum pword { PW1 =      0, PW2 = 65535 };
-  enum nword { NW1 = -32768, NW2 = 32767 };
-  enum plong { PL1 =      0, PL2 = 65536 };
-  enum nlong { NL1 = -32768, NL2 = 32768 };
-
-  if (sizeof(enum pbyte) == 2 && sizeof(enum nbyte) == 1 &&
-      sizeof(enum pword) == 4 && sizeof(enum nword) == 2 &&
-      sizeof(enum plong) == 4 && sizeof(enum nlong) == 4)
-    return -1;
-
-  if (sizeof(enum pbyte) == 1 && sizeof(enum nbyte) == 1 &&
-      sizeof(enum pword) == 2 && sizeof(enum nword) == 2 &&
-      sizeof(enum plong) == 4 && sizeof(enum nlong) == 4)
-    return 0;
-
-  if (sizeof(enum pbyte) == sizeof(enum nbyte) &&
-      sizeof(enum pbyte) == sizeof(enum pword) &&
-      sizeof(enum pbyte) == sizeof(enum nword) &&
-      sizeof(enum pbyte) == sizeof(enum plong) &&
-      sizeof(enum pbyte) == sizeof(enum nlong))
-    return sizeof(enum pbyte);
-
-  fatal_error("Unsupported native enum size (%d:%d:%d:%d:%d:%d)",
-              sizeof(enum pbyte), sizeof(enum nbyte), sizeof(enum pword),
-              sizeof(enum nword), sizeof(enum plong), sizeof(enum nlong));
-
-  return -1000;
-}
 

@@ -1,0 +1,547 @@
+#!/usr/bin/perl -w
+use strict;
+use Convert::Binary::C 0.43;
+use Getopt::Long;
+use Data::Dumper;
+use IO::File;
+
+my($NAME) = $0 =~ /([\w\.]+)$/;
+my %OPT = (
+            delete                  => 1,
+            'obj-ext'               => '.o',
+            members                 => 0,
+            header                  => 1,
+            name                    => 1,
+            quiet                   => 0,
+            verbose                 => 0,
+            initializers            => 'initializers',
+            'generate-tests'        => 0,
+            'generate-initializers' => 0,
+          );
+
+unless( GetOptions( \%OPT, qw(
+          delete! obj-ext=s members! header! name! quiet! verbose! bits=i
+          generate-tests generate-initializers=i
+      ) ) ) {
+  my($USAGE) = do { local(@ARGV,$/)=($0); <> }
+               =~ /^__END__.*?^=head\d\s+SYNOPSIS(.*?)^=/ms;
+  my %M = ( 'I' => '*' );  # minimal markup
+  $USAGE =~ s/([A-Z])<([^>]+)>/$M{$1}$2$M{$1}/g;
+  $USAGE =~ s/^/    /gm;
+  print STDERR "\nUsage:$USAGE",
+               "Try `perldoc $NAME' for more information.\n\n";
+  exit 2;
+}
+
+# disable ccache, just in case it's active
+$ENV{CCACHE_DISABLE} = 1;
+
+my $CCCMD = @ARGV ? join ' ', splice @ARGV : 'cc -c -o %o %c';
+
+my @code = split /-{20,}/, do { local $/; <> };
+my @init;
+my @base;
+my $count = 0;
+my $dump = 0;
+my $progress = 0;
+my $exit = 0;
+
+if( $OPT{header} ) {
+  print "$CCCMD\n";
+  $dump++;
+}
+
+if (exists $OPT{bits}) {
+  unless (grep { $_ == $OPT{bits} } 1, 2, 4, 8, 16, 32) {
+    die "Only powers of 2 allowed for --bits\n";
+  }
+}
+
+if ($OPT{'generate-tests'}) {
+  my $init = IO::File->new($OPT{initializers}) or die "$OPT{initializers}: $!\n";
+  @init = map { [map { eval $_ } split /[\r\n]+/] }
+          split /={20,}[\r\n]+/, do { local $/; <$init> };
+  die "init/code mismatch" if @init != @code;
+}
+
+$SIG{INT} = sub { printf STDERR "\nOooops, interrupted!\n"; $exit = 2 };
+
+for my $code ( @code ) {
+  $progress++;
+  my $c = Convert::Binary::C->new->parse( $code );
+  for my $id ( $c->compound_names ) {
+    $dump++ and print '='x80, "\n";
+    $count++;
+    if ($OPT{'generate-initializers'}) {
+      generate_initializers($code, $c, $id);
+    }
+    elsif ($OPT{'generate-tests'}) {
+      generate_tests($code, $c, $id, shift @init);
+    }
+    else {
+      if (exists $OPT{bits}) {
+        dump_compound_onebit( $code, $c, $id );
+      }
+      else {
+        dump_compound( $code, $c, $id );
+      }
+    }
+    $exit and goto cleanup;
+  }
+}
+$OPT{quiet} or print STDERR "\r", ' 'x60, "\r";
+
+cleanup:
+if ($OPT{delete}) {
+  for my $b ( @base ) {
+    for my $e ( qw( c ), $OPT{'obj-ext'} ) {
+      -e "$b.$e" and unlink "$b.$e";
+    }
+  }
+}
+exit $exit;
+
+sub generate_initializers
+{
+  my($code, $c, $id) = @_;
+  my $kind = $c->def($id);
+  my $spec = $kind eq 'typedef' ? $c->typedef($id) : $c->compound($id);
+  for my $test (1 .. $OPT{'generate-initializers'}) {
+    unless ($OPT{quiet} or $exit) {
+      my $line = sprintf "\rprocessing \%d/\%d", $progress, scalar @code;
+      print STDERR $line, ' 'x(60-length($line));
+    }
+    print dump_test_initializer($id, get_init_test($c, $spec));
+  }
+}
+
+sub generate_tests
+{
+  my($code, $c, $id, $init) = @_;
+  for my $test (0 .. $#$init) {
+    my $base = create_test_c_file($code, $c, $id, $init->[$test]);
+    push @base, $base;
+    unless ($OPT{quiet} or $exit) {
+      my $line = sprintf "\rprocessing \%d/\%d [test \%d/\%d] => $base.c",
+                         $progress, scalar @code, $test+1, scalar @$init;
+      print STDERR $line, ' 'x(60-length($line));
+    }
+    if (run_compiler($base)) {
+      print test_data($id, deparse_obj_test("$base$OPT{'obj-ext'}"));
+    }
+    else {
+      print "%\n";
+    }
+    $OPT{delete} and unlink "$base$OPT{'obj-ext'}", "$base.c";
+  }
+}
+
+sub dump_compound
+{
+  my($code, $c, $id) = @_;
+  my $base = create_c_file( @_ );
+  push @base, $base;
+  unless( $OPT{quiet} or $exit ) {
+    my $line = sprintf "\rprocessing \%d/\%d => $base.c", $progress, scalar @code;
+    print STDERR $line, ' 'x(60-length($line));
+  }
+  run_compiler( $base )
+    and print layout( $base, $c, $id, deparse_obj( "$base$OPT{'obj-ext'}" ) );
+  $OPT{delete} and unlink "$base$OPT{'obj-ext'}", "$base.c";
+}
+
+sub dump_compound_onebit
+{
+  my($code, $c, $id) = @_;
+  my %deparsed;
+
+  for my $m ( $c->member( $id ) ) {
+    for (my $off = 0; $off < 32; $off += $OPT{bits} ) {
+      my $base = create_c_file_onebit($code, $c, $id, $m, $off, $OPT{bits});
+      push @base, $base;
+      unless( $OPT{quiet} or $exit ) {
+        my $line = sprintf "\rprocessing \%d/\%d [$m($off)] => $base.c", $progress, scalar @code;
+        print STDERR $line, ' 'x(60-length($line));
+      }
+      my $ok = run_compiler($base);
+      deparse_obj("$base$OPT{'obj-ext'}", \%deparsed) if $ok;
+      $OPT{delete} and unlink "$base$OPT{'obj-ext'}", "$base.c";
+      return unless $ok;
+    }
+  }
+
+  print layout(sprintf("_%04d_%s", $count, $id), $c, $id, \%deparsed);
+}
+
+sub run_compiler
+{
+  my $base = shift;
+  my $c = "$base.c";
+  my $o = "$base$OPT{'obj-ext'}";
+  my $cmd = $CCCMD;
+  $cmd =~ s/\%c/$c/;
+  $cmd =~ s/\%o/$o/;
+  my @log = `$cmd 2>&1`;
+  if( $? ) {
+    print STDERR "$cmd: $?\n@log\n";
+    return 0;
+  }
+  else {
+    $OPT{verbose} and @log and print STDERR "\n@log\n\n";
+  }
+  -e $o;
+}
+
+sub errfile
+{
+  my $base = shift;
+  my $errfile = "$base.err";
+  if (-e $errfile) {
+    my $cnt = 1;
+    while( -e "$errfile.$cnt" ) { $cnt++ }
+    $errfile = "$errfile.$cnt";
+  }
+  new IO::File ">$errfile" or die "$errfile: $!\n";
+}
+
+sub dump_test_initializer
+{
+  my($id, $init) = @_;
+  $Data::Dumper::Indent = 0;
+  my $rv = Data::Dumper->Dump([$init], [$id]);
+  $rv =~ s/^\$$id\s*=\s*//;
+  $rv =~ s/;$//;
+  $rv =~ s/\s+//g;
+  $rv =~ s/'([A-Za-z]+)'/$1/g;
+  return "$rv\n";
+}
+
+sub test_data
+{
+  my($id, $dep) = @_;
+  if (exists $dep->{$id}) {
+    return unpack("H*", $dep->{$id}) . "\n";
+  }
+  return "%\n";
+}
+
+sub layout
+{
+  my($base, $c, $id, $r) = @_;
+  my %l2id;
+  my $l = 'a';
+  my($memb, $bits);
+  my $str = '';
+
+  $OPT{name} and $str .= $c->typeof($id) . "\n\n";
+
+  for my $m ( $c->member( $id ) ) {
+    $OPT{members} and $str .= "$l => $m\n";
+    my($bit, $pos) = (0);
+
+    unless (exists $r->{$id.$m}) {
+      print STDERR "\nno deparse entry for '$id$m' (maybe a compiler bug?)\n";
+      my $fh = errfile($base);
+      $fh->print( $CCCMD, "\n\n", '-'x80, "\n\n" );
+      $fh->print( $c->sourcify, "\n\n", '-'x80, "\n\n" );
+      $fh->print( Data::Dumper->Dump( [$memb, $bits, $pos, $r],
+                                      [qw( memb bits pos r )] ) );
+      return '';
+    }
+
+    for( @{$r->{$id.$m}} ) {
+      unless( $memb ) {
+        $memb = $bits = $_;
+        $memb =~ tr/01/-/;
+        $bits =~ tr/01/ /;
+      }
+      if( length $memb != length $_ ) {
+        print STDERR "\ndifferent sizes for same type (maybe a compiler bug?)\n";
+        my $fh = errfile($base);
+        $fh->print( $CCCMD, "\n\n", '-'x80, "\n\n" );
+        $fh->print( $c->sourcify, "\n\n", '-'x80, "\n\n" );
+        $fh->print( Data::Dumper->Dump( [$memb, $bits, $_, $pos, $r],
+                                        [qw( memb bits _ pos r )] ) );
+        return '';
+      }
+      $pos = index $_, '1';
+      substr $memb, $pos, 1, $l;
+      substr $bits, $pos, 1, $bit ? $bit % 10 : 'L';
+      $bit++;
+    }
+    die "internal error: \$bits is undefined\n" unless defined $bits;
+    substr $bits, $pos, 1, $bit > 1 ? 'M' : '0';
+    $l2id{$l} = $m;
+    if( $l eq 'z' ) { $l = 'A' } else { $l++ }
+  }
+
+  $OPT{members} and $str .= "\n";
+
+  $str . "$memb\n$bits\n";
+}
+
+sub get_member
+{
+  my($c,$id,$m,$bit) = @_;
+  {
+    init   => $c->initializer( $id, member_c2perl( $m, "1<<$bit" ) ),
+    name   => $id . member_2name( $m ) . "_$bit",
+    string => "$id$m($bit)",
+  };
+}
+
+sub get_members
+{
+  my($c, $id) = @_;
+  my @members;
+  my $kind = $c->def($id);
+  my $type = $kind && $kind ne 'typedef' ? "$kind $id" : $id;
+
+  for my $m ( $c->member( $id ) ) {
+    for my $bit ( 0 .. 31 ) {
+      push @members, get_member($c, $id, $m, $bit);
+    }
+  }
+
+  get_member_string( $type, @members );
+}
+
+sub get_members_onebit
+{
+  my($c, $id, $m, $off, $bits) = @_;
+  my @members;
+  my $kind = $c->def($id);
+  my $type = $kind && $kind ne 'typedef' ? "$kind $id" : $id;
+
+  for my $bit ($off .. ($off + $bits - 1)) {
+    push @members, get_member($c, $id, $m, $bit);
+  }
+  get_member_string( $type, @members );
+}
+
+sub get_test_val
+{
+  my($c, $type, $bits) = @_;
+  $bits = 8 unless defined $bits;
+  if ($c->def($type) eq 'enum') {
+    my $en = $c->enum($type);
+    my @val = keys %{$en->{enumerators}};
+    return $val[rand @val];
+  }
+  else {
+    my $signed = $c->unpack($type, pack "C*", (255)x8) < 0;
+    my $val = int(rand(2**$bits));
+    $val -= 1<<($bits-1) if $signed;
+    return $bits >= 32 ? "$val" : $val;
+  }
+}
+
+sub get_init_test
+{
+  my($c, $spec) = @_;
+  my %rv;
+
+  for my $di (@{$spec->{declarations}}) {
+    for my $do (@{$di->{declarators}}) {
+      if ($do->{declarator} =~ /^(\w*):(\d+)/) {
+        if ($1) {
+          $rv{$1} = get_test_val($c, $di->{type}, $2);
+        }
+      }
+      else {
+        # TODO: array support?
+        $do->{declarator} =~ /^\w+$/ or die "declarator ($do->{declarator})";
+        $rv{$do->{declarator}} = get_test_val($c, $di->{type});
+      }
+    }
+  }
+
+  return \%rv;
+}
+
+sub get_members_test
+{
+  my($c, $id, $init) = @_;
+  my $kind = $c->def($id);
+  my $type = $kind && $kind ne 'typedef' ? "$kind $id" : $id;
+
+  get_member_string($type, {
+    init   => $c->initializer($id, $init),
+    name   => "_$id",
+    string => $id,
+  });
+}
+
+sub get_member_string
+{
+  my($type, @members) = @_;
+  my $len = 0;
+
+  for( @members ) {
+    my $l = length $_->{string}; $l > $len and $len = $l;
+    $_->{string} = join ', ', map { "'$_'" } $_->{string} =~ /(.)/g;
+  }
+
+  $len += 16;
+  $len % 16 and $len += 16 - ($len % 16);
+
+  my $str = <<END;
+struct {
+unsigned char begin[16];
+$type type;
+unsigned char end[$len];
+}
+END
+
+  $str .= join ",\n", map { <<END } @members;
+$_->{name} = {
+{PRE_SIG},
+$_->{init},
+{POST_SIG, $_->{string}},
+}
+END
+
+  $str . ";\n";
+}
+
+sub c_file
+{
+  my($code, $id, $members) = @_;
+  my $base = sprintf "_%04d_%s", $count, $id;
+  my $f = new IO::File ">$base.c" or die "$base.c: $!\n";
+  print $f $code, <<'SIG', $members;
+
+#define PRE_SIG  0x21, 0x05, 0x19, 0x77, '*', 'M', 'H', 'X', 'M', 'H', 'X', '*', 0xDE, 0xAD, 0xBE, 0xEF
+#define POST_SIG 0xBA, 0xD0, 0xF0, 0x0D, '*', 'M', 'A', 'R', 'C', 'U', 'S', '*', 0xDE, 0xAD, 0xC0, 0xDE
+
+SIG
+  $base;
+}
+
+sub create_c_file
+{
+  my($code, $c, $id) = @_;
+  c_file($code, $id, get_members($c, $id));
+}
+
+sub create_test_c_file
+{
+  my($code, $c, $id, $init) = @_;
+  c_file($code, $id, get_members_test($c, $id, $init));
+}
+
+sub create_c_file_onebit
+{
+  my($code, $c, $id, $m, $off, $bits) = @_;
+  my $mem = $m;
+  $mem =~ s/\./_/g;
+  c_file($code, "${id}${mem}_${off}", get_members_onebit($c, $id, $m, $off, $bits));
+}
+
+sub deparse_obj
+{
+  my($obj, $rv) = @_;
+  my $f = new IO::File $obj or die "$obj: $!\n";
+  my $data = do { local $/; <$f> };
+
+  my $beg = quotemeta "\x21\x05\x19\x77*MHXMHX*\xDE\xAD\xBE\xEF";
+  my $end = quotemeta "\xBA\xD0\xF0\x0D*MARCUS*\xDE\xAD\xC0\xDE";
+
+  $rv ||= {};
+
+  while( $data =~ /$beg(.*?)$end([^)]+)\((\d+)\)/gs ) {
+    my($t, $n, $b) = ($1, $2, $3);
+    next if $t =~ /^\x00*$/;
+    $rv->{$n}[$b] = join ' ', map { sprintf '%08b', $_ } unpack 'C*', $t;
+  }
+
+  $rv;
+}
+
+sub deparse_obj_test
+{
+  my $obj = shift;
+  my $f = new IO::File $obj or die "$obj: $!\n";
+  my $data = do { local $/; <$f> };
+
+  my $beg = quotemeta "\x21\x05\x19\x77*MHXMHX*\xDE\xAD\xBE\xEF";
+  my $end = quotemeta "\xBA\xD0\xF0\x0D*MARCUS*\xDE\xAD\xC0\xDE";
+
+  my %rv;
+
+  while ($data =~ /$beg(.*?)$end(\w+)/gs) {
+    $rv{$2} = $1;
+  }
+
+  \%rv;
+}
+
+sub member_2name
+{
+  my $member = shift;
+  $member =~ tr/]//;
+  $member =~ s/[\[\.]/_/g;
+  $member;
+}
+
+sub member_c2perl
+{
+  my($member, $value) = @_;
+
+  while( $member ) {
+    $member =~ s/(?:\[(\d+)\]|\.(\w+))$// or die "Oops...";
+    if( $1 ) {
+      my $ary = [];
+      $ary->[$1] = $value;
+      $value = $ary;
+    }
+    else {
+      $value = { $2 => $value };
+    }
+  }
+
+  return $value;
+}
+
+__END__
+
+=head1 NAME
+
+cdump - Dump memory map of compound C types
+
+=head1 SYNOPSIS
+
+cdump I<options> [-- compiler-command-line]
+
+I<options>:
+
+  --(no)delete           (don't) delete temporary files
+  
+  --obj-ext string       object file extension ('.o')
+  
+  --(no)members          (don't) print member map
+
+  --(no)name             (don't) print compound names
+  
+  --(no)header           (don't) print header
+  
+  --(no)quiet            (don't) be quiet
+
+  --(no)verbose          (don't) be verbose
+  
+=head1 DESCRIPTION
+
+Bla, bla...
+
+=head1 COPYRIGHT
+
+Copyright (c) 2003 Marcus Holland-Moritz. All rights reserved.
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=head1 SEE ALSO
+
+See L<Convert::Binary::C>.
+
+=cut
+

@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/01/31 08:45:15 +0000 $
-# $Revision: 23 $
+# $Date: 2005/05/16 18:24:47 +0100 $
+# $Revision: 25 $
 # $Source: /t/102_misc.t $
 #
 ################################################################################
@@ -19,7 +19,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 197 }
+BEGIN { plan tests => 207 }
 
 #===================================================================
 # perform some average stuff
@@ -167,6 +167,20 @@ ok($@,'');
 
 eval { $p->Alignment( 4 ) };
 ok($@,'');
+
+#-------------------
+# test some offsets
+#-------------------
+
+ok($p->offsetof('packer', 'i'), 0);
+ok($p->offsetof('packer', 'am'), 1);
+ok($p->offsetof('packer', 'really'), 3);
+ok($p->offsetof('packer', 'packed'), 4);
+
+ok($p->offsetof('nopack', 'i'), 0);
+ok($p->offsetof('nopack', 'am'), 2);
+ok($p->offsetof('nopack', 'not'), 4);
+ok($p->offsetof('nopack', 'packed'), 8);
 
 #------------------------
 # now try some unpacking
@@ -354,6 +368,24 @@ for( @tests ) {
   ok( $m[0], $_->[1] );
 }
 ok( scalar @warn, 0 );
+
+#------------------------------
+# test 64-bit negative numbers
+#------------------------------
+
+$p->clean->parse(<<ENDC);
+
+typedef signed long long i_64;
+
+ENDC
+
+$p->LongLongSize(8);
+
+for my $bo (qw( BigEndian LittleEndian )) {
+  $p->ByteOrder($bo);
+  my $x = $p->pack('i_64', -1);
+  ok($x, pack('C*', (255)x8));
+}
 
 
 sub check_basic

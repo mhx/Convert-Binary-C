@@ -359,7 +359,7 @@ as TYPEs in the L<method reference|/"METHODS">, are handled
 by the module.
 
 Many of the methods,
-namely L<C<pack>|/"pack">, L<C<unpack>|/"unpack">, L<C<sizeof>|/"sizeof">, L<C<typeof>|/"typeof">, L<C<member>|/"member"> and L<C<offsetof>|/"offsetof">,
+namely L<C<pack>|/"pack">, L<C<unpack>|/"unpack">, L<C<sizeof>|/"sizeof">, L<C<typeof>|/"typeof">, L<C<member>|/"member">, L<C<offsetof>|/"offsetof">, L<C<def>|/"def">, L<C<initializer>|/"initializer"> and L<C<tag>|/"tag">,
 are passed a TYPE to operate on as their first argument.
 
 =head2 Standard Types

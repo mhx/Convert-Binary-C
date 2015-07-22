@@ -1,0 +1,362 @@
+#!/usr/bin/perl -w
+use strict;
+use Data::Dumper;
+use IO::File;
+
+$Data::Dumper::Indent = 1;
+
+sub slurp ($) { my $fh = new IO::File $_[0] or die "$_[0]: $!\n"; <$fh> }
+sub sslurp ($) { my $fh = new IO::File $_[0] or die "$_[0]: $!\n"; local $/; <$fh> }
+
+my %CC = (
+
+  Microsoft => {
+
+    MSWin32 => {
+      cl_plain        => { extra_config => { Bitfields => { Engine => 'Microsoft' } } },
+      cl_pack01       => { extra_config => { Bitfields => { Engine => 'Microsoft' } } },
+      cl_pack02       => { extra_config => { Bitfields => { Engine => 'Microsoft' } } },
+      cl_pack04       => { extra_config => { Bitfields => { Engine => 'Microsoft' } } },
+    #   cl_pack08       => { extra_config => { Bitfields => { Engine => 'Microsoft' } } },  ## same as plain
+    #   cl_pack16       => { extra_config => { Bitfields => { Engine => 'Microsoft' } } },  ## same as plain
+    },
+
+  },
+
+  Generic => {
+
+    linux => {
+      gcc41_plain     => {},
+    #   gcc41_pack      => {},
+      hppagcc33_plain => {},
+    #   hppagcc33_pack  => {},
+      vaxgcc33_plain  => {},
+    #   vaxgcc33_pack   => {},
+      armgcc34_plain  => {},
+    #   armgcc34_pack   => {},
+    #   icc80_plain     => {},   ## same as gcc41_plain
+    #   icc80_pack      => {},   ## same as pack04
+    #   icc80_pack01    => {},
+    #   icc80_pack02    => {},
+    #   icc80_pack04    => {},
+    #   icc80_pack08    => {},   ## same as pack04
+    #   icc80_pack16    => {},   ## same as pack04
+    },
+
+    cygwin => {
+      gcc32_plain     => {},
+    #   gcc32_pack      => {},
+    },
+
+    decosf_alpha => {
+    #   gcc_plain        => {},  ## same as cc_plain
+    #   gcc_pack         => {},
+      cc_plain         => {},
+    },
+
+    freebsd_alpha => {
+      gcc_plain        => {},
+    #   gcc_pack         => {},
+    },
+
+    hpux11_ia64 => {
+    #   gcc_plain        => {},  ## same as cc_plain
+    #   gcc_pack         => {},
+      cc_plain         => {},
+    #   aCC_plain        => {},  ## same as cc_plain
+    #   aCC_pack         => {},
+    },
+
+    hpux11_parisc64 => {
+    #   gcc_plain        => {},  ## same as cc_plain
+    #   gcc_pack         => {},
+    #   cc_plain         => {},  ## same as ia64/cc_plain
+    #   aCC_plain        => {},  ## same as cc_plain
+    #   aCC_pack         => {},
+    },
+
+    linux_ia64 => {
+    #   gcc_plain        => {},  ## same as dec_osf/cc_plain
+    #   gcc_pack         => {},
+    },
+
+    linux_parisc64 => {
+      gcc_plain        => {},
+    #   gcc_pack         => {},
+    },
+
+  },
+
+);
+
+my %cc = %{$CC{$ARGV[0]}} or die "USAGE: $0 engine";
+
+my @code = map { s/^\s*//; s/\s*$//; $_ } split /-{20,}/, sslurp "bitfields.c";
+my @init = map { [split /[\r\n]+/] } split /={20,}[\r\n]+/, sslurp "initializers";
+
+@code == @init or die "code/init mismatch";
+
+for my $os (keys %cc) {
+  for (slurp "compilers.$os") {
+    s/\s*#.*//;
+    /^(.*?)\s*=>\s*(.*?)\s*$/ or next;
+    exists $cc{$os}{$1} or next;
+    $cc{$os}{$1}{args} = $2;
+  }
+  for my $c (keys %{$cc{$os}}) {
+    $cc{$os}{$c}{config} = require "configs/$os/$c.cfg";
+    delete $cc{$os}{$c}{config}{$_} for qw( Include Define Assert DisabledKeywords KeywordMap UnsignedChars );
+    if ($cc{$os}{$c}{args} =~ /PACK_(?:NO_)?PAREN/) {
+      $cc{$os}{$c}{config}{Define} = ['PACK_PAREN=1'];
+    }
+    if (exists $cc{$os}{$c}{extra_config}) {
+      $cc{$os}{$c}{config}{$_} = $cc{$os}{$c}{extra_config}{$_}
+          for keys %{$cc{$os}{$c}{extra_config}};
+    }
+    $cc{$os}{$c}{packed} = [ map { [split /[\r\n]+/] } split /={20,}[\r\n]+/, sslurp "tests/$os/$c.txt" ];
+  }
+}
+
+my @compiler;
+
+for my $os (sort keys %cc) {
+  for my $c (sort keys %{$cc{$os}}) {
+    my $cc = $cc{$os}{$c};
+    push @compiler, { name => "$os/$c", config => $cc->{config} };
+  }
+}
+
+my %seen;
+for my $ia (0 .. $#compiler-1) {
+  my $a = $compiler[$ia];
+  my($os, $c) = split '/', $a->{name};
+  my $pka = $cc{$os}{$c}{packed};
+  my(@all, @cfg, @bin);
+
+  for my $ib ($ia+1 .. $#compiler) {
+    my $b = $compiler[$ib];
+    my($os, $c) = split '/', $b->{name};
+    my $pkb = $cc{$os}{$c}{packed};
+
+    my $same_cfg = reccmp($a->{config}, $b->{config});
+    my $same_bin = reccmp($pka, $pkb);
+
+    if ($same_cfg and $same_bin and !$seen{all}{$b->{name}}) {
+      push @all, $b;
+      $seen{all}{$b->{name}}++;
+    }
+    elsif ($same_cfg and !$seen{cfg}{$b->{name}}) {
+      push @cfg, $b;
+      $seen{cfg}{$b->{name}}++;
+    }
+    elsif ($same_bin and !$seen{bin}{$b->{name}}) {
+      push @bin, $b;
+      $seen{bin}{$b->{name}}++;
+    }
+  }
+
+  @all and warn "# same config/binary for " . join(", ", map { $_->{name} } $a, @all) . "\n";
+  @cfg and warn "# same config for " . join(", ", map { $_->{name} } $a, @cfg) . "\n";
+  @bin and warn "# same binary for " . join(", ", map { $_->{name} } $a, @bin) . "\n";
+}
+
+my $data;
+
+for my $ic (0 .. $#code) {
+  $data .= "$code[$ic]\n";
+  for my $ii (0 .. $#{$init[$ic]}) {
+    $data .= "-\n$init[$ic][$ii]\n";
+    for my $cc (@compiler) {
+      my($os, $c) = split '/', $cc->{name};
+      $data .= "$cc{$os}{$c}{packed}[$ic][$ii]\n";
+    }
+  }
+  $data .= "=\n"
+}
+
+my %REPLACE;
+
+$REPLACE{COMPILER}  = "my " . Data::Dumper->Dump([\@compiler], ['*compiler']);
+$REPLACE{DATA}      = $data;
+$REPLACE{NUM_TESTS} = 1 + @code * (2 + @{$init[0]});
+
+my $out = do { local $/; <DATA> };
+$out =~ s/%%([A-Z_]+)%%/$REPLACE{$1}/g;
+print $out;
+
+sub reccmp
+{
+  my($ref, $val) = @_;
+
+  unless (defined $ref and defined $val) {
+    return defined($ref) == defined($val);
+  }
+
+  ref $ref or return $ref eq $val;
+
+  if (ref $ref eq 'ARRAY') {
+    @$ref == @$val or return 0;
+    for (0..$#$ref) {
+      reccmp($ref->[$_], $val->[$_]) or return 0;
+    }
+  }
+  elsif (ref $ref eq 'HASH') {
+    @{[keys %$ref]} == @{[keys %$val]} or return 0;
+    for (keys %$ref) {
+      reccmp($ref->{$_}, $val->{$_}) or return 0;
+    }
+  }
+  else { return 0 }
+
+  return 1;
+}
+__DATA__
+################################################################################
+#
+# $Project: /Convert-Binary-C $
+# $Author: mhx $
+# $Date: 2005/05/23 13:09:55 +0100 $
+# $Revision: 6 $
+# $Source: /devel/bitfields/maketest $
+#
+################################################################################
+#
+# Copyright (c) 2002-2005 Marcus Holland-Moritz. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the same terms as Perl itself.
+#
+################################################################################
+
+use Test;
+use Convert::Binary::C @ARGV;
+
+$^W = 1;
+
+BEGIN { plan tests => %%NUM_TESTS%% }
+
+$BIN = $] < 5.006 ? '%x' : '%08b';
+
+# TODO: only as long as we're implementing bitfields
+$SIG{__WARN__} = sub { $_[0] =~ /Bitfields are unsupported/ or print STDERR $_[0] };
+
+%%COMPILER%%
+
+my @c = eval { map { Convert::Binary::C->new(Bitfields => {Engine => 'Generic'},
+                                             EnumType  => 'String',
+                                             %{$_->{config}}) } @compiler };
+ok($@, '', "failed to create Convert::Binary::C objects");
+
+sub debug
+{
+  $ENV{CBC_TEST_DEBUG} or return;
+  my $out = join '', @_;
+  $out =~ s/[\r\n]+$//;
+  $out =~ s/^/# /gm;
+  print "$out\n";
+}
+
+sub showbits
+{
+  join ' ', map { sprintf $BIN, $_ } unpack "C*", shift;
+}
+
+sub get_data
+{
+  my $want = shift || 'list';
+  my $term = shift || '[-=]';
+  local $_;
+  my @lines;
+  while (<DATA>) {
+    if (/^($term)$/) {
+      $term = $1;
+      last;
+    }
+    push @lines, $_
+  }
+  if ($want eq 'list') {
+    chomp @lines;
+    return $term, @lines;
+  }
+  return $term, join('', @lines);
+}
+
+sub reccmp
+{
+  my($ref, $val) = @_;
+
+  unless (defined $ref and defined $val) {
+    return defined($ref) == defined($val);
+  }
+
+  ref $ref or return $ref eq $val;
+
+  if (ref $ref eq 'ARRAY') {
+    @$ref == @$val or return 0;
+    for (0..$#$ref) {
+      reccmp($ref->[$_], $val->[$_]) or return 0;
+    }
+  }
+  elsif (ref $ref eq 'HASH') {
+    @{[keys %$ref]} == @{[keys %$val]} or return 0;
+    for (keys %$ref) {
+      reccmp($ref->{$_}, $val->{$_}) or return 0;
+    }
+  }
+  else { return 0 }
+
+  return 1;
+}
+
+while (1) {
+  my(undef, $code) = get_data('block');
+  last if $code !~ /\S/;
+  debug("Code:\n$code");
+  eval { $_->clean->parse($code) for @c };
+  ok($@, '', "failed to parse code:\n$code\n");
+  ok(scalar $c[0]->compound_names, 1);
+  my($type) = $c[0]->compound_names;
+  while (1) {
+    my($term, $init, @packed) = get_data;
+    debug("Init: $init");
+    my $data = eval $init;
+    my $succ = 0;
+    for (@packed) { $_ = pack "H*", $_ }
+    for my $i (0 .. $#packed) {
+      debug("Compiler: [$i] $compiler[$i]{name}");
+      $c[$i]->sizeof($type) == length($packed[$i]) and $succ++;
+
+      my $p = $c[$i]->pack($type, $data);
+      if ($p eq $packed[$i]) {
+        $succ++;
+      }
+      else {
+        my $ccc = $code;
+        $ccc =~ s/^/# /mg;
+        print "# [$i] $compiler[$i]{name}\n$ccc# data = $init\n";
+        printf "# expected: %s\n", showbits($packed[$i]);
+        printf "#      got: %s\n", showbits($p);
+      }
+
+      my $u = $c[$i]->unpack($type, $packed[$i]);
+      if (reccmp($data, $u)) {
+        $succ++;
+      }
+      else {
+        my $ccc = $code;
+        $ccc =~ s/^/# /mg;
+        print "# [$i] $compiler[$i]{name}\n$ccc# data = $init\n";
+        eval { require Data::Dumper };
+        unless ($@) {
+          my $dd = Data::Dumper->Dump([$data, $u], [qw(*expected *got)]);
+          $dd =~ s/^/# /mg;
+          print $dd;
+        }
+      }
+    }
+    ok($succ, 3*@packed);
+    last if $term eq '=';
+  }
+}
+
+__DATA__
+%%DATA%%

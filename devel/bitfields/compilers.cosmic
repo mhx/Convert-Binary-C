@@ -1,0 +1,25 @@
+# Cosmic cc's
+
+cx6805_plain    => --bits=2 -- cx6805 %c
+cx6805_rev      => --bits=2 -- cx6805 +rev %c
+
+cx6808_plain    => --bits=16 -- cx6808 %c
+cx6808_rev      => --bits=16 -- cx6808 +rev %c
+
+cx6811_plain    => --bits=16 -- cx6811 %c
+cx6811_rev      => --bits=16 -- cx6811 +rev %c
+
+cx6812_plain    => --bits=16 -- cx6812 %c
+cx6812_rev      => --bits=16 -- cx6812 +rev %c
+
+cx6816_plain    => --bits=16 -- cx6816 %c
+cx6816_rev      => --bits=16 -- cx6816 +rev %c
+
+cx332_plain     => --bits=16 -- cx332 %c
+cx332_rev       => --bits=16 -- cx332 +rev %c
+
+cxst7_plain     => --bits=16 -- cxst7 %c
+cxst7_rev       => --bits=16 -- cxst7 +rev %c
+
+cxst10_plain    => --bits=16 -- cxst10 %c
+cxst10_rev      => --bits=16 -- cxst10 +rev %c

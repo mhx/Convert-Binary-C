@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/21 09:18:44 +0000 $
-# $Revision: 2 $
+# $Date: 2005/05/19 18:54:04 +0100 $
+# $Revision: 4 $
 # $Source: /xsubs/configure.xs $
 #
 ################################################################################
@@ -51,6 +51,8 @@ CBC::configure(...)
 
       if (changes && CBC_HAVE_PARSE_DATA(THIS))
       {
+        post_configure_update(aTHX_ THIS);
+        basic_types_reset(THIS->basic);
         reset_parse_info(&THIS->cpi);
         update_parse_info(&THIS->cpi, &THIS->cfg);
       }
