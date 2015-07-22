@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/06/11 19:59:40 +0100 $
-# $Revision: 4 $
+# $Date: 2007/12/08 14:25:18 +0000 $
+# $Revision: 6 $
 # $Source: /tests/502_bfmicrosoft.t $
 #
 ################################################################################
@@ -14,14 +14,13 @@
 #
 ################################################################################
 
-use Test;
+use Test::More tests => 9031;
 use Convert::Binary::C @ARGV;
+use strict;
 
 $^W = 1;
 
-BEGIN { plan tests => 9031 }
-
-$BIN = $] < 5.006 ? '%x' : '%08b';
+my $BIN = $] < 5.006 ? '%x' : '%08b';
 
 my @compiler = (
   {
@@ -130,15 +129,11 @@ my @compiler = (
 my @c = eval { map { Convert::Binary::C->new(Bitfields => {Engine => 'Generic'},
                                              EnumType  => 'String',
                                              %{$_->{config}}) } @compiler };
-ok($@, '', "failed to create Convert::Binary::C objects");
+is($@, '', "failed to create Convert::Binary::C objects");
 
 sub debug
 {
-  $ENV{CBC_TEST_DEBUG} or return;
-  my $out = join '', @_;
-  $out =~ s/[\r\n]+$//;
-  $out =~ s/^/# /gm;
-  print "$out\n";
+  $ENV{CBC_TEST_DEBUG} and diag(@_);
 }
 
 sub showbits
@@ -198,8 +193,8 @@ while (1) {
   last if $code !~ /\S/;
   debug("Code:\n$code");
   eval { $_->clean->parse($code) for @c };
-  ok($@, '', "failed to parse code:\n$code\n");
-  ok(scalar $c[0]->compound_names, 1);
+  is($@, '', 'parse code') or diag($code);
+  is(scalar $c[0]->compound_names, 1, join(', ', $c[0]->compound_names));
   my($type) = $c[0]->compound_names;
   while (1) {
     my($term, $init, @packed) = get_data;
@@ -216,11 +211,11 @@ while (1) {
         $succ++;
       }
       else {
-        my $ccc = $code;
-        $ccc =~ s/^/# /mg;
-        print "# [$i] $compiler[$i]{name}\n$ccc# data = $init\n";
-        printf "# expected: %s\n", showbits($packed[$i]);
-        printf "#      got: %s\n", showbits($p);
+        diag("[$i] $compiler[$i]{name}\n",
+             $code,
+             "data = $init\n",
+             "expected: ", showbits($packed[$i]), "\n",
+             "     got: ", showbits($p), "\n");       
       }
 
       my $u = $c[$i]->unpack($type, $packed[$i]);
@@ -228,18 +223,14 @@ while (1) {
         $succ++;
       }
       else {
-        my $ccc = $code;
-        $ccc =~ s/^/# /mg;
-        print "# [$i] $compiler[$i]{name}\n$ccc# data = $init\n";
-        eval { require Data::Dumper };
-        unless ($@) {
-          my $dd = Data::Dumper->Dump([$data, $u], [qw(*expected *got)]);
-          $dd =~ s/^/# /mg;
-          print $dd;
-        }
+        diag("[$i] $compiler[$i]{name}\n", $code, "data = $init\n");
+        eval {
+          require Data::Dumper;
+          diag(Data::Dumper->Dump([$data, $u], [qw(*expected *got)]));
+        };
       }
     }
-    ok($succ, 3*@packed);
+    is($succ, 3*@packed, "$type ($init)");
     last if $term eq '=';
   }
 }

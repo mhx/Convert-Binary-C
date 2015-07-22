@@ -22,17 +22,17 @@ complex.t: Makefile wrap.pl header.pl begin.pl footer.pl test.1 test.2 test.4 me
 	@echo "use constant NALIGN => 4;" >> complex.t
 	@cat ntypes >> complex.t
 	@cat begin.pl >> complex.t
-	@echo "%reference = (" >> complex.t
+	@echo "my %reference = (" >> complex.t
 	@./test.1 | $(PERL) wrap.pl >> complex.t;
 	@./test.2 | $(PERL) wrap.pl >> complex.t;
 	@./test.4 | $(PERL) wrap.pl >> complex.t;
 	@echo ");" >> complex.t
-	@echo "%members = (" >> complex.t
+	@echo "my %members = (" >> complex.t
 	@cat members.1 >> complex.t;
 	@cat members.2 >> complex.t;
 	@cat members.4 >> complex.t;
 	@echo ");" >> complex.t
-	@echo "%sizeofs = (" >> complex.t
+	@echo "my %sizeofs = (" >> complex.t
 	@cat sizeofs.1 >> complex.t;
 	@cat sizeofs.2 >> complex.t;
 	@cat sizeofs.4 >> complex.t;

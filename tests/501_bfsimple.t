@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/06/11 19:59:41 +0100 $
-# $Revision: 13 $
+# $Date: 2007/12/08 13:07:05 +0000 $
+# $Revision: 14 $
 # $Source: /tests/501_bfsimple.t $
 #
 ################################################################################
@@ -14,18 +14,17 @@
 #
 ################################################################################
 
-use Test;
+use Test::More tests => 8990;
 use Convert::Binary::C @ARGV;
+use strict;
 
 $^W = 1;
 
-BEGIN { plan tests => 8990 }
-
-$BIN = $] < 5.006 ? '%x' : '%08b';
+my $BIN = $] < 5.006 ? '%x' : '%08b';
 
 my $c = eval { new Convert::Binary::C Bitfields => { Engine => 'Simple', BlockSize => 4 },
                                       EnumType  => 'String' };
-ok($@,'',"failed to create Convert::Binary::C object");
+is($@, '', "failed to create Convert::Binary::C object");
 
 eval { $c->parse(<<ENDC) };
 
@@ -91,12 +90,12 @@ struct bfse
 
 ENDC
 
-ok($@, '');
+is($@, '');
 
-ok($c->sizeof('bfu'), 4);
-ok($c->sizeof('bfs'), 4);
-ok($c->sizeof('bfue'), 4);
-ok($c->sizeof('bfse'), 4);
+is($c->sizeof('bfu'), 4);
+is($c->sizeof('bfs'), 4);
+is($c->sizeof('bfue'), 4);
+is($c->sizeof('bfse'), 4);
 
 for my $cfg ({ bo => 'BigEndian'    },
              { bo => 'BigEndian'    },
@@ -105,25 +104,25 @@ for my $cfg ({ bo => 'BigEndian'    },
 
   $c->ByteOrder($cfg->{bo});
 
-  $bfu = $c->unpack('bfu', pack "C*", (255)x4);
-  $bfs = $c->unpack('bfs', pack "C*", (255)x4);
-  $bfue = $c->unpack('bfue', pack "C*", (255)x4);
-  $bfse = $c->unpack('bfse', pack "C*", (255)x4);
+  my $bfu = $c->unpack('bfu', pack "C*", (255)x4);
+  my $bfs = $c->unpack('bfs', pack "C*", (255)x4);
+  my $bfue = $c->unpack('bfue', pack "C*", (255)x4);
+  my $bfse = $c->unpack('bfse', pack "C*", (255)x4);
   
   for (1 .. 7) {
-    ok($bfu->{"b$_"}, (1 << $_) - 1);
-    ok($bfs->{"b$_"}, -1);
-    ok($bfue->{"b$_"}, "U$_" . ($_ == 1 ? '1' : 'A'));
-    ok($bfse->{"b$_"}, "S$_" . ($_ == 1 ? '1' : 'A'));
+    is($bfu->{"b$_"}, (1 << $_) - 1);
+    is($bfs->{"b$_"}, -1);
+    is($bfue->{"b$_"}, "U$_" . ($_ == 1 ? '1' : 'A'));
+    is($bfse->{"b$_"}, "S$_" . ($_ == 1 ? '1' : 'A'));
   }
 }
 
 $c->ByteOrder('LittleEndian');
 
-@ru = ();
-@rs = ();
-@rue = ();
-@rse = ();
+my @ru = ();
+my @rs = ();
+my @rue = ();
+my @rse = ();
 for my $b (1 .. 7) {
   for my $i (0 .. ($b-1)) {
     for (\@ru, \@rs) {
@@ -146,23 +145,23 @@ while (@ru < 32) {
 }
 
 for my $bit (0 .. 31) {
-  print "# LittleEndian, Bit=$bit\n";
+  debug("LittleEndian, Bit=$bit\n");
   my $pk = pack "V", 1<<$bit;
-  $bfu = $c->unpack('bfu', $pk);
-  $bfs = $c->unpack('bfs', $pk);
-  $bfue = $c->unpack('bfue', $pk);
-  $bfse = $c->unpack('bfse', $pk);
+  my $bfu = $c->unpack('bfu', $pk);
+  my $bfs = $c->unpack('bfs', $pk);
+  my $bfue = $c->unpack('bfue', $pk);
+  my $bfse = $c->unpack('bfse', $pk);
 
-  ok(join(',', map { qq/b$_=$bfu->{"b$_"}/   } 1 .. 7),
+  is(join(',', map { qq/b$_=$bfu->{"b$_"}/   } 1 .. 7),
      join(',', map { qq/b$_=$ru[$bit]{"b$_"}/ } 1 .. 7));
 
-  ok(join(',', map { qq/b$_=$bfs->{"b$_"}/   } 1 .. 7),
+  is(join(',', map { qq/b$_=$bfs->{"b$_"}/   } 1 .. 7),
      join(',', map { qq/b$_=$rs[$bit]{"b$_"}/ } 1 .. 7));
 
-  ok(join(',', map { qq/b$_=$bfue->{"b$_"}/   } 1 .. 7),
+  is(join(',', map { qq/b$_=$bfue->{"b$_"}/   } 1 .. 7),
      join(',', map { qq/b$_=$rue[$bit]{"b$_"}/ } 1 .. 7));
 
-  ok(join(',', map { qq/b$_=$bfse->{"b$_"}/   } 1 .. 7),
+  is(join(',', map { qq/b$_=$bfse->{"b$_"}/   } 1 .. 7),
      join(',', map { qq/b$_=$rse[$bit]{"b$_"}/ } 1 .. 7));
 
   $pk = pack "V", 0 if $bit >= 28;
@@ -170,12 +169,12 @@ for my $bit (0 .. 31) {
   my $ps = $c->pack('bfs', $rs[$bit]);
   my $pue = $c->pack('bfue', $rue[$bit]);
   my $pse = $c->pack('bfse', $rse[$bit]);
-  printf "# pk =%s\n# pu =%s\n# ps =%s\n# pue=%s\n# pse=%s\n",
-         map { showbits($_) } $pk, $pu, $ps, $pue, $pse;
-  ok($pu, $pk);
-  ok($ps, $pk);
-  ok($pue, $pk);
-  ok($pse, $pk);
+  debug(sprintf "pk =%s\npu =%s\nps =%s\npue=%s\npse=%s\n",
+                map { showbits($_) } $pk, $pu, $ps, $pue, $pse);
+  is($pu, $pk);
+  is($ps, $pk);
+  is($pue, $pk);
+  is($pse, $pk);
 }
 
 $c->ByteOrder('BigEndian');
@@ -206,23 +205,23 @@ while (@ru < 32) {
 }
 
 for my $bit (0 .. 31) {
-  print "# BigEndian, Bit=$bit\n";
+  debug("BigEndian, Bit=$bit\n");
   my $pk = pack "N", 1<<$bit;
-  $bfu = $c->unpack('bfu', $pk);
-  $bfs = $c->unpack('bfs', $pk);
-  $bfue = $c->unpack('bfue', $pk);
-  $bfse = $c->unpack('bfse', $pk);
+  my $bfu = $c->unpack('bfu', $pk);
+  my $bfs = $c->unpack('bfs', $pk);
+  my $bfue = $c->unpack('bfue', $pk);
+  my $bfse = $c->unpack('bfse', $pk);
 
-  ok(join(',', map { qq/b$_=$bfu->{"b$_"}/   } 1 .. 7),
+  is(join(',', map { qq/b$_=$bfu->{"b$_"}/   } 1 .. 7),
      join(',', map { qq/b$_=$ru[$bit]{"b$_"}/ } 1 .. 7));
 
-  ok(join(',', map { qq/b$_=$bfs->{"b$_"}/   } 1 .. 7),
+  is(join(',', map { qq/b$_=$bfs->{"b$_"}/   } 1 .. 7),
      join(',', map { qq/b$_=$rs[$bit]{"b$_"}/ } 1 .. 7));
 
-  ok(join(',', map { qq/b$_=$bfue->{"b$_"}/   } 1 .. 7),
+  is(join(',', map { qq/b$_=$bfue->{"b$_"}/   } 1 .. 7),
      join(',', map { qq/b$_=$rue[$bit]{"b$_"}/ } 1 .. 7));
 
-  ok(join(',', map { qq/b$_=$bfse->{"b$_"}/   } 1 .. 7),
+  is(join(',', map { qq/b$_=$bfse->{"b$_"}/   } 1 .. 7),
      join(',', map { qq/b$_=$rse[$bit]{"b$_"}/ } 1 .. 7));
 
   $pk = pack "N", 0 if $bit <= 3;
@@ -230,12 +229,12 @@ for my $bit (0 .. 31) {
   my $ps = $c->pack('bfs', $rs[$bit]);
   my $pue = $c->pack('bfue', $rue[$bit]);
   my $pse = $c->pack('bfse', $rse[$bit]);
-  printf "# pk =%s\n# pu =%s\n# ps =%s\n# pue=%s\n# pse=%s\n",
-         map { showbits($_) } $pk, $pu, $ps, $pue, $pse;
-  ok($pu, $pk);
-  ok($ps, $pk);
-  ok($pue, $pk);
-  ok($pse, $pk);
+  debug(sprintf "pk =%s\npu =%s\nps =%s\npue=%s\npse=%s\n",
+                map { showbits($_) } $pk, $pu, $ps, $pue, $pse);
+  is($pu, $pk);
+  is($ps, $pk);
+  is($pue, $pk);
+  is($pse, $pk);
 }
 
 
@@ -259,50 +258,50 @@ union ubf {
 
 ENDC
 
-ok($c->sizeof('sbf'), 8);
-ok($c->sizeof('ubf'), 4);
+is($c->sizeof('sbf'), 8);
+is($c->sizeof('ubf'), 4);
 
 
 $c->ByteOrder('BigEndian');
 
-$us = $c->unpack('sbf', pack "NN", 0xF0FFFFFF, 0x4FFFFFFF);
+my $us = $c->unpack('sbf', pack "NN", 0xF0FFFFFF, 0x4FFFFFFF);
 
-ok($us->{b1}, 1);
-ok($us->{b2}, 2);
-ok($us->{b3}, 2);
+is($us->{b1}, 1);
+is($us->{b2}, 2);
+is($us->{b3}, 2);
 
-$uu = $c->unpack('ubf', pack "N", 0x4FFFFFFF);
+my $uu = $c->unpack('ubf', pack "N", 0x4FFFFFFF);
 
-ok($uu->{b1}, 0);
-ok($uu->{b2}, 1);
-ok($uu->{b3}, 2);
+is($uu->{b1}, 0);
+is($uu->{b2}, 1);
+is($uu->{b3}, 2);
 
-$ps = $c->pack('sbf', { b1 => 1, b2 => 2, b3 => 3 });
-$pu = $c->pack('ubf', { b1 => 0, b2 => 1, b3 => 2 });
+my $ps = $c->pack('sbf', { b1 => 1, b2 => 2, b3 => 3 });
+my $pu = $c->pack('ubf', { b1 => 0, b2 => 1, b3 => 2 });
 
-ok($ps, pack "NN", 0x90000000, 0x60000000);
-ok($pu, pack "N", 0x40000000);
+is($ps, pack "NN", 0x90000000, 0x60000000);
+is($pu, pack "N", 0x40000000);
 
 
 $c->ByteOrder('LittleEndian');
 
 $us = $c->unpack('sbf', pack "VV", 0xFFFFFF0F, 0xFFFFFFF4);
 
-ok($us->{b1}, 1);
-ok($us->{b2}, 1);
-ok($us->{b3}, 4);
+is($us->{b1}, 1);
+is($us->{b2}, 1);
+is($us->{b3}, 4);
 
 $uu = $c->unpack('ubf', pack "V", 0xFFFFFFFA);
 
-ok($uu->{b1}, 0);
-ok($uu->{b2}, 2);
-ok($uu->{b3}, 2);
+is($uu->{b1}, 0);
+is($uu->{b2}, 2);
+is($uu->{b3}, 2);
 
 $ps = $c->pack('sbf', { b1 => 1, b2 => 2, b3 => 3 });
 $pu = $c->pack('ubf', { b1 => 0, b2 => 1, b3 => 2 });
 
-ok($ps, pack "VV", 0x00000011, 0x00000003);
-ok($pu, pack "V", 0x00000002);
+is($ps, pack "VV", 0x00000011, 0x00000003);
+is($pu, pack "V", 0x00000002);
 
 
 my @shlone = qw( 1 2 4 8 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536
@@ -346,8 +345,8 @@ struct bfs {
 };
 ENDC
 
-      ok($c->sizeof('bfu'), $block_size);
-      ok($c->sizeof('bfs'), $block_size);
+      is($c->sizeof('bfu'), $block_size);
+      is($c->sizeof('bfs'), $block_size);
 
       my @test = (
         { bo => 'LittleEndian',
@@ -378,11 +377,11 @@ ENDC
           $us->{b} eq ($bit == $bits-1 ? "-$shlone[$bit]" : $shlone[$bit]) or $f++;
 
           if ($f > 0) {
-            print "# [$t->{bo}/ONE] block_size=$block_size, bits=$bits, shift=$shift, bit=$bit\n";
-            printf "# pk = %s\n# pu = %s\n# ps = %s\n", map { showbits($_) } $pk, $pu, $ps;
-            print "# 1 << \$bit = $shlone[$bit]\n";
-            print "# \$uu->{b} = $uu->{b}\n";
-            print "# \$us->{b} = $us->{b}\n";
+            diag("[$t->{bo}/ONE] block_size=$block_size, bits=$bits, shift=$shift, bit=$bit\n",
+                 sprintf("pk = %s\npu = %s\nps = %s\n", map { showbits($_) } $pk, $pu, $ps),
+                 "1 << \$bit = $shlone[$bit]\n",
+                 "\$uu->{b} = $uu->{b}\n",
+                 "\$us->{b} = $us->{b}\n");
           }
 
           $fail += $f;
@@ -402,17 +401,17 @@ ENDC
         $us->{b} == -1 or $f++;
 
         if ($f > 0) {
-          print "# [$t->{bo}/ALL] block_size=$block_size, bits=$bits, shift=$shift\n";
-          printf "# pk = %s\n# pu = %s\n# ps = %s\n", map { showbits($_) } $pk, $pu, $ps;
-          print "# allbits = $allbit[$bits]\n";
-          print "# \$uu->{b} = $uu->{b}\n";
-          print "# \$us->{b} = $us->{b}\n";
+          diag("[$t->{bo}/ALL] block_size=$block_size, bits=$bits, shift=$shift\n",
+               sprintf("pk = %s\npu = %s\nps = %s\n", map { showbits($_) } $pk, $pu, $ps),
+               "allbits = $allbit[$bits]\n",
+               "\$uu->{b} = $uu->{b}\n",
+               "\$us->{b} = $us->{b}\n");
         }
 
         $fail += $f;
       }
 
-      ok($fail, 0);
+      is($fail, 0);
     }
   }
 }
@@ -427,13 +426,18 @@ struct bf {
 
 ENDC
 
-$bf = $c->unpack('bf', pack('C', 255));
-ok($bf->{x}, -1);
+my $bf = $c->unpack('bf', pack('C', 255));
+is($bf->{x}, -1);
 
 $c->UnsignedBitfields(1);
 
 $bf = $c->unpack('bf', pack('C', 255));
-ok($bf->{x}, 255);
+is($bf->{x}, 255);
+
+sub debug
+{
+  $ENV{CBC_TEST_DEBUG} and diag(@_);
+}
 
 sub showbits
 {

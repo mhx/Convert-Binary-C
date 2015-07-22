@@ -1,3 +1,12 @@
+----------------------------
+Version 0.69_01 (2007-12-08)
+----------------------------
+
+* fix UV generation on platforms where NVs don't preserve
+  UVs (e.g. amd64) and perl doesn't know about UVs (<5.6.0)
+
+* make the test suite more noisy when something goes wrong
+
 -------------------------
 Version 0.69 (2007-12-06)
 -------------------------

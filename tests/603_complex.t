@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/06/11 19:59:47 +0100 $
-# $Revision: 27 $
+# $Date: 2007/12/08 14:02:34 +0000 $
+# $Revision: 28 $
 # $Source: /tests/603_complex.t $
 #
 ################################################################################
@@ -20,8 +20,9 @@
 #
 ################################################################################
 
-use Test;
+use Test::More;
 use Convert::Binary::C;
+use strict;
 use constant NALIGN => 4;
 use constant NTYPES => 4;
 
@@ -29,7 +30,7 @@ $^W = 1;
 
 BEGIN { plan tests => 380 * NALIGN * NTYPES }
 
-%reference = (
+my %reference = (
 1=>{sizeof=>{aa=>227,ey=>1092,kc=>3252,rw=>414},content=>{aa=>{ab=>'4565936802120622773',be=>{ac=>2236113589,ad=>1063090004,ae=>1394180375,af=>[-2942,20802],ag=>
 8342,ah=>[[[72]],[[-61]]],ai=>'-6417061733278339648',aj=>[[['-7032909512510964018','-6786229256383406556'],['-1571745542831432406','-4920764503352773037'],[
 '2454075466962463024','-3528908605309553140']],[['7015318699935418036','-3698861162604841735'],['-7616997190430405562','-3101173563121949895'],[
@@ -1147,7 +1148,7 @@ aal=>927507257,aam=>19,aan=>107,aao=>[-10,-44],aap=>'-598004097643795395',aaq=>1
 aah=>[[38,123],[113,67],[237,25]],aai=>3614808599,aaj=>8182264,aak=>3540146448,aal=>-1990843908,aam=>66,aan=>107,aao=>[2,121],aap=>'-2807420433528374251',aaq=>
 1630279970}]],aas=>2236113589,aat=>2236113589,aau=>[[[2236113589,1063090004],[1394180375,1363342466]]]}}},
 );
-%members = (
+my %members = (
 1 => {
 kc=>[
 'mg.kd',1,2,3,'mg.ke',1,2,3,4,5,6,7,'mg.kf',1,2,3,'mg.kg',1,2,3,'mg.kh',1,'mg.ki','mg+23','mg.kw.kj[0][0]',1,2,3,'mg.kw.kj[0][1]',1,2,3,'mg.kw.kj[1][0]',1,2,3,
@@ -1874,7 +1875,7 @@ rw=>[
 'up[2][0].um.uk[2]','up[2][0].um.ul'
 ]},
 );
-%sizeofs = (
+my %sizeofs = (
 1 => {
 kc=>{
 1 => [qw(mg.lt mg.lw mi.lw mi.ly[0][1][0][0] ou[0][0].my ou[0][0].nu ov.mr ov.my ow[0][1].na ow[2][0].mr)],
@@ -2021,7 +2022,7 @@ rw=>{
 140 => [qw(uo uo.um uo.un up[0][0].um up[0][0].un up[1][0] up[1][0].um up[1][0].un up[2][0] up[2][0].um)]}},
 );
 
-$types = <<'ENDTYPES';
+my $types = <<'ENDTYPES';
 typedef union {
 
   unsigned long long  ab;
@@ -2864,8 +2865,8 @@ typedef union {
 
 ENDTYPES
 
-$SEED = 0;
-$data = pack 'C*', map { ($SEED = (($SEED+13)*2869) % 8191) % 256 } 1..3324;
+my $SEED = 0;
+my $data = pack 'C*', map { ($SEED = (($SEED+13)*2869) % 8191) % 256 } 1..3324;
 
 my($succ, $fail);
 
@@ -2879,7 +2880,7 @@ sub reccmp
     if ($ref eq $val) { $succ++ }
     else {
       $fail++;
-      print "# value mismatch for '$ident' (expected $ref, got $val)\n";
+      diag("value mismatch for '$ident' (expected $ref, got $val)\n");
     }
     return $ref eq $val;
   }
@@ -2891,30 +2892,53 @@ sub reccmp
     }
     else {
       $fail++;
-      print "# different array size for '$ident' (expected ",
-            scalar @$ref, ", got ", scalar @$val, ")\n";
+      diag("different array size for '$ident' (expected ",
+           scalar @$ref, ", got ", scalar @$val, ")\n");
     }
   }
   elsif ($id eq 'HASH') {
     if ($sparse or @{[keys %$ref]} == @{[keys %$val]}) {
       $succ++;
-      for (keys %$ref) {
-        if (exists $val->{$_}) {
+      for my $key (keys %$ref) {
+        if (exists $val->{$key}) {
           $succ++;
-          reccmp($ident.".$_", $ref->{$_}, $val->{$_}, $sparse);
+          reccmp($ident.".$key", $ref->{$key}, $val->{$key}, $sparse);
         }
         else {
           $fail++;
-          print "# member '$_' not found in '$ident'\n";
+          diag("member '$key' not found in '$ident'\n");
         }
       }
     }
     else {
       $fail++;
-      print "# different struct member count for '$ident' (expected ",
-            scalar @{[keys %$ref]}, ", got ", scalar @{[keys %$val]}, ")\n";
+      diag("different struct member count for '$ident' (expected ",
+           scalar @{[keys %$ref]}, ", got ", scalar @{[keys %$val]}, ")\n");
     }
   }
+}
+
+sub hexdump
+{
+  my $data = shift;
+  my $dump = '';
+  
+  while (length $data) {
+    my($i, $d, $t) = (0, '', '');
+    
+    for my $c (unpack 'C*', substr $data, 0, 16, '') {
+      $d .= sprintf "%02X", $c;
+      $d .= ' ';
+      $t .= $c < 32 || $c > 126 ? '.' : chr $c;
+      next if ++$i % 4;
+      $d .= ' ';
+      $t .= ' ' unless $i % 8;
+    }
+  
+    $dump .= sprintf "%-53s%s\n", $d, $t;
+  }
+
+  $dump;
 }
 
 sub chkpack
@@ -2928,7 +2952,11 @@ sub chkpack
     my $p = ord substr $$packref, $i, 1;
 
     unless ($p == $o or $p == 0 or (defined $init and $p == $init)) {
-      print "# inconsistent data in chkpack\n";
+      diag("inconsistent data in chkpack (init=$init, o=$o, p=$p):\n",
+           "data @ offset $off:\n",
+           hexdump(substr $data, $off, length $$packref),
+           "packref:\n",
+           hexdump($$packref));
       return 0;
     }
   }
@@ -2987,7 +3015,7 @@ sub checkrc
   while ($rc =~ /REFCNT\s*=\s*(\d+)/g) {
     if ($1 == 1) { $succ++ }
     else {
-      print "# REFCNT = $1, should be 1\n";
+      diag("REFCNT = $1, should be 1\n");
       $fail++;
     }
   }
@@ -3007,7 +3035,6 @@ $p->parse($types);
 my $first = 1;
 
 my $debug = Convert::Binary::C::feature('debug');
-my $reason = $debug ? '' : 'no debugging';
 
 for my $align (4, sort keys %reference) {
   if ($first) { $first = 0 }
@@ -3023,76 +3050,85 @@ for my $align (4, sort keys %reference) {
 
   # perform a basic size check first
 
-  for (keys %$sizeof) {
-    my $size = $p->sizeof($_);
-    print "# sizeof mismatch for type '$_' (expected $sizeof->{$_}, got $size)\n"
-        unless $sizeof->{$_} == $size;
-    ok($sizeof->{$_} == $size);
+  for my $type (keys %$sizeof) {
+    is($p->sizeof($type), $sizeof->{$type}, "sizeof($type)");
   }
 
   # test if the unpack method works
 
-  for (keys %$content) {
-    my $cont = $p->unpack($_, $data);
+  for my $type (keys %$content) {
+    my $cont = $p->unpack($type, $data);
     $succ = $fail = 0;
-    reccmp($_, $content->{$_}, $cont, 0);
+    reccmp($type, $content->{$type}, $cont, 0);
     ok($fail == 0 && $succ > 0);
 
-    # check reference count
-    $succ = $fail = 0;
-    $debug and checkrc(Convert::Binary::C::__DUMP__($cont));
-    skip($reason, $fail == 0 && $succ > 0);
+    # check reference counts
+    SKIP: {
+      skip 'no debug support', 1 unless $debug;
+      $succ = $fail = 0;
+      checkrc(Convert::Binary::C::__DUMP__($cont));
+      ok($fail == 0 && $succ > 0);
+    }
   }
 
   # test if the pack method works correctly
 
-  for (keys %$content) {
-    my $packed = $p->pack($_, $content->{$_});
-    ok($sizeof->{$_} == length $packed);
+  for my $type (keys %$content) {
+    my $packed = $p->pack($type, $content->{$type});
+    is(length $packed, $sizeof->{$type}, "length pack($type)");
     ok(chkpack(\$packed));
 
-    my $cont = $p->unpack($_, $packed);
+    my $cont = $p->unpack($type, $packed);
     $succ = $fail = 0;
-    reccmp($_, $content->{$_}, $cont, 0);
-    ok($fail == 0);
+    reccmp($type, $content->{$type}, $cont, 0);
+    ok($fail == 0 && $succ > 0);
+    # is($fail, 0);
 
     # check reference count
-    $succ = $fail = 0;
-    $debug and checkrc(Convert::Binary::C::__DUMP__($packed));
-    skip($reason, $fail == 0 && $succ > 0);
+    SKIP: {
+      skip 'no debug support', 1 unless $debug;
+      $succ = $fail = 0;
+      checkrc(Convert::Binary::C::__DUMP__($packed));
+      ok($fail == 0 && $succ > 0);
+    }
   }
 
   # test if pack also works for sparse data
 
-  for (keys %$sparse) {
-    my $packed = $p->pack($_, $sparse->{$_});
-    ok($sizeof->{$_} == length $packed);
+  for my $type (keys %$sparse) {
+    my $packed = $p->pack($type, $sparse->{$type});
+    is(length $packed, $sizeof->{$type}, "length pack($type) [sparse]");
     ok(chkpack(\$packed));
 
-    my $cont = $p->unpack($_, $packed);
+    my $cont = $p->unpack($type, $packed);
     $succ = $fail = 0;
-    reccmp($_, $sparse->{$_}, $cont, 1);
-    ok($fail == 0);
+    reccmp($type, $sparse->{$type}, $cont, 1);
+    ok($fail == 0 && $succ > 0);
+    # is($fail, 0);
   }
 
   # test the 3-arg version of pack
 
-  for (keys %$sparse)
+  for my $type (keys %$sparse)
   {
-    my $packed = 'x' x $sizeof->{$_};
-    $p->pack($_, $sparse->{$_}, $packed);
-    ok($sizeof->{$_} == length $packed);
+    my $packed = 'x' x $sizeof->{$type};
+    $p->pack($type, $sparse->{$type}, $packed);
+    is(length $packed, $sizeof->{$type}, "length pack($type) [sparse, 3-arg]");
     ok(chkpack(\$packed, ord 'x'));
 
-    my $cont = $p->unpack($_, $packed);
+    my $cont = $p->unpack($type, $packed);
     $succ = $fail = 0;
-    reccmp($_, $sparse->{$_}, $cont, 1);
-    ok($fail == 0);
+    reccmp($type, $sparse->{$type}, $cont, 1);
+    ok($fail == 0 && $succ > 0);
+    # is($fail, 0);
 
     # check reference count
-    $succ = $fail = 0;
-    $debug and checkrc(Convert::Binary::C::__DUMP__($packed));
-    skip($reason, $fail == 0 && $succ > 0);
+    SKIP: {
+      skip 'no debug support', 1 unless $debug;
+      $succ = $fail = 0;
+      checkrc(Convert::Binary::C::__DUMP__($packed));
+      ok($fail == 0 && $succ > 0);
+    }
   }
 
   # test if the member(), offsetof() and typeof() methods work correctly
@@ -3101,52 +3137,57 @@ for my $align (4, sort keys %reference) {
     $fail = 0;
     my $ref = $members->{$id};
 
-    for (0 .. $sizeof->{$id}-1) {
-      my $m = $p->member($id, $_);
-      my @m = $p->member($id, $_);
-      my $r = $ref->[$_];
+    for my $offs (0 .. $sizeof->{$id}-1) {
+      my $m = $p->member($id, $offs);
+      my @m = $p->member($id, $offs);
+      my $r = $ref->[$offs];
 
-      # print "# member( '$id', $_ ) = (", join(', ', map "'$_'", @m), ")\n";
+      my $diag = "(type=$id, offset=$offs):\n" .
+                 "\$m = '$m'\n" .
+                 "\@m = (" . join(', ', map { "'$_'" } @m) . ")\n";
+
+      # print "# member( '$id', $offs ) = (", join(', ', map "'$offs'", @m), ")\n";
 
       unless ($m eq $m[0])
       {
-        print "# member mismatch for different contexts ('$m' ne '$m[0]')\n";
+        diag("member mismatch for different contexts $diag");
         $fail++;
       }
 
       if (@m > 1) {
         my %seen;
-        for (@m) {
-          if ($seen{$_}++) {
-            print "# duplicate member found in list context output\n";
+        for my $m (@m) {
+          if ($seen{$m}++) {
+            diag("duplicate member ($m) found in list context output $diag");
             $fail++;
           }
         }
       }
 
-      $r =~ /^\d+$/o and $r = "$ref->[$_-$r]+$r";
+      $r =~ /^\d+$/o and $r = "$ref->[$offs-$r]+$r";
       $r =~ /^\w/o   and $r = ".$r";
 
       unless ($m eq $r) {
-        print "# member mismatch for type '$id', offset $_ (expected $r, got $m)\n";
+        diag("member mismatch (expected $r, got $m) $diag");
         $fail++;
       }
 
       unless ($m =~ /^\+\d+$/) {
         my $t = $p->typeof($id.$m);
         unless (defined $t) {
-          print "# undefined type for member ($id.$m)\n";
+          diag("undefined type for member ($id.$m) $diag");
           $fail++;
         }
       }
 
       my $o = $p->offsetof($id, $m);
-      unless (defined $o and $o == $_) {
-        print "# offsetof( '$id', '$m' ) == $o, expected $_\n";
+      unless (defined $o and $o == $offs) {
+        diag("offsetof('$id', '$m') == $o, expected $offs\n");
         $fail++;
       }
     }
-    ok($fail == 0);
+
+    is($fail, 0);
   }
 
   # test if the sizeof() methods works for compound members
@@ -3160,23 +3201,29 @@ for my $align (4, sort keys %reference) {
         $size == $p->sizeof("$id.$member") or $fail++;
       }
     }
-    ok($fail == 0);
+    is($fail, 0);
   }
 
   # test if the unpack method works for compound members
 
-  for (keys %$content) {
-    my($ok, $rcok) = reccheck($content->{$_}, \&unpackcheck, $_);
+  for my $type (keys %$content) {
+    my($ok, $rcok) = reccheck($content->{$type}, \&unpackcheck, $type);
     ok($ok);
-    skip($reason, $rcok);
+    SKIP: {
+      skip 'no debug support', 1 unless $debug;
+      ok($rcok);
+    }
   }
 
   # test if the pack method works for compound members
 
-  for (keys %$content) {
-    my($ok, $rcok) = reccheck($content->{$_}, \&packcheck, $_);
+  for my $type (keys %$content) {
+    my($ok, $rcok) = reccheck($content->{$type}, \&packcheck, $type);
     ok($ok);
-    skip($reason, $rcok);
+    SKIP: {
+      skip 'no debug support', 1 unless $debug;
+      ok($rcok);
+    }
   }
 
   # test Format tag (offsetof and sizeof are already validated above)
@@ -3200,8 +3247,6 @@ for my $align (4, sort keys %reference) {
         my($str) = $bin =~ /^([^\x00]*)/;
         my $pl = $m;
         my $rv;
-
-        print "# --- $id$m\n";
 
         $pl =~ s/\.(\w+)/{$1}/g;
 
@@ -3237,7 +3282,9 @@ for my $align (4, sort keys %reference) {
         $succ++;
       }
 
-      ok($fail == 0) if $succ;
+      if ($succ) {
+        is($fail, 0);
+      }
     }
   }
 }
@@ -3256,13 +3303,13 @@ sub unpackcheck
   reccmp($id, $ref, $cont, 0);
   my $ok = $fail == 0 && $succ > 0;
 
-  $ok or print "# check failed for unpack('$id')\n";
+  $ok or diag("check failed for unpack('$id')\n");
 
   $succ = $fail = 0;
   $debug and checkrc(Convert::Binary::C::__DUMP__($cont));
   my $rcok = $fail == 0 && $succ > 0;
 
-  $rcok or $reason or print "# refcount check failed for unpack('$id')\n";
+  $rcok or !$debug or diag("refcount check failed for unpack('$id')\n");
 
   ($ok, $rcok);
 }
@@ -3280,24 +3327,22 @@ sub packcheck
   my $ok = 1;
 
   $size == length $packed
-    or $ok = 0, print "# size check failed for pack('$id')\n";
+    or $ok = 0, diag("size check failed for pack('$id')\n");
   chkpack( \$packed, 0, $off )
-    or $ok = 0, print "# chkpack check failed for pack('$id')\n";
+    or $ok = 0, diag("chkpack check failed for pack('$id')\n");
 
   my $cont = $p->unpack($id, $packed);
   $succ = $fail = 0;
   reccmp($id, $ref, $cont, 0);
   $fail == 0 && $succ > 0
-    or $ok = 0, print "# check failed for pack('$id')\n";
+    or $ok = 0, diag("check failed for pack('$id')\n");
 
   $succ = $fail = 0;
   $debug and checkrc(Convert::Binary::C::__DUMP__($cont));
   my $rcok = $fail == 0 && $succ > 0;
 
-  $rcok or $reason or print "# refcount check failed for unpack('$id')\n";
+  $rcok or !$debug or diag("refcount check failed for unpack('$id')\n");
 
   ($ok, $rcok);
 }
-
-
 

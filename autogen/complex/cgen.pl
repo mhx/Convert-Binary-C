@@ -156,8 +156,8 @@ EOS
 sub DatagenString
 {
 <<DATAGEN;
-\$SEED = 0;
-\$data = pack 'C*', map { (\$SEED = ((\$SEED+13)*2869) % 8191) % 256 } 1..@{[NDATA]};
+my \$SEED = 0;
+my \$data = pack 'C*', map { (\$SEED = ((\$SEED+13)*2869) % 8191) % 256 } 1..@{[NDATA]};
 DATAGEN
 }
 
@@ -575,7 +575,7 @@ int i[100][10];
 
 static void _typedefs()
 {
-  printf("\n$types = <<'ENDTYPES';\n");
+  printf("\nmy $types = <<'ENDTYPES';\n");
   <<TYPEDEFS>>
   printf("ENDTYPES\n\n");
 }

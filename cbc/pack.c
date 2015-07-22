@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2007/06/11 19:59:56 +0100 $
-* $Revision: 51 $
+* $Date: 2007/12/08 11:17:37 +0000 $
+* $Revision: 53 $
 * $Source: /cbc/pack.c $
 *
 ********************************************************************************
@@ -536,7 +536,13 @@ static void store_int_sv(pPACKARGS, unsigned size, unsigned sign, const Bitfield
 #define __SIZE_LIMIT sizeof(iv.value.u.l)
 #endif
 
-#ifdef newSVuv
+#if defined(newSVuv) && PERL_BCDVERSION >= 0x5006000
+#define HAVE_USABLE_NEWSVUV 1
+#else
+#define HAVE_USABLE_NEWSVUV 0
+#endif
+
+#if HAVE_USABLE_NEWSVUV
 #define __TO_UV(x) newSVuv((UV) (x))
 #else
 #define __TO_UV(x) newSViv((IV) (x))
@@ -552,7 +558,7 @@ static SV *fetch_int_sv(pPACKARGS, unsigned size, unsigned sign, const BitfieldI
    *  but at least it's working...
    */
 
-#ifdef newSVuv
+#if HAVE_USABLE_NEWSVUV
 
   iv.string = size > __SIZE_LIMIT ? buffer : NULL;
 

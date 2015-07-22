@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2007/06/23 23:59:02 +0100 $
-# $Revision: 88 $
+# $Date: 2007/12/08 14:02:18 +0000 $
+# $Revision: 89 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.69 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.69_01 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 $XS_VERSION = $VERSION;
 $VERSION    = eval $VERSION;
 
@@ -1537,11 +1537,11 @@ as it can already handle C<AV> pointers. And this is what we get:
       'xav_fill' => 0,
       'xav_max' => 0,
       'xiv_u' => {
-        'xivu_iv' => 140654788,
-        'xivu_uv' => 140654788,
-        'xivu_p1' => 140654788,
-        'xivu_i32' => 140654788,
-        'xivu_namehek' => 140654788
+        'xivu_iv' => 141176388,
+        'xivu_uv' => 141176388,
+        'xivu_p1' => 141176388,
+        'xivu_i32' => 141176388,
+        'xivu_namehek' => 141176388
       },
       'xmg_u' => {
         'xmg_magic' => '<NULL>',
@@ -1579,7 +1579,7 @@ as it can already handle C<AV> pointers. And this is what we get:
                 'svt_set' => 0,
                 'svt_len' => 0,
                 'svt_clear' => 0,
-                'svt_free' => 136797852,
+                'svt_free' => 137040321,
                 'svt_copy' => 0,
                 'svt_dup' => 0,
                 'svt_local' => 0
@@ -1589,11 +1589,11 @@ as it can already handle C<AV> pointers. And this is what we get:
               'mg_flags' => 0,
               'mg_len' => 12,
               'mg_obj' => 0,
-              'mg_ptr' => 139732148
+              'mg_ptr' => 140265332
             },
             'xmg_ourstash' => {
               'sv_any' => '<NULL>',
-              'sv_refcnt' => 137499872,
+              'sv_refcnt' => 137909216,
               'sv_flags' => 6488064,
               'sv_u' => {
                 'svu_iv' => 12,
@@ -1611,26 +1611,26 @@ as it can already handle C<AV> pointers. And this is what we get:
         'sv_refcnt' => 2,
         'sv_flags' => 578813964,
         'sv_u' => {
-          'svu_iv' => '8243107277089939388',
-          'svu_uv' => '8243107277089939388',
-          'svu_rv' => 140648380,
-          'svu_pv' => 140648380,
-          'svu_array' => 140648380,
-          'svu_hash' => 140648380,
-          'svu_gp' => 140648380
+          'svu_iv' => '593020634507353364',
+          'svu_uv' => '593020634507353364',
+          'svu_rv' => 139042068,
+          'svu_pv' => 139042068,
+          'svu_array' => 139042068,
+          'svu_hash' => 139042068,
+          'svu_gp' => 139042068
         }
       }
     },
     'sv_refcnt' => 1,
     'sv_flags' => 1074790411,
     'sv_u' => {
-      'svu_iv' => '592594608112941252',
-      'svu_uv' => '592594608112941252',
-      'svu_rv' => 140654788,
-      'svu_pv' => 140654788,
-      'svu_array' => 140654788,
-      'svu_hash' => 140654788,
-      'svu_gp' => 140654788
+      'svu_iv' => 141176388,
+      'svu_uv' => 141176388,
+      'svu_rv' => 141176388,
+      'svu_pv' => 141176388,
+      'svu_array' => 141176388,
+      'svu_hash' => 141176388,
+      'svu_gp' => 141176388
     }
   };
 
@@ -3937,38 +3937,38 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1180783212,
-      'mtime' => 1180783206,
-      'size' => 11734
+      'ctime' => 1196609327,
+      'mtime' => 1196609232,
+      'size' => 11688
     },
     '/usr/include/gnu/stubs-32.h' => {
-      'ctime' => 1180783211,
-      'mtime' => 1180783206,
-      'size' => 647
+      'ctime' => 1196609327,
+      'mtime' => 1196609305,
+      'size' => 624
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1180783211,
-      'mtime' => 1180783206,
-      'size' => 11339
+      'ctime' => 1196609327,
+      'mtime' => 1196609269,
+      'size' => 11773
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1180783211,
-      'mtime' => 1180783206,
+      'ctime' => 1196609327,
+      'mtime' => 1196609232,
       'size' => 315
     },
     '/usr/include/string.h' => {
-      'ctime' => 1180783212,
-      'mtime' => 1180783206,
-      'size' => 16281
+      'ctime' => 1196609327,
+      'mtime' => 1196609262,
+      'size' => 16438
     },
     '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include/stddef.h' => {
-      'ctime' => 1167821862,
+      'ctime' => 1192854535,
       'mtime' => 1167821861,
       'size' => 12695
     },
     '/usr/include/bits/wordsize.h' => {
-      'ctime' => 1180783211,
-      'mtime' => 1180783206,
+      'ctime' => 1196609327,
+      'mtime' => 1196609257,
       'size' => 873
     }
   };
