@@ -12,7 +12,7 @@
 * $Author: mhx $
 * $Date: 2003/01/20 19:11:17 +0000 $
 * $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.11 $
+* $Snapshot: /Convert-Binary-C/0.12 $
 * $Source: /ctlib/cpperr.h $
 *
 ********************************************************************************

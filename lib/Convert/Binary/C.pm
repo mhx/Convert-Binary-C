@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/02/24 07:21:27 +0000 $
-# $Revision: 37 $
-# $Snapshot: /Convert-Binary-C/0.11 $
+# $Date: 2003/03/17 21:19:19 +0000 $
+# $Revision: 38 $
+# $Snapshot: /Convert-Binary-C/0.12 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,8 +32,8 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = sprintf '%.2f', 0.01*('$Revision: 37 $' =~ /(\d+)/)[0];
-$XS_VERSION =  do { my @r = '$Snapshot: /Convert-Binary-C/0.11 $'
+$VERSION    = sprintf '%.2f', 0.01*('$Revision: 38 $' =~ /(\d+)/)[0];
+$XS_VERSION =  do { my @r = '$Snapshot: /Convert-Binary-C/0.12 $'
                             =~ /(\d+\.\d+(?:_\d+)?)/;
                     @r ? $r[0] : '9.99' };
 
@@ -109,7 +109,7 @@ Convert::Binary::C - Binary Data Conversion using C Types
   #---------------------------------------------------
   # Add include paths and global preprocessor defines
   #---------------------------------------------------
-  $c->Include( '/usr/lib/gcc-lib/i486-suse-linux/2.95.3/include',
+  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.2/include',
                '/usr/include' )
     ->Define( qw( __USE_POSIX __USE_ISOC99=1 ) );
   
@@ -1661,7 +1661,6 @@ If the type defines some kind of compound object, you
 may ask for the size of a member of that compound object:
 
   $size = $c->sizeof( 'test.uni.word[1]' );
-  $size == 2 or die;
 
 This would set C<$size> to C<2>.
 
@@ -1921,7 +1920,7 @@ of the file at the moment it was parsed.
   # Create object, set include path, parse 'string.h' header
   #----------------------------------------------------------
   my $c = Convert::Binary::C->new
-          ->Include( '/usr/lib/gcc-lib/i486-suse-linux/2.95.3/include',
+          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.2/include',
                      '/usr/include' )
           ->parse_file( 'string.h' );
   
@@ -1941,29 +1940,29 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1034791519,
-      'mtime' => 1033737983,
-      'size' => 10679
+      'ctime' => 1045159352,
+      'mtime' => 1039024181,
+      'size' => 10999
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1034791520,
-      'mtime' => 1033738026,
-      'size' => 6540
+      'ctime' => 1045159352,
+      'mtime' => 1039024181,
+      'size' => 8400
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1034791519,
-      'mtime' => 1033738050,
-      'size' => 882
+      'ctime' => 1045159352,
+      'mtime' => 1039024181,
+      'size' => 657
     },
     '/usr/include/string.h' => {
-      'ctime' => 1034791520,
-      'mtime' => 1033738022,
-      'size' => 13914
+      'ctime' => 1045159353,
+      'mtime' => 1039024181,
+      'size' => 14226
     },
-    '/usr/lib/gcc-lib/i486-suse-linux/2.95.3/include/stddef.h' => {
-      'ctime' => 1004697846,
-      'mtime' => 989593995,
-      'size' => 9834
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.2/include/stddef.h' => {
+      'ctime' => 1046205460,
+      'mtime' => 1046205454,
+      'size' => 12695
     }
   };
   @files = (
@@ -1971,7 +1970,7 @@ The above code would print something like this:
     '/usr/include/sys/cdefs.h',
     '/usr/include/gnu/stubs.h',
     '/usr/include/string.h',
-    '/usr/lib/gcc-lib/i486-suse-linux/2.95.3/include/stddef.h'
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.2/include/stddef.h'
   );
 
 =back
@@ -2904,6 +2903,11 @@ ANSI ruleset.
 
 =item *
 
+Gisbert W. Selke for spotting some interesting bugs and providing
+extensive reports.
+
+=item *
+
 Steffen Zimmermann for a prolific discussion on the cloning
 algorithm.
 
@@ -2954,3 +2958,4 @@ to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar> and L<Data::Dumper>.
 
 =cut
+

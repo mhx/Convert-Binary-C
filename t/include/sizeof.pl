@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2003/01/01 11:30:04 +0000 $
 # $Revision: 4 $
-# $Snapshot: /Convert-Binary-C/0.11 $
+# $Snapshot: /Convert-Binary-C/0.12 $
 # $Source: /t/include/sizeof.pl $
 #
 ################################################################################

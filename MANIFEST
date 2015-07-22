@@ -8,7 +8,6 @@ bin/ccconfig
 bin/convert.PL
 bin/memmap.PL
 bin/perltypes.PL
-ctlib/Tokenizer.pm
 ctlib/arch.pl
 ctlib/byteorder.c
 ctlib/byteorder.h
@@ -28,8 +27,13 @@ ctlib/parser.y
 ctlib/pragma.c
 ctlib/pragma.h
 ctlib/pragma.y
+ctlib/t_ckeytok.c
+ctlib/t_config.c
 ctlib/t_config.pl
+ctlib/t_keywords.c
+ctlib/t_parser.c
 ctlib/t_parser.pl
+ctlib/t_pragma.c
 ctlib/t_pragma.pl
 ctlib/ucpp/Makefile
 ctlib/ucpp/README

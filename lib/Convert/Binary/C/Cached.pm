@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/20 18:13:18 +0000 $
-# $Revision: 11 $
-# $Snapshot: /Convert-Binary-C/0.11 $
+# $Date: 2003/03/17 21:20:02 +0000 $
+# $Revision: 12 $
+# $Snapshot: /Convert-Binary-C/0.12 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = sprintf '%.2f', 0.01*('$Revision: 11 $' =~ /(\d+)/)[0];
+$VERSION = sprintf '%.2f', 0.01*('$Revision: 12 $' =~ /(\d+)/)[0];
 
 my %cache;
 
@@ -209,8 +209,12 @@ sub __parse
     $c->{$_[0]} = $_[1];
   
     if( $self->__can_use_cache ) {
-      eval { $self->SUPER::parse_file( $c->{cache} ) };
-      unless( $@ ) {
+      my @WARN;
+      {
+        local $SIG{__WARN__} = sub { push @WARN, $_[0] };
+        eval { $self->SUPER::parse_file( $c->{cache} ) };
+      }
+      unless( $@ or @WARN ) {
         $c->{parsed}     = 1;
         $c->{uses_cache} = 1;
         return;
@@ -254,7 +258,7 @@ sub __can_use_cache
     return 0;
   }
 
-  my %config = do {
+  my @config = do {
     defined( my $config = <$fh> ) or return 0;
     $config =~ /^#if\s+0/ or return 0;
     local $/ = $/.'#endif';
@@ -262,6 +266,11 @@ sub __can_use_cache
     $config =~ s/^\*//gms;
     eval $config;
   };
+
+  # corrupt config
+  @config % 2 and return 0;
+
+  my %config = @config;
 
   my $what = exists $c->{code} ? 'code' : 'file';
 

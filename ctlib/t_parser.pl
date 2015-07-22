@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/10 22:28:28 +0000 $
-# $Revision: 4 $
-# $Snapshot: /Convert-Binary-C/0.11 $
+# $Date: 2003/03/17 21:10:05 +0000 $
+# $Revision: 5 $
+# $Snapshot: /Convert-Binary-C/0.12 $
 # $Source: /ctlib/t_parser.pl $
 #
 ################################################################################
@@ -23,8 +23,7 @@
 # 
 ################################################################################
 
-use lib 'ctlib';
-use Tokenizer;
+use Devel::Tokenizer::C;
 
 # keywords that cannot be disabled
 @no_disable = qw(
@@ -63,21 +62,21 @@ use Tokenizer;
 $file = shift;
 
 if( $file =~ /t_parser/ ) {
-  $t = Tokenizer->new( tokfnc => \&t_parser )
-                ->addtokens( '', @disable, @no_disable );
+  $t = Devel::Tokenizer::C->new( TokenFunc => \&t_parser )
+                          ->add_tokens( @disable, @no_disable );
 }
 elsif( $file =~ /t_keywords/ ) {
-  $t = Tokenizer->new( tokfnc => \&t_keywords, tokstr => 'str' )
-                ->addtokens( '', @disable );
+  $t = Devel::Tokenizer::C->new( TokenFunc => \&t_keywords, TokenString => 'str' )
+                          ->add_tokens( @disable );
 }
 elsif( $file =~ /t_ckeytok/ ) {
-  $t = Tokenizer->new( tokfnc => \&t_ckeytok, tokstr => 'name' )
-                ->addtokens( '', @disable, @no_disable );
+  $t = Devel::Tokenizer::C->new( TokenFunc => \&t_ckeytok, TokenString => 'name' )
+                          ->add_tokens( @disable, @no_disable );
 }
 else { die "invalid file: $file\n" }
 
 open OUT, ">$file" or die "$file: $!";
-print OUT $t->makeswitch;
+print OUT $t->generate;
 close OUT;
 
 sub t_parser {

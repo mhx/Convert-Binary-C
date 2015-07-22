@@ -1,5 +1,5 @@
 SHELL = /bin/bash
-PERL  = perl580mtopt
+PERL  = perl
 
 all :: clean sub
 	@cd .. && make realclean

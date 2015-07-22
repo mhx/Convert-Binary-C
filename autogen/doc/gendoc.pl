@@ -39,7 +39,7 @@ while( <> ) {
     $files{$file}++;
     @lines = `$^X -w -I../../blib/lib -I../../blib/arch $exec`;
   }
-  else { print $_; next }
+  else { print; next }
 
   if( defined $sec ) {
     my($cur, @tmp) = (1);

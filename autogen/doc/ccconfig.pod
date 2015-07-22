@@ -111,7 +111,10 @@ Normally, a simple
   ccconfig
 
 without arguments is enough if you want the configuration for
-your system compiler.
+your system compiler. While C<ccconfig> is running, it will
+write lots of status information to C<stderr>. When it's done,
+it will write a Perl hash table to C<stdout> which can be
+directly used as a configuration for Convert::Binary::C.
 
 If you want the configuration for a different compiler,
 or C<ccconfig> cannot determine your system compiler
@@ -141,3 +144,4 @@ it under the same terms as Perl itself.
 See L<Convert::Binary::C>.
 
 =cut
+

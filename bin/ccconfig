@@ -11,9 +11,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/23 18:59:38 +0000 $
-# $Revision: 35 $
-# $Snapshot: /Convert-Binary-C/0.11 $
+# $Date: 2003/03/17 21:18:46 +0000 $
+# $Revision: 37 $
+# $Snapshot: /Convert-Binary-C/0.12 $
 # $Source: /bin/ccconfig $
 #
 ################################################################################
@@ -30,7 +30,7 @@ use Data::Dumper;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = sprintf '%.2f', 0.01*('$Revision: 35 $' =~ /(\d+)/)[0];
+my $VERSION = sprintf '%.2f', 0.01*('$Revision: 37 $' =~ /(\d+)/)[0];
 my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT;
 
@@ -100,6 +100,19 @@ use constant ERR_REQUIRE => 1;
 use constant ERR_CREATE  => 2;
 use constant ERR_CONFIG  => 3;
 
+use constant UNKNOWN     => 0;
+use constant GNU_GCC     => 1;
+use constant INTEL_ICC   => 2;
+use constant MS_VCPP     => 3;
+
+my %type_map;
+
+BEGIN {
+  %type_map = (
+    &MS_VCPP => { 'long long' => '__int64' }
+  );
+};
+
 sub ANSI_headers
 {
   qw(
@@ -114,7 +127,7 @@ sub _preset_names
   qw(
     __386BSD__ __3dNOW__ __3dNOW_A__ __64BIT__ ____386BSD____ a29k ABI64
     ABIN32 ADDR64 aegis AES_SOURCE AIX AIX32 AIX370 AIX41 AIX42 AIX43 AIX51
-    AIX64 AIX_SOURCE aixpc ALL_SOURCE alliant ALMOST_STDC ALPHA ALPHA_
+    AIX64 AIX_SOURCE aixpc ALL_SOURCE alliant ALMOST_STDC alpha ALPHA_
     Alpha_AXP alpha_bwx alpha_cix alpha_ev4 alpha_ev5 alpha_ev6 alpha_fix
     alpha_max alpha_vxworks ALTIVEC AM29000 am29050 AM29K AM33 AMD64 amiga
     AMIGAOS AMIX ansi ANSI_C_SOURCE ANSI_COMPAT AOUT APCS_26 APCS_32 apollo
@@ -130,7 +143,7 @@ sub _preset_names
     AVR_ATmega103 AVR_ATmega128 AVR_ATmega16 AVR_ATmega161 AVR_ATmega163
     AVR_ATmega32 AVR_ATmega323 AVR_ATmega603 AVR_ATmega64 AVR_ATmega8
     AVR_ATmega83 AVR_ATmega85 AVR_ATtiny11 AVR_ATtiny12 AVR_ATtiny15
-    AVR_ATtiny22 AVR_ATtiny28 AVR_ENHANCED AVR_MEGA base BeOS big_endian
+    AVR_ATtiny22 AVR_ATtiny28 AVR_ENHANCED AVR_MEGA base BeOS BIG_ENDIAN
     BIGMODEL BIT_MSF bool BSD bsd43 bsd4_2 BSD4_3 bsd4_4 BSD_4_3 BSD_4_4
     BSD_C BSD_NET2 BSD_SOURCE BSD_TIME BSD_TYPES BSDCOMPAT bsdi bull
     BULL_SOURCE BYTE_MSF BYTE_ORDER c C30 C31 C32 C33 C3x C40 C44 C4x
@@ -146,7 +159,7 @@ sub _preset_names
     float80 fpreg fr30 FreeBSD G_FLOAT gcc GCC_NEW_VARARGS gcos gcx GFLOAT
     gimpel GLIBC GLIBC_MINOR gmicro GNU GNU_CRIS gnu_hurd GNU_LIBRARY
     gnu_linux GNU_SOURCE GNUC GNUC_MINOR GNUC_PATCHLEVEL GO32 gould
-    GOULD_PN GP_SUPPORT H3050R H3050RX h8300 H8300H H8300S hardfp
+    GOULD_PN GP_SUPPORT H3050R H3050RX H8300 H8300H H8300S hardfp
     HAVE_68881 HAVE_CE HAVE_FPA HAVE_FPU HAVE_SHORT_DOUBLE HAVE_SHORT_INT
     HAVE_SKY hbullx20 hcx HITACHI HIUX_SOURCE host_mips hp200 hp300 hp64000
     hp64902 hp64903 HP700 hp800 hp9000 hp9000ipc hp9000s200 hp9000s300
@@ -154,7 +167,7 @@ sub _preset_names
     hpux HPUX_ASM HPUX_SOURCE hypersparc i186 i286 i370 i386 i486 i586 i686
     i8086 I80960 i860 i960 i960_CA i960_CC i960_CF i960_KA i960_KB i960_MC
     i960_SA i960_SB i960CA i960CC i960CF i960JA i960JD i960JF i960KA i960KB
-    i960MC i960RP i960SA i960SB ia64 iAPX286 IBITS32 ibm ibm032 ibmesa
+    i960MC i960RP i960SA i960SB IA64 iAPX286 IBITS32 ibm ibm032 ibmesa
     IBMR2 ibmrt IEEE_FLOAT IEEE_FLOAT_ IEEE_FP IEEE_FP_INEXACT ILP32 ILP64
     INCLUDE__STDC__ INCLUDE_LONGLONG INLINE INLINE_INTRINSICS INT int128
     INT64 INT_MAX INTEL interdata INTERIX INTRINSICS is68k itanium ix86 k6
@@ -175,31 +188,32 @@ sub _preset_names
     merlin mert MINGW32 MiNT mips mips16 mips64 mips_eabi mips_fpr
     MIPS_FPSET MIPS_ISA MIPS_SIM mips_single_float mips_soft_float
     MIPS_SZINT MIPS_SZLONG MIPS_SZPTR MIPSEB MIPSEL MMIX MMIX_ABI_GNU
-    MMIX_ABI_MMIXWARE MMX MN10200 MN10300 MODERN_C moss motorola mpeix
-    MSC_VER MSDOS MSVCRT MT MTXINU MULTIMAX MULTITHREADED mvs n16
-    NATURAL_ALIGNMENT ncl_el ncl_mr NetBSD netware news1500 news1700
-    news1800 news1900 news3700 news700 news800 news900 NeXT NEXT_SOURCE NLS
-    NO_INLINE NO_INLINE_MATH NO_INLINE_STDLIB NO_INTERRUPTS
-    NO_LEADING_UNDERSCORES NO_PROTOTYPE NO_UNDERSCORES NODE nofp nonstopux
-    ns16000 ns32000 ns32016 ns32332 ns32532 ns32k nsc32000 OCS88 OEMVS
-    OPEN_NAMESPACE OpenBSD openedition OPENNT OPTIMIZE os OS2 OS390 osf
-    OSF1 OSF_SOURCE pa_risc PA_RISC1_1 PA_RISC2_0 PARAGON PARISC pc532
-    pdp11 pe pentium pentium2 pentium3 pentium4 pentium__mmx pentiumpro PGC
-    pic PIC_ pj plexus PORTAR POSIX POSIX1B_SOURCE POSIX2_SOURCE
-    POSIX4_SOURCE POSIX_C_SOURCE POSIX_SOURCE POSIX_THREADS POWER PowerPC
-    powerpc64 ppc PPC64 PPC64_ PPC_ PRAGMA_REDEFINE_EXTNAME pro PROTOTYPES
-    ps2 psos PTHREAD_USE_D4 PTHREADS PTRDIFF_TYPE PWB pyr QNX R3000 R4000
-    REENTRANT REGPARM RELOCATABLE RES REVARGV Rhapsody rios RISC6000
-    riscbsd riscix riscos ROSE rs6000 RT rtems s390 s390x s64_t SA110 SCO
-    SCO_C_DIALECT SCO_COFF SCO_DS SCO_ELF SCO_ODS_30 SCO_XPG_VERS scs semi
-    sequent SEQUENT_ sgi SGI_SOURCE sh sh1 sh2 sh3 SH3E SH4 SH4_NOFPU
-    SH4_SINGLE SH4_SINGLE_ONLY SH5 SHARED SHMEDIA SHRT_MAX simulator sinix
-    SIZE_INT SIZE_LONG SIZE_PTR SIZE_TYPE SNI SOCKET_SOURCE SOCKETS_SOURCE
+    MMIX_ABI_MMIXWARE MMX MN10200 MN10300 MODERN_C moss motorola mpc505
+    mpc604 mpc750 mpc821 mpc860 mpeix MSC_VER MSDOS MSVCRT MT MTXINU
+    MULTIMAX MULTITHREADED mvs n16 NATURAL_ALIGNMENT ncl_el ncl_mr NetBSD
+    netware news1500 news1700 news1800 news1900 news3700 news700 news800
+    news900 NeXT NEXT_SOURCE NLS NO_INLINE NO_INLINE_MATH NO_INLINE_STDLIB
+    NO_INTERRUPTS NO_LEADING_UNDERSCORES NO_PROTOTYPE NO_UNDERSCORES NODE
+    nofp nonstopux ns16000 ns32000 ns32016 ns32332 ns32532 ns32k nsc32000
+    OCS88 OEMVS OPEN_NAMESPACE OpenBSD openedition OPENNT OPTIMIZE os OS2
+    OS390 OSF OSF1 OSF_SOURCE pa_risc PA_RISC1_1 PA_RISC2_0 PARAGON PARISC
+    PC532 pdp11 pe pentium pentium2 pentium3 pentium4 pentium__mmx
+    pentiumpro PGC pic PIC_ pj plexus PORTAR POSIX POSIX1B_SOURCE
+    POSIX2_SOURCE POSIX4_SOURCE POSIX_C_SOURCE POSIX_SOURCE POSIX_THREADS
+    POWER PowerPC powerpc64 PPC ppc403 ppc601 ppc602 ppc603 ppc603e PPC64
+    PPC64_ PPC_ PRAGMA_REDEFINE_EXTNAME pro PROTOTYPES ps2 psos
+    PTHREAD_USE_D4 PTHREADS PTRDIFF_TYPE PWB pyr QNX R3000 R4000 REENTRANT
+    REGPARM RELOCATABLE RES REVARGV Rhapsody rios RISC6000 riscbsd riscix
+    riscos ROSE rs6000 RT rtems s390 s390x s64_t SA110 SCO SCO_C_DIALECT
+    SCO_COFF SCO_DS SCO_ELF SCO_ODS_30 SCO_XPG_VERS scs semi sequent
+    SEQUENT_ sgi SGI_SOURCE sh sh1 sh2 sh3 SH3E SH4 SH4_NOFPU SH4_SINGLE
+    SH4_SINGLE_ONLY SH5 SHARED SHMEDIA SHRT_MAX simulator sinix SIZE_INT
+    SIZE_LONG SIZE_PTR SIZE_TYPE SNI SOCKET_SOURCE SOCKETS_SOURCE
     SOFT_FLOAT SOFTFP SOLARIS_THREADS sony sony_news sonyrisc sparc sparc64
     sparc_v8 sparc_v9 sparclet sparclite sparclite86x sparcv9 spectrum spur
-    SSE SSE2 stardent STD_INCLUDE_DIR stdc STDC_EXT stdcall STDCPP stratos
+    SSE SSE2 stardent STD_INCLUDE_DIR STDC STDC_EXT stdcall STDCPP stratos
     STRICT_ANSI STRICT_BSD STRICT_NAMES sun sun3 sun386 Sun386i supersparc
-    SVID svr3 svr4 SVR4_2 SVR4_ABI SVR4_SOURCE svr5 SX system SYSTYPE_BSD
+    SVID svr3 SVR4 SVR4_2 SVR4_ABI SVR4_SOURCE svr5 SX system SYSTYPE_BSD
     SYSTYPE_BSD43 SYSTYPE_BSD44 SYSTYPE_SVR4 SYSTYPE_SVR5 SYSTYPE_SYSV SYSV
     SYSV3 SYSV4 SYSV5 sysV68 sysV88 SYSV_SOURCE tahoe Tek4132 Tek4300
     THREAD_SAFE thumb THUMB_INTERWORK THUMBEB THUMBEL titan TM3200 TM5400
@@ -297,7 +311,7 @@ sub _getwarn
   my @warn = @_;
 
   for( @warn ) {
-    s/\s+at\s+$0\s+line\s+\d+\.//m;
+    s/\s+at\s+\Q$0\E\s+line\s+\d+\.//m;
     s/^\s*included\s+from\s+\[buffer\]:\d+[\r\n]+//m;
     s/[\r\n]+$//;
   };
@@ -388,8 +402,9 @@ sub get_config
 
   my %predef = %{$self->{predefined} || {}};
   my %def;
+  my $compiler = $self->_compiler;
 
-  if( exists $predef{__GNUC__} ) {
+  if( $compiler == GNU_GCC ) {
     $self->_msg( "You're using the GNU compiler." );
     %def = (
       '__asm(x)'          => '',
@@ -404,7 +419,7 @@ sub get_config
       '__builtin_va_list' => 'int',
     );
   }
-  elsif( exists $predef{__ICC} || exists $predef{__INTEL_COMPILER} ) {
+  elsif( $compiler == INTEL_ICC ) {
     $self->_msg( "You're using the Intel compiler." );
     %def = (
       '__asm(x)'          => '',
@@ -419,7 +434,7 @@ sub get_config
       '__builtin_va_list' => 'int',
     );
   }
-  elsif( exists $predef{_MSC_VER} ) {
+  elsif( $compiler == MS_VCPP ) {
     $self->_msg( "You're using the Microsoft compiler." );
     $def{'__int64'} = 'long long';
   }
@@ -689,6 +704,20 @@ sub run_checks
   }
 }
 
+sub _compiler
+{
+  my $self = shift;
+
+  exists $self->{predefined}{__GNUC__}         and return GNU_GCC;
+
+  exists $self->{predefined}{__ICC} ||
+  exists $self->{predefined}{__INTEL_COMPILER} and return INTEL_ICC;
+
+  exists $self->{predefined}{_MSC_VER}         and return MS_VCPP;
+
+  return UNKNOWN;
+}
+
 sub _test_type
 {
   my($self, $type, $init, $width) = @_;
@@ -769,7 +798,7 @@ ENDC
   }
   else {
     $self->_work_done;
-    $self->_msg( "Got no output from compiler." );
+    $self->_msg( "Got no output from compiler for '$type'." );
     return undef;
   }
 
@@ -798,7 +827,11 @@ sub _get_alignment_compile
   my $res = $self->_test_type( "struct align { char a; $type b; }",
                                "{ sizeof(struct align) - sizeof($type), ($type) -1 }", 32 );
 
-  defined $res or return undef;
+  unless( defined $res ) {
+    $self->_work_done;
+    $self->_msg( "Got no output from compiler for '$type'." );
+    return undef;
+  }
 
   my $off = unpack "C", $res;
 
@@ -820,8 +853,11 @@ sub _get_alignment
   my $meth = $self->{can_run} ? "_get_alignment_run" : "_get_alignment_compile";
   my $align;
 
+  my $compiler = $self->_compiler;
+
   for my $type ( 'int', 'short', 'long', 'long long', 'float', 'double', 'int *' ) {
-    if( defined( my $rv = $self->$meth( $type ) ) ) {
+    my $real_type = $type_map{$compiler}{$type} || $type;
+    if( defined( my $rv = $self->$meth( $real_type ) ) ) {
       !defined($align) || $rv > $align and $align = $rv;
     }
   }
@@ -865,7 +901,7 @@ ENDC
   }
   else {
     $self->_work_done;
-    $self->_msg( "Got no output from compiler." );
+    $self->_msg( "Got no output from compiler for '$type'." );
     return undef;
   }
 
@@ -892,7 +928,12 @@ sub _get_basic_sizes_compile
   $self->_work_in_progress;
 
   my $res = $self->_test_type( $type, "0", 16 );
-  defined $res or return undef;
+
+  unless( defined $res ) {
+    $self->_work_done;
+    $self->_msg( "Got no output from compiler for '$type'." );
+    return undef;
+  }
 
   return length $res;
 }
@@ -906,9 +947,11 @@ sub _get_basic_sizes
   my $meth = $self->{can_run} ? "_get_basic_sizes_run" : "_get_basic_sizes_compile";
 
   my %sizes;
+  my $compiler = $self->_compiler;
 
   for my $type ( 'int', 'short', 'long', 'long long', 'float', 'double', 'long double', 'int *' ) {
-    my $rv = $self->$meth( $type ) or next;
+    my $real_type = $type_map{$compiler}{$type} || $type;
+    my $rv = $self->$meth( $real_type ) or next;
     $sizes{$type =~ y/*// ? 'pointer' : $type} = $rv;
   }
 
@@ -1006,12 +1049,14 @@ sub _get_unsigned_chars_compile
   my $self = shift;
 
   my $res = $self->_test_type( "int", "(int)((char)-1)", 8 );
-  defined $res or return undef;
 
-  $res =~ /^\xFF+$/        and return -1;
-  $res =~ /^\x00+\xFF$/ ||
-  $res =~ /^\xFF\x00+$/    and return 255;
+  if( defined $res ) {
+    $res =~ /^\xFF+$/        and return -1;
+    $res =~ /^\x00+\xFF$/ ||
+    $res =~ /^\xFF\x00+$/    and return 255;
+  }
 
+  $self->_msg( "Could not determine character signedness." );
   return undef;
 }
 
@@ -1131,6 +1176,7 @@ sub _get_byteorder_compile
     ? (((unsigned long)0x08070605) << 32) | ((unsigned long)0x04030201)
     : (unsigned long)0x04030201
 ENDINIT
+
   unless( defined $res ) {
     $self->_msg( "Could not determine byte order." );
     return '';
@@ -1434,7 +1480,7 @@ TEMP
     for my $line ( @{$res->{stdout}} ) {
       if( $line =~ $self->{ppline} ) {
         my $file = $2;
-        if( $file =~ /^(.*)$hdr$/ ) {
+        if( $file =~ /^(.*)\Q$hdr\E$/ ) {
           my $inc = $1;
           $inc =~ y{\\}{/}s;
           $resolve{$hdr} = [$inc];
@@ -1699,7 +1745,7 @@ TEMP
 
     for( @{$res->{stdout}} ) {
       /\Q$line/                                        and $have_source = 1;
-      $_ =~ $self->{ppline} && $2 =~ /\E$self->{temp}/ and $have_ppline = 1;
+      $_ =~ $self->{ppline} && $2 =~ /\Q$self->{temp}/ and $have_ppline = 1;
     }
     $have_source and $have_ppline and last;
 
@@ -1824,12 +1870,14 @@ sub _run_temp
 sub _build_temp
 {
   my $self = shift;
+  unlink $self->{exe};  # make sure exe is removed
   $self->_runcc( '-o', $self->{exe}, $self->{temp} );
 }
 
 sub _compile_temp
 {
   my $self = shift;
+  unlink $self->{obj};  # make sure obj is removed
   $self->_runcc( '-o', $self->{obj}, '-c', $self->{temp} );
 }
 
@@ -2202,7 +2250,10 @@ Normally, a simple
   ccconfig
 
 without arguments is enough if you want the configuration for
-your system compiler.
+your system compiler. While C<ccconfig> is running, it will
+write lots of status information to C<stderr>. When it's done,
+it will write a Perl hash table to C<stdout> which can be
+directly used as a configuration for Convert::Binary::C.
 
 If you want the configuration for a different compiler,
 or C<ccconfig> cannot determine your system compiler
@@ -2232,3 +2283,4 @@ it under the same terms as Perl itself.
 See L<Convert::Binary::C>.
 
 =cut
+

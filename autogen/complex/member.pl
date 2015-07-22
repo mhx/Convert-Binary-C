@@ -4,6 +4,7 @@ use strict;
 my $align = shift;
 my %member = %{eval do {local $/; <>}};
 my $first = 1;
+my $CC = $ENV{CC} || 'gcc';
 
 print "$align => {\n";
 for my $type ( keys %member ) {
@@ -113,7 +114,7 @@ ENDC
   close TEMP;
 
   print STDERR "Running C compiler...\n";
-  system "gcc321 -O3 -o $exe $file" and die "Ooops, gcc failed: $!\n";
+  system "$CC -O3 -o $exe $file" and die "Ooops, $CC failed: $!\n";
   -e $exe or die "Got no executable...\n";
 
   print STDERR "Running program...\n";

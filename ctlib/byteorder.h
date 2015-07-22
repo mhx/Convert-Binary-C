@@ -12,7 +12,7 @@
 * $Author: mhx $
 * $Date: 2003/01/01 11:29:56 +0000 $
 * $Revision: 3 $
-* $Snapshot: /Convert-Binary-C/0.11 $
+* $Snapshot: /Convert-Binary-C/0.12 $
 * $Source: /ctlib/byteorder.h $
 *
 ********************************************************************************

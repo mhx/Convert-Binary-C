@@ -213,3 +213,15 @@ Version 0.11
 
 * minor cleanups
 
+------------
+Version 0.12
+------------
+
+* fixed some bugs in ccconfig
+
+* fixed dealing with cache file corruption
+
+* minor fixes in documentation
+
+* use Devel::Tokenizer::C for tokenizer generation
+

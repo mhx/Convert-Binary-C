@@ -1,10 +1,10 @@
 SHELL     = /bin/bash
-PERL      = perl580mtopt
+PERL      = perl
 CHECKOUT  = ../checkout.bash
 CECHO     = $(PERL) -e'use Term::ANSIColor; print color(shift); print @ARGV, color("reset"), "\n"'
 BLUE      = $(CECHO) "blue"
 
-CC        = gcc321
+CC        = gcc
 
 COMPLEX   = ../../t/804_complex.t
 
@@ -51,6 +51,7 @@ install: complex.t
 	fi
 
 clean:
+	@$(BLUE) "cleaning up"
 	@rm -f members.* sizeofs.* test.* *.t ntypes _sub_*.c
 
 test: module complex.t

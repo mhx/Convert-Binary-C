@@ -1,19 +1,17 @@
 SHELL     = /bin/bash
-PERL      = perl580mtopt
+PERL      = perl
 CHECKOUT  = ../checkout.bash
 CECHO     = $(PERL) -e'use Term::ANSIColor; print color(shift); print @ARGV, color("reset"), "\n"'
 BLUE      = $(CECHO) "blue"
 
-GCCPATH   = /home/mhx/src/gcc
+GCCPATH   = /home/mhx/src/gnu/gcc
 CCCONFIG  = ../../bin/ccconfig
 
 all :: install clean
 
 ccconfig.new: ppsym.pl $(CCCONFIG)
 	@$(BLUE) "making ccconfig.new"
-	@$(PERL) -we"undef $$/; print <> =~ /(.*)^sub _preset_names/ms" <$(CCCONFIG) >ccconfig.new
-	@$(PERL) ppsym.pl $(GCCPATH) >>ccconfig.new
-	@$(PERL) -we"undef $$/; print <> =~ /^sub _assert.*?^}.*?^(.*)/ms" <$(CCCONFIG) >>ccconfig.new
+	@$(PERL) ppsym.pl $(GCCPATH) <$(CCCONFIG) >ccconfig.new
 
 clean:
 	@$(BLUE) "cleaning up"

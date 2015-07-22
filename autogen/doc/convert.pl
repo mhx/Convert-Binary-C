@@ -6,7 +6,6 @@ my %files = (
   '../../lib/Convert/Binary/C.pm'        => 'Convert-Binary-C.html',
   '../../lib/Convert/Binary/C/Cached.pm' => 'Convert-Binary-C-Cached.html',
   '../../bin/ccconfig'                   => 'ccconfig.html',
-  '../../ctlib/Tokenizer.pm'             => 'Tokenizer.html',
 );
 
 for( keys %files ) {

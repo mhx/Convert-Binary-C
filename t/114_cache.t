@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/01 11:30:01 +0000 $
-# $Revision: 8 $
-# $Snapshot: /Convert-Binary-C/0.11 $
+# $Date: 2003/03/18 19:31:30 +0000 $
+# $Revision: 10 $
+# $Snapshot: /Convert-Binary-C/0.12 $
 # $Source: /t/114_cache.t $
 #
 ################################################################################
@@ -22,7 +22,8 @@ use Convert::Binary::C::Cached;
 $^W = 1;
 
 BEGIN {
-  plan tests => 64;
+  $tests = 68;
+  plan tests => $tests;
 }
 
 eval { require Data::Dumper }; $Data_Dumper = $@;
@@ -33,7 +34,7 @@ if( $Data_Dumper or $IO_File ) {
   $req = 'IO::File' if $IO_File;
   $req = 'Data::Dumper' if $Data_Dumper;
   $req = 'Data::Dumper and IO::File' if $Data_Dumper && $IO_File;
-  skip( "skip: caching requires $req", 0 ) for 1 .. 61;
+  skip( "skip: caching requires $req", 0 ) for 1 .. $tests;
   # silence the memory test ;-)
   eval { Convert::Binary::C->new->parse("enum { XXX };") };
   exit;
@@ -322,6 +323,82 @@ ok( compare( $r, $c ) );
 -e $cache and unlink $cache || die $!;
 cleanup();
 
+#------------------------------------------------------------------------------
+
+# check cache file corruption
+
+$code = 'typedef int foo;';
+eval { $c = new Convert::Binary::C::Cached Cache => $cache };
+ok($@,'',"failed to create Convert::Binary::C::Cached object");
+
+eval { $c->parse( $code ) };
+ok($@,'',"failed to parse");
+
+# can't use cache
+ok( $c->__uses_cache, 0, "object is using cache file" );
+
+undef $c;
+
+$cache_file = do { local $/; IO::File->new($cache)->getline };
+$cache_file =~ s{/\*.*?\*/}{ }gs; # strip comments
+
+$fail = 0;
+$size = length($cache_file) - 5;
+
+for( $pos = 0; $pos < $size; $pos++ ) {
+  $corrupted = $cache_file;
+
+  # corrupt the file
+  substr $corrupted, $pos, 5, "\n?!'§\$\n\%&\n}=";
+
+  IO::File->new(">$cache")->print($corrupted);
+
+  @warn = ();
+
+  {
+    local $SIG{__WARN__} = sub { push @warn, $_[0] };
+
+    eval { $c = new Convert::Binary::C::Cached Cache => $cache };
+    if( $@ ne '' ) {
+      $@ =~ s/^/# /gm;
+      print "# failed to create Convert::Binary::C::Cached object\n$@";
+      $fail++;
+    }
+
+    eval { $c->parse( $code ) };
+    if( $@ ne '' ) {
+      $@ =~ s/^/# /gm;
+      print "# failed to create Convert::Binary::C::Cached object\n$@";
+      $fail++;
+    }
+  }
+
+  defined $c or next;
+
+  # can't use cache
+  if( $c->__uses_cache != 0 ) {
+    $corrupted =~ s/^/# /gm;
+    print "# object is using corrupted cache file\n$corrupted";
+    $fail++;
+  }
+
+  # no warnings, please
+  for( @warn ) {
+    s/^/# /gm;
+    print "# warning during object creation / parsing:\n$_";
+    $fail++;
+  }
+}
+
+ok( $fail, 0, "corrupted cache files not handled correctly" );
+
+#------------------------------------------------------------------------------
+
+-e $cache and unlink $cache || die $!;
+cleanup();
+
+#------------------------------------------------------------------------------
+
 sub cleanup {
   for( qw( t/cache/cache.h t/cache/header.h t/cache/sub/dir.h ) ) {
     -e and unlink || die $!;
@@ -337,8 +414,6 @@ sub compare {
   delete $_->{Cache} for $refcfg, $objcfg;
 
   print "# compare configurations...\n";
-  use Data::Dumper;
-  print Dumper( $refcfg, $objcfg );
   reccmp( $refcfg, $objcfg ) or return 0;
 
   my $refdep = $ref->dependencies;

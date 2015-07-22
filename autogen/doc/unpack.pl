@@ -38,4 +38,4 @@ print Data::Dumper->Dump( [$unpack1, $unpack2], [qw(unpack1 unpack2)] );
 #----8<------------------------------4----------------------------------
 
 $size = $c->sizeof( 'test.uni.word[1]' );
-$size == 2 or die;
+$size == 2 or die;   #-8<-

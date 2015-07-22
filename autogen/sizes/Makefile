@@ -1,5 +1,5 @@
 SHELL     = /bin/bash
-PERL      = perl580mtopt
+PERL      = perl
 CHECKOUT  = ../checkout.bash
 CECHO     = $(PERL) -e'use Term::ANSIColor; print color(shift); print @ARGV, color("reset"), "\n"'
 BLUE      = $(CECHO) "blue"

@@ -136,7 +136,7 @@ Also, most architectures should be supported. Tests were done on:
   - PowerPC
   - StrongARM (the module worked fine on an IPAQ system)
 
-The module should build with any perl from 5.005_03 up to 5.8.0.
+The module should build with any perl from 5.005_03 up to 5.9.0.
 
 Multithreaded perl binaries are explicitly supported, as the module
 is intended to be thread-safe.

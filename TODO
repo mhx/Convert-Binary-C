@@ -2,6 +2,11 @@
 What's to do?
 =============
 
+for future releases (in no special order):
+------------------------------------------
+
+* have a typeof() method?
+
 * COPY_LINE ?
 
 * maybe add DollarsInIdentifiers, AtSignsInIdentifiers?
@@ -12,11 +17,6 @@ What's to do?
   empty arrays in structs a[]
 
 * maybe add routine with checks after parsing
-
-
-
-for future releases (in no special order):
-------------------------------------------
 
 * add platform independent IEEE floating point support
   (SoftFloat or sth. similar?)

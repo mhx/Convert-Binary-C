@@ -1998,6 +1998,11 @@ ANSI ruleset.
 
 =item *
 
+Gisbert W. Selke for spotting some interesting bugs and providing
+extensive reports.
+
+=item *
+
 Steffen Zimmermann for a prolific discussion on the cloning
 algorithm.
 
@@ -2048,3 +2053,4 @@ to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar> and L<Data::Dumper>.
 
 =cut
+

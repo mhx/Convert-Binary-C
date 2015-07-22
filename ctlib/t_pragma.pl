@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/01 11:29:56 +0000 $
-# $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.11 $
+# $Date: 2003/03/17 21:10:05 +0000 $
+# $Revision: 4 $
+# $Snapshot: /Convert-Binary-C/0.12 $
 # $Source: /ctlib/t_pragma.pl $
 #
 ################################################################################
@@ -23,20 +23,19 @@
 # 
 ################################################################################
 
-use lib 'ctlib';
-use Tokenizer;
+use Devel::Tokenizer::C;
 
-$t = new Tokenizer tokfnc => \&tok_code,
-                   endtok => 'PRAGMA_TOKEN_END';
+$t = new Devel::Tokenizer::C TokenFunc => \&tok_code,
+                             TokenEnd  => 'PRAGMA_TOKEN_END';
 
-$t->addtokens( '', qw(
+$t->add_tokens( qw(
   pack
   push
   pop
 ));
 
 open OUT, ">$ARGV[0]" or die $!;
-print OUT $t->makeswitch;
+print OUT $t->generate;
 close OUT;
 
 sub tok_code {

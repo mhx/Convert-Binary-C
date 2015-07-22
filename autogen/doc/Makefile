@@ -1,5 +1,5 @@
 SHELL     = /bin/bash
-PERL      = perl580mtopt
+PERL      = perl
 CHECKOUT  = ../checkout.bash
 CECHO     = $(PERL) -e'use Term::ANSIColor; print color(shift); print @ARGV, color("reset"), "\n"'
 BLUE      = $(CECHO) "blue"
@@ -7,9 +7,8 @@ BLUE      = $(CECHO) "blue"
 CBC_PM    = ../../lib/Convert/Binary/C.pm
 CBCC_PM   = ../../lib/Convert/Binary/C/Cached.pm
 CCCONFIG  = ../../bin/ccconfig
-TOKENIZER = ../../ctlib/Tokenizer.pm
 
-GENERATED = C.pm Cached.pm ccconfig Tokenizer.pm
+GENERATED = C.pm Cached.pm ccconfig
 
 all :: install clean html
 
@@ -23,7 +22,7 @@ module :: ../../blib
 
 pm :: $(GENERATED)
 
-install :: ins_c ins_cached ins_ccconfig ins_tokenizer
+install :: ins_c ins_cached ins_ccconfig
 
 C.pm: module
 	@$(BLUE) "making C.pm"
@@ -40,11 +39,6 @@ ccconfig: module
 	@$(PERL) -ne'print;/^__END__/ and exit' <$(CCCONFIG) >ccconfig
 	@$(PERL) ./gendoc.pl <ccconfig.pod >>ccconfig
 	@chmod 755 ccconfig
-
-Tokenizer.pm:
-	@$(BLUE) "making Tokenizer.pm"
-	@$(PERL) -ne'print;/^__END__/ and exit' <$(TOKENIZER) >Tokenizer.pm
-	@$(PERL) ./gendoc.pl <Tokenizer.pod >>Tokenizer.pm
 
 clean:
 	@$(BLUE) "cleaning up"
@@ -78,15 +72,6 @@ ins_ccconfig : ccconfig
 	  cp ccconfig $(CCCONFIG);                                         \
 	fi
 
-ins_tokenizer : Tokenizer.pm
-	@if diff Tokenizer.pm $(TOKENIZER) >/dev/null ; then               \
-	  $(CECHO) "bold blue" "$(TOKENIZER) is unchanged, skip install";  \
-	else                                                               \
-	  $(CHECKOUT) $(TOKENIZER);                                        \
-	  $(CECHO) "bold red" "installing $(TOKENIZER)";                   \
-	  cp Tokenizer.pm $(TOKENIZER);                                    \
-	fi
-
 html:
 	@$(BLUE) "making html"
 	@./convert.pl
@@ -95,7 +80,6 @@ diff:
 	@wdiff -u $(CBC_PM)
 	@wdiff -u $(CBCC_PM)
 	@wdiff -u $(CCCONFIG)
-	@wdiff -u $(TOKENIZER)
 
 ispell:
 	@-wdiff $(CBC_PM) | grep '^>' >/tmp/diff
@@ -105,8 +89,5 @@ ispell:
 	@ispell /tmp/diff
 	@rm -f /tmp/diff
 	@-wdiff $(CCCONFIG) | grep '^>' >/tmp/diff
-	@ispell /tmp/diff
-	@rm -f /tmp/diff
-	@-wdiff $(TOKENIZER) | grep '^>' >/tmp/diff
 	@ispell /tmp/diff
 	@rm -f /tmp/diff

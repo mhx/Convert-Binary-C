@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/23 18:43:50 +0000 $
-# $Revision: 5 $
-# $Snapshot: /Convert-Binary-C/0.11 $
+# $Date: 2003/03/17 21:10:04 +0000 $
+# $Revision: 6 $
+# $Snapshot: /Convert-Binary-C/0.12 $
 # $Source: /ctlib/t_config.pl $
 #
 ################################################################################
@@ -23,8 +23,7 @@
 # 
 ################################################################################
 
-use lib 'ctlib';
-use Tokenizer;
+use Devel::Tokenizer::C;
 
 @OPT = qw(
   UnsignedChars
@@ -51,8 +50,8 @@ use Tokenizer;
 );
 
 $enums  = join "\n", map "  OPTION_$_,", @OPT;
-$switch = Tokenizer->new( tokfnc => \&tok_code, tokstr => 'option' )
-                   ->addtokens( '', @OPT )->makeswitch;
+$switch = Devel::Tokenizer::C->new( TokenFunc => \&tok_code, TokenString => 'option' )
+                             ->add_tokens( @OPT )->generate;
 
 open OUT, ">$ARGV[0]" or die $!;
 print OUT <<END;

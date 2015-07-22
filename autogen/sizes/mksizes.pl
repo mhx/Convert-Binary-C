@@ -21,7 +21,7 @@ ENDC
 for( $c->enum_names ) {
   next unless $c->def( $_ );
   print <<ENDC;
-  printf("$_=%d\\n", sizeof( struct $_ ));
+  printf("$_=%d\\n", sizeof( enum $_ ));
 ENDC
 }
 

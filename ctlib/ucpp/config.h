@@ -12,7 +12,7 @@
 * $Author: mhx $
 * $Date: 2003/01/07 21:26:25 +0000 $
 * $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.11 $
+* $Snapshot: /Convert-Binary-C/0.12 $
 * $Source: /ctlib/ucpp/config.h $
 *
 ********************************************************************************

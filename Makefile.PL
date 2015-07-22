@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/01/23 18:48:30 +0000 $
-# $Revision: 31 $
-# $Snapshot: /Convert-Binary-C/0.11 $
+# $Date: 2003/03/17 21:12:02 +0000 $
+# $Revision: 32 $
+# $Snapshot: /Convert-Binary-C/0.12 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -149,15 +149,23 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
   } glob "bin/*.PL"
 );
 
-%GENERATE = (
-  %EXAMPLES,
-  'ctlib/arch.pl'     =>  'ctlib/arch.h',
+%TOKENIZER = (
   'ctlib/t_parser.pl' => ['ctlib/t_parser.c', 'ctlib/t_keywords.c', 'ctlib/t_ckeytok.c'],
   'ctlib/t_pragma.pl' =>  'ctlib/t_pragma.c',
   'ctlib/t_config.pl' =>  'ctlib/t_config.c',
 );
 
+%GENERATE = (
+  %EXAMPLES,
+  'ctlib/arch.pl' => 'ctlib/arch.h',
+);
+
 push @REALCLEAN, map { ref $_ ? @$_ : $_ } values %GENERATE;
+
+%GENERATE = (
+  %GENERATE,
+  %TOKENIZER,
+);
 
 # Extract features/optimizations from the commandline arguments
 
@@ -184,7 +192,7 @@ ENDUSAGE
 
 WriteMakefile(
   'NAME'            => $MODULE,
-  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.11 $'
+  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.12 $'
                                     =~ /(\d+\.\d+(?:_\d+)?)/;
                             @r ? $r[0] : '9.99' },
   'ABSTRACT'        => 'Binary Data Conversion using C Types',
@@ -192,7 +200,7 @@ WriteMakefile(
   'MYEXTLIB'        => 'libctype$(LIB_EXT)',
   'INC'             => join( ' ', map { "-I$_" } @INC_PATH ),
   'EXE_FILES'       => ['bin/ccconfig'],
-  'PL_FILES'        => { %GENERATE },
+  'PL_FILES'        => \%GENERATE,
   'CONFIGURE'       => \&configure,
   'clean'           => { FILES => "\$(MYEXTLIB_OBJ)" },
   'realclean'       => { FILES => "@REALCLEAN" },
