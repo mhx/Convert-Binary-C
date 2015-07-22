@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/11/27 19:33:11 +0000 $
-* $Revision: 30 $
-* $Snapshot: /Convert-Binary-C/0.05 $
+* $Date: 2002/12/11 13:44:57 +0000 $
+* $Revision: 33 $
+* $Snapshot: /Convert-Binary-C/0.06 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -504,7 +504,7 @@ static void ct_vscatf( void *p, char *f, va_list l );
 static void ct_warn( void *p );
 static void ct_fatal( void *p );
 
-static char *string_new( char *str );
+static char *string_new( const char *str );
 static char *string_new_fromSV( SV *sv );
 static void string_delete( char *sv );
 
@@ -565,7 +565,8 @@ static int CheckIntegerOption( const IV *options, int count, SV *sv,
 static const StringOption *GetStringOption( const StringOption *options, int count,
                                             int value, SV *sv, const char *name );
 static LinkedList CloneStringList( LinkedList list );
-static void HandleStringList( char *option, LinkedList list, SV *sv, SV **rval );
+static void HandleStringList( const char *option, LinkedList list, SV *sv, SV **rval );
+static void UpdateKeywords( LinkedList *current, SV *sv, SV **rval, u_32 *pKeywordMask );
 static int  HandleOption( CBC *THIS, SV *opt, SV *sv_val, SV **rval );
 static SV  *GetConfiguration( CBC *THIS );
 static void UpdateConfiguration( CBC *THIS );
@@ -790,7 +791,7 @@ static void ct_fatal( void *p )
 *
 *******************************************************************************/
 
-static char *string_new( char *str )
+static char *string_new( const char *str )
 {
   char *cpy = NULL;
 
@@ -3668,9 +3669,9 @@ static const StringOption *GetStringOption( const StringOption *options, int cou
 *
 *******************************************************************************/
 
-static void HandleStringList( char *option, LinkedList list, SV *sv, SV **rval )
+static void HandleStringList( const char *option, LinkedList list, SV *sv, SV **rval )
 {
-  char *str;
+  const char *str;
 
   if( sv ) {
     LL_flush( list, (LLDestroyFunc) string_delete ); 
@@ -3708,6 +3709,83 @@ static void HandleStringList( char *option, LinkedList list, SV *sv, SV **rval )
 
 /*******************************************************************************
 *
+*   ROUTINE: UpdateKeywords
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Dec 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void UpdateKeywords( LinkedList *current, SV *sv, SV **rval, u_32 *pKeywordMask )
+{
+  const char *str;
+  LinkedList keyword_list = NULL;
+
+  if( sv ) {
+    if( SvROK( sv ) ) {
+      sv = SvRV( sv );
+      if( SvTYPE( sv ) == SVt_PVAV ) {
+        AV *av = (AV *) sv;
+        SV **pSV;
+        int i, max = av_len( av );
+        u_32 keywords = HAS_ALL_KEYWORDS;
+
+        keyword_list = LL_new();
+  
+        for( i=0; i<=max; ++i ) {
+          if( (pSV = av_fetch( av, i, 0 )) != NULL ) {
+            str = SvPV_nolen( *pSV );
+
+#include "t_keywords.c"
+
+            success:
+            LL_push( keyword_list, string_new( str ) );
+          }
+          else
+            fatal( "NULL returned by av_fetch() in UpdateKeywords()" );
+        }
+
+        if( pKeywordMask != NULL )
+          *pKeywordMask = keywords;
+
+        if( current != NULL ) {
+          LL_destroy( *current, (LLDestroyFunc) string_delete ); 
+          *current = keyword_list;
+        }
+      }
+      else
+        croak( "DisabledKeywords wants an array reference" );
+    }
+    else
+      croak( "DisabledKeywords wants a reference to an array of strings" );
+  }
+
+  if( rval ) {
+    AV *av = newAV();
+
+    LL_foreach( str, *current )
+      av_push( av, newSVpv( str, 0 ) );
+
+    *rval = newRV_noinc( (SV *) av );
+  }
+
+  return;
+
+unknown:
+  LL_destroy( keyword_list, (LLDestroyFunc) string_delete );
+  croak( "Cannot disable unknown keyword '%s'", str );
+}
+
+/*******************************************************************************
+*
 *   ROUTINE: CloneStringList
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Oct 2002
@@ -3736,6 +3814,56 @@ static LinkedList CloneStringList( LinkedList list )
   return clone;
 }
 
+/*******************************************************************************
+*
+*   ROUTINE: GetConfigOption
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Dec 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+typedef enum {
+  OPTION_UnsignedChars,
+  OPTION_Warnings,
+  OPTION_PointerSize,
+  OPTION_EnumSize,
+  OPTION_IntSize,
+  OPTION_ShortSize,
+  OPTION_LongSize,
+  OPTION_LongLongSize,
+  OPTION_FloatSize,
+  OPTION_DoubleSize,
+  OPTION_LongDoubleSize,
+  OPTION_Alignment,
+  OPTION_Include,
+  OPTION_Define,
+  OPTION_Assert,
+  OPTION_DisabledKeywords,
+  OPTION_ByteOrder,
+  OPTION_EnumType,
+#ifdef ANSIC99_EXTENSIONS
+  OPTION_HasCPPComments,
+  OPTION_HasMacroVAARGS,
+#endif
+  INVALID_OPTION
+} ConfigOption;
+
+ConfigOption GetConfigOption( const char *option )
+{
+#include "t_config.c"
+
+unknown:
+  return INVALID_OPTION;
+}
 
 /*******************************************************************************
 *
@@ -3778,19 +3906,16 @@ static const IV AlignmentOption[]       = {    1, 2, 4, 8     };
 
 #define START_OPTIONS                                                          \
           int changes = 0;                                                     \
-          char *option = SvPV_nolen( opt );                                    \
-          if( SvROK( opt ) ) {                                                 \
+          char *option = SvPV_nolen(opt);                                      \
+          if( SvROK( opt ) )                                                   \
             croak( "Option name must be a string, not a reference" );          \
-          }
+          switch( GetConfigOption( option ) ) {
 
-#define END_OPTIONS                                                            \
-          else {                                                               \
-            croak( "Invalid option '%s'", option );                            \
-          }                                                                    \
-          return changes;
+#define END_OPTIONS       } return changes;
 
-#define OPTION( name )                                                         \
-          else if( strEQ( option, #name ) )
+#define OPTION( name )    case OPTION_ ## name : {
+
+#define ENDOPT            } break;
 
 #define UPDATE( option, val )                                                  \
           if( (IV) THIS->option != val ) {                                     \
@@ -3799,7 +3924,7 @@ static const IV AlignmentOption[]       = {    1, 2, 4, 8     };
           }
 
 #define FLAG_OPTION( name, flag )                                              \
-          else if( strEQ( option, #name ) ) {                                  \
+          case OPTION_ ## name :                                               \
             if( sv_val ) {                                                     \
               if( SvROK( sv_val ) )                                            \
                 croak( #name " must be a boolean value, not a reference" );    \
@@ -3811,10 +3936,10 @@ static const IV AlignmentOption[]       = {    1, 2, 4, 8     };
             }                                                                  \
             if( rval )                                                         \
               *rval = newSViv( THIS->cfg.flags & flag ? 1 : 0 );               \
-          }
+            break;
 
 #define IVAL_OPTION( name, config )                                            \
-          else if( strEQ( option, #name ) ) {                                  \
+          case OPTION_ ## name :                                               \
             if( sv_val ) {                                                     \
               IV val;                                                          \
               if( CheckIntegerOption( name ## Option, sizeof( name ## Option ) \
@@ -3824,66 +3949,79 @@ static const IV AlignmentOption[]       = {    1, 2, 4, 8     };
             }                                                                  \
             if( rval )                                                         \
               *rval = newSViv( THIS->cfg.config );                             \
-          }
+            break;
 
 #define STRLIST_OPTION( name, config )                                         \
-          else if( strEQ( option, #name ) ) {                                  \
+          case OPTION_ ## name :                                               \
             HandleStringList( #name, THIS->cfg.config, sv_val, rval );         \
             changes = sv_val != NULL;                                          \
-          }
+            break;
+
+#define INVALID_OPTION                                                         \
+          default:                                                             \
+            croak( "Invalid option '%s'", option );                            \
+            break;
 
 static int HandleOption( CBC *THIS, SV *opt, SV *sv_val, SV **rval )
 {
   START_OPTIONS
 
-  FLAG_OPTION( HasVOID,        HAS_VOID_KEYWORD   )
-  FLAG_OPTION( UnsignedChars,  CHARS_ARE_UNSIGNED )
-  FLAG_OPTION( Warnings,       ISSUE_WARNINGS     )
+    /* FLAG_OPTION( HasVOID,        HAS_VOID_KEYWORD   ) */
+    FLAG_OPTION( UnsignedChars,  CHARS_ARE_UNSIGNED )
+    FLAG_OPTION( Warnings,       ISSUE_WARNINGS     )
 
 #ifdef ANSIC99_EXTENSIONS
 
-  FLAG_OPTION( HasC99Keywords, HAS_C99_KEYWORDS )
-  FLAG_OPTION( HasCPPComments, HAS_CPP_COMMENTS )
-  FLAG_OPTION( HasMacroVAARGS, HAS_MACRO_VAARGS )
+    /* FLAG_OPTION( HasC99Keywords, HAS_C99_KEYWORDS ) */
+    FLAG_OPTION( HasCPPComments, HAS_CPP_COMMENTS )
+    FLAG_OPTION( HasMacroVAARGS, HAS_MACRO_VAARGS )
 
 #endif
 
-  STRLIST_OPTION( Include, includes   )
-  STRLIST_OPTION( Define,  defines    )
-  STRLIST_OPTION( Assert,  assertions )
+    IVAL_OPTION( PointerSize,    ptr_size         )
+    IVAL_OPTION( EnumSize,       enum_size        )
+    IVAL_OPTION( IntSize,        int_size         )
+    IVAL_OPTION( ShortSize,      short_size       )
+    IVAL_OPTION( LongSize,       long_size        )
+    IVAL_OPTION( LongLongSize,   long_long_size   )
+    IVAL_OPTION( FloatSize,      float_size       )
+    IVAL_OPTION( DoubleSize,     double_size      )
+    IVAL_OPTION( LongDoubleSize, long_double_size )
+    IVAL_OPTION( Alignment,      alignment        )
 
-  IVAL_OPTION( PointerSize,    ptr_size         )
-  IVAL_OPTION( EnumSize,       enum_size        )
-  IVAL_OPTION( IntSize,        int_size         )
-  IVAL_OPTION( ShortSize,      short_size       )
-  IVAL_OPTION( LongSize,       long_size        )
-  IVAL_OPTION( LongLongSize,   long_long_size   )
-  IVAL_OPTION( FloatSize,      float_size       )
-  IVAL_OPTION( DoubleSize,     double_size      )
-  IVAL_OPTION( LongDoubleSize, long_double_size )
-  IVAL_OPTION( Alignment,      alignment        )
+    STRLIST_OPTION( Include, includes   )
+    STRLIST_OPTION( Define,  defines    )
+    STRLIST_OPTION( Assert,  assertions )
+  
+    OPTION( DisabledKeywords )
+      UpdateKeywords( &THIS->cfg.disabled_keywords, sv_val, rval,
+                      &THIS->cfg.keywords );
+      changes = sv_val != NULL;
+    ENDOPT
 
-  OPTION( ByteOrder ) {
-    if( sv_val ) {
-      const StringOption *pOpt = GET_STR_OPTION( ByteOrder, 0, sv_val );
-      UPDATE( as.bo, pOpt->value );
-    }
-    if( rval ) {
-      const StringOption *pOpt = GET_STR_OPTION( ByteOrder, THIS->as.bo, NULL );
-      *rval = newSVpv( pOpt->string, 0 );
-    }
-  }
+    OPTION( ByteOrder )
+      if( sv_val ) {
+        const StringOption *pOpt = GET_STR_OPTION( ByteOrder, 0, sv_val );
+        UPDATE( as.bo, pOpt->value );
+      }
+      if( rval ) {
+        const StringOption *pOpt = GET_STR_OPTION( ByteOrder, THIS->as.bo, NULL );
+        *rval = newSVpv( pOpt->string, 0 );
+      }
+    ENDOPT
 
-  OPTION( EnumType ) {
-    if( sv_val ) {
-      const StringOption *pOpt = GET_STR_OPTION( EnumType, 0, sv_val );
-      UPDATE( enumType, pOpt->value );
-    }
-    if( rval ) {
-      const StringOption *pOpt = GET_STR_OPTION( EnumType, THIS->enumType, NULL );
-      *rval = newSVpv( pOpt->string, 0 );
-    }
-  }
+    OPTION( EnumType )
+      if( sv_val ) {
+        const StringOption *pOpt = GET_STR_OPTION( EnumType, 0, sv_val );
+        UPDATE( enumType, pOpt->value );
+      }
+      if( rval ) {
+        const StringOption *pOpt = GET_STR_OPTION( EnumType, THIS->enumType, NULL );
+        *rval = newSVpv( pOpt->string, 0 );
+      }
+    ENDOPT
+
+    INVALID_OPTION
 
   END_OPTIONS
 }
@@ -3891,6 +4029,7 @@ static int HandleOption( CBC *THIS, SV *opt, SV *sv_val, SV **rval )
 #undef START_OPTIONS
 #undef END_OPTIONS
 #undef OPTION
+#undef ENDOPT
 #undef UPDATE
 #undef FLAG_OPTION
 #undef IVAL_OPTION
@@ -3934,21 +4073,17 @@ static SV *GetConfiguration( CBC *THIS )
   HV *hv = newHV();
   SV *sv;
 
-  FLAG_OPTION( HasVOID,        HAS_VOID_KEYWORD   )
+  /* FLAG_OPTION( HasVOID,        HAS_VOID_KEYWORD   ) */
   FLAG_OPTION( UnsignedChars,  CHARS_ARE_UNSIGNED )
   FLAG_OPTION( Warnings,       ISSUE_WARNINGS     )
 
 #ifdef ANSIC99_EXTENSIONS
 
-  FLAG_OPTION( HasC99Keywords, HAS_C99_KEYWORDS )
+  /* FLAG_OPTION( HasC99Keywords, HAS_C99_KEYWORDS ) */
   FLAG_OPTION( HasCPPComments, HAS_CPP_COMMENTS )
   FLAG_OPTION( HasMacroVAARGS, HAS_MACRO_VAARGS )
 
 #endif
-
-  STRLIST_OPTION( Include, includes   )
-  STRLIST_OPTION( Define,  defines    )
-  STRLIST_OPTION( Assert,  assertions )
 
   IVAL_OPTION( PointerSize,    ptr_size         )
   IVAL_OPTION( EnumSize,       enum_size        )
@@ -3960,6 +4095,11 @@ static SV *GetConfiguration( CBC *THIS )
   IVAL_OPTION( DoubleSize,     double_size      )
   IVAL_OPTION( LongDoubleSize, long_double_size )
   IVAL_OPTION( Alignment,      alignment        )
+
+  STRLIST_OPTION( Include,          includes          )
+  STRLIST_OPTION( Define,           defines           )
+  STRLIST_OPTION( Assert,           assertions        )
+  STRLIST_OPTION( DisabledKeywords, disabled_keywords )
 
   STRING_OPTION( ByteOrder, THIS->as.bo    )
   STRING_OPTION( EnumType,  THIS->enumType )
@@ -4041,6 +4181,7 @@ CBC::new( ... )
 		  RETVAL->cfg.includes          = LL_new();
 		  RETVAL->cfg.defines           = LL_new();
 		  RETVAL->cfg.assertions        = LL_new();
+		  RETVAL->cfg.disabled_keywords = LL_new();
 		  RETVAL->cfg.ptr_size          = DEFAULT_PTR_SIZE;
 		  RETVAL->cfg.enum_size         = DEFAULT_ENUM_SIZE;
 		  RETVAL->cfg.int_size          = DEFAULT_INT_SIZE;
@@ -4051,13 +4192,13 @@ CBC::new( ... )
 		  RETVAL->cfg.double_size       = DEFAULT_DOUBLE_SIZE;
 		  RETVAL->cfg.long_double_size  = DEFAULT_LONG_DOUBLE_SIZE;
 		  RETVAL->cfg.alignment         = DEFAULT_ALIGNMENT;
-		  RETVAL->cfg.flags             = HAS_VOID_KEYWORD
+		  RETVAL->cfg.flags             = 0
 #ifdef ANSIC99_EXTENSIONS
-	                                        | HAS_C99_KEYWORDS
 		                                | HAS_CPP_COMMENTS
 		                                | HAS_MACRO_VAARGS
 #endif
 		                                ;
+		  RETVAL->cfg.keywords          = HAS_ALL_KEYWORDS;
 		  RETVAL->as.bo                 = DEFAULT_BYTEORDER;
 		  RETVAL->enumType              = DEFAULT_ENUMTYPE;
 
@@ -4093,9 +4234,10 @@ CBC::DESTROY()
 		CT_DEBUG( MAIN, (DBG_CTXT_FMT XSCLASS "::DESTROY", DBG_CTXT_ARG) );
 
 		FreeParseInfo( &THIS->cpi );
-		LL_destroy( THIS->cfg.includes,   (LLDestroyFunc) string_delete );
-		LL_destroy( THIS->cfg.defines,    (LLDestroyFunc) string_delete );
-		LL_destroy( THIS->cfg.assertions, (LLDestroyFunc) string_delete );
+		LL_destroy( THIS->cfg.includes,          (LLDestroyFunc) string_delete );
+		LL_destroy( THIS->cfg.defines,           (LLDestroyFunc) string_delete );
+		LL_destroy( THIS->cfg.assertions,        (LLDestroyFunc) string_delete );
+		LL_destroy( THIS->cfg.disabled_keywords, (LLDestroyFunc) string_delete );
 		Safefree( THIS );
 
 ################################################################################
@@ -4134,9 +4276,10 @@ CBC::clone()
 		clone->buf.length = 0;
 		clone->buf.pos    = 0;
 
-		clone->cfg.includes   = CloneStringList( THIS->cfg.includes );
-		clone->cfg.defines    = CloneStringList( THIS->cfg.defines );
-		clone->cfg.assertions = CloneStringList( THIS->cfg.assertions );
+		clone->cfg.includes          = CloneStringList( THIS->cfg.includes );
+		clone->cfg.defines           = CloneStringList( THIS->cfg.defines );
+		clone->cfg.assertions        = CloneStringList( THIS->cfg.assertions );
+		clone->cfg.disabled_keywords = CloneStringList( THIS->cfg.disabled_keywords );
 
 		InitParseInfo( &clone->cpi );
 		CloneParseInfo( &clone->cpi, &THIS->cpi );
@@ -4353,7 +4496,7 @@ CBC::parse( code )
 #ifdef CBC_THREAD_SAFE
 		MUTEX_LOCK( &gs_parse_mutex );
 #endif
-		rval = ParseBuffer( NULL, &buf, &THIS->cpi, &THIS->cfg );
+		rval = ParseBuffer( NULL, &buf, &THIS->cfg, &THIS->cpi );
 #ifdef CBC_THREAD_SAFE
 		MUTEX_UNLOCK( &gs_parse_mutex );
 #endif
@@ -4394,7 +4537,7 @@ CBC::parse_file( file )
 #ifdef CBC_THREAD_SAFE
 		MUTEX_LOCK( &gs_parse_mutex );
 #endif
-		rval = ParseBuffer( file, NULL, &THIS->cpi, &THIS->cfg );
+		rval = ParseBuffer( file, NULL, &THIS->cfg, &THIS->cpi );
 #ifdef CBC_THREAD_SAFE
 		MUTEX_UNLOCK( &gs_parse_mutex );
 #endif
@@ -4502,8 +4645,12 @@ CBC::pack( type, data, string = NULL )
 		  XSRETURN_EMPTY;
 		}
 
-		if( string != NULL && ! SvPOK( string ) )
-		  croak( "Type of arg 3 to pack must be string" );
+		if( string != NULL )  {
+		  if( ! SvPOK( string ) )
+		    croak( "Type of arg 3 to pack must be string" );
+		  if( GIMME_V == G_VOID && SvREADONLY( string ) )
+		    croak( "Modification of a read-only value attempted" );
+		}
 
 		if( !GetMemberInfo( THIS, type, &mi ) )
 		  croak( "Cannot find '%s'", type );
@@ -5313,8 +5460,6 @@ CBC::sourcify()
 
 		CHECK_PARSE_DATA( sourcify );
 		CHECK_VOID_CONTEXT( sourcify );
-
-		WARN(( XSCLASS "::sourcify is still experimental" ));
 
 		RETVAL = GetParsedDefinitionsString( &THIS->cpi );
 

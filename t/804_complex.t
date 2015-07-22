@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2002/11/24 11:20:34 +0000 $
 # $Revision: 9 $
-# $Snapshot: /Convert-Binary-C/0.05 $
+# $Snapshot: /Convert-Binary-C/0.06 $
 # $Source: /t/804_complex.t $
 #
 ################################################################################

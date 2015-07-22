@@ -562,7 +562,7 @@ sub _emit_text
     my $text_method  = $html->{text_method};
 
     my @text = split $/, $text;
-    pop @text while $text[-1] =~ /^\s*$/;
+    pop @text while @text && $text[-1] =~ /^\s*$/;
     $text = join $/, @text;
 
     $stream->$text_method($text);

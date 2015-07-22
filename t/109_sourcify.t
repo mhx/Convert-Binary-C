@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/11/20 18:48:33 +0000 $
-# $Revision: 2 $
-# $Snapshot: /Convert-Binary-C/0.05 $
+# $Date: 2002/12/11 13:58:40 +0000 $
+# $Revision: 3 $
+# $Snapshot: /Convert-Binary-C/0.06 $
 # $Source: /t/109_sourcify.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 60 }
+BEGIN { plan tests => 53 }
 
 eval {
   $orig  = new Convert::Binary::C Include => ['t/include/perlinc',
@@ -37,8 +37,6 @@ eval {
 ENDPARSE
 };
 ok($@,'',"failed to parse C-file");
-
-$SIG{__WARN__} = sub { ok( $_[0], qr/experimental/, "wrong warning" ) };
 
 eval {
   $dump1 = $orig->sourcify;

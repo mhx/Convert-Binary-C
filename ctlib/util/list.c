@@ -12,7 +12,7 @@
 * $Author: mhx $
 * $Date: 2002/10/23 11:36:38 +0100 $
 * $Revision: 4 $
-* $Snapshot: /Convert-Binary-C/0.05 $
+* $Snapshot: /Convert-Binary-C/0.06 $
 * $Source: /ctlib/util/list.c $
 *
 ********************************************************************************

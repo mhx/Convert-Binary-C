@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2002/10/13 13:45:48 +0100 $
 # $Revision: 6 $
-# $Snapshot: /Convert-Binary-C/0.05 $
+# $Snapshot: /Convert-Binary-C/0.06 $
 # $Source: /t/105_pack.t $
 #
 ################################################################################

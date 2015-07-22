@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/11/27 19:31:18 +0000 $
-# $Revision: 16 $
-# $Snapshot: /Convert-Binary-C/0.05 $
+# $Date: 2002/12/11 13:46:49 +0000 $
+# $Revision: 17 $
+# $Snapshot: /Convert-Binary-C/0.06 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -100,6 +100,8 @@ $BISON = $Config{bison} || 'bison';
 @REALCLEAN = qw(
   ctlib/parser.output
   ctlib/pragma.output
+  ctlib/t_config.c
+  ctlib/t_keywords.c
   ctlib/t_parser.c
   ctlib/t_pragma.c
   ctlib/arch.h
@@ -148,7 +150,7 @@ $BISON = $Config{bison} || 'bison';
 
 @MAKER = (
   'NAME'            => $MODULE,
-  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.05 $'
+  'VERSION'         => do { my @r = '$Snapshot: /Convert-Binary-C/0.06 $'
                                     =~ /(\d+\.\d+(?:_\d+)?)/;
                             @r ? $r[0] : '9.99' },
   'ABSTRACT'        => 'Binary Data Conversion using C Types',
@@ -156,9 +158,11 @@ $BISON = $Config{bison} || 'bison';
   'MYEXTLIB'        => 'libctype$(LIB_EXT)',
   'INC'             => join( ' ', map { "-I$_" } @INC_PATH ),
   'PL_FILES'        => {
-                         'ctlib/arch.pl'     => 'ctlib/arch.h',
-                         'ctlib/t_parser.pl' => 'ctlib/t_parser.c',
-                         'ctlib/t_pragma.pl' => 'ctlib/t_pragma.c',
+                         'ctlib/arch.pl'       => 'ctlib/arch.h',
+                         'ctlib/t_keywords.pl' => 'ctlib/t_keywords.c',
+                         'ctlib/t_parser.pl'   => 'ctlib/t_parser.c',
+                         'ctlib/t_pragma.pl'   => 'ctlib/t_pragma.c',
+                         'ctlib/t_config.pl'   => 'ctlib/t_config.c',
                        },
   'clean'           => { FILES => "\$(MYEXTLIB_OBJ)" },
   'realclean'       => { FILES => "@REALCLEAN" },

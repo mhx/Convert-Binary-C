@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/04/15 22:26:46 +0100 $
-* $Revision: 1 $
-* $Snapshot: /Convert-Binary-C/0.05 $
+* $Date: 2002/12/07 17:17:28 +0000 $
+* $Revision: 3 $
+* $Snapshot: /Convert-Binary-C/0.06 $
 * $Source: /ctlib/parser.h $
 *
 ********************************************************************************
@@ -40,31 +40,15 @@
 
 /*===== TYPEDEFS =============================================================*/
 
-typedef struct {
-
-  CParseInfo   *pCPI;
-
-  LinkedList    curEnumList;
-  LinkedList    nodeList,
-                arrayList,
-                declaratorList,
-                declListsList,
-                structDeclList,
-                structDeclListsList;
-
-  CParseConfig *pCPC;
-
-  PragmaState   pragma;
-
-  struct lexer_state lexer;
-
-  char         *filename;
-
-} ParserState;
-
+typedef struct _ParserState ParserState;
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
-int c_parse( void *pState );
+ParserState *c_parser_new( const CParseConfig *pCPC, CParseInfo *pCPI,
+                           struct lexer_state *pLexer );
+
+int  c_parser_run( ParserState *pState );
+
+void c_parser_delete( ParserState *pState );
 
 #endif

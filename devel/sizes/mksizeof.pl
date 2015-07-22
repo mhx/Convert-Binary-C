@@ -20,7 +20,7 @@ print <<'END';
 # $Author: mhx $
 # $Date: 2002/11/23 17:46:41 +0000 $
 # $Revision: 1 $
-# $Snapshot: /Convert-Binary-C/0.05 $
+# $Snapshot: /Convert-Binary-C/0.06 $
 # $Source: /devel/sizes/mksizeof.pl $
 #
 ################################################################################

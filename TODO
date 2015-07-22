@@ -2,26 +2,19 @@
 What's to do?
 =============
 
-for 0.05:
----------
-
-* support flexible array members
-
 
 for future releases (in no special order):
 ------------------------------------------
 
 * add pragma tests
 
-* hash option names (instead of doing strcmp's all the time) (?)
+* support flexible array members
 
 * perhaps bless (tie) long double SV's and store binary data (?)
 
 * sourcify only specific types (pass in a list of types) (?)
 
 * support for unsigned and 64-bit integer arithmetics
-
-* only use global type definitions / filter local definitions
 
 * implement cast operators
 

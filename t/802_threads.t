@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2002/11/23 17:31:26 +0000 $
 # $Revision: 10 $
-# $Snapshot: /Convert-Binary-C/0.05 $
+# $Snapshot: /Convert-Binary-C/0.06 $
 # $Source: /t/802_threads.t $
 #
 ################################################################################

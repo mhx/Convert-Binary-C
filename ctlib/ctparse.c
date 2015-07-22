@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/11/25 11:46:35 +0000 $
-* $Revision: 9 $
-* $Snapshot: /Convert-Binary-C/0.05 $
+* $Date: 2002/12/11 13:51:44 +0000 $
+* $Revision: 12 $
+* $Snapshot: /Convert-Binary-C/0.06 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -64,8 +64,8 @@
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 
-static void GetPathName( char *buf, char *dir, char *file );
-static void UpdateStruct( CParseConfig *pCPC, Struct *pStruct );
+static void GetPathName( char *buf, const char *dir, const char *file );
+static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct );
 
 
 /*===== EXTERNAL VARIABLES ===================================================*/
@@ -93,7 +93,7 @@ static void UpdateStruct( CParseConfig *pCPC, Struct *pStruct );
 *
 *******************************************************************************/
 
-static void UpdateStruct( CParseConfig *pCPC, Struct *pStruct )
+static void UpdateStruct( const CParseConfig *pCPC, Struct *pStruct )
 {
   StructDeclaration *pStructDecl;
   Declarator        *pDecl;
@@ -191,7 +191,7 @@ static void UpdateStruct( CParseConfig *pCPC, Struct *pStruct )
 *
 *******************************************************************************/
 
-static void GetPathName( char *buf, char *dir, char *file )
+static void GetPathName( char *buf, const char *dir, const char *file )
 {
   int len = 0;
 
@@ -230,24 +230,18 @@ static void GetPathName( char *buf, char *dir, char *file )
 *
 *******************************************************************************/
 
-int ParseBuffer( char *filename, Buffer *pBuf, CParseInfo *pCPI, CParseConfig *pCPC )
+int ParseBuffer( const char *filename, const Buffer *pBuf,
+                 const CParseConfig *pCPC, CParseInfo *pCPI )
 {
-  int         rval;
-  LinkedList  list;
-  char       *str;
-  ParserState state;
-  FILE       *infile;
-
-#ifdef CTYPE_DEBUGGING
-  int         count;
-#ifdef YYDEBUG
-  extern int c_debug, pragma_debug;
-  c_debug = pragma_debug = DEBUG_FLAG( YACC ) ? 1 : 0;
-#endif
-#endif
+  int                rval;
+  char               file[1024];
+  char              *str;
+  FILE              *infile;
+  struct lexer_state lexer;
+  ParserState       *pState;
 
   CT_DEBUG( CTLIB, ("ctparse::ParseBuffer( %s, 0x%08X, 0x%08X, 0x%08X )",
-            filename ? filename : "NULL", pBuf, pCPI, pCPC) );
+            filename ? filename : BUFFER_NAME, pBuf, pCPI, pCPC) );
 
   /*----------------------------*/
   /* Try to open the input file */
@@ -256,11 +250,9 @@ int ParseBuffer( char *filename, Buffer *pBuf, CParseInfo *pCPI, CParseConfig *p
   infile = NULL;
 
   if( filename != NULL ) {
-    char file[512];
-
     GetPathName( file, NULL, filename );
 
-    CT_DEBUG( CTLIB, ("Trying \"%s\"...", file) );
+    CT_DEBUG( CTLIB, ("Trying '%s'...", file) );
 
     infile = fopen( file, "r" );
 
@@ -268,25 +260,22 @@ int ParseBuffer( char *filename, Buffer *pBuf, CParseInfo *pCPI, CParseConfig *p
       LL_foreach( str, pCPC->includes ) {
         GetPathName( file, str, filename );
 
-        CT_DEBUG( CTLIB, ("Trying \"%s\"...", file) );
+        CT_DEBUG( CTLIB, ("Trying '%s'...", file) );
 
         if( (infile = fopen( file, "r" )) != NULL )
           break;
       }
 
       if( infile == NULL ) {
-        FormatError( pCPI, "cannot find input file \"%s\"", filename );
+        FormatError( pCPI, "Cannot find input file '%s'", filename );
         return 0;
       }
     }
   }
 
-  /*------------------------------*/
-  /* Initialize parser structures */
-  /*------------------------------*/
-
-  state.pCPC = pCPC;
-  state.curEnumList = NULL;
+  /*----------------------------------*/
+  /* Initialize parse info structures */
+  /*----------------------------------*/
 
   if( pCPI->enums == NULL && pCPI->structs == NULL &&
       pCPI->typedef_lists == NULL ) {
@@ -310,25 +299,11 @@ int ParseBuffer( char *filename, Buffer *pBuf, CParseInfo *pCPI, CParseConfig *p
     CT_DEBUG( CTLIB, ("CParseInfo is inconsistent!") );   /* TODO: fail here! */
   }
 
-  state.pCPI = pCPI;
-
-  /*-------------------------------------*/
-  /* Lists needed to hold unused objects */
-  /*-------------------------------------*/
-
-  state.nodeList            = LL_new();
-  state.declaratorList      = LL_new();
-  state.arrayList           = LL_new();
-  state.structDeclList      = LL_new();
-  state.structDeclListsList = LL_new();
-
   /*-------------------------*/
   /* Set up the preprocessor */
   /*-------------------------*/
 
   CT_DEBUG( CTLIB, ("initializing preprocessor") );
-
-  state.filename = NULL;
 
   init_cpp();
 
@@ -344,83 +319,77 @@ int ParseBuffer( char *filename, Buffer *pBuf, CParseInfo *pCPI, CParseConfig *p
   init_include_path( NULL );
 
   if( filename )
-    set_init_filename(filename, 1);
+    set_init_filename(file, 1);
   else
     set_init_filename(BUFFER_NAME, 0);
 
-  init_lexer_state( &state.lexer );
-  init_lexer_mode( &state.lexer );
+  init_lexer_state( &lexer );
+  init_lexer_mode( &lexer );
 
-  state.lexer.flags |= HANDLE_ASSERTIONS
-                    |  HANDLE_PRAGMA
-                    |  LINE_NUM;
+  lexer.flags |= HANDLE_ASSERTIONS
+              |  HANDLE_PRAGMA
+              |  LINE_NUM;
 
   if( pCPC->flags & ISSUE_WARNINGS )
-    state.lexer.flags |= WARN_STANDARD
-                      |  WARN_ANNOYING
-                      |  WARN_TRIGRAPHS
-                      |  WARN_TRIGRAPHS_MORE;
+    lexer.flags |= WARN_STANDARD
+                |  WARN_ANNOYING
+                |  WARN_TRIGRAPHS
+                |  WARN_TRIGRAPHS_MORE;
 
 #ifdef ANSIC99_EXTENSIONS
   if( pCPC->flags & HAS_CPP_COMMENTS )
-    state.lexer.flags |= CPLUSPLUS_COMMENTS;
+    lexer.flags |= CPLUSPLUS_COMMENTS;
 
   if( pCPC->flags & HAS_MACRO_VAARGS )
-    state.lexer.flags |= MACRO_VAARG;
+    lexer.flags |= MACRO_VAARG;
 #endif
 
   if( infile != NULL ) {
-    state.lexer.input        = infile;
+    lexer.input        = infile;
   }
   else {
-    state.lexer.input        = NULL;
-    state.lexer.input_string = (unsigned char *) pBuf->buffer;
-    state.lexer.pbuf         = pBuf->pos;
-    state.lexer.ebuf         = pBuf->length;
+    lexer.input        = NULL;
+    lexer.input_string = (unsigned char *) pBuf->buffer;
+    lexer.pbuf         = pBuf->pos;
+    lexer.ebuf         = pBuf->length;
   }
 
   /* Add includes */
 
   LL_foreach( str, pCPC->includes ) {
-    CT_DEBUG( CTLIB, ("adding include path \"%s\"", str) );
+    CT_DEBUG( CTLIB, ("adding include path '%s'", str) );
     add_incpath( str );
   }
 
   /* Make defines */
 
   LL_foreach( str, pCPC->defines ) {
-    CT_DEBUG( CTLIB, ("defining macro \"%s\"", str) );
-    if( (rval = define_macro( &state.lexer, str )) != 0 ) {
-      FormatError( pCPI, "invalid macro definition \"%s\"", str );
-      goto cleanup;
-    }
+    CT_DEBUG( CTLIB, ("defining macro '%s'", str) );
+    (void) define_macro( &lexer, str );
   }
 
   /* Make assertions */
 
   LL_foreach( str, pCPC->assertions ) {
-    CT_DEBUG( CTLIB, ("making assertion \"%s\"", str) );
-    if( (rval = make_assertion( str )) != 0 ) {
-      FormatError( pCPI, "invalid assertion \"%s\"", str );
-      goto cleanup;
-    }
+    CT_DEBUG( CTLIB, ("making assertion '%s'", str) );
+    (void) make_assertion( str );
   }
 
-  enter_file( &state.lexer, state.lexer.flags );
+  enter_file( &lexer, lexer.flags );
 
-  /*--------------------------*/
-  /* Initialize pragma parser */
-  /*--------------------------*/
+  /*---------------------*/
+  /* Create the C parser */
+  /*---------------------*/
 
-  pragma_init( &state.pragma );
- 
+  pState = c_parser_new( pCPC, pCPI, &lexer );
+
   /*-----------------*/
   /* Parse the input */
   /*-----------------*/
 
   CT_DEBUG( CTLIB, ("entering parser") );
 
-  rval = c_parse( &state );
+  rval = c_parser_run( pState );
 
   CT_DEBUG( CTLIB, ( "c_parse() returned %d", rval ) );
 
@@ -429,10 +398,9 @@ int ParseBuffer( char *filename, Buffer *pBuf, CParseInfo *pCPI, CParseConfig *p
   /*-------------------------------*/
 
   if( rval )
-    while( lex( &state.lexer ) < CPPERR_EOF );
+    while( lex( &lexer ) < CPPERR_EOF );
 
-cleanup:
-  free_lexer_state( &state.lexer );
+  free_lexer_state( &lexer );
   wipeout();
 
 #ifdef MEM_DEBUG
@@ -440,118 +408,16 @@ cleanup:
   report_leaks();
 #endif
 
+  /*----------------------*/
+  /* Cleanup the C parser */
+  /*----------------------*/
+
+  c_parser_delete( pState );
+
+  /* Take out the buffer name from the parsed files table */
+
   if( filename == NULL )
     (void) HT_fetch( pCPI->htFiles, BUFFER_NAME, 0, 0 );
-
-  if( state.filename )
-    Free( state.filename );
-
-  /*-----------------------*/
-  /* Cleanup pragma parser */
-  /*-----------------------*/
-
-  pragma_free( &state.pragma );
-
-  /*---------------------*/
-  /* Cleanup Enumerators */
-  /*---------------------*/
-
-#ifdef CTYPE_DEBUGGING
-  if( DEBUG_FLAG( CTLIB ) ) {
-    CT_DEBUG( CTLIB, ("cleanup enumerator(s)") );
-    if( state.curEnumList && (count = LL_count( state.curEnumList )) > 0 )
-      CT_DEBUG( CTLIB, ("%d enumerator(s) still in memory, cleaning up...", count) );
-  }
-#endif
-
-  LL_destroy( state.curEnumList, (LLDestroyFunc) enum_delete );
-
-  /*---------------*/
-  /* Cleanup Nodes */
-  /*---------------*/
-
-#ifdef CTYPE_DEBUGGING
-  if( DEBUG_FLAG( CTLIB ) ) {
-    CT_DEBUG( CTLIB, ("cleanup node(s)") );
-    if( (count = LL_count( state.nodeList )) > 0 ) {
-      HashNode hn;
-      CT_DEBUG( CTLIB, ("%d node(s) still in memory, cleaning up...", count) );
-      LL_foreach( hn, state.nodeList )
-        CT_DEBUG( CTLIB, ("[%s]", hn->key) );
-    }
-  }
-#endif
-
-  LL_destroy( state.nodeList, (LLDestroyFunc) HN_delete );
-
-  /*---------------------*/
-  /* Cleanup Declarators */
-  /*---------------------*/
-
-#ifdef CTYPE_DEBUGGING
-  if( DEBUG_FLAG( CTLIB ) ) {
-    CT_DEBUG( CTLIB, ("cleanup declarator(s)") );
-    if( (count = LL_count( state.declaratorList )) > 0 )
-      CT_DEBUG( CTLIB, ("%d declarator(s) still in memory, cleaning up...", count) );
-  }
-#endif
-
-  LL_destroy( state.declaratorList, (LLDestroyFunc) decl_delete );
-
-  /*----------------*/
-  /* Cleanup Arrays */
-  /*----------------*/
-
-#ifdef CTYPE_DEBUGGING
-  if( DEBUG_FLAG( CTLIB ) ) {
-    Value *pVal;
-    CT_DEBUG( CTLIB, ("cleanup array(s)") );
-    if( (count = LL_count( state.arrayList )) > 0 ) {
-      CT_DEBUG( CTLIB, ("%d array(s) still in memory, cleaning up...", count) );
-      LL_foreach( list, state.arrayList ) {
-        CT_DEBUG( CTLIB, ("[ARRAY=0x%08X]", list) );
-        LL_foreach( pVal, list )
-          CT_DEBUG( CTLIB, ("[value=%d,flags=0x%08X]", pVal->iv, pVal->flags) );
-      }
-    }
-  }
-#endif
-
-  LL_foreach( list, state.arrayList )
-    LL_destroy( list, (LLDestroyFunc) value_delete );
-
-  LL_destroy( state.arrayList, NULL );
-
-  /*----------------------------*/
-  /* Cleanup Struct Declarators */
-  /*----------------------------*/
-
-#ifdef CTYPE_DEBUGGING
-  if( DEBUG_FLAG( CTLIB ) ) {
-    CT_DEBUG( CTLIB, ("cleanup struct declarator(s)") );
-    if( (count = LL_count( state.structDeclList )) > 0 )
-      CT_DEBUG( CTLIB, ("%d struct declarator(s) still in memory, cleaning up...", count) );
-  }
-#endif
-
-  LL_destroy( state.structDeclList, (LLDestroyFunc) structdecl_delete );
-
-  /*---------------------------------*/
-  /* Cleanup Struct Declarator Lists */
-  /*---------------------------------*/
-
-#ifdef CTYPE_DEBUGGING
-  if( DEBUG_FLAG( CTLIB ) ) {
-    CT_DEBUG( CTLIB, ("cleanup struct declarator list(s)") );
-    if( (count = LL_count( state.structDeclListsList )) > 0 )
-      CT_DEBUG( CTLIB, ("%d struct declarator list(s) still in memory, cleaning up...", count) );
-  }
-#endif
-
-  LL_foreach( list, state.structDeclListsList )
-    LL_destroy( list, (LLDestroyFunc) structdecl_delete );
-
-  LL_destroy( state.structDeclListsList, NULL );
 
 #if !defined NDEBUG && defined CTYPE_DEBUGGING
   if( DEBUG_FLAG( HASH ) ) {
@@ -692,7 +558,7 @@ void ResetParseInfo( CParseInfo *pCPI )
 *
 *******************************************************************************/
 
-void UpdateParseInfo( CParseInfo *pCPI, CParseConfig *pCPC )
+void UpdateParseInfo( CParseInfo *pCPI, const CParseConfig *pCPC )
 {
   Struct *pStruct;
 
@@ -809,7 +675,7 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
   LL_foreach( pStruct, pDest->structs ) {
     StructDeclaration *pStructDecl;
 
-    CT_DEBUG( CTLIB, ("remapping pointers for struct @ 0x%08X (\"%s\")",
+    CT_DEBUG( CTLIB, ("remapping pointers for struct @ 0x%08X ('%s')",
                       pStruct, pStruct->identifier) );
 
     LL_foreach( pStructDecl, pStruct->declarations ) {
@@ -869,7 +735,7 @@ void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc )
 *
 *******************************************************************************/
 
-ErrorGTI GetTypeInfo( CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
+ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
                       unsigned *pSize, unsigned *pAlign, unsigned *pItemSize,
                       u_32 *pFlags )
 {
@@ -1043,10 +909,8 @@ void FormatError( CParseInfo *pCPI, char *format, ... )
 
   va_start( args, format );
 
-  if( pCPI->errstr ) {
-    CT_DEBUG( CTLIB, ("Unhandled error: %s", pCPI->errstr) );
+  if( pCPI->errstr )
     Free( pCPI->errstr );
-  }
 
   len = vsprintf( buffer, format, args );
 

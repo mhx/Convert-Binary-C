@@ -13,7 +13,7 @@
 # $Author: mhx $
 # $Date: 2002/09/10 20:01:54 +0100 $
 # $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.05 $
+# $Snapshot: /Convert-Binary-C/0.06 $
 # $Source: /ctlib/util/tool/check_alloc.pl $
 #
 ################################################################################

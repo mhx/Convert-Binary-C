@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/11/23 17:26:11 +0000 $
-# $Revision: 8 $
-# $Snapshot: /Convert-Binary-C/0.05 $
+# $Date: 2002/12/11 13:58:02 +0000 $
+# $Revision: 9 $
+# $Snapshot: /Convert-Binary-C/0.06 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
@@ -21,7 +21,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 2052 }
+BEGIN { plan tests => 2202 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -51,7 +51,23 @@ eval_test(q{
   $p->dependencies;                                        # (E) Call to dependencies without parse data
   $p->sourcify;                                            # (E) Call to sourcify without parse data
 
+  $p->parse_file( 'foobar.c' );                            # (E) Cannot find input file 'foobar.c'
+
+  $p->Define(qw( DEFINE=3 DEFINE=2 ), '=');
+  $p->parse('');                                           # (1) macro ... DEFINE ... redefined
+                                                           # (1) void macro name
+  $p->Define([]);
+
+  $p->Assert(qw{ PRED(answer) 1(foo) SYNTAX) UNFINISHED( });
+  $p->parse('');                                           # (1) illegal assertion name for #assert
+                                                           # (1) syntax error in #assert
+                                                           # (1) unfinished #assert
+  $p->Assert([]);
+
   $p->parse( $code );                                      # (1) macro ... FOO ... redefined
+                                                           # (2) (warning) ... trailing garbage in #assert
+                                                           # (1) void assertion in #assert
+                                                           # (1) syntax error for assertion in #if
                                                            # (1) file ... not_here.h ... not found
                                                            # (2) (warning) ... trailing garbage in #ifdef
 
@@ -79,6 +95,9 @@ eval_test(q{
   $x = $p->pack( 't_unsafe', [] );                         # (1) Unsafe values used in pack('t_unsafe')
   $x = $p->pack( 's_unsafe', {} );                         # (1) Unsafe values used in pack('s_unsafe')
   $x = $p->pack( 'nonnative', 0 );                         # (1) Cannot pack non-native floating point values
+  $p->pack( 'enum enu', 'A', ['xxxx'] );                   # (E) Type of arg 3 to pack must be string
+  $p->pack( 'enum enu', 'A', 'xxxx' );                     # (E) Modification of a read-only value attempted
+  $x = $p->pack( 'enum enu', 'A', 'xxxx' );                # no warning
 
   $p->unpack( 'test', $data );                             # (1) Useless use of unpack in void context
   $x = $p->unpack( 'na', $data );                          # (E) Cannot find 'na'
@@ -293,12 +312,26 @@ __DATA__
 #define FOO 1
 #define FOO 2
 
+#assert TEST(assertion)
+#assert THIS(is) garbage
+#assert VOID()
+
+#if #TEST (assertion)
+  typedef struct __nodef nodef;
+#endif
+
+#if #TEST (nothing)
+#  error "boo!"
+#endif
+
+#if #TEST ()
+  /* this is a syntax error */
+#endif
+
 #include <not_here.h>
 
 #ifdef FOO BLABLA
 #endif
-
-typedef struct __nodef nodef;
 
 typedef union __hasbf hasbf;
 
@@ -357,3 +390,4 @@ typedef int t_unsafe[(char)600];  /* cast makes it unsafe */
 struct s_unsafe {
   int foo[BAD];  /* uuuhhh!! */
 };
+

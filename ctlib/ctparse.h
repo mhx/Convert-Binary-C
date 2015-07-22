@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/11/23 17:06:27 +0000 $
-* $Revision: 7 $
-* $Snapshot: /Convert-Binary-C/0.05 $
+* $Date: 2002/12/11 13:53:04 +0000 $
+* $Revision: 9 $
+* $Snapshot: /Convert-Binary-C/0.06 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
@@ -76,18 +76,39 @@ typedef struct {
   unsigned float_size;
   unsigned double_size;
   unsigned long_double_size;
-  unsigned flags;
 
-#define HAS_VOID_KEYWORD     0x00000001U
-#define CHARS_ARE_UNSIGNED   0x00000002U
-#define ISSUE_WARNINGS       0x00000004U
+  u_32     flags;
+
+#define CHARS_ARE_UNSIGNED   0x00000001U
+#define ISSUE_WARNINGS       0x00000002U
 
 #ifdef ANSIC99_EXTENSIONS
-#define HAS_C99_KEYWORDS     0x00010000U
-#define HAS_CPP_COMMENTS     0x00020000U
-#define HAS_MACRO_VAARGS     0x00040000U
+#define HAS_CPP_COMMENTS     0x00010000U
+#define HAS_MACRO_VAARGS     0x00020000U
 #endif
 
+  u_32     keywords;
+
+#define HAS_KEYWORD_AUTO     0x00000001U
+#define HAS_KEYWORD_CONST    0x00000002U
+#define HAS_KEYWORD_DOUBLE   0x00000004U
+#define HAS_KEYWORD_ENUM     0x00000008U
+#define HAS_KEYWORD_EXTERN   0x00000010U
+#define HAS_KEYWORD_FLOAT    0x00000020U
+#define HAS_KEYWORD_INLINE   0x00000040U
+#define HAS_KEYWORD_LONG     0x00000080U
+#define HAS_KEYWORD_REGISTER 0x00000100U
+#define HAS_KEYWORD_RESTRICT 0x00000200U
+#define HAS_KEYWORD_SHORT    0x00000400U
+#define HAS_KEYWORD_SIGNED   0x00000800U
+#define HAS_KEYWORD_STATIC   0x00001000U
+#define HAS_KEYWORD_UNSIGNED 0x00002000U
+#define HAS_KEYWORD_VOID     0x00004000U
+#define HAS_KEYWORD_VOLATILE 0x00008000U
+
+#define HAS_ALL_KEYWORDS     0x0000FFFFU
+
+  LinkedList disabled_keywords;
   LinkedList includes;
   LinkedList defines;
   LinkedList assertions;
@@ -116,15 +137,16 @@ typedef enum {
 
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
-int ParseBuffer( char *filename, Buffer *pBuf, CParseInfo *pCPI, CParseConfig *pCPC );
+int ParseBuffer( const char *filename, const Buffer *pBuf,
+                 const CParseConfig *pCPC, CParseInfo *pCPI );
 
 void InitParseInfo( CParseInfo *pCPI );
 void FreeParseInfo( CParseInfo *pCPI );
 void ResetParseInfo( CParseInfo *pCPI );
-void UpdateParseInfo( CParseInfo *pCPI, CParseConfig *pCPC );
+void UpdateParseInfo( CParseInfo *pCPI, const CParseConfig *pCPC );
 void CloneParseInfo( CParseInfo *pDest, CParseInfo *pSrc );
 
-ErrorGTI GetTypeInfo( CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
+ErrorGTI GetTypeInfo( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
                       unsigned *pSize, unsigned *pAlign, unsigned *pItemSize,
                       u_32 *pFlags );
 

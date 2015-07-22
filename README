@@ -12,30 +12,29 @@ CONTENTS
 1. DESCRIPTION
 --------------
 
-Convert::Binary::C is a preprocessor and parser for C type
-definitions. It is highly configurable and should support
-arbitrarily complex data structures. Its OO interface has pack
-and unpack methods that act as replacements for Perl's pack
-and unpack and allow to use the C types instead of a string
-representation of the data structure for conversion of binary
-data from and to Perl's complex data structures.
+Convert::Binary::C is a preprocessor and parser for C type definitions.
+It is highly configurable and should support arbitrarily complex data
+structures. Its object-oriented interface has pack and unpack methods
+that act as replacements for Perl's pack and unpack and allow to use the
+C types instead of a string representation of the data structure for
+conversion of binary data from and to Perl's complex data structures.
 
-Actually, what Convert::Binary::C does is not very different
-from what a C compiler does, just that it doesn't compile the
-source code into an object file or executable, but only parses
-the code and allows Perl to use the enumerations, structs and
-typedefs that have been defined within your C source for binary
-data conversion, similar to Perl's pack and unpack.
+Actually, what Convert::Binary::C does is not very different from what
+a C compiler does, just that it doesn't compile the source code into
+an object file or executable, but only parses the code and allows Perl
+to use the enumerations, structs, unions and typedefs that have been
+defined within your C source for binary data conversion, similar to
+Perl's pack and unpack.
 
-Beyond that, the module offers a lot of convenience methods
-to retrieve information about the C types that have been parsed.
+Beyond that, the module offers a lot of convenience methods to retrieve
+information about the C types that have been parsed.
 
 ---------------
 2. INSTALLATION
 ---------------
 
-Installation of the Convert::Binary::C module follows the standard Perl way
-and should not be harder than:
+Installation of the Convert::Binary::C module follows the standard
+Perl Way and should not be harder than:
 
   perl Makefile.PL
   make
@@ -47,15 +46,15 @@ Note that you may need to become superuser to 'make install'.
 If you're building the module under Windows, you may need to use a
 different make program, such as 'nmake', instead of 'make'.
 
-When running 'make test' on on slower systems please be patient, since
-some of the tests are quite time consuming. The time required for running
-the whole test suite depends on your Perl version, the features you're
-building the module with, and of course your machine.
+When running 'make test' on on slower systems please be patient,
+since some of the tests are quite time consuming. The time required
+for running the whole test suite depends on your Perl version, the
+features you're building the module with, and of course your machine.
 
-On a 1 GHz/P-III machine, using a multithreaded perl 5.8.0 binary, the
-whole test suite needs about 30 seconds. If the debugging feature is
-enabled, this will increase to almost 80 seconds, most of which is used
-up by the final memory leak test.
+On a 1 GHz/P-III machine, using a multithreaded perl 5.8.0 binary,
+the whole test suite needs about 35 seconds. If the debugging feature
+is enabled, this will increase to almost two minutes, most of which
+is used up by the final memory leak test.
 
 ----------------
 3. DOCUMENTATION
@@ -72,12 +71,26 @@ version of this module:
 
   http://search.cpan.org/author/MHX/Convert-Binary-C/
 
+Even though the documentation contains some example code, you might
+want some working example scripts. You can find them in the
+
+  examples
+
+subdirectory. These scripts normally require Convert::Binary::C to
+be installed on your system. If you want to test the examples prior
+to installing Convert::Binary::C, you can start the examples like
+this after building the module:
+
+  perl -Mblib examples/script.pl
+
+Otherwise just run the example scripts like any other Perl script.
+
 ----------------
 4. COMPATIBILITY
 ----------------
 
-The module should build on most of the platforms that Perl runs on. I have
-tested it on:
+The module should build on most of the platforms that Perl runs on.
+I have tested it on:
 
   - Various Linux systems
   - Various BSD systems
@@ -95,33 +108,35 @@ Also, most architectures should be supported. Tests were done on:
 
 The module should build with any perl from 5.005_03 up to 5.8.0.
 
-Multithreaded perl binaries are explicitly supported, as the module is
-intended to be thread-safe.
+Multithreaded perl binaries are explicitly supported, as the module
+is intended to be thread-safe.
 
 -----------
 5. FEATURES
 -----------
 
-You can enable or disable certain features at compile time by adding options
-to the Makefile.PL call. However, you can safely leave them at their default.
-Available features are 'debug' to build the module with debugging support,
-'threads' to build a thread-safe version and 'c99' to build the module with
-support for ANSI-C99 extensions. Note that the 'threads' feature is only
-available for multithreaded perl binaries.
+You can enable or disable certain features at compile time by adding
+options to the Makefile.PL call. However, you can safely leave them
+at their default.
 
-While 'c99' is enabled by default (and it makes little sense to disable it),
-the 'threads' and 'debug' features depend on how your perl binary was built.
-If it's built with the DEBUGGING flag, the 'debug' feature is enabled,
-otherwise it's disabled by default. If your perl binary was built to support
-threads, the module will be build thread-safe.
+Available features are 'debug' to build the module with debugging
+support, 'threads' to build a thread-safe version and 'c99' to build
+the module with support for ANSI-C99 extensions. Note that the 'threads'
+feature is only available for multithreaded perl binaries.
+
+While 'c99' is enabled by default (and it makes little sense to disable
+it), the 'threads' and 'debug' features depend on how your perl binary
+was built. If it's built with the DEBUGGING flag, the 'debug' feature
+is enabled, otherwise it's disabled by default. If your perl binary was
+built to support threads, the module will be build thread-safe.
 
 You can enable or disable features explicitly by adding the arguments
 
   enable-feature
   disable-feature
 
-to the Makefile.PL call. To explicitly build the module with debugging enabled
-and ANSI-C99 features disabled, you would say:
+to the Makefile.PL call. To explicitly build the module with debugging
+enabled and ANSI-C99 features disabled, you would say:
 
   perl Makefile.PL enable-debug disable-c99
 

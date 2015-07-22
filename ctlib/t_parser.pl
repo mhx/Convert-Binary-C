@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/04/15 22:26:46 +0100 $
-# $Revision: 1 $
-# $Snapshot: /Convert-Binary-C/0.05 $
+# $Date: 2002/12/11 13:53:58 +0000 $
+# $Revision: 2 $
+# $Snapshot: /Convert-Binary-C/0.06 $
 # $Source: /ctlib/t_parser.pl $
 #
 ################################################################################
@@ -28,48 +28,59 @@ use Tokenizer;
 
 $t = new Tokenizer tokfnc => \&tok_code;
 
+# keywords only in C99
 @C99 = qw(
   inline
   restrict
 );
 
-$t->addtokens( '', qw(
-  auto
+# keywords that cannot be disabled
+@ndis = qw(
   break
-  case char const continue
-  default do double
-  else enum extern
-  float for
+  case char continue
+  default do
+  else
+  for
   goto
   if int
-  long
-  register return
-  short signed sizeof static struct switch
+  return
+  sizeof struct switch
   typedef
-  union unsigned
-  void volatile
+  union
   while
-));
+);
 
-# new keywords in 1999 ANSI C
+# put them in a hash
+@NDIS{@ndis} = (1) x @ndis;
 
+# add all tokens except C99
+$t->addtokens( '', qw(
+  auto
+  const
+  double
+  enum extern
+  float
+  long
+  register
+  short signed static
+  unsigned
+  void volatile
+), @ndis );
+
+# add C99 keywords
 $t->addtokens( 'ANSIC99_EXTENSIONS', @C99 );
 
-open OUT, ">".shift or die $!;
+open OUT, ">$ARGV[0]" or die $!;
 print OUT $t->makeswitch;
 close OUT;
 
 sub tok_code {
   my $token = shift;
-  if( $token eq 'void' ) {
-    return "if( pState->pCPC->flags & HAS_VOID_KEYWORD )\n"
-         . "  return \U$token\E_TOK;\n";
-  }
-  elsif( grep { $_ eq $token } @C99 ) {
-    return "if( pState->pCPC->flags & HAS_C99_KEYWORDS )\n"
-         . "  return \U$token\E_TOK;\n";
+  if( exists $NDIS{$token} ) {
+    return "return \U$token\E_TOK;\n";
   }
   else {
-    return "return \U$token\E_TOK;\n";
+    return "if( pState->pCPC->keywords & HAS_KEYWORD_\U$token\E )\n"
+         . "  return \U$token\E_TOK;\n";
   }
 };

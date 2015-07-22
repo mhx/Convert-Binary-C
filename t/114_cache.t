@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2002/11/28 11:34:14 +0000 $
 # $Revision: 6 $
-# $Snapshot: /Convert-Binary-C/0.05 $
+# $Snapshot: /Convert-Binary-C/0.06 $
 # $Source: /t/114_cache.t $
 #
 ################################################################################

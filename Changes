@@ -115,3 +115,29 @@ Version 0.05
   when the cache file could not be created, and
   added a test for it
 
+------------
+Version 0.06
+------------
+
+* removed options 'HasVOID' and 'HasC99Keywords'
+
+* added 'DisabledKeywords' option, which replaces both 'HasVOID' and
+  'HasC99Keywords', and allows to disable a lot of other keywords, too:
+
+    HasVOID => 0         -->  DisabledKeywords => ['void']
+    HasC99Keywords => 0  -->  DisabledKeywords => [qw(inline restrict)]
+
+* updated parser to ignore type definitions within code blocks
+
+* fixed an access violation when cleaning up the preprocessor
+
+* removed warning when using sourcify method
+
+* added some more tests
+
+* added examples directory and some example scripts
+
+* added more examples to documentation
+
+* documentation fixes/updates
+

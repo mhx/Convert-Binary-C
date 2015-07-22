@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/11/25 12:37:57 +0000 $
-# $Revision: 2 $
-# $Snapshot: /Convert-Binary-C/0.05 $
+# $Date: 2002/12/11 13:58:41 +0000 $
+# $Revision: 3 $
+# $Snapshot: /Convert-Binary-C/0.06 $
 # $Source: /t/111_clone.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 37 }
+BEGIN { plan tests => 35 }
 
 eval {
   $orig = new Convert::Binary::C Include => ['t/include/perlinc',
@@ -53,7 +53,6 @@ eval {
 ok($@,'',"failed to clone full object");
 
 eval {
-  local $SIG{__WARN__} = sub { ok( $_[0], qr/experimental/, "wrong warning" ) };
   $dump1 = $orig->sourcify;
   $dump2 = $clone->sourcify;
 };

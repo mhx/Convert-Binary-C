@@ -1,0 +1,1763 @@
+
+=head1 NAME
+
+Convert::Binary::C - Binary Data Conversion using C Types
+
+=head1 SYNOPSIS
+
+=head2 Simple
+
+  $$synopsis_simple.pl$$
+
+=head2 Advanced
+
+  $$synopsis_advanced.pl$$
+
+=head1 DESCRIPTION
+
+Convert::Binary::C is a preprocessor and parser for C type
+definitions. It is highly configurable and should support
+arbitrarily complex data structures. Its object-oriented
+interface has L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> methods
+that act as replacements for
+Perl's L<C<pack>|perlfunc/"pack"> and L<C<unpack>|perlfunc/"unpack"> and
+allow to use the C types instead of a string representation
+of the data structure for conversion of binary data from and
+to Perl's complex data structures.
+
+Actually, what Convert::Binary::C does is not very different
+from what a C compiler does, just that it doesn't compile the
+source code into an object file or executable, but only parses
+the code and allows Perl to use the enumerations, structs, unions
+and typedefs that have been defined within your C source for binary
+data conversion, similar to
+Perl's L<C<pack>|perlfunc/"pack"> and L<C<unpack>|perlfunc/"unpack">.
+
+Beyond that, the module offers a lot of convenience methods
+to retrieve information about the C types that have been parsed.
+
+=head2 Background and History
+
+In late 2000 I wrote a realtime debugging interface for an
+embedded medical device that allowed me to send out data from
+that device over its integrated ethernet adapter.
+The interface was C<printf()>-like, so you could easily send
+out strings or numbers. But you could also send out what I
+called I<arbitrary data>, which was intended for arbitrary
+blocks of the device's memory.
+
+Another part of this realtime debugger was a Perl application
+running on my workstation that gathered all the messages that
+were sent out from the embedded device. It printed all the
+strings an numbers, and hexdumped the arbitrary data.
+However, manually parsing a couple of 300 byte hexdumps of a
+complex C structure is not only frustrating, but also error-prone
+and time consuming.
+
+Using L<C<unpack>|perlfunc/"unpack"> to retrieve the contents
+of a C structure works fine for small structures and if you
+don't have to deal with struct member alignment. But otherwise,
+maintaining such code can be as awful as deciphering hexdumps.
+
+As I didn't find anything to solve my problem on the CPAN,
+I wrote a little module that translated simple C structs
+into L<C<unpack>|perlfunc/"unpack"> strings. It worked, but
+it was slow. And since it couldn't deal with struct member
+alignment, I soon found myself adding padding bytes everywhere.
+So again, I had to maintain two sources, and changing one of
+them forced me to touch the other one.
+
+All in all, this little module seemed to make my task a bit
+easier, but it was far from being what I was thinking of:
+
+=over 2
+
+=item *
+
+A module that could directly use the source I've been coding
+for the embedded device without any modifications.
+
+=item *
+
+A module that could be configured to match the properties 
+of the different compilers and target platforms I was using.
+
+=item *
+
+A module that was fast enough to decode a great amount of
+binary data even on my slow workstation.
+
+=back
+
+I didn't know how to accomplish these tasks until I read something
+about XS. At least, it seemed as if it could solve my performance
+problems. However, writing a C parser in C isn't easier than it is
+in Perl. But writing a C preprocessor from scratch is even worse.
+
+Fortunately enough, after a few weeks of searching I found both,
+a lean, open-source C preprocessor library, and a reusable YACC
+grammar for ANSI-C. That was the beginning of the development of
+Convert::Binary::C in late 2001.
+
+Now, I'm successfully using the module in my embedded environment
+since long before it appeared on CPAN. From my point of view, it
+is exactly what I had in mind. It's fast, flexible, easy to use
+and portable. It doesn't require external programs or other Perl
+modules.
+
+=head2 About this document
+
+This document describes how to use Convert::Binary::C. A lot of
+different features are presented, and the example code sometimes
+uses Perl's more advanced language elements. If your experience
+with Perl is rather limited, you should know how to use Perl's
+very good documentation system.
+
+To look up one of the manpages, use the L<C<perldoc>|perldoc> command.
+For example,
+
+  perldoc perl
+
+will show you Perl's main manpage. To look up a specific Perl
+function, use C<perldoc -f>:
+
+  perldoc -f map
+
+gives you more information about the L<C<map>|perlfunc/"map"> function.
+You can also search the FAQ using C<perldoc -q>:
+
+  perldoc -q array
+
+will give you everything you ever wanted to know about Perl
+arrays. But now, let's go on with some real stuff!
+
+=head2 Why Convert::Binary::C?
+
+Say you want to pack (or unpack) data according to the following
+C structure:
+
+  $$header.h$$
+
+You could of course use
+Perl's L<C<pack>|perlfunc/"pack"> and L<C<unpack>|perlfunc/"unpack"> functions:
+
+  $$whycbc.pl [2]$$
+
+But this implies that the struct members are byte aligned. If
+they were long aligned (which is the default for most compilers),
+you'd have to write
+
+  $$whycbc.pl [4]$$
+
+which doesn't really increase readability.
+
+Now imagine that you need to pack the data for a completely
+different architecture with different byte order. You would
+look into the L<C<pack>|perlfunc/"pack"> manpage again and
+perhaps come up with this:
+
+  $$whycbc.pl [6]$$
+
+However, if you try to unpack C<$foo> again, your signed values
+have turned into unsigned ones.
+
+All this can still be managed with Perl. But imagine your
+structures get more complex? Imagine you need to support
+different platforms? Imagine you need to make changes to
+the structures? You'll not only have to change the C source
+but also dozens of L<C<pack>|perlfunc/"pack"> strings in
+your Perl code. This is no fun. And Perl should be fun.
+
+Now, wouldn't it be great if you could just read in the C
+source you've already written and use all the types defined
+there for packing and unpacking? That's what Convert::Binary::C
+does.
+
+=head2 Creating a Convert::Binary::C object
+
+To use Convert::Binary::C just say
+
+  $$intro.pl [1]$$
+
+to load the module. Its interface is completely object
+oriented, so it doesn't export any functions.
+
+Next, you need to create a new Convert::Binary::C object. This
+can be done by either
+
+  $$intro.pl [2]$$
+
+or
+
+  $$intro.pl [3]$$
+
+You can optionally pass configuration options to
+the L<constructor|/"new"> as described in the next section.
+
+=head2 Configuring the object
+
+To configure a Convert::Binary::C object, you can either call
+the L<C<configure>|/"configure"> method or directly pass the configuration
+options to the L<constructor|/"new">. If you want to change byte order
+and alignment, you can use
+
+  $$intro.pl [4]$$
+
+or you can change the construction code to
+
+  $$intro.pl [5]$$
+
+Either way, the object will now know that it should use
+little endian (Intel) byte order and 2-byte struct member
+alignment for packing and unpacking.
+
+Alternatively, you can use the option names as names of
+methods to configure the object, like:
+
+  $$intro.pl [6]$$
+
+You can also retrieve information about the current
+configuration of a Convert::Binary::C object. For details,
+see the section about the L<C<configure>|/"configure"> method.
+
+=head2 Parsing C code
+
+Convert::Binary::C allows two ways of parsing C source. Either
+by parsing external C header or C source files:
+
+  $$intro.pl [7]$$
+
+Or by parsing C code embedded in your script:
+
+  $$intro.pl [8]$$
+
+Now the object C<$c> will know everything about C<struct foo>.
+The example above uses a so-called here-document. It allows to
+easily embed multiline strings in your code. You can find more
+about here-documents in L<perldata> or L<perlop>.
+
+Since the L<C<parse>|/"parse"> and L<C<parse_file>|/"parse_file"> methods
+throw an exception when a parse error occurs, you usually want to catch
+these in an C<eval> block:
+
+  $$intro.pl [9]$$
+
+Perl's special C<$@> variable will contain an empty string (which
+evaluates to a false value in boolean context) on success or
+an error string on failure.
+
+As another feature, L<C<parse>|/"parse"> and L<C<parse_file>|/"parse_file"> return
+a reference to their object on success, just like L<C<configure>|/"configure"> does
+when you're configuring the object. This will allow you to write constructs
+like this:
+
+  $$intro.pl [10]$$
+
+=head2 Packing and unpacking
+
+Convert::Binary::C has two methods, L<C<pack>|/"pack"> and L<C<unpack>|/"unpack">,
+that act similar to the functions of same denominator in Perl.
+To perform the packing described in the example above,
+you could write:
+
+  $$intro.pl [11]$$
+
+Unpacking will work exactly the same way, just that
+the L<C<unpack>|/"unpack"> method will take a byte string as its input
+and will return a reference to a (possibly very complex)
+Perl data structure.
+
+  $$intro.pl [12]$$
+
+You can now easily access all of the values:
+
+  $$intro.pl [13]$$
+
+Or you can even more conveniently use
+the L<Data::Dumper|Data::Dumper> module:
+
+  $$intro.pl [14]$$
+
+The output would look something like this:
+
+  @@intro.pl [2]@@
+
+=head2 Preprocessor configuration
+
+Convert::Binary::C uses Thomas Pornin's I<ucpp> as an internal
+C preprocessor. It is compliant to ISO-C99, so you don't have
+to worry about using even weird preprocessor constructs in
+your code.
+
+If your C source contains includes or depends upon preprocessor
+defines, you may need to configure the internal preprocessor.
+Use the C<Include> and C<Define> configuration options for that:
+
+  $$preprocessor.pl [2]$$
+
+If your code uses system includes, it is most likely
+that you will need to define the symbols that are usually
+defined by the compiler.
+
+On some operating systems, the system includes require the
+preprocessor to predefine a certain set of assertions.
+Assertions are supported by I<ucpp>, and you can define them
+either in the source code using C<#assert> or as a property
+of the Convert::Binary::C object using C<Assert>:
+
+  $$preprocessor.pl [3]$$
+
+=head2 Supported pragma directives
+
+Convert::Binary::C supports the C<pack> pragma to locally override
+struct member alignment. The supported syntax is as follows:
+
+=over 4
+
+=item #pragma pack( ALIGN )
+
+Sets the new alignment to ALIGN.
+
+=item #pragma pack
+
+Resets the alignment to its original value.
+
+=item #pragma pack( push, ALIGN )
+
+Saves the current alignment on a stack and sets the new
+alignment to ALIGN.
+
+=item #pragma pack( pop )
+
+Restores the alignment to the last value saved on the
+stack.
+
+=back
+
+  $$pragma_pack.c$$
+
+The C<pack> pragma as it is currently implemented only affects
+the I<maximum> struct member alignment. There are compilers
+that also allow to specify the I<minimum> struct member
+alignment. This is not supported by Convert::Binary::C.
+
+=head1 METHODS
+
+=head2 new
+
+=over 8
+
+=item C<new>
+
+=item C<new> OPTION1 =E<gt> VALUE1, OPTION2 =E<gt> VALUE2, ...
+
+The constructor is used to create a new Convert::Binary::C object.
+You can simply use
+
+  $c = new Convert::Binary::C;
+
+without additional arguments to create an object, or you can
+optionally pass any arguments to the constructor that are
+described for the L<C<configure>|/"configure"> method.
+
+=back
+
+=head2 configure
+
+=over 8
+
+=item C<configure>
+
+=item C<configure> OPTION
+
+=item C<configure> OPTION1 =E<gt> VALUE1, OPTION2 =E<gt> VALUE2, ...
+
+This method can be used to configure an existing Convert::Binary::C
+object or to retrieve its current configuration.
+
+To configure the object, the list of options consists of key
+and value pairs and must therefore contain an even number of
+elements. L<C<configure>|/"configure"> (and also L<C<new>|/"new"> if
+used with configuration options) will throw an exception if you
+pass an odd number of elements. Configuration will normally look
+like this:
+
+  $$configure.pl [2]$$
+
+To retrieve the current value of a configuration option, you
+must pass a single argument to L<C<configure>|/"configure"> that
+holds the name of the option, just like
+
+  $$configure.pl [3]$$
+
+If you want to get the values of all configuration options at
+once, you can call L<C<configure>|/"configure"> without any
+arguments and it will return a reference to a hash table that
+holds the whole object configuration. This can be conveniently
+used with the L<Data::Dumper|Data::Dumper> module, for example:
+
+  $$configure.pl [1]$$
+
+This will print something like this:
+
+  @@configure.pl [1]@@
+
+Since you may not always want to write a L<C<configure>|/"configure"> call
+when you only want to change a single configuration item, you can
+use any configuration option name as a method name, like:
+
+  $$configure.pl [4]$$
+
+(Yes, the example doesn't make very much sense... ;-)
+
+However, you should keep in mind that configuration methods
+that can take lists (namely C<Include>, C<Define> and C<Assert>,
+but not C<DisabledKeywords>) may behave slightly different than
+their L<C<configure>|/"configure"> equivalent.
+If you pass these methods a single argument that is an array
+reference, the current list will be B<replaced> by the new one,
+which is just the behaviour of the
+corresponding L<C<configure>|/"configure"> call.
+So the following are equivalent:
+
+  $$configure.pl [5]$$
+
+But if you pass a list of strings instead of an array reference
+(which cannot be done when using L<C<configure>|/"configure">),
+the new list items are B<appended> to the current list, so
+
+  $$configure.pl [6]$$
+
+will first print all three include paths, but finally
+only C</usr/local/include> will be configured:
+
+  @@configure.pl [2]@@
+
+Furthermore, configuration methods can be chained together,
+as they return a reference to their object if called as a
+set method. So, if you like, you can configure your object
+like this:
+
+  $$configure.pl [7]$$
+
+In the example above, C<qw( ... )> is the word list quoting
+operator. It returns a list of all non-whitespace sequences,
+and is especially useful for configuring preprocessor defines
+or assertions. The following assignments are equivalent:
+
+  @array = ('one', 'two', 'three');
+  @array = qw(one two three);
+
+You can configure the following options. Unknown options, as well
+as invalid values for an option, will cause the object to throw
+exceptions.
+
+=over 4
+
+=item C<IntSize> =E<gt> 0 | 1 | 2 | 4 | 8
+
+Set the number of bytes that are occupied by an integer. This is
+in most cases 2 or 4. If you set it to zero, the size of an
+integer on the host system will be used. This is also the
+default.
+
+=item C<ShortSize> =E<gt> 0 | 1 | 2 | 4 | 8
+
+Set the number of bytes that are occupied by a short integer.
+Although integers explicitly declared as C<short> should be
+always 16 bit, there are compilers that make a short
+8 bit wide. If you set it to zero, the size of a short
+integer on the host system will be used. This is also the
+default.
+
+=item C<LongSize> =E<gt> 0 | 1 | 2 | 4 | 8
+
+Set the number of bytes that are occupied by a long integer.
+If set to zero, the size of a long integer on the host system
+will be used. This is also the default.
+
+=item C<LongLongSize> =E<gt> 0 | 1 | 2 | 4 | 8
+
+Set the number of bytes that are occupied by a long long
+integer. If set to zero, the size of a long long integer
+on the host system, or 8, will be used. This is also the
+default.
+
+=item C<FloatSize> =E<gt> 0 | 1 | 2 | 4 | 8 | 12
+
+Set the number of bytes that are occupied by a single
+precision floating point value.
+If you set it to zero, the size of a C<float> on the
+host system will be used. This is also the default.
+Values can only be packed and unpacked if the size
+matches the native size of a C<float>.
+
+=item C<DoubleSize> =E<gt> 0 | 1 | 2 | 4 | 8 | 12
+
+Set the number of bytes that are occupied by a double
+precision floating point value.
+If you set it to zero, the size of a C<double> on the
+host system will be used. This is also the default.
+Values can only be packed and unpacked if the size
+matches the native size of a C<double>.
+
+=item C<LongDoubleSize> =E<gt> 0 | 1 | 2 | 4 | 8 | 12
+
+Set the number of bytes that are occupied by a double
+precision floating point value.
+If you set it to zero, the size of a C<long double> on
+the host system, or 12 will be used. This is also the
+default. Values can only be packed and unpacked if the
+size matches the native size of a C<long double>.
+
+=item C<PointerSize> =E<gt> 0 | 1 | 2 | 4 | 8
+
+Set the number of bytes that are occupied by a pointer. This is
+in most cases 2 or 4. If you set it to zero, the size of a
+pointer on the host system will be used. This is also the
+default.
+
+=item C<EnumSize> =E<gt> 0 | 1 | 2 | 4
+
+Set the number of bytes that are occupied by an enumeration type.
+On most systems, this is equal to the size of an integer,
+which is also the default. However, for some compilers, the
+size of an enumeration type depends on the size occupied by the
+largest enumerator. So the size may vary between 1 and 4. If you
+have
+
+  enum foo {
+    ONE = 100, TWO = 200
+  };
+
+this will occupy one byte because the enum can be represented
+as an unsigned one-byte value. However,
+
+  enum foo {
+    ONE = -100, TWO = 200
+  };
+
+will occupy two bytes, because the -100 forces the type to
+be signed, and 200 doesn't fit into a signed one-byte value.
+Therefore, the type used is a signed two-byte value.
+If this is the behaviour you need, set the EnumSize to zero.
+
+=item C<Alignment> =E<gt> 1 | 2 | 4 | 8
+
+Set the struct member alignment. This option controls where
+padding bytes are inserted between struct members. It globally
+sets the alignment for all structs/unions. However, this can
+be overridden from within the source code with the
+common C<pack> pragma as explained in L<"Supported pragma directives">.
+The default alignment is 1, which means no padding bytes are
+inserted.
+
+=item C<ByteOrder> =E<gt> 'BigEndian' | 'LittleEndian'
+
+Set the byte order for integers larger than a single byte.
+Little endian (Intel, least significant byte first) and
+big endian (Motorola, most significant byte first) byte
+order are supported. The default byte order is the same as
+the byte order of the host system.
+
+=item C<EnumType> =E<gt> 'Integer' | 'String' | 'Both'
+
+This option controls the type that enumeration constants
+will have in data structures returned by the L<C<unpack>|/"unpack"> method.
+If you have the following definitions:
+
+  $$enumtype.c$$
+
+and a byte string that holds a packed Date struct,
+then you'll get the following results from a call
+to the L<C<unpack>|/"unpack"> method.
+
+=over 4
+
+=item C<Integer>
+
+Enumeration constants are returned as plain integers. This
+is fast, but may be not very useful. It is also the default.
+
+  @@enumtype.pl [1]@@
+
+=item C<String>
+
+Enumeration constants are returned as strings. This will
+create a string constant for every unpacked enumeration
+constant and thus consumes more time and memory. However,
+the result may be more useful.
+
+  @@enumtype.pl [2]@@
+
+=item C<Both>
+
+Enumeration constants are returned as double typed scalars.
+If evaluated in string context, the enumeration constant
+will be a string, if evaluated in numeric context, the
+enumeration constant will be an integer.
+
+  $$enumtype.pl [2]$$
+
+This will print:
+
+  @@enumtype.pl [3]@@
+
+=back
+
+=item C<DisabledKeywords> =E<gt> [ KEYWORDS ]
+
+This option allows you to selectively deactivate certain
+keywords in the C parser. Some C compilers don't have
+the complete ANSI keyword set, i.e. they don't recognize
+the keywords C<const> or C<void>, for example. If you do
+
+  $$keywords.pl [3]$$
+
+on such a compiler, this will usually be ok. But if you
+parse this with an ANSI compiler, it will be a syntax
+error. To parse the above code correctly, you have to
+disable the C<void> keyword in the Convert::Binary::C
+parser:
+
+  $$keywords.pl [2]$$
+
+If Convert::Binary::C is built with the C99 feature
+enabled (which is the default), the parser will recognize
+the keywords C<inline> and C<restrict>. If your compiler
+doesn't have these new keywords, it usually doesn't matter.
+Only if you're using the keywords as identifiers, like in
+
+  $$keywords.pl [5]$$
+
+you'll have to disable the ANSI-C99 keywords:
+
+  $$keywords.pl [4]$$
+
+The parser allows you to disable the following keywords:
+
+  @@keywords.pl@@
+
+=item C<UnsignedChars> =E<gt> 0 | 1
+
+Use this boolean option if you want characters
+to be unsigned if specified without an
+explicit C<signed> or C<unsigned> type specifier.
+By default, characters are signed.
+
+=item C<Warnings> =E<gt> 0 | 1
+
+Use this boolean option if you want warnings to be issued
+during the parsing of source code. Currently, warnings
+are only reported by the preprocessor, so don't expect
+the output to cover everything.
+
+By default, warnings are turned off and only errors will be
+reported. However, even these errors are turned off if
+you run without the C<-w> flag.
+
+=item C<HasCPPComments> =E<gt> 0 | 1
+
+Use this option to turn C++ comments on or off. By default,
+C++ comments are enabled. Disabling C++ comments may be
+necessary if your code includes strange things like:
+
+  one = 4 //* <- divide */ 4;
+  two = 2;
+
+With C++ comments, the above will be interpreted as
+
+  one = 4
+  two = 2;
+
+which will obviously create a parse error, but without
+C++ comments, it will be interpreted as
+
+  one = 4 / 4;
+  two = 2;
+
+which is correct.
+
+=item C<HasMacroVAARGS> =E<gt> 0 | 1
+
+Use this option to turn the C<__VA_ARGS__> macro expansion
+on or off. If this is enabled (which is the default), you can use
+variable length argument lists in your preprocessor macros.
+
+  #define DEBUG( ... )  fprintf( stderr, __VA_ARGS__ )
+
+There's normally no reason to turn that feature off.
+
+=item C<Include> =E<gt> [ INCLUDES ]
+
+Use this option to set the include path for the internal
+preprocessor. The option value is a reference to an array
+of strings, each string holding a directory that should
+be searched for includes.
+
+=item C<Define> =E<gt> [ DEFINES ]
+
+Use this option to define symbols in the preprocessor.
+The option value is, again, a reference to an array of
+strings. Each string can be either just a symbol or an
+assignment to a symbol. This is completely equivalent
+to what the C<-D> option does for most preprocessors.
+
+The following will define the symbol C<FOO> and
+define C<BAR> to be C<12345>:
+
+  $$configure.pl [8]$$
+
+=item C<Assert> =E<gt> [ ASSERTIONS ]
+
+Use this option to make assertions in the preprocessor.
+If you don't know what assertions are, don't be
+concerned, since they're deprecated anyway. They
+are, however, used in some system's include files.
+The value is an array reference, just like for the
+macro definitions. Only the way the assertions are
+defined is a bit different and mimics the way they
+are defined with the C<#assert> directive:
+
+  $$configure.pl [9]$$
+
+=back
+
+You can reconfigure all options even after you have
+parsed some code. The changes will be applied to the
+already parsed definitions. This works as long as array
+lengths are not affected by the changes. If you have
+Alignment and IntSize set to 4 and parse code like
+this
+
+  $$reconfig.pl [2]$$
+
+the array C<zap> in C<struct bar> will obviously have
+16 elements. If you reconfigure the alignment to 1 now,
+the size of C<foo> is now 5 instead of 8. While the
+alignment is adjusted correctly, the number of elements
+in array C<zap> will still be 16 and will not be changed
+to 10.
+
+=back
+
+=head2 parse
+
+=over 8
+
+=item C<parse> CODE
+
+Parses a string of valid C code. All enumeration, compound
+and type definitions are extracted. You can call
+the L<C<parse>|/"parse"> and L<C<parse_file>|/"parse_file"> methods
+as often as you like to add further definitions to the
+Convert::Binary::C object.
+
+L<C<parse>|/"parse"> will throw an exception if an error occurs.
+On success, the method returns a reference to its object.
+
+See L<"Parsing C code"> for an example.
+
+=back
+
+=head2 parse_file
+
+=over 8
+
+=item C<parse_file> FILE
+
+Parses a C source file. All enumeration, compound and type
+definitions are extracted. You can call
+the L<C<parse>|/"parse"> and L<C<parse_file>|/"parse_file"> methods
+as often as you like to add further definitions to the
+Convert::Binary::C object.
+
+L<C<parse_file>|/"parse_file"> will throw an exception if an error
+occurs. On success, the method returns a reference to its object.
+
+See L<"Parsing C code"> for an example.
+
+You must be aware that the preprocessor is reset with every call
+to L<C<parse>|/"parse"> or L<C<parse_file>|/"parse_file">.
+Also, you may use types previously defined, but you are not allowed
+to redefine types.
+
+When you're parsing C source files instead of C header
+files, note that local definitions are ignored. This means
+that type definitions hidden within functions will not be
+recognized by Convert::Binary::C. This is necessary
+because different functions (even different blocks within
+the same function) can define types with the same name:
+
+  $$parse_file.pl [2]$$
+
+The above is a valid piece of C code, but it's not possible
+for Convert::Binary::C to distinguish between the different
+definitions of C<enum digit>, as they're only defined
+locally within the corresponding block.
+
+=back
+
+=head2 clean
+
+=over 8
+
+=item C<clean>
+
+Clears all information that has been collected during previous
+calls to L<C<parse>|/"parse"> or L<C<parse_file>|/"parse_file">.
+You can use this method if you want to parse some entirely
+different code, but with the same configuration.
+
+The L<C<clean>|/"clean"> method returns a reference to its object.
+
+=back
+
+=head2 clone
+
+=over 8
+
+=item C<clone>
+
+Makes the object return an exact independent copy of itself.
+
+  $$clone.pl [2]$$
+
+The above code is technically equivalent (Mostly. Actually,
+using L<C<sourcify>|/"sourcify"> and L<C<parse>|/"parse"> might alter
+the order of the parsed data, which would make methods such
+as L<C<compound>|/"compound"> return the definitions in a different
+order.) to:
+
+  $$clone.pl [3]$$
+
+Using L<C<clone>|/"clone"> is just a lot faster.
+
+=back
+
+=head2 def
+
+=over 8
+
+=item C<def> TYPE
+
+If you need to know if a definition for a certain type
+exists, use this method. You pass it the name of an enum,
+struct, union or typedef, and it will return a non-empty
+string being either C<"enum">, C<"struct">, C<"union">,
+or C<"typedef"> if there's a definition for the type in
+question, an empty string if there's no such definition,
+or C<undef> if the name is completely unknown.
+
+  $$def.pl$$
+
+The following would be returned by the L<C<def>|/"def"> method:
+
+  @@def.pl@@
+
+So, if L<C<def>|/"def"> returns a non-empty string, you can safely use
+any other method with that type's name.
+
+In cases where the typedef namespace overlaps with the
+namespace of enums/structs/unions, the L<C<def>|/"def"> method
+will give preference to the typedef and will thus return
+the string C<"typedef">.
+
+=back
+
+=head2 pack
+
+=over 8
+
+=item C<pack> TYPE, DATA
+
+=item C<pack> TYPE, DATA, STRING
+
+Use this method to pack a complex data structure into a
+binary string according to a type definition that has been
+previously parsed. DATA must be a scalar matching the
+type definition. C structures and unions are represented
+by references to Perl hashes, C arrays by references to
+Perl arrays.
+
+  $$pack.pl [1]$$
+
+Hashes don't have to contain a key for each compound member
+and arrays may be truncated:
+
+  $$pack.pl [2]$$
+
+Elements not defined in the Perl data structure will be
+set to zero in the packed byte string. On success, the
+packed byte string is returned.
+
+  $$pack.pl [3]$$
+
+The above code would print:
+
+  @@pack.pl [1]@@
+
+You could also use L<C<unpack>|/"unpack"> and dump the data structure.
+
+  $$pack.pl [4]$$
+
+This would print:
+
+  @@pack.pl [2]@@
+
+If TYPE refers to a compound object, you may pack any
+member of that compound object. Simply add a member string
+to the type name, just as you would access the member in
+C:
+
+  $$pack.pl [5]$$
+
+This would give you:
+
+  @@pack.pl [3]@@
+
+Call L<C<pack>|/"pack"> with the optional STRING argument if you want
+to use an existing binary string to insert the data.
+If called in a void context, L<C<pack>|/"pack"> will directly
+modify the string you passed as the third argument.
+Otherwise, a copy of the string is created, and L<C<pack>|/"pack"> will
+modify and return the copy, so the original string
+will remain unchanged.
+
+The 3-argument version may be useful if you want to change
+only a few members of a complex data structure without
+having to L<C<unpack>|/"unpack"> everything, change the members, and
+then L<C<pack>|/"pack"> again (which could waste lots of memory
+and CPU cycles). So, instead of doing something like
+
+  $$pack.pl [6]$$
+
+to change the C<uni.quad> member of C<$packed>, you
+could simply do either
+
+  $$pack.pl [7]$$
+
+or
+
+  $$pack.pl [8]$$
+
+while the latter would directly modify C<$packed>.
+Besides this code being a lot shorter (and perhaps even
+more readable), it can be significantly faster if you're
+dealing with really big data blocks.
+
+If the length of the input string is less than the size
+required by the type, the string (or its copy) is
+extended and the extended part is initialized to zero.
+If the length is more than the size required by the type,
+the string is kept at that length, and also a copy would
+be an exact copy of that string.
+
+  $$pack.pl [9]$$
+
+This would print:
+
+  @@pack.pl [4]@@
+
+=back
+
+=head2 unpack
+
+=over 8
+
+=item C<unpack> TYPE, STRING
+
+Use this method to unpack a binary string and create an
+arbitrarily complex Perl data structure based on a
+previously parsed type definition.
+
+  $$unpack.pl [1]$$
+
+On failure, e.g. if the specified type cannot be found, the
+method will throw an exception. On success, a reference to
+a complex Perl data structure is returned, which can directly
+be dumped using the L<Data::Dumper|Data::Dumper> module:
+
+  $$unpack.pl [2]$$
+
+This would print:
+
+  @@unpack.pl [1]@@
+
+If TYPE refers to a compound object, you may unpack any
+member of that compound object. Simply add a member string
+to the type name, just as you would access the member in
+C:
+
+  $$unpack.pl [3]$$
+
+You will find that the output is exactly the same for
+both C<$unpack1> and C<$unpack2>:
+
+  @@unpack.pl [2]@@
+
+=back
+
+=head2 sizeof
+
+=over 8
+
+=item C<sizeof> TYPE
+
+This method will return the size of a C type in bytes.
+If it cannot find the type, it will throw an exception.
+
+If the type defines some kind of compound object, you
+may ask for the size of a member of that compound object:
+
+  $$unpack.pl [4]$$
+
+This would set C<$size> to C<2>.
+
+=back
+
+=head2 member
+
+=over 8
+
+=item C<member> TYPE, OFFSET
+
+You can use this method if you want to retrieve the name,
+and optionally the type, of the member that is located at
+a specific offset for a previously parsed type.
+
+  $$member.pl [1]$$
+
+This will print:
+
+  @@member.pl [1]@@
+
+The output of the first iteration is obvious. The
+member C<zap[2].abc> is located at offset 16 of C<struct test>.
+
+In the second iteration, the offset points into a region
+of padding bytes, thus no member of C<week> can be
+named and instead of a member name the offset
+relative to C<zap[3]> is appended.
+
+In the third iteration, the offset points to C<zap[5].ptr>.
+However, C<zap[5].ptr> is located at 44, not at 45,
+and thus the remaining offset of 1 is also appended.
+
+The last iteration causes an exception because the offset
+of 99 is not valid for C<struct test> since the size
+of C<struct test> is only 96.
+
+In list context, the L<C<member>|/"member"> method will also
+return the member's type:
+
+  $$member.pl [2]$$
+
+If the offset points to a region of padding bytes, the
+type will be C<undef>. If the type is a pointer,
+a C<"*"> string will be returned.
+
+  @@member.pl [2]@@
+
+If the type cannot be expressed as a string, a reference to
+a definition of that type will be returned. Actually, this
+can only be the case for inlined, unnamed enums:
+
+  $$member.pl [3]$$
+
+This will print:
+
+  @@member.pl [3]@@
+
+Have a look at the L<C<enum>|/"enum"> method for details on how to
+interpret the returned data structure.
+
+You can additionally specify a member for the type passed
+as the first argument:
+
+  $$member.pl [4]$$
+
+This will print:
+
+  @@member.pl [4]@@
+
+=back
+
+=head2 offsetof
+
+=over 8
+
+=item C<offsetof> TYPE, MEMBER
+
+You can think of L<C<offsetof>|/"offsetof"> as being the reverse of
+the L<C<member>|/"member"> method. Given the L<C<member>|/"member"> example
+code above,
+
+  $$member.pl [5]$$
+
+will print:
+
+  @@member.pl [5]@@
+
+The first iteration will simply show that the offset
+of C<zap[5].day> is 64 relative to the beginning
+of C<struct test>.
+
+You may additionally specify a member for the type
+passed as the first argument, as shown in the second
+iteration.
+
+Since the C<+n> syntax isn't allowed by L<C<offsetof>|/"offsetof">, the
+third iteration will not print C<45>, but rather cause
+an exception because of an invalid character being used.
+
+=back
+
+=head2 dependencies
+
+=over 8
+
+=item C<dependencies>
+
+After some code has been parsed using either
+the L<C<parse>|/"parse"> or L<C<parse_file>|/"parse_file"> methods,
+the L<C<dependencies>|/"dependencies"> method can be used to
+retrieve information about all files that the object
+depends on, i.e. all files that have been parsed.
+
+The method returns a hash reference. Each key is the
+name of a file, so you could use
+
+  $$dependencies.pl [2]$$
+
+to retrieve a list of these files. The values are
+again hash references, each of which holds the size,
+modification time (mtime), and change time (ctime)
+of the file at the moment it was parsed.
+
+  $$dependencies.pl [1]$$
+
+The above code would print something like this:
+
+  @@dependencies.pl@@
+
+=back
+
+=head2 sourcify
+
+=over 8
+
+=item C<sourcify>
+
+Returns a string that holds the C code necessary to
+represent all parsed C data structures.
+
+  $$sourcify.pl$$
+
+The above code would print something like this:
+
+  @@sourcify.pl@@
+
+The purpose of the L<C<sourcify>|/"sourcify"> method is to enable some
+kind of platform-independent caching. The C code generated
+by L<C<sourcify>|/"sourcify"> can be parsed by a standard C compiler, as well
+as of course the Convert::Binary::C parser. However, it might
+be significantly shorter than the code that has originally
+been parsed. When parsing a typical header file, it's
+easily possible that you need to open dozens of other files
+that are included from that file, and end up parsing several
+hundred kilobytes of C code. Since most of it is usually
+preprocessor directives, function prototypes and comments,
+the L<C<sourcify>|/"sourcify"> function strips this down to a few kilobytes.
+Saving the L<C<sourcify>|/"sourcify"> string and parsing it next time instead
+of the original code may be a lot faster.
+
+=back
+
+The following methods can be used to retrieve information about the
+definitions that have been parsed. The examples given in the description
+for L<C<enum>|/"enum">, L<C<compound>|/"compound"> and L<C<typedef>|/"typedef"> all
+assume this piece of C code has been parsed:
+
+  $$definitions.c$$
+
+=head2 enum_names
+
+=over 8
+
+=item C<enum_names>
+
+Returns a list of identifiers of all defined enumeration
+objects. Enumeration objects don't necessarily have an
+identifier, so something like
+
+  $$enum_names.pl [2]$$
+
+will obviously not appear in the list returned by
+the L<C<enum_names>|/"enum_names"> method. Also, enumerations
+that are not defined within the source code - like in
+
+  $$enum_names.pl [3]$$
+
+where only a pointer to the C<weekday> enumeration object is used - will
+not be returned, even though they have an identifier. So for the above two
+enumerations, L<C<enum_names>|/"enum_names"> will return an empty list:
+
+  $$enum_names.pl [4]$$
+
+The only way to retrieve a list of all enumeration identifiers
+is to use the L<C<enum>|/"enum"> method without additional
+arguments. You can get a list of all enumeration objects
+that have an identifier by using
+
+  $$enum_names.pl [5]$$
+
+but these may not have a definition. Thus, the two arrays would
+look like this:
+
+  @@enum_names.pl@@
+
+The L<C<def>|/"def"> method returns a true value for all identifiers returned
+by L<C<enum_names>|/"enum_names">.
+
+=back
+
+=head2 enum
+
+=over 8
+
+=item enum
+
+=item C<enum> LIST
+
+Returns a list of references to hashes containing
+detailed information about all enumerations that
+have been parsed.
+
+If a list of enumeration identifiers is passed to the
+method, the returned list will only contain hash
+references for those enumerations.
+
+If an enumeration identifier cannot be found, a
+warning is issued and the returned list will contain
+an undefined value at that position.
+
+In scalar context, the number of enumerations will
+be returned as long as the number of arguments to
+the method call is not 1. In the latter case, a
+hash reference holding information for the enumeration
+will be returned.
+
+The list returned by the L<C<enum>|/"enum"> method looks similar
+to this:
+
+  @@definitions.pl enum definitions.c@@
+
+=over 4
+
+=item C<identifier>
+
+holds the enumeration identifier. This key is not
+present if the enumeration has no identifier.
+
+=item C<enumerators>
+
+is a reference to a hash table that holds
+all enumerators of the enumeration.
+
+=item C<sign>
+
+is a boolean indicating if the enumeration is
+signed.
+
+=item C<size>
+
+is the size in bytes needed to store any enumerator of
+that enumeration. This does B<not> need to be the size
+that is actually occupied by an enumerator. Only if C<EnumSize> is
+configured to C<0>, these are identical.
+
+=back
+
+One useful application may be to create a hash table that
+holds all enumerators of all defined enumerations:
+
+  $$enum.pl [2]$$
+
+The C<%enum> hash table would then be:
+
+  @@enum.pl@@
+
+=back
+
+=head2 compound_names
+
+=over 8
+
+=item C<compound_names>
+
+Returns a list of identifiers of all structs and unions
+(compound data structures) that are defined in the parsed
+source code. Like enumerations, compounds don't need to
+have an identifier, nor do they need to be defined.
+
+Again, the only way to retrieve information about all
+struct and union objects is to use the L<C<compound>|/"compound"> method
+and don't pass it any arguments. If you should need a
+list of all struct and union identifiers, you can use:
+
+  $$compound.pl [2]$$
+
+The L<C<def>|/"def"> method returns a true value for all identifiers returned
+by L<C<compound_names>|"compound_names">.
+
+If you need the names of only the structs or only the unions, use
+the L<C<struct_names>|/"struct_names"> and L<C<union_names>|/"union_names"> methods
+respectively.
+
+=back
+
+=head2 compound
+
+=over 8
+
+=item C<compound>
+
+=item C<compound> LIST
+
+Returns a list of references to hashes containing
+detailed information about all compounds (structs and
+unions) that have been parsed.
+
+If a list of struct/union identifiers is passed to the
+method, the returned list will only contain hash
+references for those compounds.
+
+If an identifier cannot be found, a warning is issued
+and the returned list will contain an undefined value
+at that position.
+
+In scalar context, the number of compounds will
+be returned as long as the number of arguments to
+the method call is not 1. In the latter case, a
+hash reference holding information for the compound
+will be returned.
+
+The list returned by the L<C<compound>|/"compound"> method looks similar
+to this:
+
+  @@definitions.pl compound definitions.c@@
+
+=over 4
+
+=item C<identifier>
+
+holds the struct or union identifier. This
+key is not present if the compound has no identifier.
+
+=item C<type>
+
+is either 'struct' or 'union'.
+
+=item C<size>
+
+is the size of the struct or union.
+
+=item C<align>
+
+is the alignment of the struct or union.
+
+=item C<pack>
+
+is the struct member alignment if the compound
+is packed, or zero otherwise.
+
+=item C<declarations>
+
+is an array of hash references describing each struct
+declaration:
+
+=over 4
+
+=item C<type>
+
+is the type of the struct declaration. This may be a
+string or a reference to a hash describing the type.
+
+=item C<declarators>
+
+is an array of hashes describing each declarator:
+
+=over 4
+
+=item C<declarator>
+
+is a string representation of the declarator.
+
+=item C<offset>
+
+is the offset of the struct member represented by
+the current declarator relative to the beginning
+of the struct or union.
+
+=item C<size>
+
+is the size occupied by the struct member represented
+by the current declarator.
+
+=back
+
+=back
+
+=back
+
+It may be useful to have separate lists for structs and
+unions. One way to retrieve such lists would be to use
+
+  $$compound.pl [3]$$
+
+However, you should use the L<C<struct>|/"struct"> and L<C<union>|/"union"> methods,
+which is a lot simpler:
+
+  $$compound.pl [4]$$
+
+=back
+
+=head2 struct_names
+
+=over 8
+
+=item C<struct_names>
+
+Returns a list of all defined struct identifiers.
+This is equivalent to calling L<C<compound_names>|"compound_names">, just that
+it only returns the names of the struct identifiers and
+doesn't return the names of the union identifiers.
+
+=back
+
+=head2 struct
+
+=over 8
+
+=item C<struct>
+
+=item C<struct> LIST
+
+Like the L<C<compound>|/"compound"> method, but only allows for structs.
+
+=back
+
+=head2 union_names
+
+=over 8
+
+=item C<union_names>
+
+Returns a list of all defined union identifiers.
+This is equivalent to calling L<C<compound_names>|"compound_names">, just that
+it only returns the names of the union identifiers and
+doesn't return the names of the struct identifiers.
+
+=back
+
+=head2 union
+
+=over 8
+
+=item C<union>
+
+=item C<union> LIST
+
+Like the L<C<compound>|/"compound"> method, but only allows for unions.
+
+=back
+
+=head2 typedef_names
+
+=over 8
+
+=item C<typedef_names>
+
+Returns a list of all defined typedef identifiers. Typedefs
+that do not specify a type that you could actually work with
+will not be returned.
+
+The L<C<def>|/"def"> method returns a true value for all identifiers returned
+by L<C<typedef_names>|/"typedef_names">.
+
+=back
+
+=head2 typedef
+
+=over 8
+
+=item C<typedef>
+
+=item C<typedef> LIST
+
+Returns a list of references to hashes containing
+detailed information about all typedefs that have
+been parsed.
+
+If a list of typedef identifiers is passed to the
+method, the returned list will only contain hash
+references for those typedefs.
+
+If an identifier cannot be found, a warning is issued
+and the returned list will contain an undefined value
+at that position.
+
+In scalar context, the number of typedefs will
+be returned as long as the number of arguments to
+the method call is not 1. In the latter case, a
+hash reference holding information for the typedef
+will be returned.
+
+The list returned by the L<C<typedef>|/"typedef"> method looks similar
+to this:
+
+  @@definitions.pl typedef definitions.c@@
+
+=over 4
+
+=item C<declarator>
+
+is the type declarator.
+
+=item C<type>
+
+is the type specification. This may be a string
+or a reference to a hash describing the type.
+See L<C<enum>|/"enum"> and L<C<compound>|/"compound"> for
+a description on how to interpret this hash.
+
+=back
+
+=back
+
+=head1 FUNCTIONS
+
+=head2 Convert::Binary::C::feature
+
+=over 8
+
+=item C<feature> STRING
+
+Checks if Convert::Binary::C was built with certain features.
+For example,
+
+  print "debugging version"
+      if Convert::Binary::C::feature( 'debug' );
+
+will check if Convert::Binary::C was built with debugging support
+enabled. The C<feature> function returns C<1> if the feature is
+enabled, C<0> if the feature is disabled, and C<undef> if the
+feature is unknown. Currently the only features that can be checked
+are C<debug>, C<threads> and C<c99>. The latter will check if some
+extensions of the ANSI-C99 standard are enabled.
+
+You can enable or disable certain features at compile time of the
+module by using the
+
+  perl Makefile.PL enable-feature disable-feature
+
+syntax.
+
+=back
+
+=head1 DEBUGGING
+
+Like perl itself, Convert::Binary::C can be compiled with debugging
+support that can then be selectively enabled at runtime. You can
+specify whether you like to build Convert::Binary::C with debugging
+support or not by explicitly giving an argument to F<Makefile.PL>.
+Use
+
+  perl Makefile.PL enable-debug
+
+to enable debugging, or
+
+  perl Makefile.PL disable-debug
+
+to disable debugging. The default will depend on how your perl
+binary was built. If it was built with C<-DDEBUGGING>,
+Convert::Binary::C will be built with debugging support, too.
+
+Once you have built Convert::Binary::C with debugging support, you
+can use the following syntax to enable debug output. Instead of
+
+  use Convert::Binary::C;
+
+you simply say
+
+  use Convert::Binary::C debug => 'all';
+
+which will enable all debug output. However, I don't recommend
+to enable all debug output, because that can be a fairly large
+amount. Instead of saying C<all>, you can pass a string that
+consists of one or more of the following characters:
+
+  m   enable memory allocation tracing
+  M   enable memory allocation & assertion tracing
+  
+  h   enable hash table debugging
+  H   enable hash table dumps
+  
+  d   enable debug output from the XS module
+  c   enable debug output from the ctlib
+  t   enable debug output about type objects
+  
+  l   enable debug output from the C lexer
+  p   enable debug output from the C parser
+  r   enable debug output from the #pragma parser
+  
+  y   enable debug output from yacc (bison)
+
+So the following might give you a brief overview of what's
+going on inside Convert::Binary::C:
+
+  use Convert::Binary::C debug => 'dct';
+
+When you want to debug memory allocation using
+
+  use Convert::Binary::C debug => 'm';
+
+you can use the Perl script F<check_alloc.pl> that resides
+in the F<ctlib/util/tool> directory to extract statistics
+about memory usage and information about memory leaks from
+the resulting debug output.
+
+By default, all debug output is written to C<stderr>. You
+can, however, redirect the debug output to a file with
+the C<debugfile> option:
+
+  use Convert::Binary::C debug     => 'dcthHm',
+                         debugfile => './debug.out';
+
+If the file cannot be opened, you'll receive a warning and
+the output will go the C<stderr> way again.
+
+If Convert::Binary::C is built without debugging support,
+passing the C<debug> or C<debugfile> options will cause
+a warning to be issued.
+
+=head1 BITFIELDS
+
+Bitfields are currently not supported by Convert::Binary::C,
+because I generally don't use them. I plan to support them
+in a later release, when I will have found an easy way of integrating
+them into the module.
+
+Whenever a method has to deal with bitfields, it will issue
+a warning message that bitfields are unsupported. Thus, you
+may use bitfields in your C source code, but you won't be
+annoyed with warning messages unless you really use a type
+that actually contains bitfields in a method call
+like L<C<sizeof>|/"sizeof"> or L<C<pack>|/"pack">.
+
+While bitfields are not appropriately handled by the conversion
+routines yet, they are already parsed correctly. This means
+that you can reliably use the declarator fields as returned
+by the L<C<struct>|/"struct"> or L<C<typedef>|/"typedef"> methods.
+Given the following source
+
+  $$bitfields.c$$
+
+a call to L<C<struct>|/"struct"> will return
+
+  @@definitions.pl struct bitfields.c@@
+
+No size/offset keys will be returned for bitfield entries.
+Also, the size of a structure containing bitfields is not
+valid, as bitfields internally do not increase the size
+of a structure yet.
+
+=head1 MULTITHREADING
+
+Convert::Binary::C was designed to be thread-safe.
+
+Since the used preprocessor unfortunately isn't
+re-entrant, source code parsing using
+the L<C<parse>|/"parse"> and L<C<parse_file>|/"parse_file"> methods
+is locked, so don't expect these routines to run in parallel
+on multithreaded perls.
+
+=head1 CREDITS
+
+=over 2
+
+=item *
+
+My love Jennifer for always being there, for filling my life with
+joy and last but not least for proofreading the documentation.
+
+=item *
+
+Michael J. Hohmann E<lt>mjh@scientist.deE<gt> for endless discussions
+on our way to and back home from work, and for making me think
+about supporting L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> for
+compound members.
+
+=item *
+
+Thorsten Jens E<lt>thojens@gmx.deE<gt> for testing the package
+on various platforms.
+
+=item *
+
+Mark Overmeer E<lt>mark@overmeer.netE<gt> for suggesting the
+module name and giving invaluable feedback.
+
+=item *
+
+Thomas Pornin E<lt>pornin@bolet.orgE<gt> for his
+excellent I<ucpp> preprocessor library.
+
+=item *
+
+James Roskind, as his C parser was a great starting point to fix
+all the problems I had with my original parser based only on the
+ANSI ruleset.
+
+=item *
+
+Steffen Zimmermann for a prolific discussion on the cloning
+algorithm.
+
+=back
+
+=head1 BUGS
+
+I'm sure there are still lots of bugs in the code for this
+module. If you find any bugs, Convert::Binary::C doesn't
+seem to build on your system or any of its tests fail, please
+send a mail to E<lt>mhx@cpan.orgE<gt>.
+
+=head1 TODO
+
+If you're interested in what I currently plan to improve
+(or fix), have a look at the F<TODO> file.
+
+=head1 COPYRIGHT
+
+Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
+
+The I<ucpp> library is (c) Thomas Pornin 1999, 2000. For licence
+and redistribution details refer to F<ctlib/ucpp/README>.
+
+Portions copyright (c) 1989, 1990 James A. Roskind.
+
+Some of the include files used for the F<t/106_parse.t> test
+script are (c) 1991-1999, 2000, 2001 Free Software Foundation,
+Inc. They are neither required to create the binary nor linked
+to the source code of this module in any other way.
+
+=head1 SEE ALSO
+
+L<perl>, L<perldata>, L<perlop>, L<perlvar> and L<Data::Dumper>.
+
+=cut
+

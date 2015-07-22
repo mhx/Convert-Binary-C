@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2002/11/25 11:48:05 +0000 $
-* $Revision: 8 $
-* $Snapshot: /Convert-Binary-C/0.05 $
+* $Date: 2002/12/07 17:17:28 +0000 $
+* $Revision: 10 $
+* $Snapshot: /Convert-Binary-C/0.06 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -186,8 +186,36 @@ colleagues include: Bruce Blodgett, and Mark Langley.
           ? (t1) | (t2) | T_LONGLONG : (t1) | (t2)    \
         )
 
+#define F_LOCAL     0x00000001U
+#define BEGIN_LOCAL (PSTATE->flags |= F_LOCAL)
+#define END_LOCAL   (PSTATE->flags &= ~F_LOCAL)
+#define IS_LOCAL    (PSTATE->flags & F_LOCAL)
 
 /*===== TYPEDEFS =============================================================*/
+
+struct _ParserState {
+
+  const CParseConfig *pCPC;
+
+  CParseInfo         *pCPI;
+
+  LinkedList          curEnumList;
+  LinkedList          nodeList,
+                      arrayList,
+                      declaratorList,
+                      declListsList,
+                      structDeclList,
+                      structDeclListsList;
+
+  PragmaState         pragma;
+
+  struct lexer_state *pLexer;
+
+  char               *filename;
+
+  u_32                flags;
+
+};
 
 typedef struct {
   char    *str;
@@ -513,7 +541,8 @@ string_literal_list
 primary_expression
 	: IDENTIFIER  /* We cannot use a typedef name as a variable */
 	  {
-	    HN_delete( EX_NODE( $1 ) );
+	    if( $1 )
+	      HN_delete( EX_NODE( $1 ) );
 	    UNDEF_VAL( $$ );
 	  }
 	| CONSTANT { $$ = $1; }
@@ -535,7 +564,7 @@ postfix_expression
 	;
 
 member_name
-	: IDENTIFIER { HN_delete( EX_NODE( $1 ) ); }
+	: IDENTIFIER { if( $1 ) HN_delete( EX_NODE( $1 ) ); }
 	| TYPE_NAME {}
 	;
 
@@ -757,32 +786,38 @@ declaration
 default_declaring_list  /* Can't redeclare typedef names */
 	: declaration_qualifier_list identifier_declarator initializer_opt
 	  {
-	    if( $1 & T_TYPEDEF ) {
-	      TypeSpec ts;
-	      ts.tflags = $1;
-	      ts.ptr    = NULL;
-              if( (ts.tflags & ANY_TYPE_NAME) == 0 )
-                ts.tflags |= T_INT;
-	      $$ = typedef_list_new( ts, LL_new() );
-	      LL_push( PSTATE->pCPI->typedef_lists, $$ );
-	      MAKE_TYPEDEF( $$, $2 );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
 	    }
 	    else {
-	      $$ = NULL;
-	      decl_delete( EX_DECL( $2 ) );
+	      if( $1 & T_TYPEDEF ) {
+	        TypeSpec ts;
+	        ts.tflags = $1;
+	        ts.ptr    = NULL;
+                if( (ts.tflags & ANY_TYPE_NAME) == 0 )
+                  ts.tflags |= T_INT;
+	        $$ = typedef_list_new( ts, LL_new() );
+	        LL_push( PSTATE->pCPI->typedef_lists, $$ );
+	        MAKE_TYPEDEF( $$, $2 );
+	      }
+	      else {
+	        $$ = NULL;
+	        decl_delete( EX_DECL( $2 ) );
+	      }
 	    }
 	  }
 	| type_qualifier_list identifier_declarator initializer_opt
 	  {
 	    $$ = NULL;
-	    decl_delete( EX_DECL( $2 ) );
+	    if( $2 )
+	      decl_delete( EX_DECL( $2 ) );
 	  }
 	| default_declaring_list ',' identifier_declarator initializer_opt
 	  {
 	    $$ = $1;
 	    if( $$ != NULL )
 	      MAKE_TYPEDEF( $$, $3 );
-	    else
+	    else if( $3 )
 	      decl_delete( EX_DECL( $3 ) );
 	  }
 	;
@@ -790,33 +825,39 @@ default_declaring_list  /* Can't redeclare typedef names */
 declaring_list
 	: declaration_specifier declarator initializer_opt
 	  {
-	    if( $1.tflags & T_TYPEDEF ) {
-              if( ($1.tflags & ANY_TYPE_NAME) == 0 )
-                $1.tflags |= T_INT;
-              else if( $1.tflags & T_ENUM )
-                ((EnumSpecifier *) $1.ptr)->tflags |= T_HASTYPEDEF;
-              else if( $1.tflags & (T_STRUCT | T_UNION) )
-                ((Struct *) $1.ptr)->tflags |= T_HASTYPEDEF;
-	      $$ = typedef_list_new( $1, LL_new() );
-	      LL_push( PSTATE->pCPI->typedef_lists, $$ );
-	      MAKE_TYPEDEF( $$, $2 );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
 	    }
 	    else {
-	      $$ = NULL;
-	      decl_delete( EX_DECL( $2 ) );
+	      if( $1.tflags & T_TYPEDEF ) {
+                if( ($1.tflags & ANY_TYPE_NAME) == 0 )
+                  $1.tflags |= T_INT;
+                else if( $1.tflags & T_ENUM )
+                  ((EnumSpecifier *) $1.ptr)->tflags |= T_HASTYPEDEF;
+                else if( $1.tflags & (T_STRUCT | T_UNION) )
+                  ((Struct *) $1.ptr)->tflags |= T_HASTYPEDEF;
+	        $$ = typedef_list_new( $1, LL_new() );
+	        LL_push( PSTATE->pCPI->typedef_lists, $$ );
+	        MAKE_TYPEDEF( $$, $2 );
+	      }
+	      else {
+	        $$ = NULL;
+	        decl_delete( EX_DECL( $2 ) );
+	      }
 	    }
 	  }
 	| type_specifier declarator initializer_opt
 	  {
 	    $$ = NULL;
-	    decl_delete( EX_DECL( $2 ) );
+	    if( $2 )
+	      decl_delete( EX_DECL( $2 ) );
 	  }
 	| declaring_list ',' declarator initializer_opt
 	  {
 	    $$ = $1;
 	    if( $$ != NULL )
 	      MAKE_TYPEDEF( $$, $3 );
-	    else
+	    else if( $3 )
 	      decl_delete( EX_DECL( $3 ) );
 	  }
 	;
@@ -959,50 +1000,66 @@ elaborated_type_name
 aggregate_name
 	: aggregate_key '{' member_declaration_list '}'
 	  {
-	    $$.tflags = $1;
-	    $$.ptr = struct_new( NULL, 0, $1, PSTATE->pragma.pack.current, EX_STRDECL_LIST( $3 ) );
-	    LL_push( PSTATE->pCPI->structs, $$.ptr );
+	    if( IS_LOCAL ) {
+	      $$.tflags = 0;
+	      $$.ptr = NULL;
+	    }
+	    else {
+	      LinkedList strdecls = EX_STRDECL_LIST( $3 );
+	      $$.tflags = $1;
+	      $$.ptr = struct_new( NULL, 0, $1, PSTATE->pragma.pack.current, strdecls );
+	      LL_push( PSTATE->pCPI->structs, $$.ptr );
+	    }
 	  }
 	| aggregate_key identifier_or_typedef_name '{' member_declaration_list '}'
 	  {
-	    Struct *pStruct;
-	    LinkedList strdecls = EX_STRDECL_LIST( $4 );
-
-	    $$.tflags = $1;
-	    pStruct = HT_get( PSTATE->pCPI->htStructs, $2.str, $2.len, $2.hash );
-
-	    if( pStruct == NULL ) {
-	      $$.ptr = struct_new( $2.str, $2.len, $1, PSTATE->pragma.pack.current, strdecls );
-	      LL_push( PSTATE->pCPI->structs, $$.ptr );
-	      STORE_IN_HASH( htStructs, $2, $$.ptr );
+	    if( IS_LOCAL ) {
+	      $$.tflags = 0;
+	      $$.ptr = NULL;
 	    }
 	    else {
-	      DELETE_NODE( $2 );
-	      $$.ptr = pStruct;
+	      LinkedList strdecls = EX_STRDECL_LIST( $4 );
+	      Struct *pStruct = HT_get( PSTATE->pCPI->htStructs, $2.str, $2.len, $2.hash );
+	      $$.tflags = $1;
 
-	      if( pStruct->declarations == NULL ) {
-	        pStruct->declarations = strdecls;
-	        pStruct->pack         = PSTATE->pragma.pack.current;
+	      if( pStruct == NULL ) {
+	        $$.ptr = struct_new( $2.str, $2.len, $1, PSTATE->pragma.pack.current, strdecls );
+	        LL_push( PSTATE->pCPI->structs, $$.ptr );
+	        STORE_IN_HASH( htStructs, $2, $$.ptr );
 	      }
-	      else
-	        LL_destroy( strdecls, (LLDestroyFunc) structdecl_delete );
+	      else {
+	        DELETE_NODE( $2 );
+	        $$.ptr = pStruct;
+
+	        if( pStruct->declarations == NULL ) {
+	          pStruct->declarations = strdecls;
+	          pStruct->pack         = PSTATE->pragma.pack.current;
+	        }
+	        else
+	          LL_destroy( strdecls, (LLDestroyFunc) structdecl_delete );
+	      }
 	    }
 	  }
 	| aggregate_key identifier_or_typedef_name
 	  {
-	    Struct *pStruct;
-
-	    $$.tflags = $1;
-	    pStruct = HT_get( PSTATE->pCPI->htStructs, $2.str, $2.len, $2.hash );
-
-	    if( pStruct == NULL ) {
-	      $$.ptr = struct_new( $2.str, $2.len, $1, 0, NULL );
-	      LL_push( PSTATE->pCPI->structs, $$.ptr );
-	      STORE_IN_HASH( htStructs, $2, $$.ptr );
+	    if( IS_LOCAL ) {
+	      $$.tflags = 0;
+	      $$.ptr = NULL;
 	    }
 	    else {
-	      DELETE_NODE( $2 );
-	      $$.ptr = pStruct;
+	      Struct *pStruct = HT_get( PSTATE->pCPI->htStructs, $2.str, $2.len, $2.hash );
+
+	      $$.tflags = $1;
+
+	      if( pStruct == NULL ) {
+	        $$.ptr = struct_new( $2.str, $2.len, $1, 0, NULL );
+	        LL_push( PSTATE->pCPI->structs, $$.ptr );
+	        STORE_IN_HASH( htStructs, $2, $$.ptr );
+	      }
+	      else {
+	        DELETE_NODE( $2 );
+	        $$.ptr = pStruct;
+	      }
 	    }
 	  }
 	;
@@ -1015,16 +1072,26 @@ aggregate_key
 member_declaration_list
 	: member_declaration
 	  {
-	    $$ = LL_new();
-	    LL_push( $$, EX_STRUCT_DECL( $1 ) );
-	    LL_unshift( PSTATE->structDeclListsList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting struct declaration list (0x%08X) (count=%d)",
-	                       $$, LL_count(PSTATE->structDeclListsList)) );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = LL_new();
+	      LL_push( $$, EX_STRUCT_DECL( $1 ) );
+	      LL_unshift( PSTATE->structDeclListsList, $$ );
+	      CT_DEBUG( PARSER, ("unshifting struct declaration list (0x%08X) (count=%d)",
+	                         $$, LL_count(PSTATE->structDeclListsList)) );
+	    }
 	  }
 	| member_declaration_list member_declaration
 	  {
-	    $$ = $1;
-	    LL_push( $$, EX_STRUCT_DECL( $2 ) );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = $1;
+	      LL_push( $$, EX_STRUCT_DECL( $2 ) );
+	    }
 	  }
 	;
 
@@ -1036,65 +1103,105 @@ member_declaration
 member_default_declaring_list     /* doesn't redeclare typedef*/
 	: type_qualifier_list member_identifier_declarator
 	  {
-	    TypeSpec ts = { NULL, T_INT };
-	    $$ = structdecl_new( ts, LL_new() );
-	    if( $2 )
-	      LL_push( $$->declarators, EX_DECL( $2 ) );
-	    LL_unshift( PSTATE->structDeclList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting struct declaration (0x%08X) (count=%d)",
-	                       $$, LL_count(PSTATE->structDeclList)) );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      TypeSpec ts = { NULL, T_INT };
+	      $$ = structdecl_new( ts, LL_new() );
+	      if( $2 )
+	        LL_push( $$->declarators, EX_DECL( $2 ) );
+	      LL_unshift( PSTATE->structDeclList, $$ );
+	      CT_DEBUG( PARSER, ("unshifting struct declaration (0x%08X) (count=%d)",
+	                         $$, LL_count(PSTATE->structDeclList)) );
+	    }
 	  }
 	| member_default_declaring_list ',' member_identifier_declarator
 	  {
-	    $$ = $1;
-	    if( $3 )
-	      LL_push( $$->declarators, EX_DECL( $3 ) );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = $1;
+	      if( $3 )
+	        LL_push( $$->declarators, EX_DECL( $3 ) );
+	    }
 	  }
 	;
 
 member_declaring_list
 	: type_specifier member_declarator
 	  {
-	    if( ($1.tflags & ANY_TYPE_NAME) == 0 )
-	      $1.tflags |= T_INT;
-	    $$ = structdecl_new( $1, LL_new() );
-	    if( $2 )
-	      LL_push( $$->declarators, EX_DECL( $2 ) );
-	    LL_unshift( PSTATE->structDeclList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting struct declaration (0x%08X) (count=%d)",
-	                       $$, LL_count(PSTATE->structDeclList)) );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      if( ($1.tflags & ANY_TYPE_NAME) == 0 )
+	        $1.tflags |= T_INT;
+	      $$ = structdecl_new( $1, LL_new() );
+	      if( $2 )
+	        LL_push( $$->declarators, EX_DECL( $2 ) );
+	      LL_unshift( PSTATE->structDeclList, $$ );
+	      CT_DEBUG( PARSER, ("unshifting struct declaration (0x%08X) (count=%d)",
+	                         $$, LL_count(PSTATE->structDeclList)) );
+	    }
 	  }
 	| member_declaring_list ',' member_declarator
 	  {
-	    $$ = $1;
-	    if( $3 )
-	      LL_push( $$->declarators, EX_DECL( $3 ) );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = $1;
+	      if( $3 )
+	        LL_push( $$->declarators, EX_DECL( $3 ) );
+	    }
 	  }
 	;
 
 member_declarator
 	: declarator bit_field_size_opt
 	  {
-	    $$ = $1;
-	    $$->bitfield_size = $2;
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = $1;
+	      $$->bitfield_size = $2;
+	    }
 	  }
 	| bit_field_size
 	  {
-	    $$ = decl_new( "", 0 );
-	    $$->bitfield_size = $1;
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = decl_new( "", 0 );
+	      $$->bitfield_size = $1;
+	    }
 	  }
 	;
 
 member_identifier_declarator
 	: identifier_declarator bit_field_size_opt
 	  {
-	    $$ = $1;
-	    $$->bitfield_size = $2;
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = $1;
+	      $$->bitfield_size = $2;
+	    }
 	  }
 	| bit_field_size
 	  {
-	    $$ = decl_new( "", 0 );
-	    $$->bitfield_size = $1;
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = decl_new( "", 0 );
+	      $$->bitfield_size = $1;
+	    }
 	  }
 	;
 
@@ -1110,50 +1217,69 @@ bit_field_size
 enum_name
 	: ENUM_TOK '{' enumerator_list '}'
 	  {
-	    $$.tflags = T_ENUM;
-	    $$.ptr    = enumspec_new( NULL, 0, $3 );
-	    LL_push( PSTATE->pCPI->enums, $$.ptr );
+	    if( IS_LOCAL ) {
+	      $$.tflags = 0;
+	      $$.ptr = NULL;
+	      LL_destroy( $3, (LLDestroyFunc) enum_delete );
+	    }
+	    else {
+	      $$.tflags = T_ENUM;
+	      $$.ptr    = enumspec_new( NULL, 0, $3 );
+	      LL_push( PSTATE->pCPI->enums, $$.ptr );
+	    }
 	    PSTATE->curEnumList = NULL;
 	  }
 	| ENUM_TOK identifier_or_typedef_name '{' enumerator_list '}'
 	  {
-	    EnumSpecifier *pEnum;
-
-	    $$.tflags = T_ENUM;
-	    pEnum = HT_get( PSTATE->pCPI->htEnums, $2.str, $2.len, $2.hash );
-
-	    if( pEnum == NULL ) {
-	      $$.ptr = enumspec_new( $2.str, $2.len, $4 );
-	      LL_push( PSTATE->pCPI->enums, $$.ptr );
-	      STORE_IN_HASH( htEnums, $2, $$.ptr );
+	    if( IS_LOCAL ) {
+	      $$.tflags = 0;
+	      $$.ptr = NULL;
 	    }
 	    else {
-	      DELETE_NODE( $2 );
-	      $$.ptr = pEnum;
+	      EnumSpecifier *pEnum;
 
-	      if( pEnum->enumerators == NULL )
-	        enumspec_update( pEnum, $4 );
-	      else
-	        LL_destroy( $4, (LLDestroyFunc) enum_delete );
+	      $$.tflags = T_ENUM;
+	      pEnum = HT_get( PSTATE->pCPI->htEnums, $2.str, $2.len, $2.hash );
+
+	      if( pEnum == NULL ) {
+	        $$.ptr = enumspec_new( $2.str, $2.len, $4 );
+	        LL_push( PSTATE->pCPI->enums, $$.ptr );
+	        STORE_IN_HASH( htEnums, $2, $$.ptr );
+	      }
+	      else {
+	        DELETE_NODE( $2 );
+	        $$.ptr = pEnum;
+
+	        if( pEnum->enumerators == NULL )
+	          enumspec_update( pEnum, $4 );
+	        else
+	          LL_destroy( $4, (LLDestroyFunc) enum_delete );
+	      }
 	    }
 
 	    PSTATE->curEnumList = NULL;
 	  }
 	| ENUM_TOK identifier_or_typedef_name
 	  {
-	    EnumSpecifier *pEnum;
-
-	    $$.tflags = T_ENUM;
-	    pEnum = HT_get( PSTATE->pCPI->htEnums, $2.str, $2.len, $2.hash );
-
-	    if( pEnum == NULL ) {
-	      $$.ptr = enumspec_new( $2.str, $2.len, NULL );
-	      LL_push( PSTATE->pCPI->enums, $$.ptr );
-	      STORE_IN_HASH( htEnums, $2, $$.ptr );
+	    if( IS_LOCAL ) {
+	      $$.tflags = 0;
+	      $$.ptr = NULL;
 	    }
 	    else {
-	      DELETE_NODE( $2 );
-	      $$.ptr = pEnum;
+	      EnumSpecifier *pEnum;
+
+	      $$.tflags = T_ENUM;
+	      pEnum = HT_get( PSTATE->pCPI->htEnums, $2.str, $2.len, $2.hash );
+
+	      if( pEnum == NULL ) {
+	        $$.ptr = enumspec_new( $2.str, $2.len, NULL );
+	        LL_push( PSTATE->pCPI->enums, $$.ptr );
+	        STORE_IN_HASH( htEnums, $2, $$.ptr );
+	      }
+	      else {
+	        DELETE_NODE( $2 );
+	        $$.ptr = pEnum;
+	      }
 	    }
 	  }
 	;
@@ -1161,22 +1287,32 @@ enum_name
 enumerator_list
 	: enumerator
 	  {
-	    $$ = PSTATE->curEnumList = LL_new();
-	    if( $1->value.flags & V_IS_UNDEF ) {
-	      $1->value.flags &= ~V_IS_UNDEF;
-	      $1->value.iv     = 0;
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
 	    }
-	    LL_push( $$, $1 );
+	    else {
+	      $$ = PSTATE->curEnumList = LL_new();
+	      if( $1->value.flags & V_IS_UNDEF ) {
+	        $1->value.flags &= ~V_IS_UNDEF;
+	        $1->value.iv     = 0;
+	      }
+	      LL_push( $$, $1 );
+	    }
 	  }
 	| enumerator_list ',' enumerator
 	  {
-	    if( $3->value.flags & V_IS_UNDEF ) {
-	      Enumerator *pEnum = LL_get( $1, -1 );
-	      $3->value.flags = pEnum->value.flags;
-	      $3->value.iv    = pEnum->value.iv + 1;
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
 	    }
-	    LL_push( $1, $3 );
-	    $$ = $1;
+	    else {
+	      if( $3->value.flags & V_IS_UNDEF ) {
+	        Enumerator *pEnum = LL_get( $1, -1 );
+	        $3->value.flags = pEnum->value.flags;
+	        $3->value.iv    = pEnum->value.iv + 1;
+	      }
+	      LL_push( $1, $3 );
+	      $$ = $1;
+	    }
 	  }
 	  /* XXX: most compilers allow a trailing comma */
 	| enumerator_list ','
@@ -1188,13 +1324,23 @@ enumerator_list
 enumerator
 	: identifier_or_typedef_name
 	  {
-	    $$ = enum_new( $1.str, $1.len, NULL );
-	    STORE_IN_HASH( htEnumerators, $1, $$ );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = enum_new( $1.str, $1.len, NULL );
+	      STORE_IN_HASH( htEnumerators, $1, $$ );
+	    }
 	  }
 	| identifier_or_typedef_name '=' constant_expression
 	  {
-	    $$ = enum_new( $1.str, $1.len, &$3 );
-	    STORE_IN_HASH( htEnumerators, $1, $$ );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = enum_new( $1.str, $1.len, &$3 );
+	      STORE_IN_HASH( htEnumerators, $1, $$ );
+	    }
 	  }
 	;
 
@@ -1211,18 +1357,18 @@ parameter_list
 parameter_declaration
 	: declaration_specifier                               {}
 	| declaration_specifier abstract_declarator           {}
-	| declaration_specifier identifier_declarator         { decl_delete( EX_DECL( $2 ) ); }
-	| declaration_specifier parameter_typedef_declarator  { decl_delete( EX_DECL( $2 ) ); }
+	| declaration_specifier identifier_declarator         { if( $2 ) decl_delete( EX_DECL( $2 ) ); }
+	| declaration_specifier parameter_typedef_declarator  { if( $2 ) decl_delete( EX_DECL( $2 ) ); }
 	| declaration_qualifier_list                          {}
 	| declaration_qualifier_list abstract_declarator      {}
-	| declaration_qualifier_list identifier_declarator    { decl_delete( EX_DECL( $2 ) ); }
+	| declaration_qualifier_list identifier_declarator    { if( $2 ) decl_delete( EX_DECL( $2 ) ); }
 	| type_specifier                                      {}
 	| type_specifier abstract_declarator                  {}
-	| type_specifier identifier_declarator                { decl_delete( EX_DECL( $2 ) ); }
-	| type_specifier parameter_typedef_declarator         { decl_delete( EX_DECL( $2 ) ); }
+	| type_specifier identifier_declarator                { if( $2 ) decl_delete( EX_DECL( $2 ) ); }
+	| type_specifier parameter_typedef_declarator         { if( $2 ) decl_delete( EX_DECL( $2 ) ); }
 	| type_qualifier_list                                 {}
 	| type_qualifier_list abstract_declarator             {}
-	| type_qualifier_list identifier_declarator           { decl_delete( EX_DECL( $2 ) ); }
+	| type_qualifier_list identifier_declarator           { if( $2 ) decl_delete( EX_DECL( $2 ) ); }
 	;
 
     /*  ANSI  C  section  3.7.1  states  "An identifier declared as a
@@ -1230,49 +1376,49 @@ parameter_declaration
     following is based only on IDENTIFIERs */
 
 identifier_list
-	: IDENTIFIER                     { HN_delete( EX_NODE( $1 ) ); }
-	| identifier_list ',' IDENTIFIER { HN_delete( EX_NODE( $3 ) ); }
+	: IDENTIFIER                     { if( $1 ) HN_delete( EX_NODE( $1 ) ); }
+	| identifier_list ',' IDENTIFIER { if( $3 ) HN_delete( EX_NODE( $3 ) ); }
 	;
 
 identifier_or_typedef_name
 	: IDENTIFIER
 	  {
-	    $$.str    = $1->key;
-	    $$.len    = $1->keylen;
-	    $$.hash   = $1->hash;
-	    $$.node   = $1;
+	    if( $1 ) {
+	      $$.str  = $1->key;
+	      $$.len  = $1->keylen;
+	      $$.hash = $1->hash;
+	      $$.node = $1;
+	    }
+	    else {
+	      $$.str  = NULL;
+	      $$.len  = 0;
+	      $$.hash = 0;
+	      $$.node = NULL;
+	    }
 	  }
 	| TYPE_NAME
 	  {
-	    $$.str    = ((Typedef *) $1.ptr)->pDecl->identifier;
-	    HASH_STR_LEN( $$.hash, $$.str, $$.len );
-	    $$.node   = NULL;
+	    if( IS_LOCAL ) {
+	      $$.str  = NULL;
+	      $$.len  = 0;
+	      $$.hash = 0;
+	    }
+	    else {
+	      $$.str = ((Typedef *) $1.ptr)->pDecl->identifier;
+	      HASH_STR_LEN( $$.hash, $$.str, $$.len );
+	    }
+	    $$.node = NULL;
 	  }
 	;
 
 type_name
 	: type_specifier
 	  {
-	    unsigned size;
-	    u_32 flags;
-	    (void) GetTypeInfo( PSTATE->pCPC, &$1, NULL, &size, NULL, NULL, &flags );
-	    $$.iv    = size;
-	    $$.flags = 0;
-	    if( flags & T_HASBITFIELD )
-	      $$.flags |= V_IS_UNSAFE_BITFIELD;
-	    if( flags & T_UNSAFE_VAL )
-	      $$.flags |= V_IS_UNSAFE;
-	  }
-	| type_specifier abstract_declarator
-	  {
-	    if( $2.pointer_flag ) {
-	      $$.iv = PSTATE->pCPC->ptr_size * $2.multiplicator;
-	    }
-	    else {
+	    if( !IS_LOCAL ) {
 	      unsigned size;
 	      u_32 flags;
 	      (void) GetTypeInfo( PSTATE->pCPC, &$1, NULL, &size, NULL, NULL, &flags );
-	      $$.iv = size * $2.multiplicator;
+	      $$.iv    = size;
 	      $$.flags = 0;
 	      if( flags & T_HASBITFIELD )
 	        $$.flags |= V_IS_UNSAFE_BITFIELD;
@@ -1280,16 +1426,39 @@ type_name
 	        $$.flags |= V_IS_UNSAFE;
 	    }
 	  }
+	| type_specifier abstract_declarator
+	  {
+	    if( !IS_LOCAL ) {
+	      if( $2.pointer_flag ) {
+	        $$.iv = PSTATE->pCPC->ptr_size * $2.multiplicator;
+	      }
+	      else {
+	        unsigned size;
+	        u_32 flags;
+	        (void) GetTypeInfo( PSTATE->pCPC, &$1, NULL, &size, NULL, NULL, &flags );
+	        $$.iv = size * $2.multiplicator;
+	        $$.flags = 0;
+	        if( flags & T_HASBITFIELD )
+	          $$.flags |= V_IS_UNSAFE_BITFIELD;
+	        if( flags & T_UNSAFE_VAL )
+	          $$.flags |= V_IS_UNSAFE;
+	      }
+	    }
+	  }
 	| type_qualifier_list
 	  {
-	    $$.iv = PSTATE->pCPC->int_size;
-	    $$.flags = 0;
+	    if( !IS_LOCAL ) {
+	      $$.iv = PSTATE->pCPC->int_size;
+	      $$.flags = 0;
+	    }
 	  }
 	| type_qualifier_list abstract_declarator
 	  {
-	    $$.iv = $2.multiplicator * ( $2.pointer_flag ?
-                    PSTATE->pCPC->int_size : PSTATE->pCPC->ptr_size );
-	    $$.flags = 0;
+	    if( !IS_LOCAL ) {
+	      $$.iv = $2.multiplicator * ( $2.pointer_flag ?
+                      PSTATE->pCPC->int_size : PSTATE->pCPC->ptr_size );
+	      $$.flags = 0;
+	    }
 	  }
 	;
 
@@ -1399,28 +1568,28 @@ external_definition
 	;
 
 function_definition
-	:                            identifier_declarator compound_statement
-	  { decl_delete( EX_DECL( $1 ) ); }
-	| declaration_specifier      identifier_declarator compound_statement
-	  { decl_delete( EX_DECL( $2 ) ); }
-	| type_specifier             identifier_declarator compound_statement
-	  { decl_delete( EX_DECL( $2 ) ); }
-	| declaration_qualifier_list identifier_declarator compound_statement
-	  { decl_delete( EX_DECL( $2 ) ); }
-	| type_qualifier_list        identifier_declarator compound_statement
-	  { decl_delete( EX_DECL( $2 ) ); }
+	:                            identifier_declarator { BEGIN_LOCAL; }
+	                             compound_statement    { END_LOCAL; decl_delete( EX_DECL( $1 ) ); }
+	| declaration_specifier      identifier_declarator { BEGIN_LOCAL; }
+	                             compound_statement    { END_LOCAL; decl_delete( EX_DECL( $2 ) ); }
+	| type_specifier             identifier_declarator { BEGIN_LOCAL; }
+	                             compound_statement    { END_LOCAL; decl_delete( EX_DECL( $2 ) ); }
+	| declaration_qualifier_list identifier_declarator { BEGIN_LOCAL; }
+	                             compound_statement    { END_LOCAL; decl_delete( EX_DECL( $2 ) ); }
+	| type_qualifier_list        identifier_declarator { BEGIN_LOCAL; }
+	                             compound_statement    { END_LOCAL; decl_delete( EX_DECL( $2 ) ); }
 
-	|                            old_function_declarator compound_statement {}
-	| declaration_specifier      old_function_declarator compound_statement {}
-	| type_specifier             old_function_declarator compound_statement {}
-	| declaration_qualifier_list old_function_declarator compound_statement {}
-	| type_qualifier_list        old_function_declarator compound_statement {}
+	|                            old_function_declarator { BEGIN_LOCAL; } compound_statement { END_LOCAL; }
+	| declaration_specifier      old_function_declarator { BEGIN_LOCAL; } compound_statement { END_LOCAL; }
+	| type_specifier             old_function_declarator { BEGIN_LOCAL; } compound_statement { END_LOCAL; }
+	| declaration_qualifier_list old_function_declarator { BEGIN_LOCAL; } compound_statement { END_LOCAL; }
+	| type_qualifier_list        old_function_declarator { BEGIN_LOCAL; } compound_statement { END_LOCAL; }
 
-	|                            old_function_declarator declaration_list compound_statement {}
-	| declaration_specifier      old_function_declarator declaration_list compound_statement {}
-	| type_specifier             old_function_declarator declaration_list compound_statement {}
-	| declaration_qualifier_list old_function_declarator declaration_list compound_statement {}
-	| type_qualifier_list        old_function_declarator declaration_list compound_statement {}
+	|                            old_function_declarator declaration_list { BEGIN_LOCAL; } compound_statement { END_LOCAL; }
+	| declaration_specifier      old_function_declarator declaration_list { BEGIN_LOCAL; } compound_statement { END_LOCAL; }
+	| type_specifier             old_function_declarator declaration_list { BEGIN_LOCAL; } compound_statement { END_LOCAL; }
+	| declaration_qualifier_list old_function_declarator declaration_list { BEGIN_LOCAL; } compound_statement { END_LOCAL; }
+	| type_qualifier_list        old_function_declarator declaration_list { BEGIN_LOCAL; } compound_statement { END_LOCAL; }
 	;
 
 declarator
@@ -1436,19 +1605,29 @@ typedef_declarator
 parameter_typedef_declarator
 	: TYPE_NAME
 	  {
-	    $$ = decl_new( ((Typedef *) $1.ptr)->pDecl->identifier, 0 );
-	    LL_unshift( PSTATE->declaratorList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
-	                       $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = decl_new( ((Typedef *) $1.ptr)->pDecl->identifier, 0 );
+	      LL_unshift( PSTATE->declaratorList, $$ );
+	      CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
+	                         $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
+	    }
 	  }
 	| TYPE_NAME postfixing_abstract_declarator
 	  {
-	    $$ = decl_new( ((Typedef *) $1.ptr)->pDecl->identifier, 0 );
-	    if( $2 )
-	      LL_delete( LL_splice( $$->array, 0, 0, EX_ARRAY( $2 ) ) );
-	    LL_unshift( PSTATE->declaratorList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
-	                       $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = decl_new( ((Typedef *) $1.ptr)->pDecl->identifier, 0 );
+	      if( $2 )
+	        LL_delete( LL_splice( $$->array, 0, 0, EX_ARRAY( $2 ) ) );
+	      LL_unshift( PSTATE->declaratorList, $$ );
+	      CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
+	                         $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
+	    }
 	  }
 	| clean_typedef_declarator { $$ = $1; }
 	;
@@ -1460,12 +1639,14 @@ clean_typedef_declarator
 	: clean_postfix_typedef_declarator { $$ = $1; }
 	| '*' parameter_typedef_declarator
 	  {
-	    $2->pointer_flag = 1;
+	    if( $2 )
+	      $2->pointer_flag = 1;
 	    $$ = $2;
 	  }
 	| '*' type_qualifier_list parameter_typedef_declarator
 	  {
-	    $3->pointer_flag = 1;
+	    if( $3 )
+	      $3->pointer_flag = 1;
 	    $$ = $3;
 	  }
 	;
@@ -1486,22 +1667,26 @@ paren_typedef_declarator
 	: paren_postfix_typedef_declarator { $$ = $1; }
 	| '*' '(' simple_paren_typedef_declarator ')'
 	  {
-	    $3->pointer_flag = 1;
+	    if( $3 )
+	      $3->pointer_flag = 1;
 	    $$ = $3;
 	  }
 	| '*' type_qualifier_list '(' simple_paren_typedef_declarator ')'
 	  {
-	    $4->pointer_flag = 1;
+	    if( $4 )
+	      $4->pointer_flag = 1;
 	    $$ = $4;
 	  }
 	| '*' paren_typedef_declarator
 	  {
-	    $2->pointer_flag = 1;
+	    if( $2 )
+	      $2->pointer_flag = 1;
 	    $$ = $2;
 	  }
 	| '*' type_qualifier_list paren_typedef_declarator
 	  {
-	    $3->pointer_flag = 1;
+	    if( $3 )
+	      $3->pointer_flag = 1;
 	    $$ = $3;
 	  }
 	;
@@ -1523,10 +1708,15 @@ paren_postfix_typedef_declarator
 simple_paren_typedef_declarator
 	: TYPE_NAME
 	  {
-	    $$ = decl_new( ((Typedef *) $1.ptr)->pDecl->identifier, 0 );
-	    LL_unshift( PSTATE->declaratorList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
-	                       $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = decl_new( ((Typedef *) $1.ptr)->pDecl->identifier, 0 );
+	      LL_unshift( PSTATE->declaratorList, $$ );
+	      CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
+	                         $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
+	    }
 	  }
 	| '(' simple_paren_typedef_declarator ')' { $$ = $2; }
 	;
@@ -1540,12 +1730,14 @@ unary_identifier_declarator
 	: postfix_identifier_declarator { $$ = $1; }
 	| '*' identifier_declarator
 	  {
-	    $2->pointer_flag = 1;
+	    if( $2 )
+	      $2->pointer_flag = 1;
 	    $$ = $2;
 	  }
 	| '*' type_qualifier_list identifier_declarator
 	  {
-	    $3->pointer_flag = 1;
+	    if( $3 )
+	      $3->pointer_flag = 1;
 	    $$ = $3;
 	  }
 	;
@@ -1567,11 +1759,16 @@ postfix_identifier_declarator
 paren_identifier_declarator
 	: IDENTIFIER
 	  {
-	    $$ = decl_new( $1->key, $1->keylen );
-	    HN_delete( EX_NODE( $1 ) );
-	    LL_unshift( PSTATE->declaratorList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
-	                       $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
+	    if( $1 ) {
+	      $$ = decl_new( $1->key, $1->keylen );
+	      HN_delete( EX_NODE( $1 ) );
+	      LL_unshift( PSTATE->declaratorList, $$ );
+	      CT_DEBUG( PARSER, ("unshifting declarator \"%s\" (0x%08X) (count=%d)",
+	                         $$->identifier, $$, LL_count(PSTATE->declaratorList)) );
+	    }
+	    else {
+	      $$ = NULL;
+	    }
 	  }
 	| '(' paren_identifier_declarator ')' { $$ = $2; }
 	;
@@ -1585,12 +1782,14 @@ old_function_declarator
 postfix_old_function_declarator
 	: paren_identifier_declarator '(' identifier_list ')'
 	  {
-	    decl_delete( EX_DECL( $1 ) );
+	    if( $1 )
+	      decl_delete( EX_DECL( $1 ) );
 	  }
 	| '(' old_function_declarator ')' {}
 	| '(' old_function_declarator ')' postfixing_abstract_declarator
 	  {
-	    LL_destroy( EX_ARRAY( $4 ), (LLDestroyFunc) value_delete );
+	    if( $4 )
+	      LL_destroy( EX_ARRAY( $4 ), (LLDestroyFunc) value_delete );
 	  }
 	;
 
@@ -1599,14 +1798,14 @@ abstract_declarator
 	| postfix_abstract_declarator { $$ = $1; }
 	| postfixing_abstract_declarator
 	  {
-	    Value *pValue;
 	    $$.pointer_flag  = 0;
 	    $$.multiplicator = 1;
 	    if( $1 ) {
+	      Value *pValue;
 	      LL_foreach( pValue, $1 )
 	        $$.multiplicator *= pValue->iv;
+	      LL_destroy( EX_ARRAY( $1 ), (LLDestroyFunc) value_delete );
 	    }
-	    LL_destroy( EX_ARRAY( $1 ), (LLDestroyFunc) value_delete );
 	  }
 	;
 
@@ -1620,49 +1819,69 @@ array_abstract_declarator
 	: '[' ']' { $$ = NULL; }
 	| '[' assignment_expression ']'
 	  {
-	    $$ = LL_new();
-	    LL_unshift( PSTATE->arrayList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
-	                       $$, LL_count(PSTATE->arrayList)) );
-	    LL_push( $$, value_new( $2.iv, $2.flags ) );
-	    CT_DEBUG( PARSER, ("array dimension => %d", $2) );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = LL_new();
+	      LL_unshift( PSTATE->arrayList, $$ );
+	      CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
+	                         $$, LL_count(PSTATE->arrayList)) );
+	      LL_push( $$, value_new( $2.iv, $2.flags ) );
+	      CT_DEBUG( PARSER, ("array dimension => %d", $2) );
+	    }
 	  }
 	| '[' '*' ']'
 	  {
-	    $$ = LL_new();
-	    LL_unshift( PSTATE->arrayList, $$ );
-	    CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
-	                       $$, LL_count(PSTATE->arrayList)) );
-	    LL_push( $$, value_new( 0, 0 ) );
-	    CT_DEBUG( PARSER, ("array dimension => *") );
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
+	    }
+	    else {
+	      $$ = LL_new();
+	      LL_unshift( PSTATE->arrayList, $$ );
+	      CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
+	                         $$, LL_count(PSTATE->arrayList)) );
+	      LL_push( $$, value_new( 0, 0 ) );
+	      CT_DEBUG( PARSER, ("array dimension => *") );
+	    }
 	  }
 	| array_abstract_declarator '[' assignment_expression ']'
 	  {
-	    if( $1 ) {
-              $$ = $1;
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
 	    }
 	    else {
-              $$ = LL_new();
-	      LL_unshift( PSTATE->arrayList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
-	                         $$, LL_count(PSTATE->arrayList)) );
+	      if( $1 ) {
+                $$ = $1;
+	      }
+	      else {
+                $$ = LL_new();
+	        LL_unshift( PSTATE->arrayList, $$ );
+	        CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
+	                           $$, LL_count(PSTATE->arrayList)) );
+	      }
+	      LL_push( $$, value_new( $3.iv, $3.flags ) );
+	      CT_DEBUG( PARSER, ("array dimension => %d", $3) );
 	    }
-	    LL_push( $$, value_new( $3.iv, $3.flags ) );
-	    CT_DEBUG( PARSER, ("array dimension => %d", $3) );
 	  }
 	| array_abstract_declarator '[' '*' ']'
 	  {
-	    if( $1 ) {
-              $$ = $1;
+	    if( IS_LOCAL ) {
+	      $$ = NULL;
 	    }
 	    else {
-              $$ = LL_new();
-	      LL_unshift( PSTATE->arrayList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
-	                         $$, LL_count(PSTATE->arrayList)) );
+	      if( $1 ) {
+                $$ = $1;
+	      }
+	      else {
+                $$ = LL_new();
+	        LL_unshift( PSTATE->arrayList, $$ );
+	        CT_DEBUG( PARSER, ("unshifting array (0x%08X) (count=%d)",
+	                           $$, LL_count(PSTATE->arrayList)) );
+	      }
+	      LL_push( $$, value_new( 0, 0 ) );
+	      CT_DEBUG( PARSER, ("array dimension => *" ) );
 	    }
-	    LL_push( $$, value_new( 0, 0 ) );
-	    CT_DEBUG( PARSER, ("array dimension => *" ) );
 	  }
 	;
 
@@ -1694,19 +1913,20 @@ postfix_abstract_declarator
 	| '(' postfix_abstract_declarator ')' { $$ = $2; }
 	| '(' postfixing_abstract_declarator ')'
 	  {
-	    Value *pValue;
 	    $$.pointer_flag  = 0;
 	    $$.multiplicator = 1;
 	    if( $2 ) {
+	      Value *pValue;
 	      LL_foreach( pValue, $2 )
 	        $$.multiplicator *= pValue->iv;
+	      LL_destroy( EX_ARRAY( $2 ), (LLDestroyFunc) value_delete );
 	    }
-	    LL_destroy( EX_ARRAY( $2 ), (LLDestroyFunc) value_delete );
 	  }
 	| '(' unary_abstract_declarator ')' postfixing_abstract_declarator
 	  {
 	    $$ = $2;
-	    LL_destroy( EX_ARRAY( $4 ), (LLDestroyFunc) value_delete );
+	    if( $4 )
+	      LL_destroy( EX_ARRAY( $4 ), (LLDestroyFunc) value_delete );
 	  }
 	;
 
@@ -1736,7 +1956,7 @@ static int c_lex( void *pYYLVAL, ParserState *pState )
 {
   YYSTYPE *plval = (YYSTYPE *) pYYLVAL;
   int rval, token;
-  struct lexer_state *pLexer = &pState->lexer;
+  struct lexer_state *pLexer = pState->pLexer;
 
   CT_DEBUG( CLEXER, ("parser.y::c_lex()") );
 
@@ -1891,7 +2111,7 @@ static void *ex_object( LinkedList list, void *object )
 static void parser_error( ParserState *pState, char *msg )
 {
   FormatError( pState->pCPI, "%s, line %d: %s",
-               pState->filename, pState->lexer.ctok->line, msg );
+               pState->filename, pState->pLexer->ctok->line, msg );
 }
 
 /*******************************************************************************
@@ -2032,12 +2252,202 @@ static int check_type( void *pYYLVAL, ParserState *pState, char *s )
     return TYPE_NAME;
   }
 
-  plval->identifier = HN_new( s, len, hash );
+  if( pState->flags & F_LOCAL ) {
+    plval->identifier = NULL;
+  }
+  else {
+    plval->identifier = HN_new( s, len, hash );
 
-  LL_unshift( pState->nodeList, plval->identifier );
-  CT_DEBUG( CLEXER, ("unshifting identifier \"%s\" (0x%08X) (count=%d)",
-                     plval->identifier->key, plval->identifier,
-                     LL_count(pState->nodeList)) );
+    LL_unshift( pState->nodeList, plval->identifier );
+    CT_DEBUG( CLEXER, ("unshifting identifier \"%s\" (0x%08X) (count=%d)",
+                       plval->identifier->key, plval->identifier,
+                       LL_count(pState->nodeList)) );
+  }
 
   return IDENTIFIER;
+}
+
+
+/*===== FUNCTIONS ============================================================*/
+
+/*******************************************************************************
+*
+*   ROUTINE: c_parser_create
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: C lexer.
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+ParserState *c_parser_new( const CParseConfig *pCPC, CParseInfo *pCPI,
+                              struct lexer_state *pLexer )
+{
+  ParserState *pState;
+
+#ifdef CTYPE_DEBUGGING
+#ifdef YYDEBUG
+  extern int pragma_debug;
+  c_debug = pragma_debug = DEBUG_FLAG( YACC ) ? 1 : 0;
+#endif
+#endif
+
+  if( pCPC == NULL || pCPI == NULL || pLexer == NULL )
+    return NULL;
+
+  pState = (ParserState *) Alloc( sizeof( ParserState ) );
+
+  pState->pCPI                = pCPI;
+  pState->pCPC                = pCPC;
+  pState->pLexer              = pLexer;
+
+  pState->flags               = 0;
+  pState->filename            = NULL;
+  pState->curEnumList         = NULL;
+
+  pState->nodeList            = LL_new();
+  pState->declaratorList      = LL_new();
+  pState->arrayList           = LL_new();
+  pState->structDeclList      = LL_new();
+  pState->structDeclListsList = LL_new();
+
+  pragma_init( &pState->pragma );
+ 
+  return pState;
+}
+
+int c_parser_run( ParserState *pState )
+{
+  return c_parse( (void *) pState );
+}
+
+void c_parser_delete( ParserState *pState )
+{
+  LinkedList list;
+
+#ifdef CTYPE_DEBUGGING
+  int count;
+#endif
+
+  if( pState == NULL )
+    return;
+
+  if( pState->filename )
+    Free( pState->filename );
+
+  /*-----------------------*/
+  /* Cleanup pragma parser */
+  /*-----------------------*/
+
+  pragma_free( &pState->pragma );
+
+  /*---------------------*/
+  /* Cleanup Enumerators */
+  /*---------------------*/
+
+#ifdef CTYPE_DEBUGGING
+  if( DEBUG_FLAG( PARSER ) ) {
+    CT_DEBUG( PARSER, ("cleanup enumerator(s)") );
+    if( pState->curEnumList && (count = LL_count( pState->curEnumList )) > 0 )
+      CT_DEBUG( PARSER, ("%d enumerator(s) still in memory, cleaning up...", count) );
+  }
+#endif
+
+  LL_destroy( pState->curEnumList, (LLDestroyFunc) enum_delete );
+
+  /*---------------*/
+  /* Cleanup Nodes */
+  /*---------------*/
+
+#ifdef CTYPE_DEBUGGING
+  if( DEBUG_FLAG( PARSER ) ) {
+    CT_DEBUG( PARSER, ("cleanup node(s)") );
+    if( (count = LL_count( pState->nodeList )) > 0 ) {
+      HashNode hn;
+      CT_DEBUG( PARSER, ("%d node(s) still in memory, cleaning up...", count) );
+      LL_foreach( hn, pState->nodeList )
+        CT_DEBUG( PARSER, ("[%s]", hn->key) );
+    }
+  }
+#endif
+
+  LL_destroy( pState->nodeList, (LLDestroyFunc) HN_delete );
+
+  /*---------------------*/
+  /* Cleanup Declarators */
+  /*---------------------*/
+
+#ifdef CTYPE_DEBUGGING
+  if( DEBUG_FLAG( PARSER ) ) {
+    CT_DEBUG( PARSER, ("cleanup declarator(s)") );
+    if( (count = LL_count( pState->declaratorList )) > 0 )
+      CT_DEBUG( PARSER, ("%d declarator(s) still in memory, cleaning up...", count) );
+  }
+#endif
+
+  LL_destroy( pState->declaratorList, (LLDestroyFunc) decl_delete );
+
+  /*----------------*/
+  /* Cleanup Arrays */
+  /*----------------*/
+
+#ifdef CTYPE_DEBUGGING
+  if( DEBUG_FLAG( PARSER ) ) {
+    Value *pVal;
+    CT_DEBUG( PARSER, ("cleanup array(s)") );
+    if( (count = LL_count( pState->arrayList )) > 0 ) {
+      CT_DEBUG( PARSER, ("%d array(s) still in memory, cleaning up...", count) );
+      LL_foreach( list, pState->arrayList ) {
+        CT_DEBUG( PARSER, ("[ARRAY=0x%08X]", list) );
+        LL_foreach( pVal, list )
+          CT_DEBUG( PARSER, ("[value=%d,flags=0x%08X]", pVal->iv, pVal->flags) );
+      }
+    }
+  }
+#endif
+
+  LL_foreach( list, pState->arrayList )
+    LL_destroy( list, (LLDestroyFunc) value_delete );
+
+  LL_destroy( pState->arrayList, NULL );
+
+  /*----------------------------*/
+  /* Cleanup Struct Declarators */
+  /*----------------------------*/
+
+#ifdef CTYPE_DEBUGGING
+  if( DEBUG_FLAG( PARSER ) ) {
+    CT_DEBUG( PARSER, ("cleanup struct declarator(s)") );
+    if( (count = LL_count( pState->structDeclList )) > 0 )
+      CT_DEBUG( PARSER, ("%d struct declarator(s) still in memory, cleaning up...", count) );
+  }
+#endif
+
+  LL_destroy( pState->structDeclList, (LLDestroyFunc) structdecl_delete );
+
+  /*---------------------------------*/
+  /* Cleanup Struct Declarator Lists */
+  /*---------------------------------*/
+
+#ifdef CTYPE_DEBUGGING
+  if( DEBUG_FLAG( PARSER ) ) {
+    CT_DEBUG( PARSER, ("cleanup struct declarator list(s)") );
+    if( (count = LL_count( pState->structDeclListsList )) > 0 )
+      CT_DEBUG( PARSER, ("%d struct declarator list(s) still in memory, cleaning up...", count) );
+  }
+#endif
+
+  LL_foreach( list, pState->structDeclListsList )
+    LL_destroy( list, (LLDestroyFunc) structdecl_delete );
+
+  LL_destroy( pState->structDeclListsList, NULL );
+
+  Free( pState );
 }

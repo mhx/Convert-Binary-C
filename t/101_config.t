@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/11/23 17:24:27 +0000 $
-# $Revision: 9 $
-# $Snapshot: /Convert-Binary-C/0.05 $
+# $Date: 2002/12/11 13:56:40 +0000 $
+# $Revision: 10 $
+# $Snapshot: /Convert-Binary-C/0.06 $
 # $Source: /t/101_config.t $
 #
 ################################################################################
@@ -25,7 +25,7 @@ $^W = 1;
 
 BEGIN {
   $C99 = Convert::Binary::C::feature( 'c99' );
-  plan tests => $C99 ? 1675 : 1501
+  plan tests => $C99 ? 1599 : 1483
 }
 
 ok( defined $C99 );
@@ -130,10 +130,10 @@ sub check_option_strlist
   my $option = shift;
   my @warn;
   my @tests = (
-    { in => \4711,                 result => FAIL, error => qr/$option wants an array reference/ },
-    { in => [],                    result => SUCCEED },
-    { in => { key => 'val' },      result => FAIL, error => qr/$option wants an array reference/ },
-    { in => ['inc', 'usr', 'lib'], result => SUCCEED },
+    { in => \4711,             result => FAIL, error => qr/$option wants an array reference/ },
+    { in => [],                result => SUCCEED },
+    { in => { key => 'val' },  result => FAIL, error => qr/$option wants an array reference/ },
+    { in => ['const', 'void'], result => SUCCEED },
   );
 
   local $SIG{__WARN__} = sub { push @warn, shift };
@@ -196,9 +196,13 @@ sub check_option_strlist
   if( @warn ) { print "# issued warnings:\n", map "#   $_", @warn }
   ok( scalar @warn, 1, "invalid number of warnings issued" );
   ok( $warn[0], qr/Useless use of $option in void context.*$thisfile/ );
+}
 
-  @warn = ();
+sub check_option_strlist_args {
+  my $option = shift;
+  my @warn;
   eval {
+    $p = new Convert::Binary::C;
     $p->$option( [qw(foo bar)] );
     $p->$option( 'include' );
     $p->$option( qw(a b c) );
@@ -317,19 +321,47 @@ check_config( 'EnumType',
   @refs
 );
 
-check_config_bool( $_ ) for qw( HasVOID
-                                UnsignedChars
+check_config_bool( $_ ) for qw( UnsignedChars
                                 Warnings );
 
 if( $C99 ) {
-  check_config_bool( $_ ) for qw( HasC99Keywords
-                                  HasCPPComments
+  check_config_bool( $_ ) for qw( HasCPPComments
                                   HasMacroVAARGS );
 }
 
 check_option_strlist( $_ ) for qw( Include
                                    Define
-                                   Assert );
+                                   Assert
+                                   DisabledKeywords );
+
+check_option_strlist_args( $_ ) for qw( Include
+                                        Define
+                                        Assert);
+
+#===================================================================
+# check DisabledKeywords option
+#===================================================================
+
+eval {
+  $p = new Convert::Binary::C;
+  $p->configure( DisabledKeywords => ['void', 'foo', 'const'] );
+};
+ok( $@, qr/Cannot disable unknown keyword 'foo'.*$thisfile/ );
+
+eval {
+  $p = new Convert::Binary::C;
+  $p->DisabledKeywords( 'void', 'foo', 'const' );
+};
+ok( $@, qr/DisabledKeywords cannot take more than one argument.*$thisfile/ );
+
+eval {
+  $p = new Convert::Binary::C;
+  $p->DisabledKeywords( ['auto', 'enum'] );
+  $p->DisabledKeywords( ['void', 'while', 'register'] );
+};
+ok( $@, qr/Cannot disable unknown keyword 'while'.*$thisfile/ );
+$kw = $p->DisabledKeywords;
+ok( "@$kw", "auto enum", 'DisabledKeywords did not preserve configuration' );
 
 #===================================================================
 # check invalid configuration
@@ -376,6 +408,7 @@ ok( $@, qr/Invalid method some_method called.*$thisfile/ );
 #===================================================================
 
 %config = (
+  'DisabledKeywords' => [],
   'UnsignedChars' => 0,
   'ShortSize' => 2,
   'EnumType' => 'Integer',
@@ -386,10 +419,8 @@ ok( $@, qr/Invalid method some_method called.*$thisfile/ );
   'HasCPPComments' => 1,
   'Alignment' => 1,
   'Define' => [ 'DEBUGGING', 'FOO=123' ],
-  'HasC99Keywords' => 1,
   'HasMacroVAARGS' => 1,
   'LongSize' => 4,
-  'HasVOID' => 1,
   'Warnings' => 0,
   'ByteOrder' => 'LittleEndian',
   'Assert' => [],
@@ -399,7 +430,7 @@ ok( $@, qr/Invalid method some_method called.*$thisfile/ );
   'LongDoubleSize' => 12
 );
 
-$C99 or delete @config{qw(HasCPPComments HasMacroVAARGS HasC99Keywords)};
+$C99 or delete @config{qw(HasCPPComments HasMacroVAARGS)};
 
 eval {
   $p = new Convert::Binary::C %config;
@@ -414,6 +445,7 @@ compare_config( \%config, $cfg );
 #===================================================================
 
 %newcfg = (
+  'DisabledKeywords' => ['const', 'register'],
   'UnsignedChars' => 1,
   'ShortSize' => 4,
   'EnumType' => 'Both',
@@ -424,10 +456,8 @@ compare_config( \%config, $cfg );
   'HasCPPComments' => 1,
   'Alignment' => 2,
   'Define' => [ 'DEBUGGING', 'FOO=123', 'BAR=456' ],
-  'HasC99Keywords' => 1,
   'HasMacroVAARGS' => 1,
   'LongSize' => 4,
-  'HasVOID' => 0,
   'Warnings' => 1,
   'ByteOrder' => 'BigEndian',
   'Assert' => [],
@@ -437,7 +467,7 @@ compare_config( \%config, $cfg );
   'LongDoubleSize' => 12
 );
 
-$C99 or delete @newcfg{qw(HasCPPComments HasMacroVAARGS HasC99Keywords)};
+$C99 or delete @newcfg{qw(HasCPPComments HasMacroVAARGS)};
 
 @warn = ();
 
@@ -449,7 +479,7 @@ eval {
   $p->UnsignedChars( 1 )->configure( ShortSize => 4, EnumType => 'Both', EnumSize => 0 )
     ->Include( ['/usr/local/include'] )->DoubleSize( 8 );
 
-  $p->FloatSize( 8 )->Include( qw( /usr/include /include ) )->HasVOID( 0 )
+  $p->FloatSize( 8 )->Include( qw( /usr/include /include ) )->DisabledKeywords( [qw( const register )] )
     ->Alignment( 2 )->Define( qw( BAR=456 ) )->configure( ByteOrder => 'BigEndian' );
 
   $p->configure( PointerSize => 2 )->Warnings( 1 );
