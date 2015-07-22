@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/08/26 12:33:43 +0100 $
-* $Revision: 13 $
+* $Date: 2006/12/29 19:58:59 +0000 $
+* $Revision: 14 $
 * $Source: /cbc/util.c $
 *
 ********************************************************************************
@@ -598,7 +598,6 @@ void dump_sv(pTHX_ SV *buf, int level, SV *sv)
     case SVt_PVIV: str = "PVIV"; break;
     case SVt_PVNV: str = "PVNV"; break;
     case SVt_PVMG: str = "PVMG"; break;
-    case SVt_PVBM: str = "PVBM"; break;
     case SVt_PVLV: str = "PVLV"; break;
     case SVt_PVAV: str = "PVAV"; break;
     case SVt_PVHV: str = "PVHV"; break;

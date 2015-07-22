@@ -1,4 +1,11 @@
 -------------------------
+Version 0.67 (2006-12-29)
+-------------------------
+
+* bleeding edge perl versions don't have SVt_PVBM anymore,
+  which broke compilation of cbc/util.c
+
+-------------------------
 Version 0.66 (2006-11-02)
 -------------------------
 
