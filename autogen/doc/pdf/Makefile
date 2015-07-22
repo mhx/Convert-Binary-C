@@ -9,7 +9,7 @@ P2LOPTS   = -verbose -modify
 
 TEX       = pdflatex
 MAKEINDEX = makeindex
-VERSION   = `perl -e'print q($$Snapshot:-->/Convert-Binary-C/0.51<!--$$)=~/([\w.]+)[^\/]+$$/'`
+VERSION   = `perl -e'print q($$Snapshot:-->/Convert-Binary-C/0.52<!--$$)=~/([\w.]+)[^\/]+$$/'`
 
 CBC_PM    = ../../../lib/Convert/Binary/C.pm
 CBCC_PM   = ../../../lib/Convert/Binary/C/Cached.pm

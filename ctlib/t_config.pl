@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:37:58 +0000 $
-# $Revision: 10 $
-# $Snapshot: /Convert-Binary-C/0.51 $
+# $Date: 2004/05/20 20:22:25 +0100 $
+# $Revision: 11 $
+# $Snapshot: /Convert-Binary-C/0.52 $
 # $Source: /ctlib/t_config.pl $
 #
 ################################################################################
@@ -38,6 +38,7 @@ use Devel::Tokenizer::C;
   DoubleSize
   LongDoubleSize
   Alignment
+  CompoundAlignment
   Include
   Define
   Assert

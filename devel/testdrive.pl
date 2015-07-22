@@ -28,7 +28,7 @@ my @hosts = (
   { ip => '192.233.54.151', prompt => $PROMPT },        # 5.005_03 i386-freebsd
   { ip => '192.233.54.156', prompt => $PROMPT },        # 5.6.1 ia64-linux
 
-  { ip => '192.233.54.160', prompt => $PROMPT },        # 5.8.0 i486-linux
+  # { ip => '192.233.54.160', prompt => $PROMPT },        # 5.8.0 i486-linux
   { ip => '192.233.54.161', prompt => $PROMPT },        # 5.6.1 alpha-linux
   { ip => '192.233.54.165', prompt => '/mgtnode> $/' }, # 5.6.0 alpha-linux
   # { ip => '192.233.54.167', prompt => $PROMPT },        # 5.8.0 alpha-dec_osf

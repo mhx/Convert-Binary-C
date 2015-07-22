@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/22 19:37:57 +0000 $
-* $Revision: 35 $
-* $Snapshot: /Convert-Binary-C/0.51 $
+* $Date: 2004/05/23 11:37:48 +0100 $
+* $Revision: 36 $
+* $Snapshot: /Convert-Binary-C/0.52 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -903,10 +903,7 @@ declaring_list
 	      if( $1.tflags & T_TYPEDEF ) {
 	        if( ($1.tflags & ANY_TYPE_NAME) == 0 )
 	          $1.tflags |= T_INT;
-	        else if( $1.tflags & T_ENUM )
-	          ((EnumSpecifier *) $1.ptr)->tflags |= T_HASTYPEDEF;
-	        else if( $1.tflags & (T_STRUCT | T_UNION) )
-	          ((Struct *) $1.ptr)->tflags |= T_HASTYPEDEF;
+	        CTT_REFCOUNT_INC($1.ptr);
 	        $$ = typedef_list_new( $1, LL_new() );
 	        LL_push( PSTATE->pCPI->typedef_lists, $$ );
 	        MAKE_TYPEDEF( $$, $2 );
@@ -1176,11 +1173,13 @@ member_declaration_list
 	      $$ = NULL;
 	    }
 	    else {
+	      StructDeclaration *pSD = EX_STRUCT_DECL($1);
+	      CTT_REFCOUNT_INC(pSD->type.ptr);
 	      $$ = LL_new();
-	      LL_push( $$, EX_STRUCT_DECL( $1 ) );
-	      LL_unshift( PSTATE->structDeclListsList, $$ );
-	      CT_DEBUG( PARSER, ("unshifting struct declaration list (%p) (count=%d)",
-	                         $$, LL_count(PSTATE->structDeclListsList)) );
+	      LL_push($$, pSD);
+	      LL_unshift(PSTATE->structDeclListsList, $$);
+	      CT_DEBUG(PARSER, ("unshifting struct declaration list (%p) (count=%d)",
+	                        $$, LL_count(PSTATE->structDeclListsList)));
 	    }
 	  }
 	| member_declaration_list member_declaration
@@ -1189,8 +1188,10 @@ member_declaration_list
 	      $$ = NULL;
 	    }
 	    else {
+	      StructDeclaration *pSD = EX_STRUCT_DECL($2);
+	      CTT_REFCOUNT_INC(pSD->type.ptr);
 	      $$ = $1;
-	      LL_push( $$, EX_STRUCT_DECL( $2 ) );
+	      LL_push($$, pSD);
 	    }
 	  }
 	;

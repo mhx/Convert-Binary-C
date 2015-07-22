@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/22 20:46:46 +0000 $
-* $Revision: 16 $
-* $Snapshot: /Convert-Binary-C/0.51 $
+* $Date: 2004/05/23 11:37:12 +0100 $
+* $Revision: 17 $
+* $Snapshot: /Convert-Binary-C/0.52 $
 * $Source: /ctlib/cttype.c $
 *
 ********************************************************************************
@@ -283,8 +283,9 @@ EnumSpecifier *enumspec_new( char *identifier, int id_len, LinkedList enumerator
 {
   CONSTRUCT_OBJECT_IDENT( EnumSpecifier, pEnumSpec );
 
-  pEnumSpec->ctype  = TYP_ENUM;
-  pEnumSpec->tflags = T_ENUM;
+  pEnumSpec->ctype    = TYP_ENUM;
+  pEnumSpec->tflags   = T_ENUM;
+  pEnumSpec->refcount = 0;
 
   if( enumerators == NULL )
     pEnumSpec->enumerators = NULL;
@@ -633,10 +634,11 @@ Struct *struct_new( char *identifier, int id_len, u_32 tflags, unsigned pack, Li
   pStruct->ctype = TYP_STRUCT;
 
   pStruct->tflags       = tflags;
-  pStruct->declarations = declarations;
+  pStruct->refcount     = 0;
   pStruct->align        = 0;
   pStruct->size         = 0;
   pStruct->pack         = pack;
+  pStruct->declarations = declarations;
 
   CT_DEBUG( TYPE, ("type::struct_new( identifier=\"%s\", tflags=0x%08lX, "
                    "pack=%d, declarations=%p [count=%d] ) = %p",

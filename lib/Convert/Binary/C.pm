@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/23 21:12:50 +0000 $
-# $Revision: 60 $
-# $Snapshot: /Convert-Binary-C/0.51 $
+# $Date: 2004/05/24 22:38:53 +0100 $
+# $Revision: 62 $
+# $Snapshot: /Convert-Binary-C/0.52 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.51 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.52 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -976,11 +976,12 @@ Which will print something like this:
     'Alignment' => 1,
     'LongDoubleSize' => 12,
     'KeywordMap' => {},
-    'HasCPPComments' => 1,
     'Include' => [
       '/usr/include'
     ],
+    'HasCPPComments' => 1,
     'Warnings' => 0,
+    'CompoundAlignment' => 1,
     'OrderMembers' => 0
   };
 
@@ -1244,7 +1245,8 @@ The alignment of a structure depends on its largest member and
 on the setting of the C<Alignment> option. With C<Alignment> set
 to 2, a structure holding a C<long> would be aligned to a 2-byte
 boundary, while a structure containing only C<char>s would have
-no alignment restrictions.
+no alignment restrictions. (Unfortunately, that's not the whole
+story. See the C<CompoundAlignment> option for details.)
 
 Here's another example. Assuming 8-byte alignment, the following
 two structs will both have a size of 16 bytes:
@@ -1278,6 +1280,58 @@ impossible.
 The alignment behaviour described here seems to be common for all
 compilers. However, not all compilers have an option to configure
 their default alignment.
+
+=item C<CompoundAlignment> =E<gt> 1 | 2 | 4 | 8 | 16
+
+Usually, the alignment of a compound (i.e. a C<struct> or
+a C<union>) depends only on its largest member and on the setting
+of the C<Alignment> option. There are, however, architectures and
+compilers where compounds can have different alignment constraints.
+
+For most platforms and compilers, the alignment constraint for
+compounds is 1 byte. That is, on most platforms
+
+  struct onebyte {
+    char byte;
+  };
+
+will have an alignment of 1 and also a size of 1. But if you take
+an ARM architecture, the above C<struct onebyte> will have an
+alignment of 4, and thus also a size of 4. 
+
+You can configure this by setting C<CompoundAlignment> to 4. This
+will ensure that the alignment of compounds is always 4.
+
+There are also compilers for certain platforms that allow you to
+adjust the compound alignment. If you're not aware of the fact
+that your compiler/architecture has a compound alignment other
+than 1, strange things can happen. If, for example, the compound
+alignment is 2 and you have something like
+
+  typedef unsigned char U8;
+  
+  struct msg_head {
+    U8 cmd;
+    struct {
+      U8 hi;
+      U8 low;
+    } crc16;
+    U8 len;
+  };
+
+there will be one padding byte inserted before the
+embedded C<crc16> struct and after the C<len> member, which
+is most probably not what was intended:
+
+  0     1     2     3     4     5     6
+  +-----+-----+-----+-----+-----+-----+
+  | cmd |  *  | hi  | low | len |  *  |
+  +-----+-----+-----+-----+-----+-----+
+
+Note that both C<#pragma pack> and the C<Alignment> option can
+override C<CompoundAlignment>. If you set C<CompoundAlignment> to
+4, but C<Alignment> to 2, compounds will actually be aligned on
+2-byte boundaries.
 
 =item C<ByteOrder> =E<gt> 'BigEndian' | 'LittleEndian'
 
@@ -2096,6 +2150,10 @@ both C<$unpack1> and C<$unpack2>:
     1029,
     1543
   ];
+
+When L<C<unpack>|/"unpack"> is called in list context, it will
+unpack as many elements as possible from STRING, including zero
+if STRING is not long enough.
 
 =back
 
@@ -3857,6 +3915,27 @@ of a structure yet.
 
 Convert::Binary::C was designed to be thread-safe.
 
+=head1 INHERITANCE
+
+If you wish to derive a new class from Convert::Binary::C,
+this is relatively easy. Despite their XS implementation,
+Convert::Binary::C objects are actually blessed hash
+references.
+
+The XS data is stored in a read-only hash value for the
+key that is the empty string. So it is safe to use any
+non-empty hash key when deriving your own class.
+In addition, Convert::Binary::C does quite a lot of checks
+to detect corruption in the object hash.
+
+If you store private data in the hash, you should override
+the C<clone> method and provide the necessary code to clone
+your private data. You'll have to call C<SUPER::clone>, but
+this will only clone the Convert::Binary::C part of the object.
+
+For an example of a derived class, you can have a look at
+Convert::Binary::C::Cached.
+
 =head1 PORTABILITY
 
 Convert::Binary::C should build and run on most of the
@@ -4075,6 +4154,4 @@ linked to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
-
-
 

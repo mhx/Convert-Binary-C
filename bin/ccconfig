@@ -11,9 +11,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:37:53 +0000 $
-# $Revision: 51 $
-# $Snapshot: /Convert-Binary-C/0.51 $
+# $Date: 2004/05/20 20:20:08 +0100 $
+# $Revision: 52 $
+# $Snapshot: /Convert-Binary-C/0.52 $
 # $Source: /bin/ccconfig $
 #
 ################################################################################
@@ -30,7 +30,7 @@ use Data::Dumper;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = ('$Snapshot: /Convert-Binary-C/0.51 $' =~ /([^\/\s]+)\s*\$$/)[0];
+my $VERSION = ('$Snapshot: /Convert-Binary-C/0.52 $' =~ /([^\/\s]+)\s*\$$/)[0];
 my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT;
 
@@ -500,6 +500,14 @@ sub get_config
       $self->_msg( "Strange alignment '$self->{alignment}'." );
     }
   }
+  if( exists $self->{compound_alignment} and defined $self->{compound_alignment} ) {
+    if( grep { $self->{compound_alignment} == $_ } 1, 2, 4, 8, 16 ) {
+      $cfg{CompoundAlignment} = $self->{compound_alignment};
+    }
+    else {
+      $self->_msg( "Strange compound alignment '$self->{compound_alignment}'." );
+    }
+  }
   if( exists $self->{invalid_keywords} and @{$self->{invalid_keywords}} > 0 ) {
     $cfg{DisabledKeywords} = $self->{invalid_keywords};
   }
@@ -745,14 +753,15 @@ sub run_checks
   $self->{preasserted}        = $self->_get_preasserted( $asserts );
 
   if( $self->{can_compile} ) {
-    $self->{invalid_keywords} = $self->_get_invalid_keywords;
-    $self->{keyword_map}      = $self->_get_keyword_map;
-    $self->{cpp_comments}     = $self->_get_cpp_comments;
+    $self->{invalid_keywords}   = $self->_get_invalid_keywords;
+    $self->{keyword_map}        = $self->_get_keyword_map;
+    $self->{cpp_comments}       = $self->_get_cpp_comments;
 
-    $self->{basic_sizes}      = $self->_get_basic_sizes;
-    $self->{byteorder}        = $self->_get_byteorder;
-    $self->{unsigned_chars}   = $self->_get_unsigned_chars;
-    $self->{alignment}        = $self->_get_alignment;
+    $self->{basic_sizes}        = $self->_get_basic_sizes;
+    $self->{byteorder}          = $self->_get_byteorder;
+    $self->{unsigned_chars}     = $self->_get_unsigned_chars;
+    $self->{alignment}          = $self->_get_alignment;
+    $self->{compound_alignment} = $self->_get_compound_alignment;
 
     # run _after_ byteorder test
     $self->{float_format}     = $self->_get_float_format;
@@ -1070,8 +1079,11 @@ sub _get_alignment_compile
 
   $self->_work_in_progress;
 
-  my $res = $self->_test_type( "struct align { char a; $type b; }",
-                               "{ sizeof(struct align) - sizeof($type), ($type) -1 }", 32 );
+  my $init = $type =~ /(struct|union)\s+(\w+)/
+                      ? "{ sizeof(struct align) - sizeof($1 $2) }"
+                      : "{ sizeof(struct align) - sizeof($type), ($type) -1 }";
+
+  my $res = $self->_test_type( "struct align { char a; $type b; }", $init, 32 );
 
   unless( defined $res ) {
     $self->_work_done;
@@ -1118,6 +1130,28 @@ sub _get_alignment
   }
 
   return $align;
+}
+
+sub _get_compound_alignment
+{
+  my $self = shift;
+
+  $self->_msg( "\nTrying to determine compound alignment..." );
+
+  my $meth = $self->{can_run} ? "_get_alignment_run" : "_get_alignment_compile";
+  my $s_align = $self->$meth("struct testit { char a; }");
+  my $u_align = $self->$meth("union testit { char a; }");
+
+  $self->_work_done;
+
+  if( defined($s_align) && defined($u_align) && $s_align == $u_align ) {
+    $self->_msg( "Compounds are aligned to $s_align-byte boundaries." );
+    return $s_align;
+  }
+  else {
+    $self->_msg( "Could not determine compound alignment." );
+    return undef;
+  }
 }
 
 #-----------------------------------------------------------------------

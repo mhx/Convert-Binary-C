@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/23 21:09:23 +0000 $
-* $Revision: 117 $
-* $Snapshot: /Convert-Binary-C/0.51 $
+* $Date: 2004/05/23 23:05:22 +0100 $
+* $Revision: 121 $
+* $Snapshot: /Convert-Binary-C/0.52 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -177,6 +177,16 @@
         DEFAULT_ALIGNMENT != 8  && \
         DEFAULT_ALIGNMENT != 16
 #error "DEFAULT_ALIGNMENT is invalid!"
+#endif
+
+#ifndef DEFAULT_COMPOUND_ALIGNMENT
+#define DEFAULT_COMPOUND_ALIGNMENT    1
+#elif   DEFAULT_COMPOUND_ALIGNMENT != 1  && \
+        DEFAULT_COMPOUND_ALIGNMENT != 2  && \
+        DEFAULT_COMPOUND_ALIGNMENT != 4  && \
+        DEFAULT_COMPOUND_ALIGNMENT != 8  && \
+        DEFAULT_COMPOUND_ALIGNMENT != 16
+#error "DEFAULT_COMPOUND_ALIGNMENT is invalid!"
 #endif
 
 #ifndef DEFAULT_ENUMTYPE
@@ -646,6 +656,8 @@ typedef struct {
   HashTable     enum_hooks;
   HashTable     struct_hooks;
   HashTable     typedef_hooks;
+
+  HV           *hv;
 
 } CBC;
 
@@ -3397,12 +3409,8 @@ static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI,
   /* undefined enums */
 
   LL_foreach( pES, pCPI->enums ) {
-    if( (pES->tflags & T_ALREADY_DUMPED) == 0 ) {
-      if(   pES->enumerators
-         || (   pES->identifier[0] != '\0'
-             && (pES->tflags & T_HASTYPEDEF) == 0
-            )
-        ) {
+    if( (pES->tflags & T_ALREADY_DUMPED) == 0 && pES->refcount == 0 ) {
+      if( pES->enumerators || pES->identifier[0] != '\0') {
         if( !fUndefEnum ) {
           sv_catpv( s, "\n/* undefined enums */\n\n" );
           fUndefEnum = 1;
@@ -3418,12 +3426,8 @@ static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI,
   /* undefined structs and unions */
 
   LL_foreach( pStruct, pCPI->structs ) {
-    if( (pStruct->tflags & T_ALREADY_DUMPED) == 0 ) {
-      if(   pStruct->declarations
-         || (   pStruct->identifier[0] != '\0'
-             && (pStruct->tflags & T_HASTYPEDEF) == 0
-            )
-        ) {
+    if( (pStruct->tflags & T_ALREADY_DUMPED) == 0 && pStruct->refcount == 0 ) {
+      if( pStruct->declarations || pStruct->identifier[0] != '\0' ) {
         if( !fUndefStruct ) {
           sv_catpv( s, "\n/* undefined/unnamed structs and unions */\n\n" );
           fUndefStruct = 1;
@@ -3545,6 +3549,10 @@ static void GetInitStrStruct( pTHX_ CBC *THIS, Struct *pStruct, SV *init,
       GetInitStrStruct( aTHX_ THIS, (Struct *) pTS->ptr,
                         init, idl, level+1, string );
       IDLIST_PUSH( idl, ID );
+
+      /* only initialize first union member */
+      if( pStruct->tflags & T_UNION )
+        goto handle_end;
     }
   }
 
@@ -6066,16 +6074,17 @@ static const StringOption EnumTypeOption[] = {
   { ET_BOTH,    "Both"    }
 };
 
-static const IV PointerSizeOption[]     = {     0, 1, 2, 4, 8         };
-static const IV EnumSizeOption[]        = { -1, 0, 1, 2, 4, 8         };
-static const IV IntSizeOption[]         = {     0, 1, 2, 4, 8         };
-static const IV ShortSizeOption[]       = {     0, 1, 2, 4, 8         };
-static const IV LongSizeOption[]        = {     0, 1, 2, 4, 8         };
-static const IV LongLongSizeOption[]    = {     0, 1, 2, 4, 8         };
-static const IV FloatSizeOption[]       = {     0, 1, 2, 4, 8, 12, 16 };
-static const IV DoubleSizeOption[]      = {     0, 1, 2, 4, 8, 12, 16 };
-static const IV LongDoubleSizeOption[]  = {     0, 1, 2, 4, 8, 12, 16 };
-static const IV AlignmentOption[]       = {        1, 2, 4, 8,     16 };
+static const IV PointerSizeOption[]       = {     0, 1, 2, 4, 8         };
+static const IV EnumSizeOption[]          = { -1, 0, 1, 2, 4, 8         };
+static const IV IntSizeOption[]           = {     0, 1, 2, 4, 8         };
+static const IV ShortSizeOption[]         = {     0, 1, 2, 4, 8         };
+static const IV LongSizeOption[]          = {     0, 1, 2, 4, 8         };
+static const IV LongLongSizeOption[]      = {     0, 1, 2, 4, 8         };
+static const IV FloatSizeOption[]         = {     0, 1, 2, 4, 8, 12, 16 };
+static const IV DoubleSizeOption[]        = {     0, 1, 2, 4, 8, 12, 16 };
+static const IV LongDoubleSizeOption[]    = {     0, 1, 2, 4, 8, 12, 16 };
+static const IV AlignmentOption[]         = {        1, 2, 4, 8,     16 };
+static const IV CompoundAlignmentOption[] = {        1, 2, 4, 8,     16 };
 
 #define START_OPTIONS                                                          \
           int changes = 0;                                                     \
@@ -6088,7 +6097,7 @@ static const IV AlignmentOption[]       = {        1, 2, 4, 8,     16 };
 
 #define POST_PROCESS      } switch( cfgopt ) {
 
-#define END_OPTIONS       } return changes;
+#define END_OPTIONS       default: break; } return changes;
 
 #define OPTION( name )    case OPTION_ ## name : {
 
@@ -6155,16 +6164,17 @@ static int HandleOption( pTHX_ CBC *THIS, SV *opt, SV *sv_val, SV **rval )
 
     INTFLAG_OPTION( OrderMembers,   CBC_ORDER_MEMBERS )
 
-    IVAL_OPTION( PointerSize,    ptr_size         )
-    IVAL_OPTION( EnumSize,       enum_size        )
-    IVAL_OPTION( IntSize,        int_size         )
-    IVAL_OPTION( ShortSize,      short_size       )
-    IVAL_OPTION( LongSize,       long_size        )
-    IVAL_OPTION( LongLongSize,   long_long_size   )
-    IVAL_OPTION( FloatSize,      float_size       )
-    IVAL_OPTION( DoubleSize,     double_size      )
-    IVAL_OPTION( LongDoubleSize, long_double_size )
-    IVAL_OPTION( Alignment,      alignment        )
+    IVAL_OPTION( PointerSize,       ptr_size           )
+    IVAL_OPTION( EnumSize,          enum_size          )
+    IVAL_OPTION( IntSize,           int_size           )
+    IVAL_OPTION( ShortSize,         short_size         )
+    IVAL_OPTION( LongSize,          long_size          )
+    IVAL_OPTION( LongLongSize,      long_long_size     )
+    IVAL_OPTION( FloatSize,         float_size         )
+    IVAL_OPTION( DoubleSize,        double_size        )
+    IVAL_OPTION( LongDoubleSize,    long_double_size   )
+    IVAL_OPTION( Alignment,         alignment          )
+    IVAL_OPTION( CompoundAlignment, compound_alignment )
 
     STRLIST_OPTION( Include, includes   )
     STRLIST_OPTION( Define,  defines    )
@@ -6277,16 +6287,17 @@ static SV *GetConfiguration( pTHX_ CBC *THIS )
 
   INTFLAG_OPTION( OrderMembers,   CBC_ORDER_MEMBERS )
 
-  IVAL_OPTION( PointerSize,    ptr_size         )
-  IVAL_OPTION( EnumSize,       enum_size        )
-  IVAL_OPTION( IntSize,        int_size         )
-  IVAL_OPTION( ShortSize,      short_size       )
-  IVAL_OPTION( LongSize,       long_size        )
-  IVAL_OPTION( LongLongSize,   long_long_size   )
-  IVAL_OPTION( FloatSize,      float_size       )
-  IVAL_OPTION( DoubleSize,     double_size      )
-  IVAL_OPTION( LongDoubleSize, long_double_size )
-  IVAL_OPTION( Alignment,      alignment        )
+  IVAL_OPTION( PointerSize,       ptr_size           )
+  IVAL_OPTION( EnumSize,          enum_size          )
+  IVAL_OPTION( IntSize,           int_size           )
+  IVAL_OPTION( ShortSize,         short_size         )
+  IVAL_OPTION( LongSize,          long_size          )
+  IVAL_OPTION( LongLongSize,      long_long_size     )
+  IVAL_OPTION( FloatSize,         float_size         )
+  IVAL_OPTION( DoubleSize,        double_size        )
+  IVAL_OPTION( LongDoubleSize,    long_double_size   )
+  IVAL_OPTION( Alignment,         alignment          )
+  IVAL_OPTION( CompoundAlignment, compound_alignment )
 
   STRLIST_OPTION( Include,          includes          )
   STRLIST_OPTION( Define,           defines           )
@@ -6483,49 +6494,61 @@ CBC::new( ... )
 	PPCODE:
 		CT_DEBUG_METHOD;
 
-		if( items % 2 == 0 )
+		if (items % 2 == 0)
 		  Perl_croak(aTHX_ "Number of configuration arguments "
 		                   "to %s must be even", method);
 		else {
 		  int i;
+		  SV *sv;
 		  CBC *THIS;
 
-		  Newz( 0, THIS, 1, CBC );
+		  Newz(0, THIS, 1, CBC);
+
+		  sv = newSViv(PTR2IV(THIS));
+		  SvREADONLY_on(sv);
+
+		  THIS->hv = newHV();
+
+		  if (hv_store(THIS->hv, "", 0, sv, 0) == NULL)
+		    fatal("Couldn't store THIS into object.");
+
+		  ST(0) = newRV_noinc((SV *)THIS->hv);
 
 		  /*
 		   *  bless the new object here, because HandleOption()
 		   *  may croak and DESTROY would not be called to free
 		   *  the memory that has been allocated
 		   */
-		  ST(0) = sv_newmortal();
-		  sv_setref_pv( ST(0), CLASS, (void *) THIS );
+		  sv_bless(ST(0), gv_stashpv(CLASS, 0));
+		  sv_2mortal(ST(0));
 
-		  THIS->as.bo                 = DEFAULT_BYTEORDER;
-		  THIS->enumType              = DEFAULT_ENUMTYPE;
-		  THIS->ixhash                = NULL;
-		  THIS->flags                 = 0;
-		  THIS->enum_hooks            = HT_new_ex(1, HT_AUTOGROW);
-		  THIS->struct_hooks          = HT_new_ex(1, HT_AUTOGROW);
-		  THIS->typedef_hooks         = HT_new_ex(1, HT_AUTOGROW);
+		  THIS->as.bo                  = DEFAULT_BYTEORDER;
+		  THIS->enumType               = DEFAULT_ENUMTYPE;
+		  THIS->ixhash                 = NULL;
+		  THIS->flags                  = 0;
+		  THIS->enum_hooks             = HT_new_ex(1, HT_AUTOGROW);
+		  THIS->struct_hooks           = HT_new_ex(1, HT_AUTOGROW);
+		  THIS->typedef_hooks          = HT_new_ex(1, HT_AUTOGROW);
 
-		  THIS->cfg.includes          = LL_new();
-		  THIS->cfg.defines           = LL_new();
-		  THIS->cfg.assertions        = LL_new();
-		  THIS->cfg.disabled_keywords = LL_new();
-		  THIS->cfg.keyword_map       = HT_new(1);
-		  THIS->cfg.ptr_size          = DEFAULT_PTR_SIZE;
-		  THIS->cfg.enum_size         = DEFAULT_ENUM_SIZE;
-		  THIS->cfg.int_size          = DEFAULT_INT_SIZE;
-		  THIS->cfg.short_size        = DEFAULT_SHORT_SIZE;
-		  THIS->cfg.long_size         = DEFAULT_LONG_SIZE;
-		  THIS->cfg.long_long_size    = DEFAULT_LONG_LONG_SIZE;
-		  THIS->cfg.float_size        = DEFAULT_FLOAT_SIZE;
-		  THIS->cfg.double_size       = DEFAULT_DOUBLE_SIZE;
-		  THIS->cfg.long_double_size  = DEFAULT_LONG_DOUBLE_SIZE;
-		  THIS->cfg.alignment         = DEFAULT_ALIGNMENT;
-		  THIS->cfg.keywords          = HAS_ALL_KEYWORDS;
-		  THIS->cfg.flags             = HAS_CPP_COMMENTS
-		                              | HAS_MACRO_VAARGS;
+		  THIS->cfg.includes           = LL_new();
+		  THIS->cfg.defines            = LL_new();
+		  THIS->cfg.assertions         = LL_new();
+		  THIS->cfg.disabled_keywords  = LL_new();
+		  THIS->cfg.keyword_map        = HT_new(1);
+		  THIS->cfg.ptr_size           = DEFAULT_PTR_SIZE;
+		  THIS->cfg.enum_size          = DEFAULT_ENUM_SIZE;
+		  THIS->cfg.int_size           = DEFAULT_INT_SIZE;
+		  THIS->cfg.short_size         = DEFAULT_SHORT_SIZE;
+		  THIS->cfg.long_size          = DEFAULT_LONG_SIZE;
+		  THIS->cfg.long_long_size     = DEFAULT_LONG_LONG_SIZE;
+		  THIS->cfg.float_size         = DEFAULT_FLOAT_SIZE;
+		  THIS->cfg.double_size        = DEFAULT_DOUBLE_SIZE;
+		  THIS->cfg.long_double_size   = DEFAULT_LONG_DOUBLE_SIZE;
+		  THIS->cfg.alignment          = DEFAULT_ALIGNMENT;
+		  THIS->cfg.compound_alignment = DEFAULT_COMPOUND_ALIGNMENT;
+		  THIS->cfg.keywords           = HAS_ALL_KEYWORDS;
+		  THIS->cfg.flags              = HAS_CPP_COMMENTS
+		                               | HAS_MACRO_VAARGS;
 
 		  if( gs_DisableParser ) {
 		    Perl_warn(aTHX_ XSCLASS " parser is DISABLED");
@@ -6617,15 +6640,14 @@ CBC::clone()
 	PREINIT:
 		CBC_METHOD( clone );
 		CBC *clone;
-		const char *class;
 
 	PPCODE:
 		CT_DEBUG_METHOD;
 
 		CHECK_VOID_CONTEXT;
 
-		Newz( 0, clone, 1, CBC );
-		Copy( THIS, clone, 1, CBC );
+		Newz(0, clone, 1, CBC);
+		Copy(THIS, clone, 1, CBC);
 
 		clone->cfg.includes =
 		           CloneStringList( THIS->cfg.includes );
@@ -6645,12 +6667,25 @@ CBC::clone()
 
 		clone->cfg.keyword_map = HT_clone(THIS->cfg.keyword_map, NULL);
 
-		init_parse_info( &clone->cpi );
-		clone_parse_info( &clone->cpi, &THIS->cpi );
+		init_parse_info(&clone->cpi);
+		clone_parse_info(&clone->cpi, &THIS->cpi);
 
-		class = HvNAME( SvSTASH( SvRV( ST(0) ) ) );
-		ST(0) = sv_newmortal();
-		sv_setref_pv( ST(0), CONST_CHAR(class), (void *) clone );
+		{
+		  const char *class = HvNAME(SvSTASH(SvRV(ST(0))));
+		  SV *sv = newSViv(PTR2IV(clone));
+
+		  SvREADONLY_on(sv);
+
+		  clone->hv = newHV();
+
+		  if (hv_store(clone->hv, "", 0, sv, 0) == NULL)
+		    fatal("Couldn't store THIS into object.");
+
+		  ST(0) = newRV_noinc((SV *)clone->hv);
+
+		  sv_bless(ST(0), gv_stashpv(CONST_CHAR(class), 0));
+		  sv_2mortal(ST(0));
+		}
 
 		XSRETURN(1);
 
@@ -7117,47 +7152,62 @@ CBC::pack( type, data = &PL_sv_undef, string = NULL )
 #
 ################################################################################
 
-SV *
+void
 CBC::unpack( type, string )
 	const char *type
 	SV *string
 
 	PREINIT:
-		CBC_METHOD( unpack );
+		CBC_METHOD(unpack);
 		STRLEN len;
 		MemberInfo mi;
 		PackInfo pack;
+		unsigned long i, count;
 
-	CODE:
-		CT_DEBUG_METHOD1( "'%s'", type );
+	PPCODE:
+		CT_DEBUG_METHOD1("'%s'", type);
 
 		CHECK_VOID_CONTEXT;
 
 		if ((SvFLAGS(string) & (SVf_POK|SVp_POK)) == 0)
 		  Perl_croak(aTHX_ "Type of arg 2 to unpack must be string");
 
-		if( !GetMemberInfo( aTHX_ THIS, type, &mi ) )
+		if (!GetMemberInfo(aTHX_ THIS, type, &mi))
 		  Perl_croak(aTHX_ "Cannot find '%s'", type);
 
-		if( mi.flags )
-		  WARN_FLAGS( type, mi.flags );
+		if (mi.flags)
+		  WARN_FLAGS(type, mi.flags);
 
-		pack.bufptr           =
-		pack.buf.buffer       = SvPV( string, len );
-		pack.buf.pos          = 0;
-		pack.buf.length       = len;
+		pack.buf.buffer = SvPV(string, len);
+		pack.buf.length = len;
+		pack.alignment  = THIS->cfg.alignment;
 
-		pack.align_base       = 0;
-		pack.alignment        = THIS->cfg.alignment;
+		if (GIMME_V == G_SCALAR)
+		{
+		  if (mi.size > len)
+		    WARN((aTHX_ "Data too short"));
 
-		if (mi.size > len)
-		  WARN((aTHX_ "Data too short"));
+		  count = 1;
+		}
+		else
+		  count = mi.size == 0 ? 1 : len / mi.size;
 
-		RETVAL = GetType( aTHX_ THIS, &pack, &mi.type,
-		                        mi.pDecl, mi.level );
+		EXTEND(SP, count);
 
-	OUTPUT:
-		RETVAL
+		for (i = 0; i < count; i++)
+		{
+		  SV *sv;
+
+		  pack.buf.pos    = i*mi.size;
+		  pack.bufptr     = pack.buf.buffer + pack.buf.pos;
+		  pack.align_base = 0;
+
+		  sv = GetType(aTHX_ THIS, &pack, &mi.type, mi.pDecl, mi.level);
+
+		  PUSHs(sv_2mortal(sv));
+		}
+
+		XSRETURN(count);
 
 ################################################################################
 #

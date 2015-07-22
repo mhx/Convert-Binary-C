@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:38:00 +0000 $
-# $Revision: 55 $
-# $Snapshot: /Convert-Binary-C/0.51 $
+# $Date: 2004/05/23 13:05:29 +0100 $
+# $Revision: 56 $
+# $Snapshot: /Convert-Binary-C/0.52 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -219,7 +219,7 @@ ENDUSAGE
 } @ARGV;
 
 if( $FEATURES{'$coverage'}{enabled} ) {
-  push @CLEAN, qw( *.gcov *.da *.bb *.bbg );
+  push @CLEAN, qw( *.gcov *.gcda *.gcno *.da *.bb *.bbg );
 }
 
 # run the IEEE check anyway
@@ -338,8 +338,12 @@ sub configure {
     'depend' => { find_depend( @INC_PATH ) },
   };
 
-  $FEATURES{'$coverage'}{enabled} and
-      $config->{'OPTIMIZE'} = '-g -fprofile-arcs -ftest-coverage';
+  if ($FEATURES{'$coverage'}{enabled}) {
+    $config->{'OPTIMIZE'} = '-g -fprofile-arcs -ftest-coverage';
+    if ($Config{gccversion} =~ /(\d+)\.(\d+)\.(\d+)/ && ($1+1e-3*$2+1e-6*$3) >= 3.004) {
+      $config->{'LDLOADLIBS'} = '-lgcov';  # not a valid parameter, but works...
+    }
+  }
 
   $config;
 }
@@ -359,7 +363,8 @@ sub MY::constants {
 YACC = $::BISON
 
 # Options for valgrind
-VALGRIND_OPTIONS = --leak-check=yes \\
+VALGRIND_OPTIONS = --tool=memcheck \\
+		   --leak-check=yes \\
 		   --leak-resolution=high \\
 		   --show-reachable=yes \\
 		   --num-callers=50
@@ -402,7 +407,7 @@ END
   $::FEATURES{'$coverage'}{enabled} and $postamble .= <<END;
 
 coverage:
-	\@for file in *.bb; do gcov \$\$file; done
+	\@for file in *.bb *.gcda; do gcov \$\$file; done
 END
 
   $postamble;

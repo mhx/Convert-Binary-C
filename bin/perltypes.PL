@@ -11,7 +11,7 @@ print OUT <<'!NO!SUBS!';
 # $Author: mhx $
 # $Date: 2004/03/22 19:37:55 +0000 $
 # $Revision: 8 $
-# $Snapshot: /Convert-Binary-C/0.51 $
+# $Snapshot: /Convert-Binary-C/0.52 $
 # $Source: /bin/perltypes.PL $
 #
 ################################################################################

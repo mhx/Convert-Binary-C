@@ -121,6 +121,8 @@ t/126_indexed.t
 t/127_flexarray.t
 t/128_hooks.t
 t/129_substr.t
+t/130_compiler.t
+t/131_align.t
 t/801_speed.t
 t/802_threads.t
 t/803_debug.t
@@ -135,6 +137,16 @@ t/cache/header.1
 t/cache/header.2
 t/cache/sub/dir.1
 t/cache/sub/dir.2
+t/compiler/gcc-arm.bin
+t/compiler/gcc-arm.cfg
+t/compiler/gcc-arm.dat
+t/compiler/gcc-hp64.bin
+t/compiler/gcc-hp64.cfg
+t/compiler/gcc-hp64.dat
+t/compiler/gcc-vax.bin
+t/compiler/gcc-vax.cfg
+t/compiler/gcc-vax.dat
+t/compiler/test.h
 t/include/files/empty.h
 t/include/files/files.h
 t/include/files/ifdef.h

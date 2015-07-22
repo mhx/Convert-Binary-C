@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/22 19:37:56 +0000 $
-* $Revision: 37 $
-* $Snapshot: /Convert-Binary-C/0.51 $
+* $Date: 2004/05/20 20:22:00 +0100 $
+* $Revision: 38 $
+* $Snapshot: /Convert-Binary-C/0.52 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -119,6 +119,9 @@ static void update_struct( const CParseConfig *pCPC, Struct *pStruct )
   }
 
   alignment = pStruct->pack ? pStruct->pack : pCPC->alignment;
+
+  pStruct->align = alignment < pCPC->compound_alignment
+                 ? alignment : pCPC->compound_alignment;
 
   LL_foreach( pStructDecl, pStruct->declarations ) {
 

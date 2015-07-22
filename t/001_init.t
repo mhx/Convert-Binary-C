@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:38:00 +0000 $
-# $Revision: 13 $
-# $Snapshot: /Convert-Binary-C/0.51 $
+# $Date: 2004/05/23 23:07:50 +0100 $
+# $Revision: 14 $
+# $Snapshot: /Convert-Binary-C/0.52 $
 # $Source: /t/001_init.t $
 #
 ################################################################################
@@ -22,7 +22,7 @@ use constant FAIL    => 0;
 
 $^W = 1;
 
-BEGIN { plan tests => 19 }
+BEGIN { plan tests => 27 }
 
 #===================================================================
 # try to require the modules (2 tests)
@@ -144,3 +144,29 @@ eval {
 ok($@,'');
 ok(not defined $p);
 
+#===================================================================
+# check object corruption (8 tests)
+#===================================================================
+for my $class (qw(Convert::Binary::C Convert::Binary::C::Cached)) {
+  eval { $p = $class->new };
+  ok($@,'');
+  
+  eval { $p->{''} = 0 };
+  ok($@, qr/^Modification of a read-only value attempted/);
+  
+  $tmp = delete $p->{''};
+  
+  eval { $p->clean };
+  ok($@, qr/THIS is corrupt/);
+  
+  $p->{''} = $tmp;
+  
+  $e = {'' => $tmp};
+  bless $e, ref $p;
+  
+  eval { $e->clean };
+  ok($@, qr/THIS->hv is corrupt/);
+  
+  # don't forget to rebless to avoid warnings during cleanup
+  bless $e, 'main';
+}

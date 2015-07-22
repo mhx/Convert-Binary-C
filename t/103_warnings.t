@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:38:01 +0000 $
-# $Revision: 38 $
-# $Snapshot: /Convert-Binary-C/0.51 $
+# $Date: 2004/05/20 21:06:40 +0100 $
+# $Revision: 39 $
+# $Snapshot: /Convert-Binary-C/0.52 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
@@ -21,7 +21,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 5166 }
+BEGIN { plan tests => 5178 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -217,6 +217,7 @@ eval_test(q{
   $x = $p->unpack( 'nodef', $data );                       # (E) Got no struct declarations in resolution of 'nodef'
   $x = $p->unpack( 'xxx', $data );                         # (E) Got no definition for 'union xxx'
   $x = $p->unpack( 'test', $data );                        # (1) Data too short
+  @x = $p->unpack( 'test', $data );                        # no warning
   $x = $p->unpack( 'hasbf', $data );                       # (1) Bitfields are unsupported in unpack('hasbf')
   $x = $p->unpack( 't_unsafe', $data );                    # (1) Unsafe values used in unpack('t_unsafe')
                                                            # (1) Data too short

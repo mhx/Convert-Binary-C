@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/22 19:37:57 +0000 $
-* $Revision: 13 $
-* $Snapshot: /Convert-Binary-C/0.51 $
+* $Date: 2004/05/23 11:37:00 +0100 $
+* $Revision: 14 $
+* $Snapshot: /Convert-Binary-C/0.52 $
 * $Source: /ctlib/cttype.h $
 *
 ********************************************************************************
@@ -79,9 +79,6 @@
 #define T_USER_FLAG_3                  0x00400000
 #define T_USER_FLAG_4                  0x00800000
 
-/* this flag indicates if a enum/struct/union has been typedef'd */
-#define T_HASTYPEDEF                   0x20000000
-
 /* this flag indicates the usage of bitfields in structures as they're unsupported */
 #define T_HASBITFIELD                  0x40000000
 
@@ -99,6 +96,45 @@
 #define IS_TYP_TYPEDEF( ptr )         ( GET_CTYPE( ptr ) == TYP_TYPEDEF )
 #define IS_TYP_TYPEDEF_LIST( ptr )    ( GET_CTYPE( ptr ) == TYP_TYPEDEF_LIST )
 
+/* refcount increment / decrement */
+
+#define CTT_REFCOUNT_INC(ptr)                                                  \
+        do {                                                                   \
+          register void *_p = (ptr);                                           \
+          if (_p) {                                                            \
+            switch (GET_CTYPE(_p)) {                                           \
+              case TYP_ENUM:                                                   \
+                if (((Struct *) _p)->refcount < ~((unsigned)0))                \
+                  ((Struct *) _p)->refcount++;                                 \
+                break;                                                         \
+              case TYP_STRUCT:                                                 \
+                if (((EnumSpecifier *) _p)->refcount < ~((unsigned)0))         \
+                  ((EnumSpecifier *) _p)->refcount++;                          \
+                break;                                                         \
+              default:                                                         \
+                break;                                                         \
+            }                                                                  \
+          }                                                                    \
+        } while (0)
+
+#define CTT_REFCOUNT_DEC(ptr)                                                  \
+        do {                                                                   \
+          register void *_p = (ptr);                                           \
+          if (_p) {                                                            \
+            switch (GET_CTYPE(_p)) {                                           \
+              case TYP_ENUM:                                                   \
+                if (((Struct *) _p)->refcount > 0)                             \
+                  ((Struct *) _p)->refcount--;                                 \
+                break;                                                         \
+              case TYP_STRUCT:                                                 \
+                if (((EnumSpecifier *) _p)->refcount > 0)                      \
+                  ((EnumSpecifier *) _p)->refcount--;                          \
+                break;                                                         \
+              default:                                                         \
+                break;                                                         \
+            }                                                                  \
+          }                                                                    \
+        } while (0)
 
 /*===== TYPEDEFS =============================================================*/
 
@@ -138,6 +174,7 @@ typedef struct {
 typedef struct {
   CTType      ctype;
   u_32        tflags;
+  unsigned    refcount;
   unsigned    sizes[ES_NUM_ENUM_SIZES];
   ContextInfo context;
   LinkedList  enumerators;
@@ -166,6 +203,7 @@ typedef struct {
 typedef struct {
   CTType      ctype;
   u_32        tflags;
+  unsigned    refcount;
   unsigned    align;
   unsigned    size;
   unsigned    pack;

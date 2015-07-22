@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 20:15:22 +0000 $
-# $Revision: 22 $
-# $Snapshot: /Convert-Binary-C/0.51 $
+# $Date: 2004/05/24 22:32:34 +0100 $
+# $Revision: 24 $
+# $Snapshot: /Convert-Binary-C/0.52 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
@@ -32,24 +32,20 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.51 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
-
-my %cache;
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.52 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 sub new
 {
   my $class = shift;
   my $self = $class->SUPER::new;
 
-  $cache{"$self"} = {
-    cache      => undef,
-    parsed     => 0,
-    uses_cache => 0,
-  };
+  $self->{cache}      = undef;
+  $self->{parsed}     = 0;
+  $self->{uses_cache} = 0;
 
   @_ % 2 and croak "Number of configuration arguments to new must be even";
 
-  @_ and $self->configure( @_ );
+  @_ and $self->configure(@_);
 
   return $self;
 }
@@ -58,50 +54,48 @@ sub configure
 {
   my $self = shift;
 
-  if( @_ < 2 and not defined wantarray ) {
+  if (@_ < 2 and not defined wantarray) {
     $^W and carp "Useless use of configure in void context";
     return;
   }
 
-  my $c = $cache{"$self"};
-
-  if( @_ == 0 ) {
+  if (@_ == 0) {
     my $cfg = $self->SUPER::configure;
-    $cfg->{Cache} = $c->{cache};
+    $cfg->{Cache} = $self->{cache};
     return $cfg;
   }
-  elsif( @_ == 1 and $_[0] eq 'Cache' ) {
-    return $c->{cache};
+  elsif (@_ == 1 and $_[0] eq 'Cache') {
+    return $self->{cache};
   }
 
   my @args;
 
-  if( @_ == 1 ) {
+  if (@_ == 1) {
     @args = @_;
   }
-  elsif( @_ % 2 == 0 ) {
-    while( @_ ) {
+  elsif (@_ % 2 == 0) {
+    while (@_) {
       my %arg = splice @_, 0, 2;
-      if( exists $arg{Cache} ) {
-        if( $c->{parsed} ) {
+      if (exists $arg{Cache}) {
+        if ($self->{parsed}) {
           croak 'Cache cannot be configured after parsing';
         }
-        elsif( ref $arg{Cache} ) {
+        elsif (ref $arg{Cache}) {
           croak 'Cache must be a string value, not a reference';
         }
         else {
-          if( defined $arg{Cache} ) {
+          if (defined $arg{Cache}) {
             my @missing;
             eval { require Data::Dumper };
             $@ and push @missing, 'Data::Dumper';
             eval { require IO::File };
             $@ and push @missing, 'IO::File';
-            if( @missing ) {
+            if (@missing) {
               $^W and carp "Cannot load ", join(' and ', @missing), ", disabling cache";
               undef $arg{Cache};
             }
           }
-          $c->{cache} = $arg{Cache};
+          $self->{cache} = $arg{Cache};
         }
       }
       else { push @args, %arg }
@@ -110,8 +104,8 @@ sub configure
 
   my $opt = $self;
 
-  if( @args ) {
-    $opt = eval { $self->SUPER::configure( @args ) };
+  if (@args) {
+    $opt = eval { $self->SUPER::configure(@args) };
     $@ =~ s/\s+at.*?Cached\.pm.*//s, croak $@ if $@;
   }
 
@@ -122,11 +116,10 @@ sub clean
 {
   my $self = shift;
 
-  $cache{"$self"} = {
-    cache      => $cache{"$self"}{cache},
-    parsed     => 0,
-    uses_cache => 0,
-  };
+  delete $self->{$_} for grep !/^(?:|cache|parsed|uses_cache)$/, keys %$self;
+
+  $self->{parsed}     = 0;
+  $self->{uses_cache} = 0;
 
   $self->SUPER::clean;
 }
@@ -134,23 +127,19 @@ sub clean
 sub clone
 {
   my $self = shift;
-  my $s = $cache{"$self"};
 
-  $s->{parsed} or croak "Call to clone without parse data";
-
-  unless( defined wantarray ) {
+  unless (defined wantarray) {
     $^W and carp "Useless use of clone in void context";
     return;
   }
 
-  my $c;
   my $clone = $self->SUPER::clone;
 
-  for( keys %$s ) {
-    $c->{$_} = ref $_ eq 'ARRAY' ? [@{$s->{$_}}] : $s->{$_};
+  for (keys %$self) {
+    if ($_) {
+      $clone->{$_} = ref $_ eq 'ARRAY' ? [@{$self->{$_}}] : $self->{$_};
+    }
   }
-
-  $cache{"$clone"} = $c;
 
   $clone;
 }
@@ -158,7 +147,7 @@ sub clone
 sub parse_file
 {
   my $self = shift;
-  my($warn,$error) = $self->__parse( 'file', $_[0] );
+  my($warn,$error) = $self->__parse('file', $_[0]);
   for my $w ( @$warn ) { carp $w }
   defined $error and croak $error;
   defined wantarray and return $self;
@@ -167,7 +156,7 @@ sub parse_file
 sub parse
 {
   my $self = shift;
-  my($warn,$error) = $self->__parse( 'code', $_[0] );
+  my($warn,$error) = $self->__parse('code', $_[0]);
   for my $w ( @$warn ) { carp $w }
   defined $error and croak $error;
   defined wantarray and return $self;
@@ -176,79 +165,70 @@ sub parse
 sub dependencies
 {
   my $self = shift;
-  my $c = $cache{"$self"};
 
-  $c->{parsed} or croak "Call to dependencies without parse data";
+  $self->{parsed} or croak "Call to dependencies without parse data";
 
-  unless( defined wantarray ) {
+  unless (defined wantarray) {
     $^W and carp "Useless use of dependencies in void context";
     return;
   }
 
-  $c->{files} || $self->SUPER::dependencies;
-}
-
-sub DESTROY
-{
-  my $self = shift;
-  delete $cache{"$self"};
-  $self->SUPER::DESTROY;
+  $self->{files} || $self->SUPER::dependencies;
 }
 
 sub __uses_cache
 {
   my $self = shift;
-  $cache{"$self"}{uses_cache};
+  $self->{uses_cache};
 }
 
 sub __parse
 {
   my $self = shift;
-  my $c = $cache{"$self"};
 
-  if( defined $c->{cache} ) {
-    $c->{parsed} and croak "Cannot parse more than once for cached objects";
+  if (defined $self->{cache}) {
+    $self->{parsed} and croak "Cannot parse more than once for cached objects";
 
-    $c->{$_[0]} = $_[1];
+    $self->{$_[0]} = $_[1];
 
-    if( $self->__can_use_cache ) {
+    if ($self->__can_use_cache) {
       my @WARN;
       {
         local $SIG{__WARN__} = sub { push @WARN, $_[0] };
-        eval { $self->SUPER::parse_file( $c->{cache} ) };
+        eval { $self->SUPER::parse_file($self->{cache}) };
       }
-      unless( $@ or @WARN ) {
-        $c->{parsed}     = 1;
-        $c->{uses_cache} = 1;
+      unless ($@ or @WARN) {
+        $self->{parsed}     = 1;
+        $self->{uses_cache} = 1;
         return;
       }
       $self->clean;
     }
   }
 
-  $c->{parsed} = 1;
+  $self->{parsed} = 1;
 
   my(@warnings, $error);
   {
     local $SIG{__WARN__} = sub { push @warnings, $_[0] };
 
-    if( $_[0] eq 'file' ) {
-      eval { $self->SUPER::parse_file( $_[1] ) };
+    if ($_[0] eq 'file') {
+      eval { $self->SUPER::parse_file($_[1]) };
     }
     else {
-      eval { $self->SUPER::parse( $_[1] ) };
+      eval { $self->SUPER::parse($_[1]) };
     }
   }
 
-  if( $@ ) {
+  if ($@) {
     $error = $@;
     $error =~ s/\s+at.*?Cached\.pm.*//s;
   }
   else {
-    defined $c->{cache} and $self->__save_cache;
+    defined $self->{cache} and $self->__save_cache;
   }
 
-  for( @warnings ) { s/\s+at.*?Cached\.pm.*//s }
+  for (@warnings) { s/\s+at.*?Cached\.pm.*//s }
 
   (\@warnings, $error);
 }
@@ -256,21 +236,20 @@ sub __parse
 sub __can_use_cache
 {
   my $self = shift;
-  my $c = $cache{"$self"};
   my $fh = new IO::File;
 
-  -e $c->{cache} and -s _ or return 0;
+  -e $self->{cache} and -s _ or return 0;
 
-  unless( $fh->open( $c->{cache} ) ) {
-    $^W and carp "Cannot open '$c->{cache}': $!";
+  unless ($fh->open($self->{cache})) {
+    $^W and carp "Cannot open '$self->{cache}': $!";
     return 0;
   }
 
   my @config = do {
-    defined( my $config = <$fh> ) or return 0;
+    defined(my $config = <$fh>) or return 0;
     $config =~ /^#if\s+0/ or return 0;
     local $/ = $/.'#endif';
-    chomp( $config = <$fh> );
+    chomp($config = <$fh>);
     $config =~ s/^\*//gms;
     eval $config;
   };
@@ -280,14 +259,14 @@ sub __can_use_cache
 
   my %config = @config;
 
-  my $what = exists $c->{code} ? 'code' : 'file';
+  my $what = exists $self->{code} ? 'code' : 'file';
 
   exists $config{$what}
-      and $config{$what} eq $c->{$what}
-      and __reccmp( $config{cfg}, $self->configure )
+      and $config{$what} eq $self->{$what}
+      and __reccmp($config{cfg}, $self->configure)
       or return 0;
 
-  while( my($file, $spec) = each %{$config{files}} ) {
+  while (my($file, $spec) = each %{$config{files}}) {
     -e $file or return 0;
     my($size, $mtime, $ctime) = (stat(_))[7,9,10];
     $spec->{size} == $size
@@ -296,7 +275,7 @@ sub __can_use_cache
       or return 0;
   }
 
-  $c->{files} = $config{files};
+  $self->{files} = $config{files};
 
   return 1;
 }
@@ -304,22 +283,21 @@ sub __can_use_cache
 sub __save_cache
 {
   my $self = shift;
-  my $c = $cache{"$self"};
   my $fh = new IO::File;
 
-  $fh->open( ">$c->{cache}" ) or croak "Cannot open '$c->{cache}': $!";
+  $fh->open(">$self->{cache}") or croak "Cannot open '$self->{cache}': $!";
 
-  my $what = exists $c->{code} ? 'code' : 'file';
+  my $what = exists $self->{code} ? 'code' : 'file';
 
-  my $config = Data::Dumper->new( [{ $what  => $c->{$what},
-                                     cfg    => $self->configure,
-                                     files  => scalar $self->SUPER::dependencies,
-                                  }], ['*'] )->Indent(1)->Dump;
+  my $config = Data::Dumper->new([{ $what => $self->{$what},
+                                    cfg   => $self->configure,
+                                    files => scalar $self->SUPER::dependencies,
+                                 }], ['*'])->Indent(1)->Dump;
   $config =~ s/[^(]*//;
   $config =~ s/^/*/gms;
 
   print $fh "#if 0\n", $config, "#endif\n\n",
-            do { local $^W; $self->sourcify( { Context => 1 } ) };
+            do { local $^W; $self->sourcify({ Context => 1 }) };
 }
 
 sub __reccmp
@@ -331,16 +309,16 @@ sub __reccmp
 
   ref $ref or return $ref eq $val;
 
-  if( ref $ref eq 'ARRAY' ) {
+  if (ref $ref eq 'ARRAY') {
     @$ref == @$val or return 0;
-    for( 0..$#$ref ) {
-      __reccmp( $ref->[$_], $val->[$_] ) or return 0;
+    for (0..$#$ref) {
+      __reccmp($ref->[$_], $val->[$_]) or return 0;
     }
   }
-  elsif( ref $ref eq 'HASH' ) {
+  elsif (ref $ref eq 'HASH') {
     keys %$ref == keys %$val or return 0;
-    for( keys %$ref ) {
-      __reccmp( $ref->{$_}, $val->{$_} ) or return 0;
+    for (keys %$ref) {
+      __reccmp($ref->{$_}, $val->{$_}) or return 0;
     }
   }
   else { return 0 }

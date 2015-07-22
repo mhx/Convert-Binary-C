@@ -1,4 +1,20 @@
 -------------------------
+Version 0.52 (2004-05-25)
+-------------------------
+
+* added new CompoundAlignment option
+
+* added new behaviour for unpack method in list context
+
+* simplify inheriting from Convert::Binary::C
+
+* fixed a bug in the initializer method that caused
+  wrong initialization strings for unnamed unions
+
+* fixed a systematic bug that caused sourcify to return
+  invalid C code in a few special cases
+
+-------------------------
 Version 0.51 (2004-03-23)
 -------------------------
 

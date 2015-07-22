@@ -5,7 +5,13 @@ What's to do?
 for future releases (in no special order):
 ------------------------------------------
 
+* handle Cray behaviour
+
 * make byteorder.[ch] work with "binary" strings (0b01001)
+
+* use Perl malloc throughout ctlib / ucpp
+
+* support conversion to new 5.8.5 (un)pack templates
 
 * improve hooks documentation
 
@@ -94,10 +100,6 @@ for future releases (in no special order):
   (SoftFloat or sth. similar?)
 
 * more gcov, more tests
-
-* map MemAlloc => malloc / Free => free? / macro? (speed?)
-
-* optimize/cleanup tests
 
 * have a definition() method?
   Like typedef/compound/enum, but for all of 'em?

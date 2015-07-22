@@ -2,14 +2,14 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/17 21:06:22 +0000 $
-# $Revision: 1 $
-# $Snapshot: /Convert-Binary-C/0.51 $
+# $Date: 2004/04/04 13:27:49 +0100 $
+# $Revision: 2 $
+# $Snapshot: /Convert-Binary-C/0.52 $
 # $Source: /t/127_flexarray.t $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2004 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 30 }
+BEGIN { plan tests => 49 }
 
 my $c = new Convert::Binary::C IntSize => 4, ShortSize => 2, Alignment => 4;
 
@@ -57,6 +57,11 @@ struct flex2 {
 
 };
 
+struct flex3 {
+  int a;
+  int b[][2][3][4];
+};
+
 typedef int incomplete[];
 typedef int incomplete2[1];
 
@@ -69,10 +74,25 @@ ok($c->offsetof('flex1', 'e[0].b[0][0]'), 24);
 ok($c->sizeof('flex2'), 4);
 ok($c->offsetof('flex2', 'b[0].b'), 6);
 
+ok($c->sizeof('flex3'), 4);
+ok($c->sizeof('flex3.b'), 0);
+ok($c->sizeof('flex3.b[0]'), 96);
+ok($c->sizeof('flex3.b[0][1]'), 48);
+ok($c->sizeof('flex3.b[0][1][2]'), 16);
+ok($c->sizeof('flex3.b[0][1][2][3]'), 4);
+ok($c->offsetof('flex3', 'b[0]'), 4);
+ok($c->offsetof('flex3', 'b[0][0]'), 4);
+ok($c->offsetof('flex3', 'b[0][0][0]'), 4);
+ok($c->offsetof('flex3', 'b[0][0][0][0]'), 4);
+ok($c->offsetof('flex3', 'b[1]'), 100);
+ok($c->offsetof('flex3', 'b[0][1]'), 52);
+ok($c->offsetof('flex3', 'b[0][0][1]'), 20);
+ok($c->offsetof('flex3', 'b[0][0][0][1]'), 8);
+
 ok($c->sizeof('incomplete'), 0);
 ok($c->offsetof('incomplete', '[10]'), 40);
 
-my $u;
+my($u, $p);
 
 my $d = pack 'C*', 1 .. 4;
 $u = $c->unpack('flex2', $d);
@@ -114,3 +134,15 @@ ok(defined $u->{b}[0]{b});
 $d .= pack 'C', 9;
 $u = $c->unpack('flex2', $d);
 ok(scalar @{$u->{b}}, 2);
+
+$d = pack 'C*', map { $_ % 256 } 1 .. (10*$c->sizeof('flex3.b[0]'));
+$u = $c->unpack('flex3.b', $d);
+$p = $c->pack('flex3.b', $u);
+ok($d, $p);
+
+for my $member (qw( b[0] b[0][1] b[0][1][2] b[0][1][2][3] )) {
+  $d = pack 'C*', 1 .. $c->sizeof("flex3.$member");
+  $u = $c->unpack("flex3.$member", $d);
+  $p = $c->pack("flex3.$member", $u);
+  ok($d, $p);
+}

@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:38:02 +0000 $
-# $Revision: 10 $
-# $Snapshot: /Convert-Binary-C/0.51 $
+# $Date: 2004/05/23 11:38:49 +0100 $
+# $Revision: 11 $
+# $Snapshot: /Convert-Binary-C/0.52 $
 # $Source: /t/109_sourcify.t $
 #
 ################################################################################
@@ -108,6 +108,14 @@ struct foo {
   enum { FOOBAR } bar;
   enum buzz       baz;
 };
+struct {
+  struct {
+    enum { FOO } bar;
+  } x;
+  union {
+    enum { ZAP } husel;
+  };
+} x;
 ENDC
 };
 ok($@,'',"failed to parse C code");

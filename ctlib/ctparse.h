@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/03/22 19:37:57 +0000 $
-* $Revision: 21 $
-* $Snapshot: /Convert-Binary-C/0.51 $
+* $Date: 2004/05/20 20:22:02 +0100 $
+* $Revision: 22 $
+* $Snapshot: /Convert-Binary-C/0.52 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
@@ -67,6 +67,7 @@ typedef struct {
 
 typedef struct {
   unsigned alignment;
+  unsigned compound_alignment;
   unsigned int_size;
   unsigned short_size;
   unsigned long_size;

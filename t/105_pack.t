@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:38:01 +0000 $
-# $Revision: 15 $
-# $Snapshot: /Convert-Binary-C/0.51 $
+# $Date: 2004/05/20 21:06:41 +0100 $
+# $Revision: 16 $
+# $Snapshot: /Convert-Binary-C/0.52 $
 # $Source: /t/105_pack.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 184 }
+BEGIN { plan tests => 208 }
 
 eval {
   $p = new Convert::Binary::C ByteOrder     => 'BigEndian'
@@ -43,6 +43,8 @@ typedef signed char i_8;
 typedef long double ldbl;
 typedef struct { char a; int b[3][3]; } undef_test[3];
 struct zero { int :0; };
+typedef int incomplete[];
+struct flexarray { int a; u_8 b[]; };
 EOF
 };
 ok($@,'',"parse() failed");
@@ -339,6 +341,47 @@ chkwarn( qr/Bitfields are unsupported in pack\('zero'\)/ );
 ok(reccmp_keys({}, $p->unpack('zero', '')), '', 'unpack on zero size type');
 chkwarn( qr/Bitfields are unsupported in pack\('zero'\)/ );
 
+#===================================================================
+# check unpack in list context
+#===================================================================
+
+{
+  for my $t (qw( u_8 incomplete flexarray )) {
+    print "# --- $t ---\n";
+
+    my $s = $p->sizeof($t);
+
+    my $n = $s || 42;
+
+    my $d1 = pack "C*", 2 .. 3*$n;
+    my $d2 = pack "C*", 1 .. 3*$n;
+    my $d3 = pack "C*", 0 .. 3*$n;
+
+    my $x1 = $p->unpack($t, $d1);
+    my @x1 = $p->unpack($t, $d1);
+    my $x2 = $p->unpack($t, $d2);
+    my @x2 = $p->unpack($t, $d2);
+    my $x3 = $p->unpack($t, $d3);
+    my @x3 = $p->unpack($t, $d3);
+
+    ok(scalar @x1, $s ? int(length($d1)/$s) : 1);
+    ok(scalar @x2, $s ? int(length($d2)/$s) : 1);
+    ok(scalar @x3, $s ? int(length($d3)/$s) : 1);
+
+    ok($p->pack($t, $x1), $p->pack($t, $x1[0]));
+    ok($p->pack($t, $x2), $p->pack($t, $x2[0]));
+    ok($p->pack($t, $x3), $p->pack($t, $x3[0]));
+
+    if ($s > 0) {
+      my $p1 = $p->pack($t, $x1[1]);
+      my $p2 = $p->pack($t, $x2[1]);
+      my $p3 = $p->pack($t, $x3[1]);
+      ok($p1, substr($d1, $s, length $p1));
+      ok($p2, substr($d2, $s, length $p2));
+      ok($p3, substr($d3, $s, length $p3));
+    }
+  }
+}
 
 sub rec_write
 {

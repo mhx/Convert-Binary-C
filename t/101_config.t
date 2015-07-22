@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:38:01 +0000 $
-# $Revision: 20 $
-# $Snapshot: /Convert-Binary-C/0.51 $
+# $Date: 2004/05/20 20:22:55 +0100 $
+# $Revision: 21 $
+# $Snapshot: /Convert-Binary-C/0.52 $
 # $Source: /t/101_config.t $
 #
 ################################################################################
@@ -23,7 +23,7 @@ use constant FAIL    => 0;
 
 $^W = 1;
 
-BEGIN { plan tests => 1762 }
+BEGIN { plan tests => 1910 }
 
 $debug = Convert::Binary::C::feature( 'debug' );
 
@@ -370,7 +370,7 @@ check_config( $_, @tests ) for qw( FloatSize
   @refs
 );
 
-check_config( $_, @tests ) for qw( Alignment );
+check_config( $_, @tests ) for qw( Alignment CompoundAlignment );
 
 check_config( 'ByteOrder',
   { in => 'BigEndian',    result => SUCCEED },
@@ -549,6 +549,7 @@ ok( $@, qr/Invalid method some_method called.*$thisfile/ );
   'FloatSize' => 4,
   'HasCPPComments' => 1,
   'Alignment' => 1,
+  'CompoundAlignment' => 1,
   'Define' => [ 'DEBUGGING', 'FOO=123' ],
   'HasMacroVAARGS' => 1,
   'LongSize' => 4,
@@ -586,6 +587,7 @@ ok( compare_config( \%config, $cfg ) );
   'FloatSize' => 8,
   'HasCPPComments' => 1,
   'Alignment' => 2,
+  'CompoundAlignment' => 4,
   'Define' => [ 'DEBUGGING', 'FOO=123', 'BAR=456' ],
   'HasMacroVAARGS' => 1,
   'LongSize' => 4,
@@ -607,7 +609,8 @@ eval {
   $p = new Convert::Binary::C %config;
 
   $p->UnsignedChars( 1 )->configure( ShortSize => 4, EnumType => 'Both', EnumSize => 0 )
-    ->Include( ['/usr/local/include'] )->DoubleSize( 8 );
+    ->Include( ['/usr/local/include'] )->DoubleSize( 8 )
+    ->CompoundAlignment( 4 );
 
   $p->FloatSize( 8 )->Include( qw( /usr/include /include ) )->DisabledKeywords( [qw( const register )] )
     ->Alignment( 2 )->Define( qw( BAR=456 ) )->configure( ByteOrder => 'BigEndian' );
