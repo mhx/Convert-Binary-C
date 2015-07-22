@@ -11,13 +11,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2008/04/15 14:37:45 +0100 $
-* $Revision: 95 $
+* $Date: 2009/03/15 16:12:51 +0000 $
+* $Revision: 98 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -203,6 +203,72 @@ struct _parserState {
 
 };
 
+%}
+
+/*===== YACC PARSER DEFINITION ================================================*/
+
+/* This refined grammar resolves several typedef ambiguities  in  the
+draft  proposed  ANSI  C  standard  syntax  down  to  1  shift/reduce
+conflict, as reported by a YACC process.  Note  that  the  one  shift
+reduce  conflicts  is the traditional if-if-else conflict that is not
+resolved by the grammar.  This ambiguity can  be  removed  using  the
+method  described in the Dragon Book (2nd edition), but this does not
+appear worth the effort.
+
+There was quite a bit of effort made to reduce the conflicts to  this
+level,  and  an  additional effort was made to make the grammar quite
+similar to the C++ grammar being developed in  parallel.   Note  that
+this grammar resolves the following ANSI C ambiguity as follows:
+
+ANSI  C  section  3.5.6,  "If  the [typedef name] is redeclared at an
+inner scope, the type specifiers shall not be omitted  in  the  inner
+declaration".   Supplying type specifiers prevents consideration of T
+as a typedef name in this grammar.  Failure to supply type specifiers
+forced the use of the TYPEDEFname as a type specifier.
+
+ANSI C section 3.5.4.3, "In a parameter declaration, a single typedef
+name in parentheses is  taken  to  be  an  abstract  declarator  that
+specifies  a  function  with  a  single  parameter,  not as redundant
+parentheses around the identifier".  This is extended  to  cover  the
+following cases:
+
+typedef float T;
+int noo(const (T[5]));
+int moo(const (T(int)));
+...
+
+Where  again the '(' immediately to the left of 'T' is interpreted as
+being the start of a parameter type list,  and  not  as  a  redundant
+paren around a redeclaration of T.  Hence an equivalent code fragment
+is:
+
+typedef float T;
+int noo(const int identifier1 (T identifier2 [5]));
+int moo(const int identifier1 (T identifier2 (int identifier3)));
+...
+
+*/
+
+%union {
+  HashNode           identifier;
+  Declarator        *pDecl;
+  AbstractDeclarator absDecl;
+  StructDeclaration *pStructDecl;
+  TypedefList       *pTypedefList;
+  LinkedList         list;
+  Enumerator        *pEnum;
+  Typedef           *pTypedef;
+  TypeSpec           tspec;
+  Value              value;
+  struct {
+    u_32             uval;
+    ContextInfo      ctx;
+  }                  context;
+  u_32               uval;
+  char               oper;
+}
+
+%{
 
 /*===== STATIC VARIABLES =====================================================*/
 
@@ -293,72 +359,6 @@ static const int tokentab[] = {
 	0,		/* UMINUS */		/* unary - */
 };
 
-%}
-
-/*===== YACC PARSER DEFINITION ================================================*/
-
-/* This refined grammar resolves several typedef ambiguities  in  the
-draft  proposed  ANSI  C  standard  syntax  down  to  1  shift/reduce
-conflict, as reported by a YACC process.  Note  that  the  one  shift
-reduce  conflicts  is the traditional if-if-else conflict that is not
-resolved by the grammar.  This ambiguity can  be  removed  using  the
-method  described in the Dragon Book (2nd edition), but this does not
-appear worth the effort.
-
-There was quite a bit of effort made to reduce the conflicts to  this
-level,  and  an  additional effort was made to make the grammar quite
-similar to the C++ grammar being developed in  parallel.   Note  that
-this grammar resolves the following ANSI C ambiguity as follows:
-
-ANSI  C  section  3.5.6,  "If  the [typedef name] is redeclared at an
-inner scope, the type specifiers shall not be omitted  in  the  inner
-declaration".   Supplying type specifiers prevents consideration of T
-as a typedef name in this grammar.  Failure to supply type specifiers
-forced the use of the TYPEDEFname as a type specifier.
-
-ANSI C section 3.5.4.3, "In a parameter declaration, a single typedef
-name in parentheses is  taken  to  be  an  abstract  declarator  that
-specifies  a  function  with  a  single  parameter,  not as redundant
-parentheses around the identifier".  This is extended  to  cover  the
-following cases:
-
-typedef float T;
-int noo(const (T[5]));
-int moo(const (T(int)));
-...
-
-Where  again the '(' immediately to the left of 'T' is interpreted as
-being the start of a parameter type list,  and  not  as  a  redundant
-paren around a redeclaration of T.  Hence an equivalent code fragment
-is:
-
-typedef float T;
-int noo(const int identifier1 (T identifier2 [5]));
-int moo(const int identifier1 (T identifier2 (int identifier3)));
-...
-
-*/
-
-%union {
-  HashNode           identifier;
-  Declarator        *pDecl;
-  AbstractDeclarator absDecl;
-  StructDeclaration *pStructDecl;
-  TypedefList       *pTypedefList;
-  LinkedList         list;
-  Enumerator        *pEnum;
-  Typedef           *pTypedef;
-  TypeSpec           tspec;
-  Value              value;
-  struct {
-    u_32             uval;
-    ContextInfo      ctx;
-  }                  context;
-  u_32               uval;
-  char               oper;
-}
-
-%{
 
 /*===== STATIC FUNCTION PROTOTYPES ===========================================*/
 

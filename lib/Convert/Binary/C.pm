@@ -10,13 +10,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2008/04/15 14:37:46 +0100 $
-# $Revision: 91 $
+# $Date: 2009/03/15 03:10:46 +0000 $
+# $Revision: 92 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.71 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.72 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 $XS_VERSION = $VERSION;
 $VERSION    = eval $VERSION;
 
@@ -5465,7 +5465,7 @@ want to rate the module at L<http://cpanratings.perl.org/>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
+Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 

@@ -2,13 +2,13 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2008/04/15 14:37:50 +0100 $
-# $Revision: 8 $
+# $Date: 2009/03/15 03:10:42 +0000 $
+# $Revision: 9 $
 # $Source: /xsubs/typedef.xs $
 #
 ################################################################################
 #
-# Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
+# Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
 #

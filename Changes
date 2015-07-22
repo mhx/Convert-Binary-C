@@ -1,4 +1,11 @@
 -------------------------
+Version 0.72 (2009-03-15)
+-------------------------
+
+* fix cpan #43119: patch to allow Convert::Binary::C to build
+  with GCC 4.4.x (thanks to Alex Lancaster for providing a patch)
+
+-------------------------
 Version 0.71 (2008-04-15)
 -------------------------
 

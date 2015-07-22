@@ -1,6 +1,6 @@
 #!/bin/bash
-FROM=2006
-TO=2007
+FROM='-2008 Marcus'
+TO='-2009 Marcus'
 for i in `grep -lEIr "Copyright.*$FROM.*Holland" . | grep -v ppport.h`; do
   echo $i
   wco -l -t '' $i

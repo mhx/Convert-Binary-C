@@ -30,8 +30,10 @@ my @hosts = (
   ### HP-UX
 
   { ip => 'td192.testdrive.hp.com', prompt => $PROMPT },
-  { ip => 'td164.testdrive.hp.com', prompt => $PROMPT },
   { ip => 'td176.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td191.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td193.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td194.testdrive.hp.com', prompt => $PROMPT },
 
   ### OpenVMS
 
@@ -42,30 +44,34 @@ my @hosts = (
 
   ### Debian
 
-  { ip => 'td161.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td140.testdrive.hp.com', prompt => $PROMPT },
   { ip => 'td156.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td157.testdrive.hp.com', prompt => $PROMPT },
 
   ### Mandriva
 
   { ip => 'td153.testdrive.hp.com', prompt => $PROMPT },
 
+  ### Oracle
+
+  { ip => 'td189.testdrive.hp.com', prompt => $PROMPT },
+
   ### RHEL
 
-  { ip => 'td141.testdrive.hp.com', prompt => $PROMPT },
   { ip => 'td163.testdrive.hp.com', prompt => $PROMPT },
-  { ip => 'td177.testdrive.hp.com', prompt => $PROMPT },
-  { ip => 'td159.testdrive.hp.com', prompt => $PROMPT },
-  { ip => 'td189.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td165.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td188.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td161.testdrive.hp.com', prompt => $PROMPT },
   { ip => 'td185.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td159.testdrive.hp.com', prompt => $PROMPT },
 
   ### SuSE
 
-  # { ip => 'td162.testdrive.hp.com', prompt => $PROMPT },   ## no cc ???
-  # { ip => 'td186.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
-  # { ip => 'td190.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
-  # { ip => 'td179.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
-  # { ip => 'td187.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
-  # { ip => 'td160.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
+  { ip => 'td162.testdrive.hp.com', prompt => $PROMPT },   ## no cc ???
+  { ip => 'td186.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
+  { ip => 'td190.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
+  { ip => 'td179.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
+  { ip => 'td187.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
 
   ### FreeBSD
 

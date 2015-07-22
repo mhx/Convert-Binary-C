@@ -10,13 +10,13 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2008/04/15 14:37:32 +0100 $
-* $Revision: 25 $
+* $Date: 2009/03/15 03:10:52 +0000 $
+* $Revision: 28 $
 * $Source: /cbc/cbc.h $
 *
 ********************************************************************************
 *
-* Copyright (c) 2002-2008 Marcus Holland-Moritz. All rights reserved.
+* Copyright (c) 2002-2009 Marcus Holland-Moritz. All rights reserved.
 * This program is free software; you can redistribute it and/or modify
 * it under the same terms as Perl itself.
 *
@@ -69,71 +69,86 @@
 
 #ifndef CBC_DEFAULT_PTR_SIZE
 #define CBC_DEFAULT_PTR_SIZE    CTLIB_POINTER_SIZE
-#elif   CBC_DEFAULT_PTR_SIZE != 1 && \
+#else
+#if     CBC_DEFAULT_PTR_SIZE != 1 && \
         CBC_DEFAULT_PTR_SIZE != 2 && \
         CBC_DEFAULT_PTR_SIZE != 4 && \
         CBC_DEFAULT_PTR_SIZE != 8
 #error "CBC_DEFAULT_PTR_SIZE is invalid!"
 #endif
+#endif
 
 #ifndef CBC_DEFAULT_ENUM_SIZE
 #define CBC_DEFAULT_ENUM_SIZE    sizeof( int )
-#elif   CBC_DEFAULT_ENUM_SIZE != 0 && \
+#else
+#if     CBC_DEFAULT_ENUM_SIZE != 0 && \
         CBC_DEFAULT_ENUM_SIZE != 1 && \
         CBC_DEFAULT_ENUM_SIZE != 2 && \
         CBC_DEFAULT_ENUM_SIZE != 4 && \
         CBC_DEFAULT_ENUM_SIZE != 8
 #error "CBC_DEFAULT_ENUM_SIZE is invalid!"
 #endif
+#endif
 
 #ifndef CBC_DEFAULT_INT_SIZE
 #define CBC_DEFAULT_INT_SIZE    CTLIB_int_SIZE
-#elif   CBC_DEFAULT_INT_SIZE != 1 && \
+#else
+#if     CBC_DEFAULT_INT_SIZE != 1 && \
         CBC_DEFAULT_INT_SIZE != 2 && \
         CBC_DEFAULT_INT_SIZE != 4 && \
         CBC_DEFAULT_INT_SIZE != 8
 #error "CBC_DEFAULT_INT_SIZE is invalid!"
 #endif
+#endif
 
 #ifndef CBC_DEFAULT_CHAR_SIZE
 #define CBC_DEFAULT_CHAR_SIZE    CTLIB_char_SIZE
-#elif   CBC_DEFAULT_CHAR_SIZE != 1 && \
+#else
+#if     CBC_DEFAULT_CHAR_SIZE != 1 && \
         CBC_DEFAULT_CHAR_SIZE != 2 && \
         CBC_DEFAULT_CHAR_SIZE != 4 && \
         CBC_DEFAULT_CHAR_SIZE != 8
 #error "CBC_DEFAULT_CHAR_SIZE is invalid!"
 #endif
+#endif
 
 #ifndef CBC_DEFAULT_SHORT_SIZE
 #define CBC_DEFAULT_SHORT_SIZE    CTLIB_short_SIZE
-#elif   CBC_DEFAULT_SHORT_SIZE != 1 && \
+#else
+#if     CBC_DEFAULT_SHORT_SIZE != 1 && \
         CBC_DEFAULT_SHORT_SIZE != 2 && \
         CBC_DEFAULT_SHORT_SIZE != 4 && \
         CBC_DEFAULT_SHORT_SIZE != 8
 #error "CBC_DEFAULT_SHORT_SIZE is invalid!"
 #endif
+#endif
 
 #ifndef CBC_DEFAULT_LONG_SIZE
 #define CBC_DEFAULT_LONG_SIZE    CTLIB_long_SIZE
-#elif   CBC_DEFAULT_LONG_SIZE != 1 && \
+#else
+#if     CBC_DEFAULT_LONG_SIZE != 1 && \
         CBC_DEFAULT_LONG_SIZE != 2 && \
         CBC_DEFAULT_LONG_SIZE != 4 && \
         CBC_DEFAULT_LONG_SIZE != 8
 #error "CBC_DEFAULT_LONG_SIZE is invalid!"
 #endif
+#endif
 
 #ifndef CBC_DEFAULT_LONG_LONG_SIZE
 #define CBC_DEFAULT_LONG_LONG_SIZE    CTLIB_long_long_SIZE
-#elif   CBC_DEFAULT_LONG_LONG_SIZE != 1 && \
+#else
+#if     CBC_DEFAULT_LONG_LONG_SIZE != 1 && \
         CBC_DEFAULT_LONG_LONG_SIZE != 2 && \
         CBC_DEFAULT_LONG_LONG_SIZE != 4 && \
         CBC_DEFAULT_LONG_LONG_SIZE != 8
 #error "CBC_DEFAULT_LONG_LONG_SIZE is invalid!"
 #endif
+#endif
 
 #ifndef CBC_DEFAULT_FLOAT_SIZE
 #define CBC_DEFAULT_FLOAT_SIZE    CTLIB_float_SIZE
-#elif   CBC_DEFAULT_FLOAT_SIZE != 1  && \
+#else
+#if     CBC_DEFAULT_FLOAT_SIZE != 1  && \
         CBC_DEFAULT_FLOAT_SIZE != 2  && \
         CBC_DEFAULT_FLOAT_SIZE != 4  && \
         CBC_DEFAULT_FLOAT_SIZE != 8  && \
@@ -141,10 +156,12 @@
         CBC_DEFAULT_FLOAT_SIZE != 16
 #error "CBC_DEFAULT_FLOAT_SIZE is invalid!"
 #endif
+#endif
 
 #ifndef CBC_DEFAULT_DOUBLE_SIZE
 #define CBC_DEFAULT_DOUBLE_SIZE    CTLIB_double_SIZE
-#elif   CBC_DEFAULT_DOUBLE_SIZE != 1  && \
+#else
+#if     CBC_DEFAULT_DOUBLE_SIZE != 1  && \
         CBC_DEFAULT_DOUBLE_SIZE != 2  && \
         CBC_DEFAULT_DOUBLE_SIZE != 4  && \
         CBC_DEFAULT_DOUBLE_SIZE != 8  && \
@@ -152,16 +169,19 @@
         CBC_DEFAULT_DOUBLE_SIZE != 16
 #error "CBC_DEFAULT_DOUBLE_SIZE is invalid!"
 #endif
+#endif
 
 #ifndef CBC_DEFAULT_LONG_DOUBLE_SIZE
 #define CBC_DEFAULT_LONG_DOUBLE_SIZE    CTLIB_long_double_SIZE
-#elif   CBC_DEFAULT_LONG_DOUBLE_SIZE != 1  && \
+#else
+#if     CBC_DEFAULT_LONG_DOUBLE_SIZE != 1  && \
         CBC_DEFAULT_LONG_DOUBLE_SIZE != 2  && \
         CBC_DEFAULT_LONG_DOUBLE_SIZE != 4  && \
         CBC_DEFAULT_LONG_DOUBLE_SIZE != 8  && \
         CBC_DEFAULT_LONG_DOUBLE_SIZE != 12 && \
         CBC_DEFAULT_LONG_DOUBLE_SIZE != 16
 #error "CBC_DEFAULT_LONG_DOUBLE_SIZE is invalid!"
+#endif
 #endif
 
 #ifndef CBC_DEFAULT_ALIGNMENT
