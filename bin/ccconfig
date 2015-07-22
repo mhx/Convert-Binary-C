@@ -13,7 +13,7 @@
 # $Author: mhx $
 # $Date: 2003/08/17 13:55:10 +0100 $
 # $Revision: 46 $
-# $Snapshot: /Convert-Binary-C/0.45 $
+# $Snapshot: /Convert-Binary-C/0.46 $
 # $Source: /bin/ccconfig $
 #
 ################################################################################
@@ -30,7 +30,7 @@ use Data::Dumper;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = ('$Snapshot: /Convert-Binary-C/0.45 $' =~ /([^\/\s]+)\s*\$$/)[0];
+my $VERSION = ('$Snapshot: /Convert-Binary-C/0.46 $' =~ /([^\/\s]+)\s*\$$/)[0];
 my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT;
 

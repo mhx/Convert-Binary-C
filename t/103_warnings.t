@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/08/18 10:50:40 +0100 $
-# $Revision: 30 $
-# $Snapshot: /Convert-Binary-C/0.45 $
+# $Date: 2003/09/09 19:44:35 +0100 $
+# $Revision: 31 $
+# $Snapshot: /Convert-Binary-C/0.46 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
@@ -21,7 +21,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 4662 }
+BEGIN { plan tests => 4702 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -160,6 +160,9 @@ eval_test(q{
   $x = $p->pack( 'short double', 42 );                     # (1) Unsupported floating point type 'short double' in pack
   $x = $p->pack( 'fp_unsupp', 42 );                        # (1) Unsupported floating point type 'short float' in pack
 
+  $x = $p->pack( 'hasbf.bf', {} );                         # (1) Bitfields are unsupported in pack('hasbf.bf')
+                                                           # (1) Zero-sized type 'hasbf.bf' used in pack
+
   $p->unpack( 'test', $data );                             # (1) Useless use of unpack in void context
   $x = $p->unpack( '', $data );                            # (E) Cannot find ''
   $x = $p->unpack( 'na', $data );                          # (E) Cannot find 'na'
@@ -180,6 +183,9 @@ eval_test(q{
   $x = $p->unpack( 'double', 'x'x100 );                    # no warning
   $x = $p->unpack( 'signed float', 'x'x100 );              # (1) Unsupported floating point type 'signed float' in unpack
   $x = $p->unpack( 'fp_unsupp', 'x'x100 );                 # (1) Unsupported floating point type 'short float' in unpack
+
+  $x = $p->unpack( 'hasbf.bf', '' );                       # (1) Bitfields are unsupported in unpack('hasbf.bf')
+                                                           # (1) Zero-sized type 'hasbf.bf' used in unpack
 
   $p->initializer( 'test' );                               # (1) Useless use of initializer in void context
   $p->initializer( 'test', $data );                        # (1) Useless use of initializer in void context

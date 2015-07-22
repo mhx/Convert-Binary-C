@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2003/08/18 10:19:55 +0100 $
 # $Revision: 44 $
-# $Snapshot: /Convert-Binary-C/0.45 $
+# $Snapshot: /Convert-Binary-C/0.46 $
 # $Source: /Makefile.PL $
 #
 ################################################################################

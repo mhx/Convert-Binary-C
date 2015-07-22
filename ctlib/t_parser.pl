@@ -12,7 +12,7 @@
 # $Author: mhx $
 # $Date: 2003/06/15 14:43:23 +0100 $
 # $Revision: 9 $
-# $Snapshot: /Convert-Binary-C/0.45 $
+# $Snapshot: /Convert-Binary-C/0.46 $
 # $Source: /ctlib/t_parser.pl $
 #
 ################################################################################

@@ -1,4 +1,16 @@
 ------------
+Version 0.46
+------------
+
+* fixed bug #3753 "packing a struct/member/field causes a
+  bus error"
+
+* added new warnings when packing/unpacking zero-sized types
+
+* updated the docs with links to http://rt.cpan.org and
+  http://cpanratings.perl.org
+
+------------
 Version 0.45
 ------------
 

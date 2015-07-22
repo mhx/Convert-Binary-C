@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/08/18 12:13:51 +0100 $
-# $Revision: 50 $
-# $Snapshot: /Convert-Binary-C/0.45 $
+# $Date: 2003/09/09 19:43:31 +0100 $
+# $Revision: 51 $
+# $Snapshot: /Convert-Binary-C/0.46 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.45 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.46 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -3465,7 +3465,9 @@ algorithm.
 I'm sure there are still lots of bugs in the code for this
 module. If you find any bugs, Convert::Binary::C doesn't
 seem to build on your system or any of its tests fail, please
-send a mail to E<lt>mhx@cpan.orgE<gt>.
+use the CPAN Request Tracker at L<http://rt.cpan.org/> to
+create a ticket for the module. Alternatively, just send a
+mail to E<lt>mhx@cpan.orgE<gt>.
 
 =head1 TODO
 
@@ -3483,6 +3485,9 @@ receiving feedback about my work. Please send your postcard to:
   Kuppinger Weg 28
   71116 Gaertringen
   GERMANY
+
+If you feel that sending a postcard is too much effort, you maybe
+want to rate the module at L<http://cpanratings.perl.org/>.
 
 =head1 COPYRIGHT
 

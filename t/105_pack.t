@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/07/24 16:54:26 +0100 $
-# $Revision: 12 $
-# $Snapshot: /Convert-Binary-C/0.45 $
+# $Date: 2003/09/09 19:44:13 +0100 $
+# $Revision: 13 $
+# $Snapshot: /Convert-Binary-C/0.46 $
 # $Source: /t/105_pack.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 180 }
+BEGIN { plan tests => 184 }
 
 eval {
   $p = new Convert::Binary::C ByteOrder     => 'BigEndian'
@@ -42,6 +42,7 @@ typedef unsigned char u_8;
 typedef signed char i_8;
 typedef long double ldbl;
 typedef struct { char a; int b[3][3]; } undef_test[3];
+struct zero { int :0; };
 EOF
 };
 ok($@,'',"parse() failed");
@@ -52,13 +53,15 @@ $SIG{__WARN__} = sub { push @warn, $_[0] };
 sub chkwarn {
   my $fail = 0;
   if( @warn != @_ ) {
-    print "# wrong number of warnings\n";
+    print "# wrong number of warnings (got ", scalar @warn,
+                               ", expected ", scalar @_, ")\n";
     $fail++;
   }
-  for( @_ ) {
-    my $w = shift @warn;
-    unless( $w =~ ref($_) ? $_ : qr/\Q$_\E/ ) {
-      print "# wrong warning, expected $_, got $w\n";
+  for my $ix ( 0 .. $#_ ) {
+    my $e = $_[$ix];
+    my $w = $warn[$ix];
+    unless( $w =~ ref($e) ? $e : qr/\Q$e\E/ ) {
+      print "# wrong warning, expected $e, got $w\n";
       $fail++;
     }
   }
@@ -325,6 +328,19 @@ ok(rec_write($val->[0]), '', 'write check failed');
 ok(rec_write($val->[1]), '', 'write check failed');
 ok(rec_write($val->[2]), '', 'write check failed');
 chkwarn();
+
+#===================================================================
+# bug #3753 - pack() on zero size type caused segfault / bus error
+#===================================================================
+
+ok($p->pack('zero', {}), '', 'pack on zero size type (bug #3753)');
+chkwarn( qr/Bitfields are unsupported in pack\('zero'\)/,
+         qr/Zero-sized type 'zero' used in pack/ );
+
+ok(reccmp_keys({}, $p->unpack('zero', '')), '', 'unpack on zero size type');
+chkwarn( qr/Bitfields are unsupported in pack\('zero'\)/,
+         qr/Zero-sized type 'zero' used in unpack/ );
+
 
 sub rec_write
 {

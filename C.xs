@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/08/18 11:05:56 +0100 $
-* $Revision: 98 $
-* $Snapshot: /Convert-Binary-C/0.45 $
+* $Date: 2003/09/09 19:43:19 +0100 $
+* $Revision: 99 $
+* $Snapshot: /Convert-Binary-C/0.46 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -1623,12 +1623,15 @@ static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv, IDList *idl )
         if( pStructDecl->declarators ) {
           LL_foreach( pDecl, pStructDecl->declarators ) {
             size_t id_len = strlen(pDecl->identifier);
-            SV **e = hv_fetch( h, pDecl->identifier, id_len, 0 );
 
-            IDLIST_SET_ID( idl, pDecl->identifier );
+            if( id_len > 0 ) {
+              SV **e = hv_fetch( h, pDecl->identifier, id_len, 0 );
 
-            SetType( aPACKARGS, &pStructDecl->type, pDecl, 0,
-                     e ? *e : NULL, idl );
+              IDLIST_SET_ID( idl, pDecl->identifier );
+
+              SetType( aPACKARGS, &pStructDecl->type, pDecl, 0,
+                       e ? *e : NULL, idl );
+            }
 
             if( pStruct->tflags & T_UNION ) {
               PACK->bufptr  = bufptr;
@@ -1980,19 +1983,21 @@ static SV *GetStruct( pPACKARGS, Struct *pStruct, HV *hash )
       LL_foreach( pDecl, pStructDecl->declarators ) {
         U32 klen = strlen(pDecl->identifier);
 
-        if( hv_exists( h, pDecl->identifier, klen ) ) {
-          WARN((aTHX_ "Member '%s' used more than once "
-                      "in %s%s%s defined in %s(%d)",
-                pDecl->identifier,
-                pStruct->tflags & T_UNION ? "union" : "struct",
-                pStruct->identifier[0] != '\0' ? " " : "",
-                pStruct->identifier[0] != '\0' ? pStruct->identifier : "",
-                pStruct->context.pFI->name, pStruct->context.line));
-        }
-        else {
-          SV *value = GetType( aPACKARGS, &pStructDecl->type, pDecl, 0 );
-          if( hv_store( h, pDecl->identifier, klen, value, 0 ) == NULL )
-            SvREFCNT_dec( value );
+        if( klen > 0 ) {
+          if( hv_exists( h, pDecl->identifier, klen ) ) {
+            WARN((aTHX_ "Member '%s' used more than once "
+                        "in %s%s%s defined in %s(%d)",
+                  pDecl->identifier,
+                  pStruct->tflags & T_UNION ? "union" : "struct",
+                  pStruct->identifier[0] != '\0' ? " " : "",
+                  pStruct->identifier[0] != '\0' ? pStruct->identifier : "",
+                  pStruct->context.pFI->name, pStruct->context.line));
+          }
+          else {
+            SV *value = GetType( aPACKARGS, &pStructDecl->type, pDecl, 0 );
+            if( hv_store( h, pDecl->identifier, klen, value, 0 ) == NULL )
+              SvREFCNT_dec( value );
+          }
         }
 
         if( pStruct->tflags & T_UNION ) {
@@ -6330,8 +6335,14 @@ CBC::pack( type, data = &PL_sv_undef, string = NULL )
 		if( mi.flags )
 		  WARN_FLAGS( type, mi.flags );
 
+		if( mi.size == 0 )
+		  WARN((aTHX_ "Zero-sized type '%s' used in pack", type));
+
 		if( string == NULL ) {
 		  RETVAL = newSV( mi.size );
+		  /* force RETVAL into a PV when mi.size is zero (bug #3753) */
+		  if( mi.size == 0 )
+		    sv_grow( RETVAL, 1 );
 		  SvPOK_only( RETVAL );
 		  SvCUR_set( RETVAL, mi.size );
 		  buffer = SvPVX( RETVAL );
@@ -6419,6 +6430,9 @@ CBC::unpack( type, string )
 
 		if( mi.flags )
 		  WARN_FLAGS( type, mi.flags );
+
+		if( mi.size == 0 )
+		  WARN((aTHX_ "Zero-sized type '%s' used in unpack", type));
 
 		pack.bufptr     =
 		pack.buf.buffer = SvPV( string, len );

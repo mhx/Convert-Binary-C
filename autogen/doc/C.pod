@@ -2372,7 +2372,9 @@ algorithm.
 I'm sure there are still lots of bugs in the code for this
 module. If you find any bugs, Convert::Binary::C doesn't
 seem to build on your system or any of its tests fail, please
-send a mail to E<lt>mhx@cpan.orgE<gt>.
+use the CPAN Request Tracker at L<http://rt.cpan.org/> to
+create a ticket for the module. Alternatively, just send a
+mail to E<lt>mhx@cpan.orgE<gt>.
 
 =head1 TODO
 
@@ -2390,6 +2392,9 @@ receiving feedback about my work. Please send your postcard to:
   Kuppinger Weg 28
   71116 Gaertringen
   GERMANY
+
+If you feel that sending a postcard is too much effort, you maybe
+want to rate the module at L<http://cpanratings.perl.org/>.
 
 =head1 COPYRIGHT
 
