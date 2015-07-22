@@ -26,7 +26,7 @@ install: complex.t
 	@echo "test file installed"
 
 clean:
-	@rm -f members.* test.* *.t
+	@rm -f members.* test.* *.t ntypes
 
 test.1: cgen.pl
 	perl cgen.pl 1 > test.c && $(CC) -o test.1 test.c

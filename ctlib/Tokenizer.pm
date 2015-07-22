@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/06/20 17:46:40 +0100 $
-# $Revision: 2 $
-# $Snapshot: /Convert-Binary-C/0.01 $
+# $Date: 2002/08/31 09:11:32 +0100 $
+# $Revision: 3 $
+# $Snapshot: /Convert-Binary-C/0.02 $
 # $Source: /ctlib/Tokenizer.pm $
 #
 ################################################################################
@@ -234,7 +234,7 @@ for your application.
 A reference to the subroutine that returns the code for each token
 match. The only parameter to the subroutine is the token string.
 
-This is the default subroutinee:
+This is the default subroutine:
 
   tokfnc => sub { "return $_[0];\n" }
 

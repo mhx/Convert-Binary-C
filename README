@@ -4,6 +4,7 @@ CONTENTS
 2. INSTALLATION
 3. COMPATIBILITY
 4. FEATURES
+5. COPYRIGHT
 
 
 --------------
@@ -90,3 +91,22 @@ and ANSI-C99 features disabled, you would say:
   perl Makefile.PL enable-debug disable-c99
 
 This will still allow you to pass other 'standard' arguments to Makefile.PL.
+
+------------
+5. COPYRIGHT
+------------
+
+Copyright (c) 2002 Marcus Holland-Moritz. All rights reserved.
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
+
+The ucpp library is (c) Thomas Pornin 1999, 2000. For licence
+and redistribution details refer to 'ctlib/ucpp/README'.
+
+Portions copyright (c) 1989, 1990 James A. Roskind.
+
+Some of the include files used for the 't/parse.t' test
+script are (c) 1991-1999, 2000, 2001 Free Software Foundation,
+Inc. They are neither required to create the binary nor linked
+to the source code of this module in any other way.
+

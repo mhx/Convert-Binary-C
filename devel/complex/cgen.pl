@@ -1,8 +1,8 @@
 #!/usr/bin/perl -w
 use strict;
 use constant MAXREC => 3;
-use constant NTYPES => 6;
-use constant NDATA  => 10848;
+use constant NTYPES => 4;
+use constant NDATA  => 2420;
 use Data::Dumper;
 
 unless( @ARGV ) {
@@ -13,11 +13,20 @@ unless( @ARGV ) {
 my $alignment = shift;
 
 my %typedef;
-my $identifier = "aa";
+{
+  my $identifier = "aa";
 
-srand 3;
+  sub next_id() {
+    my $id;
+    $id = $identifier++;
+    $id = $identifier++ if $id eq 'if' || $id eq 'do';
+    $id;
+  }
+}
 
-$typedef{'_'.$identifier++} = GetType( 0, 'COMPOUND' ) for 1 .. NTYPES;
+srand 2;
+
+$typedef{&next_id} = GetType( 0, 'COMPOUND' ) for 1 .. NTYPES;
 
 my %str = (
   TYPEDEFS => &TypedefString,
@@ -145,7 +154,7 @@ ENDFOR
     }
 
     {
-      my($type, $field) = $ident =~ /^v(_[^\.]+)\.(.*)$/;
+      my($type, $field) = $ident =~ /^v([^\.]+)\.(.*)$/;
       my $id = $field;
       my @ix = $id =~ /\[(i\[\d+\]\[\d+\])\]/g;
       $id =~ s/\[i\[\d+\]\[\d+\]\]/[\%d]/g;
@@ -337,6 +346,7 @@ sub GetType
 
   my @compound = (
     ['struct',         \&GetStruct],
+    ['struct',         \&GetStruct],
     ['union',          \&GetStruct],
   );
 
@@ -368,11 +378,12 @@ sub GetStruct
 
   my @struct;
 
-  for( 0 .. 5 + rand 5 ) {
+  for( 0 .. 3 + rand 5 ) {
     push @struct, {
       type  => GetType( $rec+1, 'BASIC', ('COMPOUND')x2, 'TYPEDEF' ),
-      ident => '_'.$identifier++,
-      dim   => [map 1+int rand 3, 1 .. (0,0,0,0,1,1,1,2,2,3)[rand 10]],
+      ident => &next_id,
+      dim   => [map 1+int rand 3, 1 .. (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                                        0,0,0,0,0,0,0,0,1,1,2,2,2,2,3,4)[rand (32 + ($rec+1) - MAXREC)]],
     }
   }
 

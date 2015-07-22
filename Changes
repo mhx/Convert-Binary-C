@@ -3,3 +3,16 @@ Version 0.01
 ------------
 
 - initial release
+
+------------
+Version 0.02
+------------
+
+- decreased the complex test file, which speeds up the complex test
+  and decreases the size of the distribution file
+
+- decreased the number of threads in the threads test
+
+- added copyright notice to the README file
+
+- minor corrections/cleanups

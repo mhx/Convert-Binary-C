@@ -78,10 +78,9 @@ IGNORE_PREFIX          =
 #---------------------------------------------------------------------------
 GENERATE_HTML          = YES
 HTML_OUTPUT            = html
-HTML_HEADER            = doxyinc/header.html
-HTML_FOOTER            = doxyinc/footer.html
+HTML_HEADER            = doxyinc/header.inc
+HTML_FOOTER            = doxyinc/footer.inc
 HTML_STYLESHEET        = doxyinc/doxygen.css
-#HTML_STYLESHEET        =
 HTML_ALIGN_MEMBERS     = YES
 GENERATE_HTMLHELP      = YES
 GENERATE_CHI           = YES

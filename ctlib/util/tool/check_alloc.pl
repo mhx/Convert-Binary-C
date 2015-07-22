@@ -1,3 +1,4 @@
+#!/bin/perl -w
 ################################################################################
 #
 # PROGRAM: check_alloc.pl
@@ -10,9 +11,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2002/04/15 22:26:49 +0100 $
-# $Revision: 1 $
-# $Snapshot: /Convert-Binary-C/0.01 $
+# $Date: 2002/08/31 09:12:10 +0100 $
+# $Revision: 2 $
+# $Snapshot: /Convert-Binary-C/0.02 $
 # $Source: /ctlib/util/tool/check_alloc.pl $
 #
 ################################################################################
@@ -31,7 +32,6 @@
 #
 ################################################################################
 
-#!/bin/perl -w
 use strict;
 
 my %alloc;
