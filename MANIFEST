@@ -36,6 +36,7 @@ ctlib/t_parser.c
 ctlib/t_parser.pl
 ctlib/t_pragma.c
 ctlib/t_pragma.pl
+ctlib/t_sourcify.c
 ctlib/ucpp/Makefile
 ctlib/ucpp/README
 ctlib/ucpp/arith.c

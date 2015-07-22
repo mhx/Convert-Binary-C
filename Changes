@@ -1,4 +1,12 @@
 ------------
+Version 0.45
+------------
+
+* fixed/improved sourcify output for #pragma pack
+
+* added Context option for sourcify method
+
+------------
 Version 0.44
 ------------
 

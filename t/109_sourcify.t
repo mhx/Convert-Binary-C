@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/07/15 16:13:02 +0100 $
-# $Revision: 8 $
-# $Snapshot: /Convert-Binary-C/0.44 $
+# $Date: 2003/08/18 10:20:31 +0100 $
+# $Revision: 9 $
+# $Snapshot: /Convert-Binary-C/0.45 $
 # $Source: /t/109_sourcify.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 56 }
+BEGIN { plan tests => 65 }
 
 eval {
   $orig  = new Convert::Binary::C Include => ['t/include/perlinc',
@@ -49,13 +49,27 @@ ok($@,'',"failed to dump definitions");
 ok( $dump1, $dump2, "dumps 1+2 differ" );
 ok( $dump2, $dump3, "dumps 2+3 differ" );
 
+ok( !/^#line\s+\d+\s+"[^"]+"/m ) for $dump1, $dump2, $dump3;
+
 eval {
-  $clone[0]->parse( $orig->sourcify );
+  $dump1 = $orig->sourcify( { Context => 1 } );
+  $dump2 = $orig->sourcify( { Context => 1 } );
+  $dump3 = $orig->sourcify( { Context => 1 } );
+};
+ok($@,'',"failed to dump definitions with context");
+
+ok( $dump1, $dump2, "context dumps 1+2 differ" );
+ok( $dump2, $dump3, "context dumps 2+3 differ" );
+
+ok( /^#line\s+\d+\s+"[^"]+"/m ) for $dump1, $dump2, $dump3;
+
+eval {
+  $clone[0]->parse( $orig->sourcify( { Context => 1 } ) );
 };
 ok($@,'',"failed to parse clone data (0)");
 
 eval {
-  $clone[1]->parse( $clone[0]->sourcify );
+  $clone[1]->parse( $clone[0]->sourcify( { Context => 1 } ) );
 };
 ok($@,'',"failed to parse clone data (1)");
 

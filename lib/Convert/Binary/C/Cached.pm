@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/08/03 13:20:49 +0100 $
-# $Revision: 16 $
-# $Snapshot: /Convert-Binary-C/0.44 $
+# $Date: 2003/08/18 10:21:18 +0100 $
+# $Revision: 17 $
+# $Snapshot: /Convert-Binary-C/0.45 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.44 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.45 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 my %cache;
 
@@ -311,7 +311,7 @@ sub __save_cache
   $config =~ s/^/*/gms;
 
   print $fh "#if 0\n", $config, "#endif\n\n",
-            do { local $^W; $self->sourcify };
+            do { local $^W; $self->sourcify( { Context => 1 } ) };
 }
 
 sub __reccmp

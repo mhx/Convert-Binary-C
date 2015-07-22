@@ -26,3 +26,9 @@ enum count { ZERO, ONE, TWO, THREE };
 END
 
 print $c->sourcify;
+
+#-8<-
+print "#-8<-\n";
+
+print $c->sourcify( { Context => 1 } );
+

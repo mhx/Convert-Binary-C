@@ -11,17 +11,6 @@ for future releases (in no special order):
             when we switch to a new type
     bpos => bit position within current bitfield
 
-* enabling/disabling sourcify file context:
-
-    $c->sourcify( { ...options... }, ...types... );
-
-  so these are possible:
-
-    $c->sourcify;
-    $c->sourcify( qw( type_a type_b ) );
-    $c->sourcify( { Context => 0 } );
-    $c->sourcify( { Context => 1 }, 'foo', 'bar' );
-
 * update / cleanup test suite using Test::More
 
 * make sizeof/offsetof files plain text files and

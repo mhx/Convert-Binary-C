@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/08/17 13:59:30 +0100 $
-# $Revision: 49 $
-# $Snapshot: /Convert-Binary-C/0.44 $
+# $Date: 2003/08/18 12:13:51 +0100 $
+# $Revision: 50 $
+# $Snapshot: /Convert-Binary-C/0.45 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.44 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.45 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -2400,6 +2400,8 @@ are equivalent:
 
 =item C<sourcify>
 
+=item C<sourcify> CONFIG
+
 Returns a string that holds the C code necessary to
 represent all parsed C data structures.
 
@@ -2440,6 +2442,70 @@ The above code would print something like this:
   
   /* defined enums */
   
+  enum count
+  {
+  	ZERO,
+  	ONE,
+  	TWO,
+  	THREE
+  };
+  
+  
+  /* defined structs and unions */
+  
+  struct _mytype
+  {
+  	union
+  	{
+  		int iCount;
+  		enum count *pCount;
+  	} counter;
+  #pragma pack( push, 1 )
+  	struct
+  	{
+  		char string[42];
+  		int array[10];
+  	} storage;
+  #pragma pack( pop )
+  	mytype *next;
+  };
+
+The purpose of the L<C<sourcify>|/"sourcify"> method is to enable
+some kind of platform-independent caching. The C code generated
+by L<C<sourcify>|/"sourcify"> can be parsed by a standard C compiler,
+as well as of course the Convert::Binary::C parser. However, it might
+be significantly shorter than the code that has originally been parsed.
+When parsing a typical header file, it's easily possible that you need
+to open dozens of other files that are included from that file, and
+end up parsing several hundred kilobytes of C code. Since most of it
+is usually preprocessor directives, function prototypes and comments,
+the L<C<sourcify>|/"sourcify"> function strips this down to a few
+kilobytes. Saving the L<C<sourcify>|/"sourcify"> string and parsing
+it next time instead of the original code may be a lot faster.
+
+The L<C<sourcify>|/"sourcify"> method takes a hash reference as an
+optional argument. It can be used to tweak the method's output.
+The following options can be configured.
+
+=over 4
+
+=item C<Context> =E<gt> 0 | 1
+
+Turns preprocessor context information on or off. If this is turned
+on, L<C<sourcify>|/"sourcify"> will insert C<#line> preprocessor
+directives in its output. So in the above example
+
+  print $c->sourcify( { Context => 1 } );
+
+would print:
+
+  /* typedef predeclarations */
+  
+  typedef struct _mytype mytype;
+  
+  /* defined enums */
+  
+  
   #line 20 "[buffer]"
   enum count
   {
@@ -2451,6 +2517,7 @@ The above code would print something like this:
   
   
   /* defined structs and unions */
+  
   
   #line 6 "[buffer]"
   struct _mytype
@@ -2467,25 +2534,15 @@ The above code would print something like this:
   	{
   		char string[42];
   		int array[10];
-  	}
+  	} storage;
   #pragma pack( pop )
-  	storage;
   	mytype *next;
   };
 
-The purpose of the L<C<sourcify>|/"sourcify"> method is to enable some
-kind of platform-independent caching. The C code generated
-by L<C<sourcify>|/"sourcify"> can be parsed by a standard C compiler, as well
-as of course the Convert::Binary::C parser. However, it might
-be significantly shorter than the code that has originally
-been parsed. When parsing a typical header file, it's
-easily possible that you need to open dozens of other files
-that are included from that file, and end up parsing several
-hundred kilobytes of C code. Since most of it is usually
-preprocessor directives, function prototypes and comments,
-the L<C<sourcify>|/"sourcify"> function strips this down to a few kilobytes.
-Saving the L<C<sourcify>|/"sourcify"> string and parsing it next time instead
-of the original code may be a lot faster.
+Note that C<"[buffer]"> refers to the here-doc buffer when
+using L<C<parse>|/"parse">.
+
+=back
 
 =back
 

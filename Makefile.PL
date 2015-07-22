@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/07/15 16:00:40 +0100 $
-# $Revision: 43 $
-# $Snapshot: /Convert-Binary-C/0.44 $
+# $Date: 2003/08/18 10:19:55 +0100 $
+# $Revision: 44 $
+# $Snapshot: /Convert-Binary-C/0.45 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -175,7 +175,9 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
 			  'ctlib/t_basic.c',
 			 ],
   'ctlib/t_pragma.pl' =>  'ctlib/t_pragma.c',
-  'ctlib/t_config.pl' =>  'ctlib/t_config.c',
+  'ctlib/t_config.pl' => ['ctlib/t_config.c',
+                          'ctlib/t_sourcify.c',
+                         ],
 );
 
 %GENERATE = (

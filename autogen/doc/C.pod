@@ -1671,28 +1671,52 @@ are equivalent:
 
 =item C<sourcify>
 
+=item C<sourcify> CONFIG
+
 Returns a string that holds the C code necessary to
 represent all parsed C data structures.
 
-  $$sourcify.pl$$
+  $$sourcify.pl [1]$$
 
 The above code would print something like this:
 
-  @@sourcify.pl@@
+  @@sourcify.pl [1]@@
 
-The purpose of the L<C<sourcify>|/"sourcify"> method is to enable some
-kind of platform-independent caching. The C code generated
-by L<C<sourcify>|/"sourcify"> can be parsed by a standard C compiler, as well
-as of course the Convert::Binary::C parser. However, it might
-be significantly shorter than the code that has originally
-been parsed. When parsing a typical header file, it's
-easily possible that you need to open dozens of other files
-that are included from that file, and end up parsing several
-hundred kilobytes of C code. Since most of it is usually
-preprocessor directives, function prototypes and comments,
-the L<C<sourcify>|/"sourcify"> function strips this down to a few kilobytes.
-Saving the L<C<sourcify>|/"sourcify"> string and parsing it next time instead
-of the original code may be a lot faster.
+The purpose of the L<C<sourcify>|/"sourcify"> method is to enable
+some kind of platform-independent caching. The C code generated
+by L<C<sourcify>|/"sourcify"> can be parsed by a standard C compiler,
+as well as of course the Convert::Binary::C parser. However, it might
+be significantly shorter than the code that has originally been parsed.
+When parsing a typical header file, it's easily possible that you need
+to open dozens of other files that are included from that file, and
+end up parsing several hundred kilobytes of C code. Since most of it
+is usually preprocessor directives, function prototypes and comments,
+the L<C<sourcify>|/"sourcify"> function strips this down to a few
+kilobytes. Saving the L<C<sourcify>|/"sourcify"> string and parsing
+it next time instead of the original code may be a lot faster.
+
+The L<C<sourcify>|/"sourcify"> method takes a hash reference as an
+optional argument. It can be used to tweak the method's output.
+The following options can be configured.
+
+=over 4
+
+=item C<Context> =E<gt> 0 | 1
+
+Turns preprocessor context information on or off. If this is turned
+on, L<C<sourcify>|/"sourcify"> will insert C<#line> preprocessor
+directives in its output. So in the above example
+
+  $$sourcify.pl [2]$$
+
+would print:
+
+  @@sourcify.pl [2]@@
+
+Note that C<"[buffer]"> refers to the here-doc buffer when
+using L<C<parse>|/"parse">.
+
+=back
 
 =back
 

@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/08/17 10:03:37 +0100 $
-* $Revision: 95 $
-* $Snapshot: /Convert-Binary-C/0.44 $
+* $Date: 2003/08/18 11:05:56 +0100 $
+* $Revision: 98 $
+* $Snapshot: /Convert-Binary-C/0.45 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -418,6 +418,7 @@ static void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 #define F_NEWLINE          0x00000001
 #define F_KEYWORD          0x00000002
 #define F_DONT_EXPAND      0x00000004
+#define F_PRAGMA_PACK_POP  0x00000008
 
 #define ALLOW_UNIONS       0x00000001
 #define ALLOW_STRUCTS      0x00000002
@@ -556,6 +557,15 @@ typedef union {
 } AMSInfo;
 
 typedef struct {
+  U32      flags;
+  unsigned pack;
+} SourcifyState;
+
+typedef struct {
+  int      context;
+} SourcifyConfig;
+
+typedef struct {
   int count, max;
   struct IDList_list {
     enum { IDL_ID, IDL_IX } choice;
@@ -650,18 +660,21 @@ static void GetBasicTypeSpecString( pTHX_ SV **sv, u_32 flags );
 
 static void AddIndent( pTHX_ SV *s, int level );
 
-static void CheckDefineType( pTHX_ SV *str, TypeSpec *pTS );
+static void CheckDefineType( pTHX_ SourcifyConfig *pSC, SV *str, TypeSpec *pTS );
 
-static void AddTypeSpecStringRec( pTHX_ SV *str, SV *s, TypeSpec *pTS, int level, U32 *pFlags );
-static void AddEnumSpecStringRec( pTHX_ SV *str, SV *s, EnumSpecifier *pES, int level, U32 *pFlags );
-static void AddStructSpecStringRec( pTHX_ SV *str, SV *s, Struct *pStruct, int level, U32 *pFlags );
+static void AddTypeSpecStringRec( pTHX_ SourcifyConfig *pSC, SV *str, SV *s,
+                                  TypeSpec *pTS, int level, SourcifyState *pSS );
+static void AddEnumSpecStringRec( pTHX_ SourcifyConfig *pSC, SV *str, SV *s,
+                                  EnumSpecifier *pES, int level, SourcifyState *pSS );
+static void AddStructSpecStringRec( pTHX_ SourcifyConfig *pSC, SV *str, SV *s,
+                                    Struct *pStruct, int level, SourcifyState *pSS );
 
 static void AddTypedefListDeclString( pTHX_ SV *str, TypedefList *pTDL );
-static void AddTypedefListSpecString( pTHX_ SV *str, TypedefList *pTDL );
-static void AddEnumSpecString( pTHX_ SV *str, EnumSpecifier *pES );
-static void AddStructSpecString( pTHX_ SV *str, Struct *pStruct );
+static void AddTypedefListSpecString( pTHX_ SourcifyConfig *pSC, SV *str, TypedefList *pTDL );
+static void AddEnumSpecString( pTHX_ SourcifyConfig *pSC, SV *str, EnumSpecifier *pES );
+static void AddStructSpecString( pTHX_ SourcifyConfig *pSC, SV *str, Struct *pStruct );
 
-static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI );
+static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC );
 
 static void GetInitStrStruct( pTHX_ CBC *THIS, Struct *pStruct, SV *init,
                               IDList *idl, int level, SV *string );
@@ -705,6 +718,8 @@ static int   GetTypeSpec( CBC *THIS, const char *name, const char **pEOS, TypeSp
 static int   GetMemberInfo( pTHX_ CBC *THIS, const char *name, MemberInfo *pMI );
 static SV   *GetTypeNameString( pTHX_ const MemberInfo *pMI );
 static int   IsTypedefDefined( Typedef *pTypedef );
+
+static void  GetSourcifyConfig( pTHX_ HV *cfg, SourcifyConfig *pSC );
 
 static int   CheckIntegerOption( pTHX_ const IV *options, int count, SV *sv,
                                  IV *value, const char *name );
@@ -2323,7 +2338,7 @@ static void AddIndent( pTHX_ SV *s, int level )
 *
 *******************************************************************************/
 
-static void CheckDefineType( pTHX_ SV *str, TypeSpec *pTS )
+static void CheckDefineType( pTHX_ SourcifyConfig *pSC, SV *str, TypeSpec *pTS )
 {
   u_32 flags = pTS->tflags;
 
@@ -2348,13 +2363,13 @@ static void CheckDefineType( pTHX_ SV *str, TypeSpec *pTS )
     EnumSpecifier *pES = (EnumSpecifier *) pTS->ptr;
 
     if( pES && (pES->tflags & T_ALREADY_DUMPED) == 0 )
-      AddEnumSpecString( aTHX_ str, pES );
+      AddEnumSpecString( aTHX_ pSC, str, pES );
   }
   else if( flags & (T_STRUCT|T_UNION) ) {
     Struct *pStruct = (Struct *) pTS->ptr;
 
     if( pStruct && (pStruct->tflags & T_ALREADY_DUMPED) == 0 )
-      AddStructSpecString( aTHX_ str, pStruct );
+      AddStructSpecString( aTHX_ pSC, str, pStruct );
   }
 }
 
@@ -2383,24 +2398,23 @@ static void CheckDefineType( pTHX_ SV *str, TypeSpec *pTS )
 
 #define CHECK_SET_KEYWORD                                  \
         do {                                               \
-          if( pFlags && (*pFlags & F_KEYWORD) )            \
+          if( pSS->flags & F_KEYWORD )                     \
             sv_catpv( s, " " );                            \
           else                                             \
             INDENT;                                        \
-          if( pFlags ) {                                   \
-            *pFlags &= ~F_NEWLINE;                         \
-            *pFlags |= F_KEYWORD;                          \
-          }                                                \
+          pSS->flags &= ~F_NEWLINE;                        \
+          pSS->flags |= F_KEYWORD;                         \
         } while(0)
 
-static void AddTypeSpecStringRec( pTHX_ SV *str, SV *s, TypeSpec *pTS, int level, U32 *pFlags )
+static void AddTypeSpecStringRec( pTHX_ SourcifyConfig *pSC, SV *str, SV *s,
+                                  TypeSpec *pTS, int level, SourcifyState *pSS )
 {
   u_32 flags = pTS->tflags;
 
   CT_DEBUG( MAIN, (XSCLASS "::AddTypeSpecStringRec( pTS=(tflags=0x%08lX, ptr=%p),"
-                           " level=%d, pFlags=%p (0x%08lX) )",
-                   (unsigned long) pTS->tflags, pTS->ptr, level, pFlags,
-                   (unsigned long) (pFlags ? *pFlags : 0)) );
+                           " level=%d, pSS->flags=0x%08lX, pSS->pack=%u )",
+                           (unsigned long) pTS->tflags, pTS->ptr, level,
+                           (unsigned long) pSS->flags, pSS->pack) );
 
   if( flags & T_TYPE ) {
     Typedef *pTypedef= (Typedef *) pTS->ptr;
@@ -2415,12 +2429,12 @@ static void AddTypeSpecStringRec( pTHX_ SV *str, SV *s, TypeSpec *pTS, int level
 
     if( pES ) {
       if( pES->identifier[0] && ((pES->tflags & T_ALREADY_DUMPED) ||
-                                 (*pFlags & F_DONT_EXPAND)) ) {
+                                 (pSS->flags & F_DONT_EXPAND)) ) {
         CHECK_SET_KEYWORD;
         sv_catpvf( s, "enum %s", pES->identifier );
       }
       else
-        AddEnumSpecStringRec( aTHX_ str, s, pES, level, pFlags );
+        AddEnumSpecStringRec( aTHX_ pSC, str, s, pES, level, pSS );
     }
   }
   else if( flags & (T_STRUCT|T_UNION) ) {
@@ -2428,12 +2442,12 @@ static void AddTypeSpecStringRec( pTHX_ SV *str, SV *s, TypeSpec *pTS, int level
 
     if( pStruct ) {
       if( pStruct->identifier[0] && ((pStruct->tflags & T_ALREADY_DUMPED) ||
-                                     (*pFlags & F_DONT_EXPAND)) ) {
+                                     (pSS->flags & F_DONT_EXPAND)) ) {
         CHECK_SET_KEYWORD;
         sv_catpvf( s, "%s %s", flags & T_UNION ? "union" : "struct", pStruct->identifier );
       }
       else
-        AddStructSpecStringRec( aTHX_ str, s, pStruct, level, pFlags );
+        AddStructSpecStringRec( aTHX_ pSC, str, s, pStruct, level, pSS );
     }
   }
   else {
@@ -2461,32 +2475,31 @@ static void AddTypeSpecStringRec( pTHX_ SV *str, SV *s, TypeSpec *pTS, int level
 *
 *******************************************************************************/
 
-static void AddEnumSpecStringRec( pTHX_ SV *str, SV *s, EnumSpecifier *pES,
-                                  int level, U32 *pFlags )
+static void AddEnumSpecStringRec( pTHX_ SourcifyConfig *pSC, SV *str, SV *s,
+                                  EnumSpecifier *pES, int level, SourcifyState *pSS )
 {
   CT_DEBUG( MAIN, (XSCLASS "::AddEnumSpecStringRec( pES=(identifier=\"%s\"),"
-                           " level=%d, pFlags=%p (0x%08lX) )",
-                   pES->identifier, level, pFlags,
-                   (unsigned long) (pFlags ? *pFlags : 0)) );
+                           " level=%d, pSS->flags=0x%08lX, pSS->pack=%u )",
+                           pES->identifier, level,
+                           (unsigned long) pSS->flags, pSS->pack) );
 
   pES->tflags |= T_ALREADY_DUMPED;
 
-#ifndef CBC_NO_SOURCIFY_CONTEXT
-  if( pFlags && (*pFlags & F_NEWLINE) == 0 ) {
-    sv_catpv( s, "\n" );
-    *pFlags &= ~F_KEYWORD;
-    *pFlags |= F_NEWLINE;
+  if( pSC->context ) {
+    if( (pSS->flags & F_NEWLINE) == 0 ) {
+      sv_catpv( s, "\n" );
+      pSS->flags &= ~F_KEYWORD;
+      pSS->flags |= F_NEWLINE;
+    }
+    sv_catpvf( s, "#line %lu \"%s\"\n", pES->context.line, pES->context.pFI->name );
   }
-  sv_catpvf( s, "#line %lu \"%s\"\n", pES->context.line, pES->context.pFI->name );
-#endif
 
-  if( pFlags && (*pFlags & F_KEYWORD) )
+  if( (pSS->flags & F_KEYWORD) )
     sv_catpv( s, " " );
   else
     INDENT;
 
-  if( pFlags )
-    *pFlags &= ~(F_NEWLINE|F_KEYWORD);
+  pSS->flags &= ~(F_NEWLINE|F_KEYWORD);
 
   sv_catpv( s, "enum" );
   if( pES->identifier[0] )
@@ -2544,41 +2557,48 @@ static void AddEnumSpecStringRec( pTHX_ SV *str, SV *s, EnumSpecifier *pES,
 *
 *******************************************************************************/
 
-static void AddStructSpecStringRec( pTHX_ SV *str, SV *s, Struct *pStruct,
-                                    int level, U32 *pFlags )
+static void AddStructSpecStringRec( pTHX_ SourcifyConfig *pSC, SV *str, SV *s,
+                                    Struct *pStruct, int level, SourcifyState *pSS )
 {
-  CT_DEBUG( MAIN, (XSCLASS "::AddStructSpecStringRec( pStruct=(identifier=\"%s\", "
-                           "pack=%d, tflags=0x%08lX), level=%d, pFlags=%p (0x%08lX) )",
-                   pStruct->identifier, pStruct->pack, (unsigned long) pStruct->tflags,
-                   level, pFlags, (unsigned long) (pFlags ? *pFlags : 0)) );
+  int pack_pushed;
+
+  CT_DEBUG( MAIN, (XSCLASS "::AddStructSpecStringRec( pStruct=(identifier=\"%s\","
+                           " pack=%d, tflags=0x%08lX), level=%d"
+                           " pSS->flags=0x%08lX, pSS->pack=%u )",
+                           pStruct->identifier,
+                           pStruct->pack, (unsigned long) pStruct->tflags,
+                           level, (unsigned long) pSS->flags, pSS->pack) );
 
   pStruct->tflags |= T_ALREADY_DUMPED;
 
-  if( pStruct->declarations && pStruct->pack ) {
-    if( pFlags && (*pFlags & F_NEWLINE) == 0 ) {
+  pack_pushed = pStruct->declarations
+             && pStruct->pack
+             && pStruct->pack != pSS->pack;
+
+  if( pack_pushed ) {
+    if( (pSS->flags & F_NEWLINE) == 0 ) {
       sv_catpv( s, "\n" );
-      *pFlags &= ~F_KEYWORD;
-      *pFlags |= F_NEWLINE;
+      pSS->flags &= ~F_KEYWORD;
+      pSS->flags |= F_NEWLINE;
     }
     sv_catpvf( s, "#pragma pack( push, %u )\n", pStruct->pack );
   }
 
-#ifndef CBC_NO_SOURCIFY_CONTEXT
-  if( pFlags && (*pFlags & F_NEWLINE) == 0 ) {
-    sv_catpv( s, "\n" );
-    *pFlags &= ~F_KEYWORD;
-    *pFlags |= F_NEWLINE;
+  if( pSC->context ) {
+    if( (pSS->flags & F_NEWLINE) == 0 ) {
+      sv_catpv( s, "\n" );
+      pSS->flags &= ~F_KEYWORD;
+      pSS->flags |= F_NEWLINE;
+    }
+    sv_catpvf( s, "#line %lu \"%s\"\n", pStruct->context.line, pStruct->context.pFI->name );
   }
-  sv_catpvf( s, "#line %lu \"%s\"\n", pStruct->context.line, pStruct->context.pFI->name );
-#endif
 
-  if( pFlags && (*pFlags & F_KEYWORD) )
+  if( (pSS->flags & F_KEYWORD) )
     sv_catpv( s, " " );
   else
     INDENT;
 
-  if( pFlags )
-    *pFlags &= ~(F_NEWLINE|F_KEYWORD);
+  pSS->flags &= ~(F_NEWLINE|F_KEYWORD);
 
   sv_catpv( s, pStruct->tflags & T_STRUCT ? "struct" : "union" );
 
@@ -2595,7 +2615,10 @@ static void AddStructSpecStringRec( pTHX_ SV *str, SV *s, Struct *pStruct,
     LL_foreach( pStructDecl, pStruct->declarations ) {
       Declarator *pDecl;
       int first = 1, need_def = 0;
-      U32 flags = F_NEWLINE;
+      SourcifyState ss;
+
+      ss.flags = F_NEWLINE;
+      ss.pack  = pack_pushed ? pStruct->pack : 0;
 
       LL_foreach( pDecl, pStructDecl->declarators )
         if( pDecl->pointer_flag == 0 ) {
@@ -2604,13 +2627,13 @@ static void AddStructSpecStringRec( pTHX_ SV *str, SV *s, Struct *pStruct,
         }
 
       if( !need_def )
-        flags |= F_DONT_EXPAND;
+        ss.flags |= F_DONT_EXPAND;
 
-      AddTypeSpecStringRec( aTHX_ str, s, &pStructDecl->type, level+1, &flags );
+      AddTypeSpecStringRec( aTHX_ pSC, str, s, &pStructDecl->type, level+1, &ss );
 
-      flags &= ~F_DONT_EXPAND;
+      ss.flags &= ~F_DONT_EXPAND;
 
-      if( flags & F_NEWLINE )
+      if( ss.flags & F_NEWLINE )
         AddIndent( aTHX_ s, level+1 );
       else if( pStructDecl->declarators )
         sv_catpv( s, " " );
@@ -2638,19 +2661,19 @@ static void AddStructSpecStringRec( pTHX_ SV *str, SV *s, Struct *pStruct,
 
       sv_catpv( s, ";\n" );
 
+      if( ss.flags & F_PRAGMA_PACK_POP )
+        sv_catpv( s, "#pragma pack( pop )\n" );
+
       if( need_def )
-        CheckDefineType( aTHX_ str, &pStructDecl->type );
+        CheckDefineType( aTHX_ pSC, str, &pStructDecl->type );
     }
 
     INDENT;
     sv_catpv( s, "}" );
   }
 
-  if( pStruct->declarations && pStruct->pack ) {
-    sv_catpv( s, "\n#pragma pack( pop )\n" );
-    if( pFlags )
-      *pFlags |= F_NEWLINE;
-  }
+  if( pack_pushed )
+    pSS->flags |= F_PRAGMA_PACK_POP;
 }
 
 /*******************************************************************************
@@ -2710,21 +2733,28 @@ static void AddTypedefListDeclString( pTHX_ SV *str, TypedefList *pTDL )
 *
 *******************************************************************************/
 
-static void AddTypedefListSpecString( pTHX_ SV *str, TypedefList *pTDL )
+static void AddTypedefListSpecString( pTHX_ SourcifyConfig *pSC, SV *str, TypedefList *pTDL )
 {
   SV *s = newSVpv( "typedef", 0 );
-  U32 flags = F_KEYWORD;
+  SourcifyState ss;
 
   CT_DEBUG( MAIN, (XSCLASS "::AddTypedefListSpecString( pTDL=%p )", pTDL) );
 
-  AddTypeSpecStringRec( aTHX_ str, s, &pTDL->type, 0, &flags );
+  ss.flags = F_KEYWORD;
+  ss.pack  = 0;
 
-  if( (flags & F_NEWLINE) == 0 )
+  AddTypeSpecStringRec( aTHX_ pSC, str, s, &pTDL->type, 0, &ss );
+
+  if( (ss.flags & F_NEWLINE) == 0 )
     sv_catpv( s, " " );
 
   AddTypedefListDeclString( aTHX_ s, pTDL );
 
   sv_catpv( s, ";\n" );
+
+  if( ss.flags & F_PRAGMA_PACK_POP )
+    sv_catpv( s, "#pragma pack( pop )\n" );
+
   sv_catsv( str, s );
 
   SvREFCNT_dec( s );
@@ -2747,13 +2777,18 @@ static void AddTypedefListSpecString( pTHX_ SV *str, TypedefList *pTDL )
 *
 *******************************************************************************/
 
-static void AddEnumSpecString( pTHX_ SV *str, EnumSpecifier *pES )
+static void AddEnumSpecString( pTHX_ SourcifyConfig *pSC, SV *str,
+                                     EnumSpecifier *pES )
 {
   SV *s = newSVpvn( "", 0 );
+  SourcifyState ss;
 
   CT_DEBUG( MAIN, (XSCLASS "::AddEnumSpecString( pES=%p )", pES) );
 
-  AddEnumSpecStringRec( aTHX_ str, s, pES, 0, NULL );
+  ss.flags = 0;
+  ss.pack  = 0;
+
+  AddEnumSpecStringRec( aTHX_ pSC, str, s, pES, 0, &ss );
   sv_catpv( s, ";\n" );
   sv_catsv( str, s );
 
@@ -2777,14 +2812,22 @@ static void AddEnumSpecString( pTHX_ SV *str, EnumSpecifier *pES )
 *
 *******************************************************************************/
 
-static void AddStructSpecString( pTHX_ SV *str, Struct *pStruct )
+static void AddStructSpecString( pTHX_ SourcifyConfig *pSC, SV *str, Struct *pStruct )
 {
   SV *s = newSVpvn( "", 0 );
+  SourcifyState ss;
 
   CT_DEBUG( MAIN, (XSCLASS "::AddStructSpecString( pStruct=%p )", pStruct) );
 
-  AddStructSpecStringRec( aTHX_ str, s, pStruct, 0, NULL );
+  ss.flags = 0;
+  ss.pack  = 0;
+
+  AddStructSpecStringRec( aTHX_ pSC, str, s, pStruct, 0, &ss );
   sv_catpv( s, ";\n" );
+
+  if( ss.flags & F_PRAGMA_PACK_POP )
+    sv_catpv( s, "#pragma pack( pop )\n" );
+
   sv_catsv( str, s );
 
   SvREFCNT_dec( s );
@@ -2809,7 +2852,8 @@ static void AddStructSpecString( pTHX_ SV *str, Struct *pStruct )
 *
 *******************************************************************************/
 
-static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI )
+static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI,
+                                             SourcifyConfig *pSC )
 {
   TypedefList   *pTDL;
   EnumSpecifier *pES;
@@ -2819,7 +2863,8 @@ static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI )
 
   SV *s = newSVpvn( "", 0 );
 
-  CT_DEBUG( MAIN, (XSCLASS "::GetParsedDefinitionsString( pCPI=%p )", pCPI) );
+  CT_DEBUG( MAIN, (XSCLASS "::GetParsedDefinitionsString( pCPI=%p, pSC=%p )",
+                   pCPI, pSC) );
 
   /* typedef predeclarations */
 
@@ -2831,7 +2876,7 @@ static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI )
         sv_catpv( s, "/* typedef predeclarations */\n\n" );
         fTypedefPre = 1;
       }
-      AddTypedefListSpecString( aTHX_ s, pTDL );
+      AddTypedefListSpecString( aTHX_ pSC, s, pTDL );
     }
     else {
       const char *what = NULL, *ident;
@@ -2879,7 +2924,7 @@ static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI )
           sv_catpv( s, "\n\n/* typedefs */\n\n" );
           fTypedef = 1;
         }
-        AddTypedefListSpecString( aTHX_ s, pTDL );
+        AddTypedefListSpecString( aTHX_ pSC, s, pTDL );
         sv_catpv( s, "\n" );
       }
 
@@ -2894,7 +2939,7 @@ static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI )
         sv_catpv( s, "\n/* defined enums */\n\n" );
         fEnum = 1;
       }
-      AddEnumSpecString( aTHX_ s, pES );
+      AddEnumSpecString( aTHX_ pSC, s, pES );
       sv_catpv( s, "\n" );
     }
 
@@ -2909,7 +2954,7 @@ static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI )
         sv_catpv( s, "\n/* defined structs and unions */\n\n" );
         fStruct = 1;
       }
-      AddStructSpecString( aTHX_ s, pStruct );
+      AddStructSpecString( aTHX_ pSC, s, pStruct );
       sv_catpv( s, "\n" );
     }
 
@@ -2926,7 +2971,7 @@ static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI )
           sv_catpv( s, "\n/* undefined enums */\n\n" );
           fUndefEnum = 1;
         }
-        AddEnumSpecString( aTHX_ s, pES );
+        AddEnumSpecString( aTHX_ pSC, s, pES );
         sv_catpv( s, "\n" );
       }
     }
@@ -2947,7 +2992,7 @@ static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI )
           sv_catpv( s, "\n/* undefined/unnamed structs and unions */\n\n" );
           fUndefStruct = 1;
         }
-        AddStructSpecString( aTHX_ s, pStruct );
+        AddStructSpecString( aTHX_ pSC, s, pStruct );
         sv_catpv( s, "\n" );
       }
     }
@@ -4928,6 +4973,67 @@ static void SetDebugFile( pTHX_ const char *dbfile )
   }
 }
 #endif
+
+/*******************************************************************************
+*
+*   ROUTINE: GetSourcifyConfigOption
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Aug 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+#include "t_sourcify.c"
+
+/*******************************************************************************
+*
+*   ROUTINE: GetSourcifyConfigOption
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Aug 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void GetSourcifyConfig( pTHX_ HV *cfg, SourcifyConfig *pSC )
+{
+  HE *opt;
+
+  (void) hv_iterinit( cfg );
+
+  while( (opt = hv_iternext( cfg )) != NULL ) {
+    const char *key;
+    I32 keylen;
+    SV *value;
+
+    key   = hv_iterkey( opt, &keylen );
+    value = hv_iterval( cfg, opt );
+
+    switch( GetSourcifyConfigOption( key ) ) {
+      case SOURCIFY_OPTION_Context:
+        pSC->context = SvTRUE( value );
+        break;
+
+      default:
+        Perl_croak(aTHX_ "Invalid option '%s'", key);
+    }
+  }
+}
 
 /*******************************************************************************
 *
@@ -7053,9 +7159,10 @@ CBC::typedef( ... )
 ################################################################################
 
 SV *
-CBC::sourcify()
+CBC::sourcify( ... )
 	PREINIT:
 		CBC_METHOD( sourcify );
+		SourcifyConfig sc;
 
 	CODE:
 		CT_DEBUG_METHOD;
@@ -7063,7 +7170,22 @@ CBC::sourcify()
 		CHECK_PARSE_DATA;
 		CHECK_VOID_CONTEXT;
 
-		RETVAL = GetParsedDefinitionsString( aTHX_ &THIS->cpi );
+		/* preset with defaults */
+		sc.context = 0;
+
+		if( items == 2 && SvROK( ST(1) ) ) {
+		  SV *sv = SvRV( ST(1) );
+                  if( SvTYPE( sv = SvRV(ST(1)) ) == SVt_PVHV )
+		    GetSourcifyConfig( aTHX_ (HV *) sv, &sc );
+		  else
+		    Perl_croak(aTHX_ "Need a hash reference for configuration "
+                                     "options");
+		}
+		else if( items >= 2 )
+		  Perl_croak(aTHX_ "Sourcification of individual types is not "
+		                   "yet supported");
+
+		RETVAL = GetParsedDefinitionsString( aTHX_ &THIS->cpi, &sc );
 
 	OUTPUT:
 		RETVAL

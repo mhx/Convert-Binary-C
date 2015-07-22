@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/17 13:39:04 +0100 $
-# $Revision: 7 $
-# $Snapshot: /Convert-Binary-C/0.44 $
+# $Date: 2003/08/18 10:19:20 +0100 $
+# $Revision: 8 $
+# $Snapshot: /Convert-Binary-C/0.45 $
 # $Source: /ctlib/t_config.pl $
 #
 ################################################################################
@@ -25,7 +25,7 @@
 
 use Devel::Tokenizer::C;
 
-@OPT = qw(
+@options = qw(
   UnsignedChars
   Warnings
   PointerSize
@@ -49,27 +49,41 @@ use Devel::Tokenizer::C;
   HasMacroVAARGS
 );
 
-$enums  = join "\n", map "  OPTION_$_,", @OPT;
-$switch = Devel::Tokenizer::C->new( TokenFunc => \&tok_code, TokenString => 'option' )
+@sourcify = qw(
+  Context
+);
+
+$file = shift;
+
+if( $file =~ /t_config/ ) {
+  @OPT  = @options;
+  $PRE  = 'OPTION';
+  $NAME = 'ConfigOption';
+}
+elsif( $file =~ /t_sourcify/ ) {
+  @OPT  = @sourcify;
+  $PRE  = 'SOURCIFY_OPTION';
+  $NAME = 'SourcifyConfigOption';
+}
+
+$enums  = join "\n", map "  ${PRE}_$_,", @OPT;
+$switch = Devel::Tokenizer::C->new( TokenFunc => sub { "return ${PRE}_$_[0];\n" },
+                                    TokenString => 'option' )
                              ->add_tokens( @OPT )->generate;
 
-open OUT, ">$ARGV[0]" or die $!;
+open OUT, ">$file" or die $!;
 print OUT <<END;
 typedef enum {
 $enums
-  INVALID_OPTION
-} ConfigOption;
+  INVALID_$PRE
+} $NAME;
 
-static ConfigOption GetConfigOption( const char *option )
+static $NAME Get$NAME( const char *option )
 {
 $switch
 unknown:
-  return INVALID_OPTION;
+  return INVALID_$PRE;
 }
 END
 close OUT;
 
-sub tok_code {
-  my $token = shift;
-  return "return OPTION_$token;\n";
-};

@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/07/24 16:37:16 +0100 $
-# $Revision: 29 $
-# $Snapshot: /Convert-Binary-C/0.44 $
+# $Date: 2003/08/18 10:50:40 +0100 $
+# $Revision: 30 $
+# $Snapshot: /Convert-Binary-C/0.45 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
@@ -21,7 +21,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 4578 }
+BEGIN { plan tests => 4662 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -104,6 +104,14 @@ eval_test(q{
   $x = $p->def( 'xxx.yyy' );                               # (1) Ignoring potential member expression ('.yyy') after type name
   $x = $p->def( 'xxx[yyy]' );                              # (1) Ignoring potential array expression ('[yyy]') after type name
   $x = $p->def( 'xxx **' );                                # (1) Ignoring garbage ('**') after type name
+
+  $x = $p->sourcify;                                       # no warning
+  $x = $p->sourcify( 'foo' );                              # (E) Sourcification of individual types is not yet supported
+  $x = $p->sourcify( { foo => 1 }, 'foo' );                # (E) Sourcification of individual types is not yet supported
+  $x = $p->sourcify( [ 1 ], 'foo', 'bar' );                # (E) Sourcification of individual types is not yet supported
+  $x = $p->sourcify( [ 1 ] );                              # (E) Need a hash reference for configuration options
+  $x = $p->sourcify( { foo => 1 } );                       # (E) Invalid option 'foo'
+  $x = $p->sourcify( { Context => 1 } );                   # no warning
 
   $p->pack( 'xxx', 'yyy' );                                # (1) Useless use of pack in void context
   $x = $p->pack( '', 1 );                                  # (E) Cannot find ''
