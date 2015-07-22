@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/09/28 21:08:50 +0100 $
-* $Revision: 30 $
-* $Snapshot: /Convert-Binary-C/0.48 $
+* $Date: 2003/11/21 12:50:37 +0000 $
+* $Revision: 32 $
+* $Snapshot: /Convert-Binary-C/0.49 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -34,6 +34,7 @@
 /*===== LOCAL INCLUDES =======================================================*/
 
 #include "ctparse.h"
+#include "cterror.h"
 #include "ctdebug.h"
 #include "fileinfo.h"
 #include "parser.h"
@@ -72,6 +73,9 @@ static void update_struct( const CParseConfig *pCPC, Struct *pStruct );
 /*===== EXTERNAL VARIABLES ===================================================*/
 
 /*===== GLOBAL VARIABLES =====================================================*/
+
+CParseInfo *g_current_cpi;
+
 
 /*===== STATIC VARIABLES =====================================================*/
 
@@ -312,6 +316,37 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
   CT_DEBUG( CTLIB, ("ctparse::parse_buffer( %s, %p, %p, %p )",
             filename ? filename : BUFFER_NAME, pBuf, pCPI, pCPC) );
 
+  g_current_cpi = pCPI;
+
+  /*----------------------------------*/
+  /* Initialize parse info structures */
+  /*----------------------------------*/
+
+  if( pCPI->enums == NULL && pCPI->structs == NULL &&
+      pCPI->typedef_lists == NULL ) {
+    CT_DEBUG( CTLIB, ("creating linked lists") );
+
+    pCPI->enums         = LL_new();
+    pCPI->structs       = LL_new();
+    pCPI->typedef_lists = LL_new();
+
+    pCPI->htEnumerators = HT_new_ex( 5, HT_AUTOGROW );
+    pCPI->htEnums       = HT_new_ex( 4, HT_AUTOGROW );
+    pCPI->htStructs     = HT_new_ex( 4, HT_AUTOGROW );
+    pCPI->htTypedefs    = HT_new_ex( 4, HT_AUTOGROW );
+    pCPI->htFiles       = HT_new_ex( 3, HT_AUTOGROW );
+
+    pCPI->errorStack    = LL_new();
+  }
+  else if( pCPI->enums != NULL && pCPI->structs != NULL &&
+           pCPI->typedef_lists != NULL ) {
+    CT_DEBUG( CTLIB, ("re-using linked lists") );
+    pop_all_errors( pCPI );
+  }
+  else {
+    CT_DEBUG( CTLIB, ("CParseInfo is inconsistent!") );   /* TODO: fail here! */
+  }
+
   /*----------------------------*/
   /* Try to open the input file */
   /*----------------------------*/
@@ -339,36 +374,11 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
 
       if( infile == NULL ) {
         Free( file );
-        format_error( pCPI, "Cannot find input file '%s'", filename );
+        push_error( pCPI, "Cannot find input file '%s'", filename );
+        g_current_cpi = NULL;
         return 0;
       }
     }
-  }
-
-  /*----------------------------------*/
-  /* Initialize parse info structures */
-  /*----------------------------------*/
-
-  if( pCPI->enums == NULL && pCPI->structs == NULL &&
-      pCPI->typedef_lists == NULL ) {
-    CT_DEBUG( CTLIB, ("creating linked lists") );
-
-    pCPI->enums         = LL_new();
-    pCPI->structs       = LL_new();
-    pCPI->typedef_lists = LL_new();
-
-    pCPI->htEnumerators = HT_new_ex( 5, HT_AUTOGROW );
-    pCPI->htEnums       = HT_new_ex( 4, HT_AUTOGROW );
-    pCPI->htStructs     = HT_new_ex( 4, HT_AUTOGROW );
-    pCPI->htTypedefs    = HT_new_ex( 4, HT_AUTOGROW );
-    pCPI->htFiles       = HT_new_ex( 3, HT_AUTOGROW );
-  }
-  else if( pCPI->enums != NULL && pCPI->structs != NULL &&
-           pCPI->typedef_lists != NULL ) {
-    CT_DEBUG( CTLIB, ("re-using linked lists") );
-  }
-  else {
-    CT_DEBUG( CTLIB, ("CParseInfo is inconsistent!") );   /* TODO: fail here! */
   }
 
   /*-------------------------*/
@@ -504,6 +514,7 @@ int parse_buffer( const char *filename, const Buffer *pBuf,
   }
 #endif
 
+  g_current_cpi = NULL;
   return rval ? 0 : 1;
 }
 
@@ -539,7 +550,7 @@ void init_parse_info( CParseInfo *pCPI )
     pCPI->htTypedefs    = NULL;
     pCPI->htFiles       = NULL;
 
-    pCPI->errstr        = NULL;
+    pCPI->errorStack    = NULL;
   }
 }
 
@@ -576,11 +587,10 @@ void free_parse_info( CParseInfo *pCPI )
 
     HT_destroy( pCPI->htFiles,       (LLDestroyFunc) fileinfo_delete );
 
-    if( pCPI->errstr ) {
-      Free( pCPI->errstr );
-      pCPI->errstr = NULL;
+    if( pCPI->errorStack ) {
+      pop_all_errors( pCPI );
+      LL_delete( pCPI->errorStack );
     }
-
 
     init_parse_info( pCPI );  /* make sure everything is NULL'd */
   }
@@ -724,6 +734,7 @@ void clone_parse_info( CParseInfo *pDest, CParseInfo *pSrc )
   pDest->htEnums       = HT_new_ex( HT_size( pSrc->htEnums ), HT_AUTOGROW );
   pDest->htStructs     = HT_new_ex( HT_size( pSrc->htStructs ), HT_AUTOGROW );
   pDest->htTypedefs    = HT_new_ex( HT_size( pSrc->htTypedefs ), HT_AUTOGROW );
+  pDest->errorStack    = LL_new();
 
   CT_DEBUG( CTLIB, ("cloning enums") );
 
@@ -1032,114 +1043,4 @@ ErrorGTI get_type_info( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDe
 
   return err;
 }
-
-/*******************************************************************************
-*
-*   ROUTINE: format_error
-*
-*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
-*   CHANGED BY:                                   ON:
-*
-********************************************************************************
-*
-* DESCRIPTION:
-*
-*   ARGUMENTS:
-*
-*     RETURNS:
-*
-*******************************************************************************/
-
-#define COPY_STRING_TO_BUF( from, count )                                      \
-        do {                                                                   \
-          int _copy;                                                           \
-          if( (_copy = (count)) > 0 ) {                                        \
-            ReAllocF( char *, buf, len + _copy + 1 );                          \
-            memcpy( buf+len, from, _copy );                                    \
-            len += _copy;                                                      \
-          }                                                                    \
-        } while(0)
-
-#define COPY_FORMAT_TO_BUF( fmt, type )                                        \
-        do {                                                                   \
-          char temp[32];                                                       \
-          type val = va_arg( args, type );                                     \
-          sprintf( temp, fmt, val );                                           \
-          COPY_STRING_TO_BUF( temp, strlen( temp ) );                          \
-        } while(0)
-
-#define UNSUPPORTED_FORMAT                                                     \
-        do {                                                                   \
-          fprintf( stderr, "FATAL: unsupported format in '%s'\n", format );    \
-          abort();                                                             \
-        } while(0)
-
-void format_error( CParseInfo *pCPI, char *format, ... )
-{
-  va_list args;
-  int len = 0;
-  char *f, *buf;
-
-  AllocF( char *, buf, len + 1 );
-
-  va_start( args, format );
-
-  for( f = format; *f; ++f ) {
-    if( *f == '%' ) {
-      COPY_STRING_TO_BUF( format, f - format );
-
-      format = f;
-
-      switch( *++f ) {
-        case 's':
-          {
-            char *s = va_arg( args, char * );
-            COPY_STRING_TO_BUF( s, strlen( s ) );
-          }
-          break;
-
-        case 'd':
-          COPY_FORMAT_TO_BUF( "%d", int );
-          break;
-
-        case 'l':
-          switch( *++f ) {
-            case 'd':
-              COPY_FORMAT_TO_BUF( "%ld", long );
-              break;
-
-            default:
-              UNSUPPORTED_FORMAT;
-              break;
-          }
-          break;
-
-        case '%':
-          COPY_STRING_TO_BUF( "%", 1 );
-          break;
-
-        default:
-          UNSUPPORTED_FORMAT;
-          break;
-      }
-
-      format = f+1;
-    }
-  }
-
-  va_end( args );
-
-  COPY_STRING_TO_BUF( format, f - format );
-
-  buf[len] = '\0';
-
-  if( pCPI->errstr )
-    Free( pCPI->errstr );
-
-  pCPI->errstr = buf;
-}
-
-#undef COPY_STRING_TO_BUF
-#undef COPY_INT_TO_BUF
-#undef UNSUPPORTED_FORMAT
 

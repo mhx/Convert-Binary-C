@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/17 13:39:09 +0100 $
-# $Revision: 11 $
-# $Snapshot: /Convert-Binary-C/0.48 $
+# $Date: 2003/11/24 08:40:59 +0000 $
+# $Revision: 12 $
+# $Snapshot: /Convert-Binary-C/0.49 $
 # $Source: /t/114_cache.t $
 #
 ################################################################################
@@ -16,25 +16,57 @@
 ################################################################################
 
 use Test;
+use Carp;
 use Convert::Binary::C @ARGV;
 use Convert::Binary::C::Cached;
 
 $^W = 1;
 
 BEGIN {
-  $tests = 68;
+  $tests = 72;
   plan tests => $tests;
 }
 
+$thisfile = quotemeta "at $0";
+
+{
+  local @INC;
+  eval { require IO::File };     $IO_File = $@;
+  eval { require Data::Dumper }; $Data_Dumper = $@;
+}
+
+{
+  my @warn;
+  local $SIG{__WARN__} = sub { push @warn, $_[0] };
+  carp 'xxx';  # carp must already be working
+  @warn = ();  # throw it away...
+  local @INC;  # let's pretend we don't have anything
+  my $what = join ' and ', ($Data_Dumper ? ('Data::Dumper') : ()), ($IO_File ? ('IO::File') : ());
+  my $c = eval { Convert::Binary::C::Cached->new( Cache => 'xxx' ) };
+  ok( scalar @warn, 1 );
+  ok( $warn[0], qr/Cannot load $what, disabling cache $thisfile/ );
+}
+
+eval { require IO::File }; $IO_File = $@;
+
+{
+  my @warn;
+  local $SIG{__WARN__} = sub { push @warn, $_[0] };
+  local @INC;
+  my $what = join ' and ', ($Data_Dumper ? ('Data::Dumper') : ()), ($IO_File ? ('IO::File') : ());
+  my $c = eval { Convert::Binary::C::Cached->new( Cache => 'xxx' ) };
+  ok( scalar @warn, 1 );
+  ok( $warn[0], qr/Cannot load $what, disabling cache $thisfile/ );
+}
+
 eval { require Data::Dumper }; $Data_Dumper = $@;
-eval { require IO::File };     $IO_File = $@;
 
 if( $Data_Dumper or $IO_File ) {
   my $req;
   $req = 'IO::File' if $IO_File;
   $req = 'Data::Dumper' if $Data_Dumper;
   $req = 'Data::Dumper and IO::File' if $Data_Dumper && $IO_File;
-  skip( "skip: caching requires $req", 0 ) for 1 .. $tests;
+  skip( "skip: caching requires $req", 0 ) for 5 .. $tests;
   # silence the memory test ;-)
   eval { Convert::Binary::C->new->parse("enum { XXX };") };
   exit;

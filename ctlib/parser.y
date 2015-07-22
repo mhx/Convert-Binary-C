@@ -11,9 +11,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/10/02 09:30:51 +0100 $
-* $Revision: 30 $
-* $Snapshot: /Convert-Binary-C/0.48 $
+* $Date: 2003/11/21 12:50:37 +0000 $
+* $Revision: 32 $
+* $Snapshot: /Convert-Binary-C/0.49 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -91,6 +91,7 @@ colleagues include: Bruce Blodgett, and Mark Langley.
 
 #include "ctdebug.h"
 #include "ctparse.h"
+#include "cterror.h"
 #include "fileinfo.h"
 #include "parser.h"
 #include "pragma.h"
@@ -2263,9 +2264,9 @@ static inline void *ex_object( LinkedList list, void *object )
 
 static void parser_error( ParserState *pState, char *msg )
 {
-  format_error( pState->pCPI, "%s, line %ld: %s",
-                pState->pFI ? pState->pFI->name : "[unknown]",
-                pState->pLexer->ctok->line, msg );
+  push_error( pState->pCPI, "%s, line %ld: %s",
+              pState->pFI ? pState->pFI->name : "[unknown]",
+              pState->pLexer->ctok->line, msg );
 }
 
 /*******************************************************************************

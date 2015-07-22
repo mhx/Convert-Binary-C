@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/20 04:16:15 +0100 $
-# $Revision: 17 $
-# $Snapshot: /Convert-Binary-C/0.48 $
+# $Date: 2003/11/24 07:54:53 +0000 $
+# $Revision: 18 $
+# $Snapshot: /Convert-Binary-C/0.49 $
 # $Source: /t/102_misc.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 213 }
+BEGIN { plan tests => 212 }
 
 #===================================================================
 # perform some average stuff
@@ -153,19 +153,14 @@ CCODE
 # try to parse the code
 #-----------------------
 
-$SIG{__WARN__} = sub { $warn = $_[0] };
-
 eval {
   $q->HasMacroVAARGS( 0 );
   $q->parse( $c99_code );
 };
-ok($warn,qr/invalid macro argument/);
-ok($@,qr/(parse|syntax) error/);
+ok($@,qr/invalid macro argument/);
 
 eval { $p->parse( $c99_code ) };
 ok($@,'');
-
-$SIG{__WARN__} = 'DEFAULT';
 
 #------------------------
 # reconfigure the parser

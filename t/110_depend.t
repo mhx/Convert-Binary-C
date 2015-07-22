@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2003/08/03 13:22:14 +0100 $
 # $Revision: 5 $
-# $Snapshot: /Convert-Binary-C/0.48 $
+# $Snapshot: /Convert-Binary-C/0.49 $
 # $Source: /t/110_depend.t $
 #
 ################################################################################

@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/09/11 15:39:09 +0100 $
-# $Revision: 32 $
-# $Snapshot: /Convert-Binary-C/0.48 $
+# $Date: 2003/11/24 07:54:54 +0000 $
+# $Revision: 34 $
+# $Snapshot: /Convert-Binary-C/0.49 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
@@ -21,11 +21,45 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 4638 }
+BEGIN { plan tests => 4878 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
 $data = "abcd";
+
+my %code = (
+  macro => <<'ENDC',
+#define FOO 1
+#define FOO 2
+ENDC
+  assert => <<'ENDC',
+#assert THIS(is) garbage
+#assert VOID()
+ENDC
+  assert_syntax => <<'ENDC',
+#assert TEST(assertion)
+#if #TEST ()
+  /* this is a syntax error */
+#endif
+ENDC
+  include => <<'ENDC',
+#include <not_here.h>
+ENDC
+  endif => <<'ENDC',
+#ifdef FOO BLABLA
+#endif
+#endif
+ENDC
+  else => <<'ENDC',
+#else
+ENDC
+  elif => <<'ENDC',
+#elif 1
+ENDC
+  unknown => <<'ENDC',
+#foobar
+ENDC
+);
 
 eval_test(q{
 
@@ -55,15 +89,31 @@ eval_test(q{
   $p->parse_file( '' );                                    # (E) Cannot find input file ''
   $p->parse_file( 'foobar.c' );                            # (E) Cannot find input file 'foobar.c'
 
-  $p->Define(qw( DEFINE=3 DEFINE=2 ), '=');
-  $p->parse('');                                           # (1) macro ... DEFINE ... redefined
-                                                           # (1) void macro name
+  $p->Include('t/include/files', 'include/files');         # no errors/warnings
+  $p->parse_file('empty.h')->clean;                        # no errors/warnings
+  // $p->parse_file('nlnone.h')->clean;                       # (2) file is not newline-terminated
+  $p->parse_file('nlunix.h')->clean;                       # no errors/warnings
+  $p->parse_file('nldos.h')->clean;                        # no errors/warnings
+  $p->parse_file('nlmac.h')->clean;                        # no errors/warnings
+  // $p->parse_file('ifnonl.h')->clean;                       # (2) file is not newline-terminated
+  $p->parse('')->clean;                                    # no errors/warnings
+  $p->parse("typedef int foo;")->clean;                    # no errors/warnings
+  $p->parse("typedef int foo;\n")->clean;                  # no errors/warnings
+  $p->parse("typedef int foo;\r\n")->clean;                # no errors/warnings
+  $p->parse("typedef int foo;\r")->clean;                  # no errors/warnings
+
+  $p->Define(qw( DEFINE=3 DEFINE=2 ));
+  $p->parse('');                                           # (E) macro ... DEFINE ... redefined
+  $p->Define(['=']);
+  $p->parse('');                                           # (E) void macro name
   $p->Define([]);
 
-  $p->Assert(qw{ PRED(answer) 1(foo) SYNTAX) UNFINISHED( });
-  $p->parse('');                                           # (1) illegal assertion name for #assert
-                                                           # (1) syntax error in #assert
-                                                           # (1) unfinished #assert
+  $p->Assert(qw{ PRED(answer) 1(foo) });
+  $p->parse('');                                           # (E) illegal assertion name for #assert
+  $p->Assert([qw{ PRED(answer) SYNTAX) }]);
+  $p->parse('');                                           # (E) syntax error in #assert
+  $p->Assert([qw{ PRED(answer) UNFINISHED( }]);
+  $p->parse('');                                           # (E) unfinished #assert
   $p->Assert([]);
 
   $x = $p->pack( 'signed int', 1 );                        # no warning
@@ -71,16 +121,19 @@ eval_test(q{
   $x = $p->sizeof( 'long long' );                          # no warning
   $x = $p->typeof( 'long double' );                        # no warning
 
-  $p->parse( $code );                                      # (1) macro ... FOO ... redefined
-                                                           # (2) (warning) ... trailing garbage in #assert
-                                                           # (1) void assertion in #assert
-                                                           # (1) syntax error for assertion in #if
-                                                           # (1) file ... not_here.h ... not found
+  $p->parse( $code{macro} );                               # (E) macro ... FOO ... redefined
+  $p->parse( $code{assert} );                              # (2) (warning) ... trailing garbage in #assert
+                                                           # (E) void assertion in #assert
+  $p->parse( $code{assert_syntax} );                       # (E) syntax error for assertion in #if
+  $p->parse( $code{include} );                             # (E) file ... not_here.h ... not found
+  $p->parse( $code{endif} );                               # (2) (warning) ... trailing garbage in #ifdef
+                                                           # (E) unmatched #endif
+  $p->parse( $code{else} );                                # (E) rogue #else
+  $p->parse( $code{elif} );                                # (E) rogue #elif
+  $p->parse( $code{unknown} );                             # (E) unknown cpp directive '#foobar'
+
+  $p->parse( $code );                                      # (2) (warning) ... trailing garbage in #assert
                                                            # (2) (warning) ... trailing garbage in #ifdef
-                                                           # (1) unmatched #endif
-                                                           # (1) rogue #else
-                                                           # (1) rogue #elif
-                                                           # (1) unknown cpp directive '#foobar'
 
   $p->def( 'xxx' );                                        # (1) Useless use of def in void context
   $p->dependencies;                                        # (1) Useless use of dependencies in void context
@@ -172,8 +225,8 @@ eval_test(q{
                                                            # (1) Data too short
   $x = $p->unpack( 'nonnative', 'x' );                     # [ ieeefp] (1) Cannot unpack 1 byte floating point values
                                                            # [!ieeefp] (1) Cannot unpack non-native floating point values
-  $x = $p->unpack( 'multiple', 'x'x100 );                  # (1) Member 'a' used more than once in struct multiple defined in [buffer](71)
-                                                           # (1) Member 'b' used more than once in union defined in [buffer](75)
+  $x = $p->unpack( 'multiple', 'x'x100 );                  # (1) Member 'a' used more than once in struct multiple defined in [buffer](61)
+                                                           # (1) Member 'b' used more than once in union defined in [buffer](65)
 
   $x = $p->unpack( 'unsigned char', 'x'x100 );             # no warning
   $x = $p->unpack( 'double', 'x'x100 );                    # no warning
@@ -476,6 +529,14 @@ sub eval_test
 
   for $class ( @$classes ) {
     for $level ( @$levels ) {
+      print <<END;
+#----
+#----  CLASS: $class
+#----
+#----  RUNNING IN WARNING LEVEL $level
+#----
+END
+
       $^W = $level ? 1 : 0;
       eval { $p = $class->new( Warnings => $level == 2 ) };
       ok($@, '', "failed to create $class object");
@@ -526,12 +587,8 @@ sub eval_test
 
 __DATA__
 
-#define FOO 1
-#define FOO 2
-
-#assert TEST(assertion)
 #assert THIS(is) garbage
-#assert VOID()
+#assert TEST(assertion)
 
 #if #TEST (assertion)
   typedef struct __nodef nodef;
@@ -540,12 +597,6 @@ __DATA__
 #if #TEST (nothing)
 #  error "boo!"
 #endif
-
-#if #TEST ()
-  /* this is a syntax error */
-#endif
-
-#include <not_here.h>
 
 #ifdef FOO BLABLA
 #endif
@@ -646,12 +697,4 @@ typedef struct {
   inner;
   int d[6][6];
 } stuff[12];
-
-#endif
-
-#else
-
-#elif 1
-
-#foobar
 

@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/17 13:39:09 +0100 $
-# $Revision: 3 $
-# $Snapshot: /Convert-Binary-C/0.48 $
+# $Date: 2003/11/20 06:43:33 +0000 $
+# $Revision: 4 $
+# $Snapshot: /Convert-Binary-C/0.49 $
 # $Source: /t/117_preproc.t $
 #
 ################################################################################
@@ -25,13 +25,14 @@ BEGIN {
 }
 
 eval {
-  $c = new Convert::Binary::C Define => ['b=a'];
+  $c = new Convert::Binary::C Define  => ['b=a'],
+                              Include => ['t/include/files', 'include/files'];
 };
 ok($@,'',"failed to create Convert::Binary::C::Cached object");
 
-#-------------------
-# check of ucpp bug
-#-------------------
+#--------------------
+# check of ucpp bugs
+#--------------------
 
 eval {
   $c->parse( <<'END' );
@@ -40,4 +41,12 @@ b x;
 END
 };
 ok($@,'',"failed to parse code");
+
+# eval {
+#   $c->parse( <<'END' );
+# #include "ifnonl.h"
+# typedef int foo;
+# END
+# };
+# ok($@,'',"failed to parse code");
 

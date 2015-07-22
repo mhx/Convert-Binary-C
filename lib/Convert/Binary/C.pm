@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/10/30 07:26:55 +0000 $
-# $Revision: 55 $
-# $Snapshot: /Convert-Binary-C/0.48 $
+# $Date: 2003/11/24 11:27:01 +0000 $
+# $Revision: 56 $
+# $Snapshot: /Convert-Binary-C/0.49 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.48 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.49 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -2470,18 +2470,18 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1058691675,
-      'mtime' => 1058691661,
+      'ctime' => 1069106991,
+      'mtime' => 1069106973,
       'size' => 10723
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1058691672,
-      'mtime' => 1058691661,
+      'ctime' => 1069106986,
+      'mtime' => 1069106973,
       'size' => 8600
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1058691670,
-      'mtime' => 1058691661,
+      'ctime' => 1069106986,
+      'mtime' => 1069106973,
       'size' => 1111
     },
     '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.3/include/stddef.h' => {
@@ -2490,8 +2490,8 @@ The above code would print something like this:
       'size' => 12695
     },
     '/usr/include/string.h' => {
-      'ctime' => 1058691675,
-      'mtime' => 1058691661,
+      'ctime' => 1069106990,
+      'mtime' => 1069106973,
       'size' => 14226
     }
   };

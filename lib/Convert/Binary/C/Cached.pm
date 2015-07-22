@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/08/18 10:21:18 +0100 $
-# $Revision: 17 $
-# $Snapshot: /Convert-Binary-C/0.48 $
+# $Date: 2003/11/24 08:40:33 +0000 $
+# $Revision: 20 $
+# $Snapshot: /Convert-Binary-C/0.49 $
 # $Source: /lib/Convert/Binary/C/Cached.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.48 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.49 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 my %cache;
 
@@ -91,14 +91,13 @@ sub configure
         }
         else {
           if( defined $arg{Cache} ) {
+            my @missing;
             eval { require Data::Dumper };
-            if( $@ ) {
-              $^W and carp "Cannot load Data::Dumper, disabling cache";
-              undef $arg{Cache};
-            }
+            $@ and push @missing, 'Data::Dumper';
             eval { require IO::File };
-            if( $@ ) {
-              $^W and carp "Cannot load IO::File, disabling cache";
+            $@ and push @missing, 'IO::File';
+            if( @missing ) {
+              $^W and carp "Cannot load ", join(' and ', @missing), ", disabling cache";
               undef $arg{Cache};
             }
           }
@@ -159,15 +158,19 @@ sub clone
 sub parse_file
 {
   my $self = shift;
-  eval { $self->__parse( 'file', $_[0] ) };
-  $@ =~ s/\s+at.*?Cached\.pm.*//s, croak $@ if $@;
+  my($warn,$error) = $self->__parse( 'file', $_[0] );
+  for my $w ( @$warn ) { carp $w }
+  defined $error and croak $error;
+  defined wantarray and return $self;
 }
 
 sub parse
 {
   my $self = shift;
-  eval { $self->__parse( 'code', $_[0] ) };
-  $@ =~ s/\s+at.*?Cached\.pm.*//s, croak $@ if $@;
+  my($warn,$error) = $self->__parse( 'code', $_[0] );
+  for my $w ( @$warn ) { carp $w }
+  defined $error and croak $error;
+  defined wantarray and return $self;
 }
 
 sub dependencies
@@ -225,24 +228,29 @@ sub __parse
 
   $c->{parsed} = 1;
 
-  my @warnings;
+  my(@warnings, $error);
   {
     local $SIG{__WARN__} = sub { push @warnings, $_[0] };
 
     if( $_[0] eq 'file' ) {
-      $self->SUPER::parse_file( $_[1] );
+      eval { $self->SUPER::parse_file( $_[1] ) };
     }
     else {
-      $self->SUPER::parse( $_[1] );
+      eval { $self->SUPER::parse( $_[1] ) };
     }
   }
 
-  for( @warnings ) {
-    s/\s+at.*?Cached\.pm.*//s;
-    carp $_;
+  if( $@ ) {
+    $error = $@;
+    $error =~ s/\s+at.*?Cached\.pm.*//s;
+  }
+  else {
+    defined $c->{cache} and $self->__save_cache;
   }
 
-  defined $c->{cache} and $self->__save_cache;
+  for( @warnings ) { s/\s+at.*?Cached\.pm.*//s }
+
+  (\@warnings, $error);
 }
 
 sub __can_use_cache

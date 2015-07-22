@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/10/27 07:32:32 +0000 $
-# $Revision: 50 $
-# $Snapshot: /Convert-Binary-C/0.48 $
+# $Date: 2003/11/21 12:50:38 +0000 $
+# $Revision: 53 $
+# $Snapshot: /Convert-Binary-C/0.49 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -76,8 +76,8 @@ $BISON = $Config{bison} || 'bison';
 
 @OBJECT = qw(
   ctlib/byteorder
-  ctlib/cpperr
   ctlib/ctdebug
+  ctlib/cterror
   ctlib/ctparse
   ctlib/cttype
   ctlib/fileinfo
@@ -132,7 +132,7 @@ $^O eq 'aix' and push @DEFINE, qw( POSIX_JMP );
                e_flags => [qw( CBC_HAVE_IEEE_FP )],
                d_flags => [qw()],
              },
-  ($Config{use5005threads} || $Config{useithreads}) ? (
+  ($Config{usethreads} || $Config{use5005threads} || $Config{useithreads}) ? (
     threads => {
                  enabled => 1,
                  e_flags => [qw( CBC_THREAD_SAFE )],
@@ -327,8 +327,8 @@ sub configure {
 
   for( keys %FEATURES ) {
     my $f = $FEATURES{$_};
-    $f->{enabled} and print /^\$/ ? "DEVELOPMENT-ONLY feature '$_' selected.\n"
-                                  : "Building with feature '$_'.\n";
+    $f->{enabled} and print /^\$/ ? "DEVELOPMENT-ONLY feature '$_' selected\n"
+                                  : "Building with feature '$_'\n";
     push @DEFINE, @{$f->{enabled} ? $f->{e_flags} : $f->{d_flags} };
   }
   

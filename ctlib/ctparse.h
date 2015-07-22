@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/06/06 12:41:29 +0100 $
-* $Revision: 18 $
-* $Snapshot: /Convert-Binary-C/0.48 $
+* $Date: 2003/11/21 12:46:32 +0000 $
+* $Revision: 19 $
+* $Snapshot: /Convert-Binary-C/0.49 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
@@ -126,7 +126,7 @@ typedef struct {
   HashTable  htStructs;
   HashTable  htTypedefs;
   HashTable  htFiles;
-  char      *errstr;
+  LinkedList errorStack;
 } CParseInfo;
 
 typedef enum {
@@ -163,8 +163,5 @@ void clone_parse_info( CParseInfo *pDest, CParseInfo *pSrc );
 ErrorGTI get_type_info( const CParseConfig *pCPC, TypeSpec *pTS, Declarator *pDecl,
                         unsigned *pSize, unsigned *pAlign, unsigned *pItemSize,
                         u_32 *pFlags );
-
-#define format_error CTlib_format_error
-void format_error( CParseInfo *pCPI, char *format, ... );
 
 #endif

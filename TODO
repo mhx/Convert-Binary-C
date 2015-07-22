@@ -2,8 +2,12 @@
 What's to do?
 =============
 
+
 for future releases (in no special order):
 ------------------------------------------
+
+* patch ucpp to only warn about missing newline
+  termination
 
 * check if there's a need for additional SvGETMAGIC's
 

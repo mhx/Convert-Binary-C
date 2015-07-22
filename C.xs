@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/11/02 23:00:51 +0000 $
-* $Revision: 105 $
-* $Snapshot: /Convert-Binary-C/0.48 $
+* $Date: 2003/11/24 07:54:18 +0000 $
+* $Revision: 110 $
+* $Snapshot: /Convert-Binary-C/0.49 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -49,7 +49,7 @@
 #include "byteorder.h"
 #include "ctdebug.h"
 #include "ctparse.h"
-#include "cpperr.h"
+#include "cterror.h"
 #include "fileinfo.h"
 #include "parser.h"
 
@@ -638,7 +638,7 @@ static void fatal( const char *f, ... ) __attribute__(( __noreturn__ ));
 static void *ct_newstr( void );
 static void ct_scatf( void *p, const char *f, ... );
 static void ct_vscatf( void *p, const char *f, va_list *l );
-static void ct_warn( void *p );
+static const char *ct_cstring( void *p, size_t *len );
 static void ct_fatal( void *p ) __attribute__(( __noreturn__ ));
 
 static char *string_new( const char *str );
@@ -768,6 +768,8 @@ static void  UpdateConfiguration( CBC *THIS );
 
 static void CheckAllowedTypes( pTHX_ const MemberInfo *pMI, const char *method,
                                      U32 allowedTypes );
+
+static void HandleParseErrors( pTHX_ LinkedList stack );
 
 /*===== EXTERNAL VARIABLES ===================================================*/
 
@@ -979,7 +981,13 @@ static void fatal( const char *f, ... )
 static void *ct_newstr( void )
 {
   dTHX;
-  return (void *) sv_2mortal( newSVpvn( "", 0 ) );
+  return (void *) newSVpvn( "", 0 );
+}
+
+static void ct_destroy( void *p )
+{
+  dTHX;
+  SvREFCNT_dec( (SV*)p );
 }
 
 static void ct_scatf( void *p, const char *f, ... )
@@ -997,16 +1005,20 @@ static void ct_vscatf( void *p, const char *f, va_list *l )
   sv_vcatpvf( (SV*)p, f, l );
 }
 
-static void ct_warn( void *p )
+static const char *ct_cstring( void *p, size_t *len )
 {
   dTHX;
-  if( PERL_WARNINGS_ON )
-    Perl_warn(aTHX_ "%s", SvPV_nolen((SV*)p));
+  STRLEN l;
+  const char *s = SvPV( (SV*)p, l );
+  if( len )
+    *len = (size_t) l;
+  return s;
 }
 
 static void ct_fatal( void *p )
 {
   dTHX;
+  sv_2mortal( (SV*)p );
   fatal( "%s", SvPV_nolen( (SV*)p ) );
 }
 
@@ -6053,6 +6065,45 @@ static void CheckAllowedTypes( pTHX_ const MemberInfo *pMI, const char *method,
   }
 }
 
+/*******************************************************************************
+*
+*   ROUTINE: HandleParseErrors
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Nov 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void HandleParseErrors( pTHX_ LinkedList stack )
+{
+  CTLibError *perr;
+
+  LL_foreach( perr, stack ) {
+    switch( perr->severity ) {
+      case CTES_ERROR:
+        Perl_croak(aTHX_ "%s", perr->string);
+        break;
+
+      case CTES_WARNING:
+        if( PERL_WARNINGS_ON )
+          Perl_warn(aTHX_ "%s", perr->string);
+        break;
+
+      default:
+        Perl_croak(aTHX_ "unknown severity [%d] for error: %s",
+                         perr->severity, perr->string);
+    }
+  }
+}
+
 
 /*===== XS FUNCTIONS =========================================================*/
 
@@ -6167,7 +6218,7 @@ CBC::new( ... )
 void
 CBC::DESTROY()
 	PREINIT:
-		CBC_METHOD( destroy );
+		CBC_METHOD( DESTROY );
 
 	CODE:
 		CT_DEBUG_METHOD;
@@ -6415,28 +6466,41 @@ CBC::Include( ... )
 
 void
 CBC::parse( code )
-	char *code
+	SV *code
 
 	PREINIT:
 		CBC_METHOD( parse );
+		SV *temp = NULL;
+		STRLEN len;
 		Buffer buf;
-		int rval;
 
 	CODE:
 		CT_DEBUG_METHOD;
 
-		buf.buffer = code; /* code is not modified */
-		buf.length = strlen( code );
+		buf.buffer = SvPV(code, len);
+
+		if( !( ( len == 0)
+		    || ( len >= 1 && ( buf.buffer[len-1] == '\n'
+		                    || buf.buffer[len-1] == '\r' ) ) ) ) {
+		  /* append a newline to a temporary copy */
+		  temp = newSVsv(code);
+		  sv_catpvn(temp, "\n", 1);
+		  buf.buffer = SvPV(temp, len);
+		}
+
+		buf.length = len;
 		buf.pos    = 0;
 #ifdef CBC_THREAD_SAFE
 		MUTEX_LOCK( &gs_parse_mutex );
 #endif
-		rval = parse_buffer( NULL, &buf, &THIS->cfg, &THIS->cpi );
+		(void) parse_buffer( NULL, &buf, &THIS->cfg, &THIS->cpi );
 #ifdef CBC_THREAD_SAFE
 		MUTEX_UNLOCK( &gs_parse_mutex );
 #endif
-		if( rval == 0 )
-		  Perl_croak(aTHX_ "%s", THIS->cpi.errstr);
+		if( temp )
+		  SvREFCNT_dec(temp);
+
+		HandleParseErrors( aTHX_ THIS->cpi.errorStack );
 
 		update_parse_info( &THIS->cpi, &THIS->cfg );
 
@@ -6466,19 +6530,17 @@ CBC::parse_file( file )
 
 	PREINIT:
 		CBC_METHOD( parse_file );
-		int rval;
 
 	CODE:
 		CT_DEBUG_METHOD1( "'%s'", file );
 #ifdef CBC_THREAD_SAFE
 		MUTEX_LOCK( &gs_parse_mutex );
 #endif
-		rval = parse_buffer( file, NULL, &THIS->cfg, &THIS->cpi );
+		(void) parse_buffer( file, NULL, &THIS->cfg, &THIS->cpi );
 #ifdef CBC_THREAD_SAFE
 		MUTEX_UNLOCK( &gs_parse_mutex );
 #endif
-		if( rval == 0 )
-		  Perl_croak(aTHX_ "%s", THIS->cpi.errstr);
+		HandleParseErrors( aTHX_ THIS->cpi.errorStack );
 
 		update_parse_info( &THIS->cpi, &THIS->cfg );
 
@@ -6586,7 +6648,6 @@ CBC::pack( type, data = &PL_sv_undef, string = NULL )
 		char *buffer;
 		MemberInfo mi;
 		PackInfo pack;
-		IDList idl;
 
 	CODE:
 		CT_DEBUG_METHOD1( "'%s'", type );
@@ -7761,12 +7822,12 @@ BOOT:
 		{
 		  const char *str;
 		  PrintFunctions f;
-		  f.newstr = ct_newstr;
-		  f.scatf  = ct_scatf;
-		  f.vscatf = ct_vscatf;
-		  f.warn   = ct_warn;
-		  f.error  = ct_warn;
-		  f.fatal  = ct_fatal;
+		  f.newstr  = ct_newstr;
+		  f.destroy = ct_destroy;
+		  f.scatf   = ct_scatf;
+		  f.vscatf  = ct_vscatf;
+		  f.cstring = ct_cstring;
+		  f.fatal   = ct_fatal;
 		  set_print_functions( &f );
 #ifdef CBC_THREAD_SAFE
 		  MUTEX_INIT( &gs_parse_mutex );

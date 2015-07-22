@@ -12,10 +12,10 @@ bin/perltypes.PL
 ctlib/arch.pl
 ctlib/byteorder.c
 ctlib/byteorder.h
-ctlib/cpperr.c
-ctlib/cpperr.h
 ctlib/ctdebug.c
 ctlib/ctdebug.h
+ctlib/cterror.c
+ctlib/cterror.h
 ctlib/ctparse.c
 ctlib/ctparse.h
 ctlib/cttype.c
@@ -130,7 +130,12 @@ t/cache/sub/dir.2
 t/include/files/empty.h
 t/include/files/files.h
 t/include/files/ifdef.h
+t/include/files/ifnonl.h
 t/include/files/ifnull.h
+t/include/files/nldos.h
+t/include/files/nlmac.h
+t/include/files/nlnone.h
+t/include/files/nlunix.h
 t/include/files/something.h
 t/include/include.c
 t/include/include/_G_config.h

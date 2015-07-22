@@ -1,4 +1,22 @@
 ------------
+Version 0.49
+------------
+
+* fixed build problem on multi-threaded 5.6.x perls by
+  removing irrelevant code from ppport.h
+
+* changed error reporting: preprocessor errors are no
+  longer only warnings
+  (this fixes an issue with Convert::Binary::C::Cached
+  creating an empty cache file if none of the #include'd
+  files could be found)
+
+* fixed some error/warnings reporting problems with
+  Convert::Binary::C::Cached
+
+* minor cleanups
+
+------------
 Version 0.48
 ------------
 
