@@ -1,5 +1,3 @@
-# $Id: Assert.pm 1 2005/10/25 18:37:07 +0100 mhx $
-
 package Test::Harness::Assert;
 
 use strict;
@@ -55,7 +53,7 @@ sub assert ($;$) {
 
 =head1 AUTHOR
 
-Michael G Schwern C<< <schwern@pobox.com> >>
+Michael G Schwern C<< <schwern at pobox.com> >>
 
 =head1 SEE ALSO
 

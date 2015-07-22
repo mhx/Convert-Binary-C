@@ -1,3 +1,32 @@
+-------------------------
+Version 0.65 (2006-08-27)
+-------------------------
+
+* fix compilation issues with perls configured with
+  threads and debugging; these issues were caused by
+  a buggy implementation of the assert() macro in the
+  5.8 series of perl
+
+* fix compilation issues with HP compiler on itanium
+  systems
+
+* fix: hooks for the same type were not re-entrant
+  (i.e. you could not pack/unpack the same type
+  within a hook registered for that type)
+
+* fix: passing sparse hashes or arrays to pack() in
+  combination with pack hooks was causing an assertion
+
+* fix an integer promotion bug in the preprocessor
+
+* add better support for C99-style array declarator
+
+* fix enumerator handling: it was impossible to reuse
+  the name of an enumerator as an identifer
+
+* ccconfig fix: macros defined to the empty string
+  were not properly detected
+
 ----------------------------
 Version 0.64_02 (2006-03-24)
 ----------------------------

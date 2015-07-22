@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:26 +0000 $
-* $Revision: 20 $
+* $Date: 2006/08/26 15:19:24 +0100 $
+* $Revision: 21 $
 * $Source: /util/memalloc.h $
 *
 ********************************************************************************
@@ -110,8 +110,8 @@ void *_memAlloc( size_t size, const char *file, int line );
 void *_memCAlloc( size_t nobj, size_t size, const char *file, int line );
 void *_memReAlloc( void *p, size_t size, const char *file, int line );
 void  _memFree( void *p, const char *file, int line );
-void  _assertValidPtr( void *p, const char *file, int line );
-void  _assertValidBlock( void *p, size_t size, const char *file, int line );
+void  _assertValidPtr( const void *p, const char *file, int line );
+void  _assertValidBlock( const void *p, size_t size, const char *file, int line );
 int    SetDebugMemAlloc( void (*dbfunc)(const char *, ...), unsigned long dbflags );
 #else
 void *_memAlloc( size_t size );

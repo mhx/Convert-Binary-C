@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/05 00:46:16 +0000 $
-* $Revision: 11 $
+* $Date: 2006/08/26 12:33:43 +0100 $
+* $Revision: 12 $
 * $Source: /cbc/typeinfo.c $
 *
 ********************************************************************************
@@ -149,10 +149,11 @@ static SV *get_type_spec_def(pTHX_ const CParseConfig *pCfg, const TypeSpec *pTS
 
 static SV *get_enumerators_def(pTHX_ LinkedList enumerators)
 {
+  ListIterator ei;
   Enumerator *pEnum;
   HV *hv = newHV();
 
-  LL_foreach(pEnum, enumerators)
+  LL_foreach(pEnum, ei, enumerators)
   {
     SV *val = newSViv(pEnum->value.iv);
     if (hv_store(hv, pEnum->identifier, CTT_IDLEN(pEnum), val, 0) == NULL)
@@ -181,10 +182,11 @@ static SV *get_enumerators_def(pTHX_ LinkedList enumerators)
 
 static SV *get_declarators_def(pTHX_ LinkedList declarators)
 {
+  ListIterator di;
   Declarator *pDecl;
   AV *av = newAV();
 
-  LL_foreach(pDecl, declarators)
+  LL_foreach(pDecl, di, declarators)
   {
     HV *hv = newHV();
     Value *pValue;
@@ -201,7 +203,9 @@ static SV *get_declarators_def(pTHX_ LinkedList declarators)
 
       if (pDecl->array_flag)
       {
-        LL_foreach(pValue, pDecl->ext.array)
+        ListIterator ai;
+
+        LL_foreach(pValue, ai, pDecl->ext.array)
         {
           if (pValue->flags & V_IS_UNDEF)
             sv_catpvn(sv, "[]", 2);
@@ -240,10 +244,11 @@ static SV *get_declarators_def(pTHX_ LinkedList declarators)
 
 static SV *get_struct_declarations_def(pTHX_ const CParseConfig *pCfg, LinkedList declarations)
 {
+  ListIterator sdi;
   StructDeclaration *pStructDecl;
   AV *av = newAV();
 
-  LL_foreach(pStructDecl, declarations)
+  LL_foreach(pStructDecl, sdi, declarations)
   {
     HV *hv = newHV();
 
@@ -289,7 +294,9 @@ SV *get_typedef_def(pTHX_ const CParseConfig *pCfg, const Typedef *pTypedef)
 
   if (pDecl->array_flag)
   {
-    LL_foreach(pValue, pDecl->ext.array)
+    ListIterator ai;
+
+    LL_foreach(pValue, ai, pDecl->ext.array)
     {
       if (pValue->flags & V_IS_UNDEF)
         sv_catpvn(sv, "[]", 2);

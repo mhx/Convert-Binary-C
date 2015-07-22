@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/23 21:00:56 +0000 $
-# $Revision: 17 $
+# $Date: 2006/07/30 11:13:17 +0100 $
+# $Revision: 18 $
 # $Source: /tests/216_language.t $
 #
 ################################################################################
@@ -19,7 +19,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 37 }
+BEGIN { plan tests => 43 }
 
 eval {
   $c = new Convert::Binary::C;
@@ -63,6 +63,22 @@ eval {
 ok($@, '');
 ok( scalar @st, 1 );
 ok( $st[0], 'inline' );
+
+my @c99decl = (
+  'void funky(const int * const restrict foo[const restrict 8]);',
+  'void funky(const int * const foo[const restrict 8]);',
+  'void funky(const int * const foo[static const restrict 8]);',
+  'void funky(const int * const foo[const restrict static 8]);',
+  'void funky(const int * const foo[static 8]);',
+  'void funky(restrict int * const foo[restrict 8]);',
+);
+
+$c->DisabledKeywords([]);
+
+for my $c99 (@c99decl) {
+  eval { $c->clean->parse($c99) };
+  ok($@, '');
+}
 
 #--------------------
 # check C++ comments

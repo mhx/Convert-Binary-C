@@ -16,7 +16,7 @@ sub _carp {
 
 
 use vars qw($VERSION @ISA @EXPORT %EXPORT_TAGS $TODO);
-$VERSION = '0.62';
+$VERSION = '0.64';
 $VERSION = eval $VERSION;    # make the alpha version come out as a number
 
 use Test::Builder::Module;
@@ -465,6 +465,12 @@ sub can_ok ($@) {
     my $class = ref $proto || $proto;
     my $tb = Test::More->builder;
 
+    unless( $class ) {
+        my $ok = $tb->ok( 0, "->can(...)" );
+        $tb->diag('    can_ok() called with empty class or reference');
+        return $ok;
+    }
+
     unless( @methods ) {
         my $ok = $tb->ok( 0, "$class->can(...)" );
         $tb->diag('    can_ok() called with no methods');
@@ -481,7 +487,7 @@ sub can_ok ($@) {
     my $name;
     $name = @methods == 1 ? "$class->can('$methods[0]')" 
                           : "$class->can(...)";
-    
+
     my $ok = $tb->ok( !@nok, $name );
 
     $tb->diag(map "    $class->can('$_') failed\n", @nok);
@@ -995,6 +1001,11 @@ sub skip {
         $how_many = 1;
     }
 
+    if( defined $how_many and $how_many =~ /\D/ ) {
+        _carp "skip() was passed a non-numeric number of tests.  Did you get the arguments backwards?";
+        $how_many = 1;
+    }
+
     for( 1..$how_many ) {
         $tb->skip($why);
     }
@@ -1107,7 +1118,7 @@ but want to put tests in your testing script (always a good idea).
 
     BAIL_OUT($reason);
 
-Incidates to the harness that things are going so badly all testing
+Indicates to the harness that things are going so badly all testing
 should terminate.  This includes the running any additional test scripts.
 
 This is typically used when testing cannot continue such as a critical

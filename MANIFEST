@@ -127,6 +127,7 @@ tests/239_macros.t
 tests/240_offsetof.t
 tests/241_sizeof.t
 tests/242_dimension.t
+tests/243_parser.t
 tests/501_bfsimple.t
 tests/502_bfmicrosoft.t
 tests/503_bfgeneric.t
@@ -313,6 +314,7 @@ tests/include/perlinc/util.h
 tests/include/perlinc/warnings.h
 tests/include/sizeof.pl
 tests/include/util.c
+tests/parser/context.c
 TODO
 token/blproperty.pl
 token/config.pl

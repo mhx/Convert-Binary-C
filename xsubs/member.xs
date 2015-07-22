@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/04 22:26:10 +0000 $
-# $Revision: 7 $
+# $Date: 2006/08/26 12:33:45 +0100 $
+# $Revision: 8 $
 # $Source: /xsubs/member.xs $
 #
 ################################################################################
@@ -69,6 +69,7 @@ CBC::member(type, offset = NULL)
 
       if (GIMME_V == G_ARRAY)
       {
+        ListIterator li;
         GMSInfo info;
         SV     *member;
         int     count;
@@ -85,13 +86,13 @@ CBC::member(type, offset = NULL)
 
         EXTEND(SP, count);
 
-        LL_foreach(member, info.hit)
+        LL_foreach(member, li, info.hit)
           PUSHs(member);
 
-        LL_foreach(member, info.off)
+        LL_foreach(member, li, info.off)
           PUSHs(member);
 
-        LL_foreach(member, info.pad)
+        LL_foreach(member, li, info.pad)
           PUSHs(member);
 
         LL_destroy(info.hit, NULL);
@@ -118,9 +119,11 @@ CBC::member(type, offset = NULL)
 
       if (GIMME_V == G_ARRAY)
       {
+        ListIterator li;
+
         EXTEND(SP, count);
 
-        LL_foreach(member, list)
+        LL_foreach(member, li, list)
           PUSHs(member);
 
         LL_destroy(list, NULL);

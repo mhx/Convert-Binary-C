@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/03/12 11:10:50 +0000 $
-* $Revision: 18 $
+* $Date: 2006/08/27 10:55:02 +0100 $
+* $Revision: 20 $
 * $Source: /cbc/member.c $
 *
 ********************************************************************************
@@ -110,6 +110,7 @@ static int search_struct_member(Struct *pStruct, const char *elem,
 
 static void get_ams_struct(pTHX_ Struct *pStruct, SV *name, int level, AMSInfo *info)
 {
+  ListIterator       sdi;
   StructDeclaration *pStructDecl;
   Declarator        *pDecl;
   STRLEN             len;
@@ -123,11 +124,13 @@ static void get_ams_struct(pTHX_ Struct *pStruct, SV *name, int level, AMSInfo *
     sv_catpvn_nomg(name, ".", 1);
   }
 
-  LL_foreach(pStructDecl, pStruct->declarations)
+  LL_foreach(pStructDecl, sdi, pStruct->declarations)
   {
     if (pStructDecl->declarators)
     {
-      LL_foreach(pDecl, pStructDecl->declarators)
+      ListIterator di;
+
+      LL_foreach(pDecl, di, pStructDecl->declarators)
       {
         /* skip unnamed bitfield members right here */
         if (pDecl->bitfield_flag && pDecl->identifier[0] == '\0')
@@ -303,7 +306,9 @@ static GMSRV append_member_string_rec(pTHX_ const TypeSpec *pType, const Declara
 
       if (pDecl->array_flag)
       {
-        LL_foreach(pValue, pDecl->ext.array)
+        ListIterator ai;
+
+        LL_foreach(pValue, ai, pDecl->ext.array)
         {
           size /= pValue->iv;
           index = offset/size;
@@ -415,6 +420,7 @@ static GMSRV append_member_string_rec(pTHX_ const TypeSpec *pType, const Declara
 static GMSRV get_member_string_rec(pTHX_ const Struct *pStruct, int offset,
                                    int realoffset, SV *sv, GMSInfo *pInfo)
 {
+  ListIterator       sdi;
   StructDeclaration *pStructDecl;
   Declarator        *pDecl;
   SV                *tmpSV, *bestSV;
@@ -437,7 +443,7 @@ static GMSRV get_member_string_rec(pTHX_ const Struct *pStruct, int offset,
     tmpSV  = NULL;
   }
 
-  LL_foreach(pStructDecl, pStruct->declarations)
+  LL_foreach(pStructDecl, sdi, pStruct->declarations)
   {
     CT_DEBUG(MAIN, ("Current StructDecl: offset=%d size=%d decl=%p",
              pStructDecl->offset, pStructDecl->size, pStructDecl->declarators));
@@ -484,7 +490,9 @@ static GMSRV get_member_string_rec(pTHX_ const Struct *pStruct, int offset,
       }
       else
       {
-        LL_foreach(pDecl, pStructDecl->declarators)
+        ListIterator di;
+
+        LL_foreach(pDecl, di, pStructDecl->declarators)
         {
           CT_DEBUG(MAIN, ("Current Declarator [%s]: offset=%d size=%d",
                           pDecl->identifier, pDecl->offset, pDecl->size));
@@ -566,15 +574,18 @@ handle_union_end:
 static int search_struct_member(Struct *pStruct, const char *elem,
                                 StructDeclaration **ppSD, Declarator **ppD)
 {
+  ListIterator       sdi;
   StructDeclaration *pStructDecl;
   Declarator        *pDecl = NULL;
   int                offset;
 
-  LL_foreach(pStructDecl, pStruct->declarations)
+  LL_foreach(pStructDecl, sdi, pStruct->declarations)
   {
     if (pStructDecl->declarators)
     {
-      LL_foreach(pDecl, pStructDecl->declarators)
+      ListIterator di;
+
+      LL_foreach(pDecl, di, pStructDecl->declarators)
       {
         if (strEQ(pDecl->identifier, elem))
           break;
@@ -765,7 +776,7 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
   CT_DEBUG(MAIN, ("get_member( member=\"%s\", accept_dotless_member=%d, do_calc=%d, reject_oobi=%d )",
                   member, accept_dotless_member, do_calc, reject_oobi));
 
-  walker = member_expr_walker_new(member, 0);
+  walker = member_expr_walker_new(aTHX_ member, 0);
 
   if (pMIout)
     pMIout->flags = 0;
@@ -809,7 +820,7 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
   {
     struct me_walk_info mei;
 
-    member_expr_walker_walk(walker, &mei);
+    member_expr_walker_walk(aTHX_ walker, &mei);
 
     CT_DEBUG(MAIN, ("(offset=%d, level=%d, size=%d) %s (%d)", offset, level, size,
                      member_expr_walker_retval_string(mei.retval), (int) mei.retval));
@@ -1055,7 +1066,7 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
   }
 
   error:
-  member_expr_walker_delete(walker);
+  member_expr_walker_delete(aTHX_ walker);
 
   if (err != NULL)
   {
@@ -1103,7 +1114,7 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
 *
 *******************************************************************************/
 
-MemberExprWalker member_expr_walker_new(const char *expr, size_t len)
+MemberExprWalker member_expr_walker_new(pTHX_ const char *expr, size_t len)
 {
   MemberExprWalker me;
 
@@ -1126,7 +1137,7 @@ MemberExprWalker member_expr_walker_new(const char *expr, size_t len)
 
 /*******************************************************************************
 *
-*   ROUTINE: member_expr_walker_new
+*   ROUTINE: member_expr_walker_retval_string
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
 *   CHANGED BY:                                   ON:
@@ -1161,7 +1172,7 @@ const char *member_expr_walker_retval_string(enum me_walk_rv retval)
 
 /*******************************************************************************
 *
-*   ROUTINE: member_expr_walker_new
+*   ROUTINE: member_expr_walker_walk
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Mar 2006
 *   CHANGED BY:                                   ON:
@@ -1176,7 +1187,7 @@ const char *member_expr_walker_retval_string(enum me_walk_rv retval)
 *
 *******************************************************************************/
 
-void member_expr_walker_walk(MemberExprWalker me, struct me_walk_info *info)
+void member_expr_walker_walk(pTHX_ MemberExprWalker me, struct me_walk_info *info)
 {
 #ifdef CBC_DEBUGGING
   static const char *Sstate[] = {
@@ -1368,7 +1379,7 @@ void member_expr_walker_walk(MemberExprWalker me, struct me_walk_info *info)
 *
 *******************************************************************************/
 
-void member_expr_walker_delete(MemberExprWalker me)
+void member_expr_walker_delete(pTHX_ MemberExprWalker me)
 {
   assert(me != NULL);
 

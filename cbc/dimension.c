@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/03/24 18:16:54 +0000 $
-* $Revision: 1 $
+* $Date: 2006/08/27 10:55:00 +0100 $
+* $Revision: 2 $
 * $Source: /cbc/dimension.c $
 *
 ********************************************************************************
@@ -298,7 +298,7 @@ static long dimension_from_member(pTHX_ const char *member, HV *parent)
 
   CT_DEBUG(MAIN, ("trying to get dimension from member, walking \"%s\"", member));
 
-  walker = member_expr_walker_new(member, 0);
+  walker = member_expr_walker_new(aTHX_ member, 0);
 
   XCPT_TRY_START
   {
@@ -306,7 +306,7 @@ static long dimension_from_member(pTHX_ const char *member, HV *parent)
     {
       struct me_walk_info mei;
 
-      member_expr_walker_walk(walker, &mei);
+      member_expr_walker_walk(aTHX_ walker, &mei);
 
       if (mei.retval == MERV_END)
       {
@@ -411,7 +411,7 @@ lookup_failed:
   }
   XCPT_TRY_END
 
-  member_expr_walker_delete(walker);
+  member_expr_walker_delete(aTHX_ walker);
 
   XCPT_CATCH
   {
@@ -809,7 +809,7 @@ SV *dimtag_get(pTHX_ const DimensionTag *dim)
 *
 *******************************************************************************/
 
-int dimtag_is_flexible(const DimensionTag *dim)
+int dimtag_is_flexible(pTHX_ const DimensionTag *dim)
 {
   assert(dim != NULL);
   return dim->type == DTT_FLEXIBLE;

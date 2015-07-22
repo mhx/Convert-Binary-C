@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/02/26 10:04:05 +0000 $
-* $Revision: 15 $
+* $Date: 2006/08/26 12:33:43 +0100 $
+* $Revision: 16 $
 * $Source: /cbc/sourcify.c $
 *
 ********************************************************************************
@@ -296,6 +296,7 @@ static void add_enum_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *s,
 
   if (pES->enumerators)
   {
+    ListIterator ei;
     Enumerator *pEnum;
     int         first = 1;
     Value       lastVal;
@@ -304,7 +305,7 @@ static void add_enum_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *s,
     SRC_INDENT;
     sv_catpvn(s, "{", 1);
 
-    LL_foreach(pEnum, pES->enumerators)
+    LL_foreach(pEnum, ei, pES->enumerators)
     {
       if (!first)
         sv_catpvn(s, ",", 1);
@@ -407,14 +408,16 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
 
   if (pStruct->declarations)
   {
+    ListIterator sdi;
     StructDeclaration *pStructDecl;
 
     sv_catpvn(s, "\n", 1);
     SRC_INDENT;
     sv_catpvn(s, "{\n", 2);
 
-    LL_foreach(pStructDecl, pStruct->declarations)
+    LL_foreach(pStructDecl, sdi, pStruct->declarations)
     {
+      ListIterator di;
       Declarator *pDecl;
       int first = 1, need_def = 0;
       SourcifyState ss;
@@ -422,7 +425,7 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
       ss.flags = F_NEWLINE;
       ss.pack  = pack_pushed ? pStruct->pack : 0;
 
-      LL_foreach(pDecl, pStructDecl->declarators)
+      LL_foreach(pDecl, di, pStructDecl->declarators)
         if (pDecl->pointer_flag == 0)
         {
           need_def = 1;
@@ -441,7 +444,7 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
       else if (pStructDecl->declarators)
         sv_catpvn(s, " ", 1);
 
-      LL_foreach(pDecl, pStructDecl->declarators)
+      LL_foreach(pDecl, di, pStructDecl->declarators)
       {
         Value *pValue;
 
@@ -459,8 +462,12 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
                                pDecl->identifier);
 
           if (pDecl->array_flag)
-            LL_foreach(pValue, pDecl->ext.array)
+          {
+            ListIterator ai;
+
+            LL_foreach(pValue, ai, pDecl->ext.array)
               sv_catpvf(s, "[%ld]", pValue->iv);
+          }
         }
       }
 
@@ -500,12 +507,13 @@ static void add_struct_spec_string_rec(pTHX_ SourcifyConfig *pSC, SV *str, SV *s
 
 static void add_typedef_list_decl_string(pTHX_ SV *str, TypedefList *pTDL)
 {
+  ListIterator ti;
   Typedef *pTypedef;
   int first = 1;
 
   CT_DEBUG(MAIN, (XSCLASS "::add_typedef_list_decl_string( pTDL=%p )", pTDL));
 
-  LL_foreach(pTypedef, pTDL->typedefs)
+  LL_foreach(pTypedef, ti, pTDL->typedefs)
   {
     Declarator *pDecl = pTypedef->pDecl;
     Value *pValue;
@@ -518,8 +526,12 @@ static void add_typedef_list_decl_string(pTHX_ SV *str, TypedefList *pTDL)
     sv_catpvf(str, "%s%s", pDecl->pointer_flag ? "*" : "", pDecl->identifier);
 
     if (pDecl->array_flag)
-      LL_foreach(pValue, pDecl->ext.array)
+    {
+      ListIterator ai;
+
+      LL_foreach(pValue, ai, pDecl->ext.array)
         sv_catpvf(str, "[%ld]", pValue->iv);
+    }
   }
 }
 
@@ -815,6 +827,7 @@ void get_sourcify_config(pTHX_ HV *cfg, SourcifyConfig *pSC)
 
 SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
 {
+  ListIterator   li;
   TypedefList   *pTDL;
   EnumSpecifier *pES;
   Struct        *pStruct;
@@ -827,7 +840,7 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
 
   /* typedef predeclarations */
 
-  LL_foreach(pTDL, pCPI->typedef_lists)
+  LL_foreach(pTDL, li, pCPI->typedef_lists)
   {
     u_32 tflags = pTDL->type.tflags;
 
@@ -879,7 +892,7 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
 
   /* typedefs */
 
-  LL_foreach(pTDL, pCPI->typedef_lists)
+  LL_foreach(pTDL, li, pCPI->typedef_lists)
     if (pTDL->type.ptr != NULL)
       if (((pTDL->type.tflags & T_ENUM) &&
            ((EnumSpecifier *) pTDL->type.ptr)->identifier[0] == '\0') ||
@@ -898,7 +911,7 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
 
   /* defined enums */
 
-  LL_foreach(pES, pCPI->enums)
+  LL_foreach(pES, li, pCPI->enums)
     if (pES->enumerators &&
         pES->identifier[0] != '\0' &&
         (pES->tflags & (T_ALREADY_DUMPED)) == 0)
@@ -914,7 +927,7 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
 
   /* defined structs and unions */
 
-  LL_foreach(pStruct, pCPI->structs)
+  LL_foreach(pStruct, li, pCPI->structs)
     if(pStruct->declarations &&
        pStruct->identifier[0] != '\0' &&
        (pStruct->tflags & (T_ALREADY_DUMPED)) == 0)
@@ -930,7 +943,7 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
 
   /* undefined enums */
 
-  LL_foreach(pES, pCPI->enums)
+  LL_foreach(pES, li, pCPI->enums)
   {
     if ((pES->tflags & T_ALREADY_DUMPED) == 0 && pES->refcount == 0)
     {
@@ -951,7 +964,7 @@ SV *get_parsed_definitions_string(pTHX_ CParseInfo *pCPI, SourcifyConfig *pSC)
 
   /* undefined structs and unions */
 
-  LL_foreach(pStruct, pCPI->structs)
+  LL_foreach(pStruct, li, pCPI->structs)
   {
     if ((pStruct->tflags & T_ALREADY_DUMPED) == 0 && pStruct->refcount == 0)
     {

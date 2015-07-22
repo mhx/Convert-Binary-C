@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/03/10 15:24:56 +0000 $
-* $Revision: 12 $
+* $Date: 2006/08/26 12:33:43 +0100 $
+* $Revision: 13 $
 * $Source: /cbc/util.c $
 *
 ********************************************************************************
@@ -545,12 +545,13 @@ void string_delete(char *str)
 
 LinkedList clone_string_list(LinkedList list)
 {
+  ListIterator li;
   const char *str;
   LinkedList clone;
 
   clone = LL_new();
 
-  LL_foreach(str, list)
+  LL_foreach(str, li, list)
     LL_push(clone, string_new(str));
 
   return clone;

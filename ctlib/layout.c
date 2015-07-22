@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/23 21:36:55 +0000 $
-* $Revision: 12 $
+* $Date: 2006/08/26 12:33:44 +0100 $
+* $Revision: 13 $
 * $Source: /ctlib/layout.c $
 *
 ********************************************************************************
@@ -225,11 +225,12 @@ ErrorGTI get_type_info_generic(const LayoutParam *pLP, const TypeSpec *pTS,
     {
       if (pDecl->array_flag)
       {
+        ListIterator ai;
         Value *pValue;
 
         CT_DEBUG(CTLIB, ("processing array [%p]", pDecl->ext.array));
 
-        LL_foreach(pValue, pDecl->ext.array)
+        LL_foreach(pValue, ai, pDecl->ext.array)
         {
           CT_DEBUG(CTLIB, ("[%ld]", pValue->iv));
 
@@ -323,6 +324,7 @@ ErrorGTI get_type_info_generic(const LayoutParam *pLP, const TypeSpec *pTS,
 
 void layout_compound_generic(const LayoutParam *pLP, Struct *pStruct)
 {
+  ListIterator       sdi;
   static const char *blproperror = "couldn't %cet bitfield layouter property (%d) => error %d";
   StructDeclaration *pStructDecl;
   Declarator        *pDecl;
@@ -349,7 +351,7 @@ void layout_compound_generic(const LayoutParam *pLP, Struct *pStruct)
   BL_SET(MAX_ALIGN, alignment);
   BL_SET_BYTE_ORDER(pLP->byte_order);
 
-  LL_foreach(pStructDecl, pStruct->declarations)
+  LL_foreach(pStructDecl, sdi, pStruct->declarations)
   {
     CT_DEBUG(CTLIB, ("%d declarators in struct declaration, tflags=0x%08lX ptr=%p",
              LL_count(pStructDecl->declarators),
@@ -360,7 +362,9 @@ void layout_compound_generic(const LayoutParam *pLP, Struct *pStruct)
 
     if (pStructDecl->declarators)
     {
-      LL_foreach(pDecl, pStructDecl->declarators)
+      ListIterator di;
+
+      LL_foreach(pDecl, di, pStructDecl->declarators)
       {
         CT_DEBUG(CTLIB, ("current declarator [%s]",
                  pDecl->identifier[0] ? pDecl->identifier : "<no-identifier>"));

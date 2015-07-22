@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/02/24 20:58:41 +0000 $
-* $Revision: 15 $
+* $Date: 2006/08/27 13:23:13 +0100 $
+* $Revision: 16 $
 * $Source: /ucpp/config.h $
 *
 ********************************************************************************
@@ -62,6 +62,7 @@
 #define NATIVE_SIGNED           i_64
 #define NATIVE_UNSIGNED         u_64
 #define NATIVE_UNSIGNED_BITS    64
+#define NATIVE_UNSIGNED_ONE     1ULL
 #define NATIVE_SIGNED_MIN       (-9223372036854775807LL - 1)
 #define NATIVE_SIGNED_MAX       9223372036854775807LL
 

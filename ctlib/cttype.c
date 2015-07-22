@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:04 +0000 $
-* $Revision: 30 $
+* $Date: 2006/08/26 12:33:44 +0100 $
+* $Revision: 31 $
 * $Source: /ctlib/cttype.c $
 *
 ********************************************************************************
@@ -428,6 +428,7 @@ EnumSpecifier *enumspec_new(const char *identifier, int id_len, LinkedList enume
 
 void enumspec_update(EnumSpecifier *pEnumSpec, LinkedList enumerators)
 {
+  ListIterator ei;
   Enumerator *pEnum;
   long min, max;
 
@@ -438,7 +439,7 @@ void enumspec_update(EnumSpecifier *pEnumSpec, LinkedList enumerators)
   pEnumSpec->enumerators = enumerators;
   min = max = 0;
 
-  LL_foreach(pEnum, enumerators)
+  LL_foreach(pEnum, ei, enumerators)
   {
     if (pEnum->value.iv > max)
       max = pEnum->value.iv;
@@ -1014,11 +1015,12 @@ TypedefList *typedef_list_clone(const TypedefList *pSrc)
 
   if (pSrc->typedefs)
   {
+    ListIterator ti;
     Typedef *pTypedef;
 
     pDest->typedefs = LL_new();
 
-    LL_foreach(pTypedef, pSrc->typedefs)
+    LL_foreach(pTypedef, ti, pSrc->typedefs)
     {
       Typedef *pClone = typedef_clone(pTypedef);
       pClone->pType = &pDest->type;

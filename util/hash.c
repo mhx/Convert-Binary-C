@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/04 11:19:34 +0000 $
-* $Revision: 26 $
+* $Date: 2006/08/26 16:42:52 +0100 $
+* $Revision: 27 $
 * $Source: /util/hash.c $
 *
 ********************************************************************************
@@ -43,22 +43,18 @@
 /*----------*/
 /* Typedefs */
 /*----------*/
-typedef struct {
-  int               remain;
-  HashNode          pNode;
-  HashNode         *pBucket;
-} IterState;
-
 struct _hashTable {
   int               count;
   int               size;
+#ifdef DEBUG_UTIL_HASH
+  unsigned          state;
+#endif
   unsigned long     flags;
   unsigned long     bmask;
-  IterState         i;
   HashNode         *root;
 };
 
-#ifdef DEBUG_HASH
+#ifdef DEBUG_UTIL_HASH
 
 #ifdef UTIL_FORMAT_CHECK
 # define HASH_DEBUG_FUNC debug_check
@@ -75,11 +71,15 @@ struct _hashTable {
 static void (*gs_dbfunc)(const char *, ...) = NULL;
 static unsigned long gs_dbflags             = 0;
 
-#else /* !DEBUG_HASH */
+#define CHANGE_STATE(table)   (table)->state++
 
-#define DEBUG( flag, out )
+#else /* !DEBUG_UTIL_HASH */
 
-#endif /* DEBUG_HASH */
+#define DEBUG( flag, out )    (void) 0
+
+#define CHANGE_STATE(table)   (void) 0
+
+#endif /* DEBUG_UTIL_HASH */
 
 /* size of fixed part of hash node */
 #define HN_SIZE_FIX offsetof( struct _hashNode, key )
@@ -100,7 +100,7 @@ static unsigned long gs_dbflags             = 0;
 #define ENTRY_FOUND_NODE( n ) \
           ENTRY_FOUND( (node)->hash, (node)->key, (node)->keylen, n )
 
-#if defined DEBUG_HASH && defined NO_TERMINATED_KEYS
+#if defined DEBUG_UTIL_HASH && defined NO_TERMINATED_KEYS
 #undef NO_TERMINATED_KEYS
 #endif
 
@@ -135,7 +135,7 @@ static unsigned long gs_dbflags             = 0;
 
 /* static functions */
 
-#if defined(DEBUG_HASH) && defined(UTIL_FORMAT_CHECK)
+#if defined(DEBUG_UTIL_HASH) && defined(UTIL_FORMAT_CHECK)
 static void debug_check(char *str, ...)
             __attribute__(( __format__( __printf__, 1, 2 ), __noreturn__ ));
 
@@ -305,6 +305,10 @@ HashTable HT_new_ex( int size, unsigned long flags )
   table->bmask = (unsigned long) (buckets-1);
   table->flags = flags;
 
+#ifdef DEBUG_UTIL_HASH
+  table->state = 0;
+#endif
+
   DEBUG( MAIN, ("created new hash table @ %p with %d buckets\n", table, buckets) );
 
   pNode = &table->root[0];
@@ -337,6 +341,8 @@ void HT_delete( HashTable table )
 
   AssertValidPtr( table );
   AssertValidPtr( table->root );
+
+  CHANGE_STATE(table);
 
   assert( table->count == 0 );
 
@@ -378,6 +384,8 @@ void HT_flush( HashTable table, HTDestroyFunc destroy )
 
   AssertValidPtr( table );
   AssertValidPtr( table->root );
+
+  CHANGE_STATE(table);
 
   buckets = 1 << table->size;
 
@@ -431,6 +439,8 @@ void HT_destroy( HashTable table, HTDestroyFunc destroy )
   AssertValidPtr( table );
   AssertValidPtr( table->root );
 
+  CHANGE_STATE(table);
+
   HT_flush( table, destroy );
 
   Free( table->root );
@@ -460,7 +470,7 @@ void HT_destroy( HashTable table, HTDestroyFunc destroy )
  *  \see HT_new()
  */
 
-HashTable HT_clone( HashTable table, HTCloneFunc func )
+HashTable HT_clone( ConstHashTable table, HTCloneFunc func )
 {
   HashTable clone;
   HashNode *pSrcNode, *pDstNode, node, *pNode, cnode;
@@ -538,6 +548,8 @@ int HT_resize( HashTable table, int size )
   if( size == table->size )
     return 0;
 
+  CHANGE_STATE(table);
+
   if( size > table->size )
     ht_grow( table, size );
   else
@@ -546,7 +558,7 @@ int HT_resize( HashTable table, int size )
   return 1;
 }
 
-#ifdef DEBUG_HASH
+#ifdef DEBUG_UTIL_HASH
 
 /**
  *  Dump the contents of a hash table
@@ -558,10 +570,10 @@ int HT_resize( HashTable table, int size )
  *  \param table        Handle to an existing hash table.
  *
  *  \note HT_dump() is only available if the code was compiled
- *        with the \c DEBUG_HASH preprocessor flag.
+ *        with the \c DEBUG_UTIL_HASH preprocessor flag.
  */
 
-void HT_dump( const HashTable table )
+void HT_dump( ConstHashTable table )
 {
   int i, j, buckets;
   HashNode *pNode, node;
@@ -575,8 +587,8 @@ void HT_dump( const HashTable table )
     return;
 
   gs_dbfunc( "----------------------------------------------------\n" );
-  gs_dbfunc( "HashTable @ %p: %d elements in %d buckets\n",
-             table, table->count, 1<<table->size );
+  gs_dbfunc( "HashTable @ %p: %d elements in %d buckets (state=%u)\n",
+             table, table->count, 1<<table->size, table->state );
 
   buckets = 1<<table->size;
   pNode = &table->root[0];
@@ -613,7 +625,7 @@ void HT_dump( const HashTable table )
  *  \see HT_new()
  */
 
-int HT_size( const HashTable table )
+int HT_size( ConstHashTable table )
 {
   if( table == NULL )
     return -1;
@@ -635,7 +647,7 @@ int HT_size( const HashTable table )
  *          or -1 if an invalid handle was passed.
  */
 
-int HT_count( const HashTable table )
+int HT_count( ConstHashTable table )
 {
   if( table == NULL )
     return -1;
@@ -748,7 +760,7 @@ void HN_delete( HashNode node )
  *  \see HN_new and HT_fetchnode()
  */
 
-int HT_storenode( const HashTable table, HashNode node, void *pObj )
+int HT_storenode( HashTable table, HashNode node, void *pObj )
 {
   HashNode *pNode;
   int cmp;
@@ -760,6 +772,8 @@ int HT_storenode( const HashTable table, HashNode node, void *pObj )
 
   AssertValidPtr( table );
   AssertValidPtr( node );
+
+  CHANGE_STATE(table);
 
   CHECK_AUTOGROW( table );
 
@@ -818,7 +832,7 @@ int HT_storenode( const HashTable table, HashNode node, void *pObj )
  *  \see HN_delete() and HT_storenode()
  */
 
-void *HT_fetchnode( const HashTable table, HashNode node )
+void *HT_fetchnode( HashTable table, HashNode node )
 {
   HashNode *pNode;
   void *pObj;
@@ -830,6 +844,8 @@ void *HT_fetchnode( const HashTable table, HashNode node )
 
   AssertValidPtr( table );
   AssertValidPtr( node );
+
+  CHANGE_STATE(table);
 
   pNode = &table->root[node->hash & table->bmask];
 
@@ -879,7 +895,7 @@ void *HT_fetchnode( const HashTable table, HashNode node )
  *  \see HN_delete() and HT_fetchnode()
  */
 
-void *HT_rmnode( const HashTable table, HashNode node )
+void *HT_rmnode( HashTable table, HashNode node )
 {
   HashNode *pNode;
   void *pObj;
@@ -891,6 +907,8 @@ void *HT_rmnode( const HashTable table, HashNode node )
 
   AssertValidPtr( table );
   AssertValidPtr( node );
+
+  CHANGE_STATE(table);
 
   pNode = &table->root[node->hash & table->bmask];
 
@@ -946,7 +964,7 @@ void *HT_rmnode( const HashTable table, HashNode node )
  *  \see HT_fetch() and HT_get()
  */
 
-int HT_store( const HashTable table, const char *key, int keylen, HashSum hash, void *pObj )
+int HT_store( HashTable table, const char *key, int keylen, HashSum hash, void *pObj )
 {
   HashNode *pNode, node;
   int cmp;
@@ -958,6 +976,8 @@ int HT_store( const HashTable table, const char *key, int keylen, HashSum hash, 
   assert( key   != NULL );
 
   AssertValidPtr( table );
+
+  CHANGE_STATE(table);
 
   if( hash == 0 ) {
     if( keylen )
@@ -1038,7 +1058,7 @@ int HT_store( const HashTable table, const char *key, int keylen, HashSum hash, 
  *  \see HT_get() and HT_store()
  */
 
-void *HT_fetch( const HashTable table, const char *key, int keylen, HashSum hash )
+void *HT_fetch( HashTable table, const char *key, int keylen, HashSum hash )
 {
   HashNode *pNode, node;
   int   cmp;
@@ -1050,6 +1070,8 @@ void *HT_fetch( const HashTable table, const char *key, int keylen, HashSum hash
   assert( key   != NULL );
 
   AssertValidPtr( table );
+
+  CHANGE_STATE(table);
 
   if( table->count == 0 )
     return NULL;
@@ -1130,7 +1152,7 @@ void *HT_fetch( const HashTable table, const char *key, int keylen, HashSum hash
  *  \see HT_fetch() and HT_store()
  */
 
-void *HT_get( const HashTable table, const char *key, int keylen, HashSum hash )
+void *HT_get( ConstHashTable table, const char *key, int keylen, HashSum hash )
 {
   HashNode node;
   int cmp;
@@ -1177,7 +1199,7 @@ void *HT_get( const HashTable table, const char *key, int keylen, HashSum hash )
     node = node->next;
   }
 
-#ifdef DEBUG_HASH
+#ifdef DEBUG_UTIL_HASH
   if( node == NULL )
     DEBUG( MAIN, ("hash element not found\n") );
   else
@@ -1209,7 +1231,7 @@ void *HT_get( const HashTable table, const char *key, int keylen, HashSum hash )
  *  \see HT_get() and HT_fetch()
  */
 
-int HT_exists( const HashTable table, const char *key, int keylen, HashSum hash )
+int HT_exists( ConstHashTable table, const char *key, int keylen, HashSum hash )
 {
   HashNode node;
   int cmp;
@@ -1260,40 +1282,48 @@ int HT_exists( const HashTable table, const char *key, int keylen, HashSum hash 
 }
 
 /**
- *  Reset hash element iterator
+ *  Initialize hash iterator object
  *
- *  HT_reset() will reset the hash table's internal iterator.
- *  You must call this function prior to using HT_next().
+ *  HI_init() will initialize a hash iterator object.
+ *  You must call this function prior to using HI_next().
+ *
+ *  \param it           Pointer to a hash iterator object.
  *
  *  \param table        Handle to an existing hash table.
  *
- *  \see HT_next()
+ *  \see HI_next()
  */
 
-void HT_reset( const HashTable table )
+void HI_init(HashIterator *it, ConstHashTable table)
 {
-  DEBUG( MAIN, ("HT_reset( %p )\n", table) );
+  DEBUG( MAIN, ("HI_init( %p, %p )\n", it, table) );
 
-  if( table == NULL )
-    return;
+#ifdef DEBUG_UTIL_HASH
+  it->table = table;
+  it->orig_state = table->state;
+#endif
 
-  AssertValidPtr( table );
-  table->i.remain  = 1 << table->size;
-  table->i.pBucket = &table->root[1];
-  table->i.pNode   = table->root[0];
+  if (table)
+  {
+    AssertValidPtr(table);
 
-  DEBUG( MAIN, ("hash table iterator has been reset\n") );
+    it->remain  = 1 << table->size;
+    it->pBucket = &table->root[1];
+    it->pNode   = table->root[0];
+
+    DEBUG( MAIN, ("hash table iterator has been reset\n") );
+  }
 }
 
 /**
  *  Get next hash element
  *
  *  Get the next key/value pair while iterating through a
- *  hash table. You must have called HT_reset() before and
+ *  hash table. You must have called HI_init() before and
  *  you mustn't modify the hash table between consecutive
- *  calls to HT_next().
+ *  calls to HI_next().
  *
- *  \param table        Handle to an existing hash table.
+ *  \param it           Pointer to a hash iterator object.
  *
  *  \param ppKey        Pointer to a variable that will
  *                      receive a pointer to the hash key.
@@ -1316,42 +1346,49 @@ void HT_reset( const HashTable table )
  *          retrieved, zero if all elements have been
  *          processed.
  *
- *  \see HT_reset()
+ *  \see HI_init()
  */
 
-int HT_next( const HashTable table, char **ppKey, int *pKeylen, void **ppObj )
+int HI_next(HashIterator *it, const char **ppKey, int *pKeylen, void **ppObj)
 {
-  HashNode node;
+  ConstHashNode node;
 
-  DEBUG( MAIN, ("HT_next( %p, %p, %p, %p )\n", table, ppKey, pKeylen, ppObj) );
+  DEBUG( MAIN, ("HI_next( %p )\n", it) );
 
-  if( table == NULL )
+  if (it == NULL)
     return 0;
 
-  AssertValidPtr( table );
+#ifdef DEBUG_UTIL_HASH
+  AssertValidPtr(it->table);
 
-  DEBUG( MAIN, ("i.remain=%d i.pBucket=%p i.pNode=%p\n",
-                table->i.remain, table->i.pBucket, table->i.pNode) );
+  assert(it->orig_state == it->table->state);
+#endif
 
-  while( table->i.remain > 0 ) {
-    while( (node = table->i.pNode) != NULL ) {
-      table->i.pNode = table->i.pNode->next;
-      if( ppKey   ) *ppKey   = node->key;
-      if( pKeylen ) *pKeylen = node->keylen;
-      if( ppObj   ) *ppObj   = node->pObj;
+  DEBUG( MAIN, ("it->remain=%d it->pBucket=%p it->pNode=%p\n",
+                it->remain, it->pBucket, it->pNode) );
+
+  while (it->remain > 0)
+  {
+    while ((node = it->pNode) != NULL)
+    {
+      it->pNode = it->pNode->next;
+      if (ppKey  ) *ppKey   = node->key;
+      if (pKeylen) *pKeylen = node->keylen;
+      if (ppObj  ) *ppObj   = node->pObj;
       return 1;
     }
     DEBUG( MAIN, ("going to next bucket\n") );
 
-    if( --table->i.remain > 0 )
-      table->i.pNode = *table->i.pBucket++;
-    else {
-      table->i.pBucket = NULL;
-      table->i.pNode   = NULL;
+    if (--it->remain > 0)
+      it->pNode = *it->pBucket++;
+    else
+    {
+      it->pBucket = NULL;
+      it->pNode   = NULL;
     }
 
-    DEBUG( MAIN, ("i.remain=%d i.pBucket=%p i.pNode=%p\n",
-                  table->i.remain, table->i.pBucket, table->i.pNode) );
+    DEBUG( MAIN, ("it->remain=%d it->pBucket=%p it->pNode=%p\n",
+                  it->remain, it->pBucket, it->pNode) );
   }
 
   DEBUG( MAIN, ("iteration through all elements completed\n") );
@@ -1359,12 +1396,12 @@ int HT_next( const HashTable table, char **ppKey, int *pKeylen, void **ppObj )
   return 0;
 }
 
-#ifdef DEBUG_HASH
+#ifdef DEBUG_UTIL_HASH
 int SetDebugHash( void (*dbfunc)(const char *, ...), unsigned long dbflags )
 {
   gs_dbfunc  = dbfunc;
   gs_dbflags = dbflags;
   return 1;
 }
-#endif /* DEBUG_HASH */
+#endif /* DEBUG_UTIL_HASH */
 

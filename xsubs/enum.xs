@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/03/12 11:10:51 +0000 $
-# $Revision: 7 $
+# $Date: 2006/08/26 12:33:45 +0100 $
+# $Revision: 8 $
 # $Source: /xsubs/enum.xs $
 #
 ################################################################################
@@ -28,6 +28,7 @@ void
 CBC::enum_names()
   PREINIT:
     CBC_METHOD(enum_names);
+    ListIterator li;
     EnumSpecifier *pEnumSpec;
     int count = 0;
     U32 context;
@@ -40,7 +41,7 @@ CBC::enum_names()
 
     context = GIMME_V;
 
-    LL_foreach(pEnumSpec, THIS->cpi.enums)
+    LL_foreach(pEnumSpec, li, THIS->cpi.enums)
       if (pEnumSpec->identifier[0] && pEnumSpec->enumerators)
       {
         if (context == G_ARRAY)
@@ -112,6 +113,7 @@ CBC::enum(...)
     }
     else
     {
+      ListIterator li;
       int size = LL_count(THIS->cpi.enums);
 
       if (size <= 0)
@@ -119,7 +121,7 @@ CBC::enum(...)
 
       EXTEND(SP, size);
 
-      LL_foreach(pEnumSpec, THIS->cpi.enums)
+      LL_foreach(pEnumSpec, li, THIS->cpi.enums)
         PUSHs(sv_2mortal(get_enum_spec_def(aTHX_ &THIS->cfg, pEnumSpec)));
 
       XSRETURN(size);

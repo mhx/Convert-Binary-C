@@ -668,12 +668,12 @@ to L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> the binary data.
 
 The C<Dimension> tag allows you to override the declared dimension
 of an array for packing or unpacking data. The implementation of
-this tag is considered B<experimental> and may be subject to changes
-in the future.
+this tag is considered B<very experimental> and will B<definitely change> in
+a future release.
 
-The C<Dimension> tag is primarily useful to support variable length
-arrays. Usually, you have to write the following code for such a
-variable length array in C:
+That being said, the C<Dimension> tag is primarily useful to support
+variable length arrays. Usually, you have to write the following code
+for such a variable length array in C:
 
   $$dimension.pl [1]$$
 
@@ -3719,4 +3719,5 @@ linked to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
+
 

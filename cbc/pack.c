@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/03/13 21:34:42 +0000 $
-* $Revision: 46 $
+* $Date: 2006/08/27 10:55:03 +0100 $
+* $Revision: 49 $
 * $Source: /cbc/pack.c $
 *
 ********************************************************************************
@@ -682,7 +682,7 @@ static void prepare_pack_format(pPACKARGS, const Declarator *pDecl, const CtTag 
   }
 
   /* check if it's an incomplete array type */
-  if (pDecl->array_flag && (dimtag ? dimtag_is_flexible(dimtag->any) : pDecl->size == 0))
+  if (pDecl->array_flag && (dimtag ? dimtag_is_flexible(aTHX_ dimtag->any) : pDecl->size == 0))
   {
     assert(one > 0);
 
@@ -694,7 +694,7 @@ static void prepare_pack_format(pPACKARGS, const Declarator *pDecl, const CtTag 
   {
     if (dimtag)
     {
-      assert(!dimtag_is_flexible(dimtag->any));
+      assert(!dimtag_is_flexible(aTHX_ dimtag->any));
       assert(one > 0);
 
       size = one * dimtag_eval(aTHX_ dimtag->any, 0, PACK->self, PACK->parent);
@@ -792,15 +792,18 @@ static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv, int inlined)
 
     if (SvROK(sv) && SvTYPE(hash = SvRV(sv)) == SVt_PVHV)
     {
+      ListIterator sdi;
       HV *h = (HV *) hash;
 
       IDLP_PUSH(ID);
 
-      LL_foreach(pStructDecl, pStruct->declarations)
+      LL_foreach(pStructDecl, sdi, pStruct->declarations)
       {
         if (pStructDecl->declarators)
         {
-          LL_foreach(pDecl, pStructDecl->declarators)
+          ListIterator di;
+
+          LL_foreach(pDecl, di, pStructDecl->declarators)
           {
             size_t id_len = CTT_IDLEN(pDecl);
 
@@ -809,28 +812,32 @@ static void pack_struct(pPACKARGS, const Struct *pStruct, SV *sv, int inlined)
               SV **e = hv_fetch(h, pDecl->identifier, id_len, 0);
               BitfieldInfo *pBI;
 
+              CT_DEBUG(MAIN, ("packing member '%s'", pDecl->identifier));
+
               if (e)
+              {
                 SvGETMAGIC(*e);
 
-              IDLP_SET_ID(pDecl->identifier);
+                IDLP_SET_ID(pDecl->identifier);
 
-              assert(pDecl->offset >= 0);
-              PACKPOS = pos + pDecl->offset;
+                assert(pDecl->offset >= 0);
+                PACKPOS = pos + pDecl->offset;
 
-              if (pDecl->bitfield_flag)
-              {
-                pBI = &pDecl->ext.bitfield;
+                if (pDecl->bitfield_flag)
+                {
+                  pBI = &pDecl->ext.bitfield;
 
-                assert(pBI->bits > 0);  /* because id_len is > 0, too */
-                assert(pBI->pos < 64);
-                assert(pBI->size > 0 && pBI->size <= 8);
+                  assert(pBI->bits > 0);  /* because id_len is > 0, too */
+                  assert(pBI->pos < 64);
+                  assert(pBI->size > 0 && pBI->size <= 8);
+                }
+                else
+                  pBI = NULL;
+
+                PACK->parent = h;
+                pack_type(aPACKARGS, &pStructDecl->type, pDecl, 0, pBI, e ? *e : NULL);
+                PACK->parent = NULL;
               }
-              else
-                pBI = NULL;
-
-              PACK->parent = h;
-              pack_type(aPACKARGS, &pStructDecl->type, pDecl, 0, pBI, e ? *e : NULL);
-              PACK->parent = NULL;
             }
           }
         }
@@ -1132,6 +1139,8 @@ static void pack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
   CT_DEBUG(MAIN, (XSCLASS "::pack_type(pTS=%p, pDecl=%p, dimension=%d, "
            "pBI=%p, sv=%p)", pTS, pDecl, dimension, pBI, sv));
 
+  assert(sv != NULL);
+
   if (pDecl && dimension == 0 && pDecl->tags)
   {
     const CtTag *tag;
@@ -1205,13 +1214,15 @@ static void pack_type(pPACKARGS, const TypeSpec *pTS, const Declarator *pDecl,
         SV **e = av_fetch(a, i, 0);
 
         if (e)
+        {
           SvGETMAGIC(*e);
 
-        IDLP_SET_IX(i);
+          IDLP_SET_IX(i);
 
-        PACKPOS = pos + i * size;
+          PACKPOS = pos + i * size;
 
-        pack_type(aPACKARGS, pTS, pDecl, dimension+1, NULL, e ? *e : NULL);
+          pack_type(aPACKARGS, pTS, pDecl, dimension+1, NULL, e ? *e : NULL);
+        }
       }
 
       IDLP_POP;
@@ -1357,16 +1368,22 @@ static SV *unpack_struct(pPACKARGS, const Struct *pStruct, HV *hash)
 
   XCPT_TRY_START
   {
-    LL_foreach(pStructDecl, pStruct->declarations)
+    ListIterator sdi;
+
+    LL_foreach(pStructDecl, sdi, pStruct->declarations)
     {
       if (pStructDecl->declarators)
       {
-        LL_foreach(pDecl, pStructDecl->declarators)
+        ListIterator di;
+
+        LL_foreach(pDecl, di, pStructDecl->declarators)
         {
           U32 klen = CTT_IDLEN(pDecl);
 
           if (klen > 0)
           {
+            CT_DEBUG(MAIN, ("unpacking member '%s'", pDecl->identifier));
+
             if (hv_exists(h, pDecl->identifier, klen))
             {
               WARN((aTHX_ "Member '%s' used more than once in %s%s%s defined in %s(%ld)",
@@ -1536,7 +1553,9 @@ static SV *unpack_enum(pPACKARGS, const EnumSpecifier *pEnumSpec, const Bitfield
     sv = newSViv(value);
   else
   {
-    LL_foreach(pEnum, pEnumSpec->enumerators)
+    ListIterator ei;
+
+    LL_foreach(pEnum, ei, pEnumSpec->enumerators)
       if(pEnum->value.iv == value)
         break;
 

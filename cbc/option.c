@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/03/12 11:10:51 +0000 $
-* $Revision: 22 $
+* $Date: 2006/08/26 16:42:25 +0100 $
+* $Revision: 24 $
 * $Source: /cbc/option.c $
 *
 ********************************************************************************
@@ -298,9 +298,10 @@ static void disabled_keywords(pTHX_ LinkedList *current, SV *sv, SV **rval,
 
   if (rval)
   {
+    ListIterator li;
     AV *av = newAV();
 
-    LL_foreach (str, *current)
+    LL_foreach (str, li, *current)
       av_push(av, newSVpv(CONST_CHAR(str), 0));
 
     *rval = newRV_noinc((SV *) av);
@@ -409,14 +410,15 @@ static void keyword_map(pTHX_ HashTable *current, SV *sv, SV **rval)
 
   if (rval)
   {
+    HashIterator hi;
     HV *hv = newHV();
     CKeywordToken *tok;
-    char *key;
+    const char *key;
     int keylen;
 
-    HT_reset(*current);
+    HI_init(&hi, *current);
 
-    while (HT_next(*current, &key, &keylen, (void **) &tok))
+    while (HI_next(&hi, &key, &keylen, (void **) &tok))
     {
       SV *val;
       val = tok->name == NULL ? newSV(0) : newSVpv(CONST_CHAR(tok->name), 0);
@@ -718,9 +720,10 @@ void handle_string_list(pTHX_ const char *option, LinkedList list, SV *sv, SV **
 
   if (rval)
   {
+    ListIterator li;
     AV *av = newAV();
 
-    LL_foreach(str, list)
+    LL_foreach(str, li, list)
       av_push(av, newSVpv(CONST_CHAR(str), 0));
 
     *rval = newRV_noinc((SV *) av);

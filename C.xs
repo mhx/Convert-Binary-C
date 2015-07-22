@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/02/26 22:07:21 +0000 $
-* $Revision: 158 $
+* $Date: 2006/08/26 12:33:44 +0100 $
+* $Revision: 160 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -272,9 +272,10 @@ static void ct_fatal(void *p)
 
 static void handle_parse_errors(pTHX_ LinkedList stack)
 {
+  ListIterator ei;
   CTLibError *perr;
 
-  LL_foreach(perr, stack)
+  LL_foreach(perr, ei, stack)
   {
     switch (perr->severity)
     {
@@ -441,6 +442,7 @@ __DUMP__(val)
 #ifdef CBC_DEBUGGING
     dump_sv(aTHX_ RETVAL, 0, val);
 #else
+    (void) val;
     Perl_croak(aTHX_ "__DUMP__ not enabled in non-debug version");
 #endif
 

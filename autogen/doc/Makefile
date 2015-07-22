@@ -1,5 +1,5 @@
 SHELL     = /bin/bash
-PERL      = perl
+PERL      = bleadperl-debug
 CHECKOUT  = checkout_file
 CECHO     = $(PERL) -e'use Term::ANSIColor; print color(shift); print @ARGV, color("reset"), "\n"'
 BLUE      = $(CECHO) "blue"

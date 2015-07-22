@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:26 +0000 $
-* $Revision: 12 $
+* $Date: 2006/08/26 16:41:51 +0100 $
+* $Revision: 15 $
 * $Source: /util/list.h $
 *
 ********************************************************************************
@@ -55,6 +55,18 @@
  *  Linked List Handle
  */
 typedef struct _linkedList * LinkedList;
+typedef const struct _linkedList * ConstLinkedList;
+
+/**
+ *  Linked List Iterator
+ */
+typedef struct _listIterator {
+  ConstLinkedList list;
+  const struct _link *cur;
+#ifdef DEBUG_UTIL_LIST
+  unsigned orig_state;
+#endif
+} ListIterator;
 
 /**
  *  Destructor Function Pointer
@@ -75,28 +87,29 @@ LinkedList   LL_new( void );
 void         LL_delete( LinkedList list );
 void         LL_flush( LinkedList list, LLDestroyFunc destroy );
 void         LL_destroy( LinkedList list, LLDestroyFunc destroy );
-LinkedList   LL_clone( LinkedList list, LLCloneFunc func );
+LinkedList   LL_clone( ConstLinkedList list, LLCloneFunc func );
 
-int          LL_count( const LinkedList list );
+int          LL_count( ConstLinkedList list );
 
-void         LL_push( const LinkedList list, void *pObj );
-void *       LL_pop( const LinkedList list );
+void         LL_push( LinkedList list, void *pObj );
+void *       LL_pop( LinkedList list );
 
-void         LL_unshift( const LinkedList list, void *pObj );
-void *       LL_shift( const LinkedList list );
+void         LL_unshift( LinkedList list, void *pObj );
+void *       LL_shift( LinkedList list );
 
-void         LL_insert( const LinkedList list, int item, void *pObj );
-void *       LL_extract( const LinkedList list, int item );
+void         LL_insert( LinkedList list, int item, void *pObj );
+void *       LL_extract( LinkedList list, int item );
 
-void *       LL_get( const LinkedList list, int item );
+void *       LL_get( ConstLinkedList list, int item );
 
-LinkedList   LL_splice( const LinkedList list, int offset, int length, LinkedList rlist );
+LinkedList   LL_splice( LinkedList list, int offset, int length, LinkedList rlist );
 
-void         LL_reset( const LinkedList list );
-void *       LL_next( const LinkedList list );
-void *       LL_prev( const LinkedList list );
+void         LL_sort( LinkedList list, LLCompareFunc cmp );
 
-void         LL_sort( const LinkedList list, LLCompareFunc cmp );
+void         LI_init(ListIterator *it, ConstLinkedList list);
+int          LI_next(ListIterator *it);
+int          LI_prev(ListIterator *it);
+void *       LI_curr(const ListIterator *it);
 
 /**
  *  Loop over all list elements.
@@ -105,7 +118,7 @@ void         LL_sort( const LinkedList list, LLCompareFunc cmp );
  *  following loop:
  *
  *  \code
- *  for( LL_reset(list); pObj = LL_next(list); ) {
+ *  for (LI_reset(&iter, list); LI_next(&iter) && ((pObj) = LL_curr(&iter)) != NULL;) {
  *    // do something with pObj
  *  }
  *  \endcode
@@ -116,12 +129,14 @@ void         LL_sort( const LinkedList list, LLCompareFunc cmp );
  *  \param pObj         Variable that will receive a pointer
  *                      to the current object.
  *
+ *  \param iter         Iterator state object.
+ *
  *  \param list         Handle to an existing linked list.
  *
  *  \see LL_reset() and LL_next()
  *  \hideinitializer
  */
-#define LL_foreach( pObj, list ) \
-          for( LL_reset(list); (pObj = LL_next(list)) != NULL; )
+#define LL_foreach(pObj, iter, list) \
+          for (LI_init(&iter, list); ((pObj) = LI_next(&iter) ? LI_curr(&iter) : NULL) != NULL;)
 
 #endif

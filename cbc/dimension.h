@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/03/24 18:16:55 +0000 $
-* $Revision: 1 $
+* $Date: 2006/08/27 10:55:02 +0100 $
+* $Revision: 2 $
 * $Source: /cbc/dimension.h $
 *
 ********************************************************************************
@@ -76,7 +76,7 @@ void dimtag_update(DimensionTag *dst, const DimensionTag *src);
 SV *dimtag_get(pTHX_ const DimensionTag *dim);
 
 #define dimtag_is_flexible CBC_dimtag_is_flexible
-int dimtag_is_flexible(const DimensionTag *dim);
+int dimtag_is_flexible(pTHX_ const DimensionTag *dim);
 
 #define dimtag_eval CBC_dimtag_eval
 long dimtag_eval(pTHX_ const DimensionTag *dim, long avail, SV *self, HV *parent);

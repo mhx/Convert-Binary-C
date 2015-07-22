@@ -189,8 +189,8 @@
  * Maximum native unsigned value. The first macro is for #if directives,
  * the second macro is for use as constant expression in C code.
  */
-#define NATIVE_UNSIGNED_MAX     ((((1U << (NATIVE_UNSIGNED_BITS - 1)) - 1U) \
-                                << 1) + 1U)
+#define NATIVE_UNSIGNED_MAX     ((((NATIVE_UNSIGNED_ONE << (NATIVE_UNSIGNED_BITS - 1)) \
+				- NATIVE_UNSIGNED_ONE) << 1) + NATIVE_UNSIGNED_ONE)
 #define NATIVE_UNSIGNED_MAX_A   (((((arith_u)1 << (NATIVE_UNSIGNED_BITS - 1)) \
                                 - (arith_u)1) << 1) + (arith_u)1)
 
@@ -1452,7 +1452,11 @@ ARITH_DECL_MONO_ST_US(decconst)
 		z = arith_op_u(plus)(aARI_ arith_op_u(lsh)(aARI_ z, 3),
 			arith_op_u(lsh)(aARI_ z, 1));
 		t = TLSW(z.lsw + w);
-		if (t < z.lsw) z.msw ++;
+		if (t < z.lsw) {
+			if (TMSW(z.msw + 1) == 0)
+				ARITH_ERROR(ARITH_EXCEP_CONST_O);
+			z.msw ++;
+		}
 		z.lsw = t;
 	}
 	*ru = z;

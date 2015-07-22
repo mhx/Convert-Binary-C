@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/01 09:38:29 +0000 $
-# $Revision: 2 $
+# $Date: 2006/08/26 16:42:26 +0100 $
+# $Revision: 3 $
 # $Source: /xsubs/dependencies.xs $
 #
 ################################################################################
@@ -28,6 +28,7 @@ void
 CBC::dependencies()
   PREINIT:
     CBC_METHOD(dependencies);
+    HashIterator hi;
     const char *pKey;
     FileInfo   *pFI;
 
@@ -41,7 +42,7 @@ CBC::dependencies()
     {
       HV *hv = newHV();
 
-      HT_foreach(pKey, pFI, THIS->cpi.htFiles)
+      HT_foreach(pKey, pFI, hi, THIS->cpi.htFiles)
       {
         if (pFI && pFI->valid)
         {
@@ -66,8 +67,8 @@ CBC::dependencies()
     {
       int keylen, count = 0;
 
-      HT_reset(THIS->cpi.htFiles);
-      while (HT_next(THIS->cpi.htFiles, (char **) &pKey, &keylen, (void **) &pFI))
+      HI_init(&hi, THIS->cpi.htFiles);
+      while (HI_next(&hi, &pKey, &keylen, (void **) &pFI))
         if (pFI && pFI->valid)
         {
           XPUSHs(sv_2mortal(newSVpvn(CONST_CHAR(pKey), keylen)));

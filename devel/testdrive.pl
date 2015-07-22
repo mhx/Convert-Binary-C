@@ -1,4 +1,4 @@
-#!/home/mhx/bin/perl580mtopt -w
+#!perl -w
 use Net::Telnet;
 use Net::FTP;
 use IO::Pty;
@@ -9,7 +9,7 @@ use threads;
 use strict;
 
 use constant USER => 'mhx';
-use constant PASS => 'sTGC3kg!';
+use constant PASS => 'sTGC3kg';
 
 my %OPT = (
   upload  => 0,
@@ -24,47 +24,53 @@ GetOptions(\%OPT, qw(
 )) && @ARGV == 1 or die "USAGE: $0 <options> file";
 
 my $HOMEDIR = '/house/mhx';
-my $PROMPT = '/(spe|td)\d{3}(?:\.testdrive\.(?:hp|compaq)\.com)?> $/';
+my $PROMPT = '/(spe|td)\d{3}(?:\.testdrive\.(?:hp|compaq)\.com)?(:[^>]+)?> $/';
 
 my @hosts = (
-  # { ip => '15.170.178.140', prompt => $PROMPT },
-  # { ip => '15.170.178.141', prompt => $PROMPT }, # broken libgcc?
-  # { ip => '15.170.178.142', prompt => $PROMPT },        # 5.6.1 alpha-linux
-  { ip => '15.170.178.143', prompt => $PROMPT },        # 5.8.0 i386-netbsd
-  # { ip => '15.170.178.144', prompt => $PROMPT },        # 5.6.1 alpha-linux
-  { ip => '15.170.178.145', prompt => $PROMPT },        # 5.6.1 alpha-dec_osf
-  { ip => '15.170.178.147', prompt => $PROMPT },        # 5.8.0 alpha-dec_osf
-  # { ip => '15.170.178.148', prompt => $PROMPT },        # 5.6.1 alpha-linux
-  { ip => '15.170.178.149', prompt => $PROMPT },        # 5.6.1 alpha-freebsd
+  ### HP-UX
 
-  { ip => '15.170.178.150', prompt => $PROMPT },        # 5.8.0 i586-linux-thread-multi
-  { ip => '15.170.178.151', prompt => $PROMPT },        # 5.005_03 i386-freebsd
-  { ip => '15.170.178.156', prompt => $PROMPT },        # 5.6.1 ia64-linux
+  { ip => 'td192.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td164.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td176.testdrive.hp.com', prompt => $PROMPT },
 
-  # { ip => '15.170.178.160', prompt => $PROMPT },        # 5.8.0 i486-linux
-  { ip => '15.170.178.161', prompt => $PROMPT },        # 5.6.1 alpha-linux
-  { ip => '15.170.178.165', prompt => '/mgtnode> $/' }, # 5.6.0 alpha-linux
-  # { ip => '15.170.178.167', prompt => $PROMPT },        # 5.8.0 alpha-dec_osf
+  ### OpenVMS
 
-  { ip => '15.170.178.170', prompt => $PROMPT },        # 5.6.1 hppa-linux
-  # { ip => '15.170.178.174', prompt => $PROMPT },        # 5.6.1 ia64-linux
-  # { ip => '15.170.178.175', prompt => $PROMPT },  # broken perl installation
-  { ip => '15.170.178.176', prompt => $PROMPT, perl => 'perl5.8.0' },  # 5.8.0 parisc-hpux
-  { ip => '15.170.178.177', prompt => $PROMPT },        # 5.6.1 ia64-linux
-  # { ip => '15.170.178.178', prompt => $PROMPT },        # 5.6.1 ia64-linux
+  # { ip => 'td237.testdrive.hp.com', prompt => $PROMPT },
+  # { ip => 'td180.testdrive.hp.com', prompt => $PROMPT },
+  # { ip => 'td183.testdrive.hp.com', prompt => $PROMPT },
+  # { ip => 'td184.testdrive.hp.com', prompt => $PROMPT },
 
-  { ip => '15.170.178.188', prompt => $PROMPT },        # 5.8.1 i386-linux-thread-multi
+  ### Debian
 
-  # { ip => '15.170.178.191', prompt => $PROMPT },  # 
-  { ip => '15.170.178.192', prompt => $PROMPT, perl => 'perl5.8.0' },  #    HP-UX 11
+  { ip => 'td161.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td156.testdrive.hp.com', prompt => $PROMPT },
 
-  # { ip => '15.170.178.206', prompt => $PROMPT },        # 5.8.0 alpha-dec_osf
-  # { ip => '15.170.178.207', prompt => $PROMPT },        # 5.8.0 alpha-dec_osf
+  ### Mandriva
 
-  { ip => '15.170.178.208', prompt => $PROMPT },        # 5.8.0 alpha-dec_osf
+  { ip => 'td153.testdrive.hp.com', prompt => $PROMPT },
 
-  # { ip => '15.170.178.222', prompt => $PROMPT },        # 5.6.1 i386-linux
-  # { ip => '15.170.178.223', prompt => $PROMPT },        # 5.6.1 i386-linux
+  ### RHEL
+
+  { ip => 'td141.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td163.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td177.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td159.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td189.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td185.testdrive.hp.com', prompt => $PROMPT },
+
+  ### SuSE
+
+  # { ip => 'td162.testdrive.hp.com', prompt => $PROMPT },   ## no cc ???
+  # { ip => 'td186.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
+  # { ip => 'td190.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
+  # { ip => 'td179.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
+  # { ip => 'td187.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
+  # { ip => 'td160.testdrive.hp.com', prompt => $PROMPT },   ## offline ?
+
+  ### FreeBSD
+
+  { ip => 'td150.testdrive.hp.com', prompt => $PROMPT },
+  { ip => 'td152.testdrive.hp.com', prompt => $PROMPT },
 );
 
 my $file = shift;
@@ -91,12 +97,12 @@ sub upload_file
   my($host, $file) = @_;
 
   print STDERR "uploading $file to $host->{ip}...";
-  my $ftp = Net::FTP->new( $host->{ip}, Passive => 1 );
-  $ftp->login( USER, PASS );
-  $ftp->cwd( $HOMEDIR );
-  $ftp->binary;
-  $ftp->put( $file );
-  $ftp->quit;
+  my $ftp = Net::FTP->new( $host->{ip}, Passive => 1 ) or die "connect $host->{ip}: $!\n";
+  $ftp->login( USER, PASS ) or die "login $host->{ip}: $!\n";
+  $ftp->cwd( $HOMEDIR ) or die "cwd $HOMEDIR on $host->{ip}: $!\n";
+  $ftp->binary or die "binary $host->{ip}: $!\n";
+  $ftp->put( $file ) or die "put $file to $host->{ip}: $!\n";
+  $ftp->quit or die "quit $host->{ip}: $!\n";
   print STDERR "done\n";
 }
 

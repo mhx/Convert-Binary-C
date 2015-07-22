@@ -196,6 +196,7 @@
  *   NATIVE_SIGNED           the native signed type
  *   NATIVE_UNSIGNED         the native corresponding unsigned type
  *   NATIVE_UNSIGNED_BITS    the native unsigned type width, in bits
+ *   NATIVE_UNSIGNED_ONE     the constant one in native unsigned type
  *   NATIVE_SIGNED_MIN       the native signed type minimum value
  *   NATIVE_SIGNED_MAX       the native signed type maximum value
  *
@@ -238,6 +239,7 @@
 #define NATIVE_SIGNED           long long
 #define NATIVE_UNSIGNED         unsigned long long
 #define NATIVE_UNSIGNED_BITS    64
+#define NATIVE_UNSIGNED_ONE     1ULL
 #define NATIVE_SIGNED_MIN       (-9223372036854775807LL - 1)
 #define NATIVE_SIGNED_MAX       9223372036854775807LL
 

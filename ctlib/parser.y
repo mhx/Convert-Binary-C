@@ -11,8 +11,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/02/25 23:49:30 +0000 $
-* $Revision: 61 $
+* $Date: 2006/08/26 12:33:44 +0100 $
+* $Revision: 64 $
 * $Source: /ctlib/parser.y $
 *
 ********************************************************************************
@@ -518,8 +518,10 @@ static        void  parser_error(ParserState *pState, const char *msg);
 
       if ($$->array_flag)
       {
+        ListIterator ai;
         Value *pValue;
-        LL_foreach(pValue, $$->ext.array)
+
+        LL_foreach(pValue, ai, $$->ext.array)
           fprintf(yyoutput, "[%ld]", pValue->iv);
       }
     }
@@ -601,6 +603,7 @@ static        void  parser_error(ParserState *pState, const char *msg);
                      logical_OR_expression
                      conditional_expression
                      assignment_expression
+                     assignment_expression_opt
                      comma_expression
                      constant_expression
                      type_name
@@ -667,6 +670,10 @@ asm_operands
 asm_operand
 	: STRING_LITERAL '(' comma_expression ')'
 	| '[' IDENTIFIER ']' STRING_LITERAL '(' comma_expression ')'
+	  {
+	    if ($2)
+	      HN_delete($2);
+	  }
 	;
 
 asm_clobbers
@@ -678,9 +685,18 @@ asm_clobbers
 primary_expression
 	: IDENTIFIER  /* We cannot use a typedef name as a variable */
 	  {
-	    if ($1)
-	      HN_delete($1);
 	    UNDEF_VAL($$);
+	    if ($1)
+	    {
+	      Enumerator *pEnum = HT_get(PSTATE->pCPI->htEnumerators,
+	                                 $1->key, $1->keylen, $1->hash);
+	      if (pEnum)
+	      {
+	        CT_DEBUG(CLEXER, ("enum found!"));
+	        $$ = pEnum->value;
+	      }
+	      HN_delete($1);
+	    }
 	  }
 	| CONSTANT
 	| string_literal_list { $$ = $1; $$.iv++; }
@@ -865,6 +881,10 @@ assignment_operator
 	| XOR_ASSIGN {}
 	| OR_ASSIGN {}
 	;
+
+assignment_expression_opt
+	: /* nothing */ { UNDEF_VAL($$); }
+	| assignment_expression
 
 comma_expression
 	: assignment_expression
@@ -1955,9 +1975,12 @@ abstract_declarator
 	    $$.multiplicator = 1;
 	    if ($1)
 	    {
+	      ListIterator ai;
 	      Value *pValue;
-	      LL_foreach(pValue, $1)
+
+	      LL_foreach(pValue, ai, $1)
 	        $$.multiplicator *= pValue->iv;
+
 	      LL_destroy($1, (LLDestroyFunc) value_delete);
 	    }
 	  }
@@ -1970,29 +1993,40 @@ postfixing_abstract_declarator
 	;
 
 array_abstract_declarator
-	: '[' ']'
+	: '[' type_qualifier_list_opt assignment_expression_opt ']'
 	  {
 	    if (IS_LOCAL)
 	      $$ = NULL;
 	    else
 	    {
 	      $$ = LL_new();
-	      LL_push($$, value_new(0, V_IS_UNDEF));
-	      CT_DEBUG(PARSER, ("array dimension => flexible array member"));
+	      LL_push($$, value_new($3.iv, $3.flags));
+	      CT_DEBUG(PARSER, ("array dimension => %ld", $3.iv));
 	    }
 	  }
-	| '[' assignment_expression ']'
+	| '[' STATIC_TOK type_qualifier_list_opt assignment_expression ']'
 	  {
 	    if (IS_LOCAL)
 	      $$ = NULL;
 	    else
 	    {
 	      $$ = LL_new();
-	      LL_push($$, value_new($2.iv, $2.flags));
-	      CT_DEBUG(PARSER, ("array dimension => %ld", $2.iv));
+	      LL_push($$, value_new($4.iv, $4.flags));
+	      CT_DEBUG(PARSER, ("array dimension => %ld", $4.iv));
 	    }
 	  }
-	| '[' '*' ']' { $$ = NULL; }
+	| '[' type_qualifier_list STATIC_TOK assignment_expression ']'
+	  {
+	    if (IS_LOCAL)
+	      $$ = NULL;
+	    else
+	    {
+	      $$ = LL_new();
+	      LL_push($$, value_new($4.iv, $4.flags));
+	      CT_DEBUG(PARSER, ("array dimension => %ld", $4.iv));
+	    }
+	  }
+	| '[' type_qualifier_list_opt '*' ']' { $$ = NULL; }
 	| array_abstract_declarator '[' assignment_expression ']'
 	  {
 	    if (IS_LOCAL)
@@ -2049,9 +2083,12 @@ postfix_abstract_declarator
 	    $$.multiplicator = 1;
 	    if ($2)
 	    {
+	      ListIterator ai;
 	      Value *pValue;
-	      LL_foreach(pValue, $2)
+
+	      LL_foreach(pValue, ai, $2)
 	        $$.multiplicator *= pValue->iv;
+
 	      LL_destroy($2, (LLDestroyFunc) value_delete);
 	    }
 	  }
@@ -2353,7 +2390,6 @@ static inline int string_size(const char *s)
 
 static inline int check_type(YYSTYPE *plval, ParserState *pState, const char *s)
 {
-  Enumerator *pEnum;
   Typedef    *pTypedef;
   HashSum     hash;
   int         len;
@@ -2361,15 +2397,6 @@ static inline int check_type(YYSTYPE *plval, ParserState *pState, const char *s)
   CT_DEBUG(CLEXER, ("check_type( \"%s\" )", s));
 
   HASH_STR_LEN(hash, s, len);
-
-  pEnum = HT_get(pState->pCPI->htEnumerators, s, len, hash);
-
-  if (pEnum)
-  {
-    CT_DEBUG(CLEXER, ("enum found!"));
-    plval->value = pEnum->value;
-    return CONSTANT;
-  }
 
   pTypedef = HT_get(pState->pCPI->htTypedefs, s, len, hash);
 

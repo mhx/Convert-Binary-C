@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/02/05 22:05:05 +0000 $
-# $Revision: 31 $
+# $Date: 2006/07/30 11:13:00 +0100 $
+# $Revision: 32 $
 # $Source: /tests/206_parse.t $
 #
 ################################################################################
@@ -390,8 +390,8 @@ for( keys %rc ) {
 #===================================================================
 
 my @tests = (
-  { level => 4997, error => ''           },
-  { level => 4998, error => qr/overflow/ },
+  { level => 4997, error => '' },
+  { level => 4998, error => qr/memory exhausted/ },
 );
 
 for my $t ( @tests ) {

@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/03/24 18:24:10 +0000 $
-# $Revision: 84 $
+# $Date: 2006/08/26 14:48:38 +0100 $
+# $Revision: 85 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.64_02 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.65 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 $XS_VERSION = $VERSION;
 $VERSION    = eval $VERSION;
 
@@ -908,24 +908,24 @@ If you unpack this message...
 ...you will get the following data structure:
 
   $msg = {
-    'header' => '42',
-    'length' => '12',
+    'header' => 42,
+    'length' => 12,
     'coords' => {
-      'x' => '-1',
-      'y' => '2',
-      'z' => '42'
+      'x' => -1,
+      'y' => 2,
+      'z' => 42
     }
   };
 
 Without the C<ByteOrder> tag, you would get:
 
   $msg = {
-    'header' => '42',
-    'length' => '12',
+    'header' => 42,
+    'length' => 12,
     'coords' => {
-      'x' => '-1',
-      'y' => '33554432',
-      'z' => '704643072'
+      'x' => -1,
+      'y' => 33554432,
+      'z' => 704643072
     }
   };
 
@@ -942,12 +942,12 @@ endian, we now tag C<coords_3d.y> as big endian:
 This will return the following data structure:
 
   $msg = {
-    'header' => '42',
-    'length' => '12',
+    'header' => 42,
+    'length' => 12,
     'coords' => {
-      'x' => '-1',
-      'y' => '33554432',
-      'z' => '42'
+      'x' => -1,
+      'y' => 33554432,
+      'z' => 42
     }
   };
 
@@ -1009,12 +1009,12 @@ to L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> the binary data.
 
 The C<Dimension> tag allows you to override the declared dimension
 of an array for packing or unpacking data. The implementation of
-this tag is considered B<experimental> and may be subject to changes
-in the future.
+this tag is considered B<very experimental> and will B<definitely change> in
+a future release.
 
-The C<Dimension> tag is primarily useful to support variable length
-arrays. Usually, you have to write the following code for such a
-variable length array in C:
+That being said, the C<Dimension> tag is primarily useful to support
+variable length arrays. Usually, you have to write the following code
+for such a variable length array in C:
 
   struct c_message
   {
@@ -1519,35 +1519,99 @@ as it can already handle C<AV> pointers. And this is what we get:
 
   $VAR1 = {
     'sv_any' => {
-      'xav_array' => '136408352',
-      'xav_fill' => '0',
-      'xav_max' => '0',
-      'xof_off' => '0',
-      'xnv_nv' => '0',
-      'xmg_magic' => '<NULL>',
+      'xnv_u' => {
+        'xnv_nv' => '0',
+        'xgv_stash' => '<NULL>'
+      },
+      'xav_fill' => 0,
+      'xav_max' => 0,
+      'xiv_u' => {
+        'xivu_iv' => 140255860,
+        'xivu_uv' => 140255860,
+        'xivu_p1' => 140255860,
+        'xivu_i32' => 140255860,
+        'xivu_namehek' => 140255860
+      },
+      'xmg_u' => {
+        'xmg_magic' => '<NULL>',
+        'xmg_ourstash' => '<NULL>'
+      },
       'xmg_stash' => {
         'sv_any' => {
-          'xhv_array' => '0',
-          'xhv_fill' => '0',
-          'xhv_max' => '7',
-          'xhv_keys' => '0',
-          'xnv_nv' => '0',
-          'xmg_magic' => '<NULL>',
-          'xmg_stash' => '<NULL>',
-          'xhv_riter' => '-1',
-          'xhv_eiter' => '0',
-          'xhv_pmroot' => '0',
-          'xhv_name' => '137664640'
+          'xnv_u' => {
+            'xnv_nv' => '0',
+            'xgv_stash' => '<NULL>'
+          },
+          'xhv_fill' => 2,
+          'xhv_max' => 7,
+          'xiv_u' => {
+            'xivu_iv' => 2,
+            'xivu_uv' => 2,
+            'xivu_p1' => 2,
+            'xivu_i32' => 2,
+            'xivu_namehek' => 2
+          },
+          'xmg_u' => {
+            'xmg_magic' => {
+              'mg_moremagic' => '<NULL>',
+              'mg_virtual' => {
+                'svt_get' => 0,
+                'svt_set' => 0,
+                'svt_len' => 0,
+                'svt_clear' => 0,
+                'svt_free' => 136487744,
+                'svt_copy' => 0,
+                'svt_dup' => 0,
+                'svt_local' => 0
+              },
+              'mg_private' => 0,
+              'mg_type' => 99,
+              'mg_flags' => 0,
+              'mg_obj' => 0,
+              'mg_ptr' => 139368116,
+              'mg_len' => 12
+            },
+            'xmg_ourstash' => {
+              'sv_any' => '<NULL>',
+              'sv_refcnt' => 137180384,
+              'sv_flags' => 6488064,
+              'sv_u' => {
+                'svu_iv' => '598581500325134336',
+                'svu_uv' => '598581500325134336',
+                'svu_rv' => 0,
+                'svu_pv' => 0,
+                'svu_array' => 0,
+                'svu_hash' => 0,
+                'svu_gp' => 0
+              }
+            }
+          },
+          'xmg_stash' => '<NULL>'
         },
-        'sv_refcnt' => '2',
-        'sv_flags' => '536870923'
-      },
-      'xav_alloc' => '136408352',
-      'xav_arylen' => '0',
-      'xav_flags' => '1'
+        'sv_refcnt' => 2,
+        'sv_flags' => 578813964,
+        'sv_u' => {
+          'svu_iv' => '4046270294356039076',
+          'svu_uv' => '4046270294356039076',
+          'svu_rv' => 139367844,
+          'svu_pv' => 139367844,
+          'svu_array' => 139367844,
+          'svu_hash' => 139367844,
+          'svu_gp' => 139367844
+        }
+      }
     },
-    'sv_refcnt' => '1',
-    'sv_flags' => '4106'
+    'sv_refcnt' => 1,
+    'sv_flags' => 1074790411,
+    'sv_u' => {
+      'svu_iv' => '3252454394097836660',
+      'svu_uv' => '3252454394097836660',
+      'svu_rv' => 140255860,
+      'svu_pv' => 140255860,
+      'svu_array' => 140255860,
+      'svu_hash' => 140255860,
+      'svu_gp' => 140255860
+    }
   };
 
 Even though it is rather easy to do such stuff using C<unpack_ptr> hooks,
@@ -2414,15 +2478,15 @@ This will print something like:
     'four' => 116
   };
   $u2 = {
-    'one' => '67',
-    'two' => '111',
+    'one' => 67,
+    'two' => 111,
     'three' => {
-      'never' => '110',
-      'change' => '118',
-      'this' => '101',
-      'order' => '114'
+      'never' => 110,
+      'change' => 118,
+      'this' => 101,
+      'order' => 114
     },
-    'four' => '116'
+    'four' => 116
   };
 
 To be able to use this option, you have to install
@@ -3853,27 +3917,27 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1128621760,
-      'mtime' => 1128621726,
+      'ctime' => 1150827457,
+      'mtime' => 1150827451,
       'size' => 11340
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1128621753,
-      'mtime' => 1128621726,
+      'ctime' => 1150827456,
+      'mtime' => 1150827451,
       'size' => 9633
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1128621751,
-      'mtime' => 1128621726,
+      'ctime' => 1150827454,
+      'mtime' => 1150827451,
       'size' => 622
     },
     '/usr/include/string.h' => {
-      'ctime' => 1128621759,
-      'mtime' => 1128621726,
+      'ctime' => 1150827457,
+      'mtime' => 1150827451,
       'size' => 16281
     },
     '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include/stddef.h' => {
-      'ctime' => 1126119265,
+      'ctime' => 1148950468,
       'mtime' => 1126119264,
       'size' => 12695
     }
@@ -5441,4 +5505,5 @@ linked to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
+
 

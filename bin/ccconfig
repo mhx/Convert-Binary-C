@@ -11,8 +11,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/01 09:37:56 +0000 $
-# $Revision: 61 $
+# $Date: 2006/08/02 19:39:21 +0100 $
+# $Revision: 62 $
 # $Source: /bin/ccconfig $
 #
 ################################################################################
@@ -29,7 +29,7 @@ use Data::Dumper;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = ('$Snapshot: /Convert-Binary-C/0.64_02 $' =~ /([^\/\s]+)\s*\$$/)[0];
+my $VERSION = ('$Snapshot: /Convert-Binary-C/0.65 $' =~ /([^\/\s]+)\s*\$$/)[0];
 my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT = (
   'output-format' => 'dumper',
@@ -1780,7 +1780,7 @@ ENDC
 
     my $out = join '', $self->_read_pp($res);
 
-    while( $out =~ /"\s*([^\s"]+)\s*"\s*;\s*\(\s*([^\r\n]+?)\s*\)\s*;/g ) {
+    while( $out =~ /"\s*([^\s"]+)\s*"\s*;\s*\(\s*([^\r\n]*?)\s*\)\s*;/g ) {
       $results{$1} = $2;
     }
 

@@ -383,6 +383,25 @@ unsigned long strtoconst(pCPP_ char *c)
 	return big_u_toulong(aCPP_ q.u.uv);
 }
 
+/*
+ * Promote integer operands and return signedness of result.
+ */
+static int promote(pCPP_ ppval *pv1, ppval *pv2, int do_eval)
+{
+	if (pv1->sign && pv2->sign)
+		return 1;
+	if (pv1->sign) {
+		if (do_eval)
+			pv1->u.uv = big_s_to_u(aCPP_ pv1->u.sv);
+		pv1->sign = 0;
+	} else if (pv2->sign) {
+		if (do_eval)
+			pv2->u.uv = big_s_to_u(aCPP_ pv2->u.sv);
+		pv2->sign = 0;
+	}
+	return 0;
+}
+
 #define OP_UN(x)	((x) == LNOT || (x) == NOT || (x) == UPLUS \
 			|| (x) == UMINUS)
 
@@ -417,7 +436,7 @@ static ppval eval_opun(pCPP_ int op, ppval v)
                        || (x) == OR || (x) == LAND || (x) == LOR \
                        || (x) == COMMA)
 
-static ppval eval_opbin(pCPP_ int op, ppval v1, ppval v2)
+static ppval eval_opbin(pCPP_ int op, ppval v1, ppval v2, int do_eval)
 {
 	ppval r;
 	int iv2 = 0;
@@ -427,31 +446,12 @@ static ppval eval_opbin(pCPP_ int op, ppval v1, ppval v2)
 	case PLUS:	case MINUS:	case AND:
 	case CIRC:	case OR:
 		/* promote operands, adjust signedness of result */
-		if (!v1.sign || !v2.sign) {
-			if (v1.sign) {
-				v1.u.uv = big_s_to_u(aCPP_ v1.u.sv);
-				v1.sign = 0;
-			} else if (v2.sign) {
-				v2.u.uv = big_s_to_u(aCPP_ v2.u.sv);
-				v2.sign = 0;
-			}
-			r.sign = 0;
-		} else {
-			r.sign = 1;
-		}
+		r.sign = promote(aCPP_ &v1, &v2, do_eval);
 		break;
 	case LT:	case LEQ:	case GT:
 	case GEQ:	case SAME:	case NEQ:
 		/* promote operands */
-		if (!v1.sign || !v2.sign) {
-			if (v1.sign) {
-				v1.u.uv = big_s_to_u(aCPP_ v1.u.sv);
-				v1.sign = 0;
-			} else if (v2.sign) {
-				v2.u.uv = big_s_to_u(aCPP_ v2.u.sv);
-				v2.sign = 0;
-			}
-		}
+		(void) promote(aCPP_ &v1, &v2, do_eval);
 		/* fall through */
 	case LAND:
 	case LOR:
@@ -463,10 +463,12 @@ static ppval eval_opbin(pCPP_ int op, ppval v1, ppval v2)
 		/* result is as signed as left operand; convert right
 		   operand to int */
 		r.sign = v1.sign;
-		if (v2.sign) {
-			iv2 = big_s_toint(aCPP_ v2.u.sv);
-		} else {
-			iv2 = big_u_toint(aCPP_ v2.u.uv);
+		if (do_eval) {
+			if (v2.sign) {
+				iv2 = big_s_toint(aCPP_ v2.u.sv);
+			} else {
+				iv2 = big_u_toint(aCPP_ v2.u.uv);
+			}
 		}
 		break;
 	case COMMA:
@@ -488,34 +490,35 @@ static ppval eval_opbin(pCPP_ int op, ppval v1, ppval v2)
 			(aCPP_ v1.u.sv, v2.u.sv)); else r.u.sv = big_s_fromint( \
 			aCPP_ big_u_ ## x (aCPP_ v1.u.uv, v2.u.uv));
 
-#define LBINOP(x)	if (v1.sign) r.u.sv = big_s_fromint(aCPP_ \
-			big_s_lval(aCPP_ v1.u.sv) x big_s_lval(aCPP_ v2.u.sv)); \
-			else r.u.sv = big_s_fromint(aCPP_ \
-			big_u_lval(aCPP_ v1.u.uv) x big_u_lval(aCPP_ v2.u.uv));
+#define LBINOP(x)	r.u.sv = big_s_fromint(aCPP_ (v1.sign ? big_s_lval(aCPP_ \
+			v1.u.sv) : big_u_lval(aCPP_ v1.u.uv)) x (v2.sign ? \
+			big_s_lval(aCPP_ v2.u.sv) : big_u_lval(aCPP_ v2.u.uv)));
 
 #define ABINOP(x)	if (r.sign) r.u.sv = big_s_ ## x (aCPP_ v1.u.sv, iv2); \
 			else r.u.uv = big_u_ ## x (aCPP_ v1.u.uv, iv2);
 
-	switch (op) {
-	case STAR: SBINOP(star); break;
-	case SLASH: SBINOP(slash); break;
-	case PCT: SBINOP(pct); break;
-	case PLUS: SBINOP(plus); break;
-	case MINUS: SBINOP(minus); break;
-	case LSH: ABINOP(lsh); break;
-	case RSH: ABINOP(rsh); break;
-	case LT: NSSBINOP(lt); break;
-	case LEQ: NSSBINOP(leq); break;
-	case GT: NSSBINOP(gt); break;
-	case GEQ: NSSBINOP(geq); break;
-	case SAME: NSSBINOP(same); break;
-	case NEQ: NSSBINOP(neq); break;
-	case AND: SBINOP(and); break;
-	case CIRC: SBINOP(xor); break;
-	case OR: SBINOP(or); break;
-	case LAND: LBINOP(&&); break;
-	case LOR: LBINOP(||); break;
-	case COMMA: r = v2; break;
+	if (do_eval) {
+		switch (op) {
+		case STAR: SBINOP(star); break;
+		case SLASH: SBINOP(slash); break;
+		case PCT: SBINOP(pct); break;
+		case PLUS: SBINOP(plus); break;
+		case MINUS: SBINOP(minus); break;
+		case LSH: ABINOP(lsh); break;
+		case RSH: ABINOP(rsh); break;
+		case LT: NSSBINOP(lt); break;
+		case LEQ: NSSBINOP(leq); break;
+		case GT: NSSBINOP(gt); break;
+		case GEQ: NSSBINOP(geq); break;
+		case SAME: NSSBINOP(same); break;
+		case NEQ: NSSBINOP(neq); break;
+		case AND: SBINOP(and); break;
+		case CIRC: SBINOP(xor); break;
+		case OR: SBINOP(or); break;
+		case LAND: LBINOP(&&); break;
+		case LOR: LBINOP(||); break;
+		case COMMA: r = v2; break;
+		}
 	}
 	return r;
 }
@@ -624,8 +627,8 @@ eval_loop:
 			if ((ct->type == LOR && boolval(aCPP_ top))
 				|| (ct->type == LAND && !boolval(aCPP_ top))) {
 				tr = eval_shrd(aCPP_ tf, bp, 0);
+				top.sign = 1;
 				if (do_eval) {
-					top.sign = 1;
 					if (ct->type == LOR)
 						top.u.sv = big_s_fromint(aCPP_ 1);
 					if (ct->type == LAND)
@@ -633,8 +636,7 @@ eval_loop:
 				}
 			} else {
 				tr = eval_shrd(aCPP_ tf, bp, do_eval);
-				if (do_eval)
-					top = eval_opbin(aCPP_ ct->type, top, tr);
+				top = eval_opbin(aCPP_ ct->type, top, tr, do_eval);
 			}
 			goto eval_loop;
 		}
@@ -653,9 +655,8 @@ eval_loop:
 				throw(eval_exception);
 			}
 			r2 = eval_shrd(aCPP_ tf, bp, qv ? 0 : do_eval);
-			if (do_eval) {
-				if (qv) top = r1; else top = r2;
-			}
+			(void) promote(aCPP_ &r1, &r2, do_eval);
+			if (qv) top = r1; else top = r2;
 			goto eval_loop;
 		}
 	}

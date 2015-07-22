@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:37:58 +0000 $
-* $Revision: 10 $
+* $Date: 2006/08/26 12:33:42 +0100 $
+* $Revision: 11 $
 * $Source: /cbc/init.c $
 *
 ********************************************************************************
@@ -109,6 +109,7 @@ static void get_init_str_type(pTHX_ CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
 static void get_init_str_struct(pTHX_ CBC *THIS, Struct *pStruct, SV *init,
                                 IDList *idl, int level, SV *string)
 {
+  ListIterator       sdi;
   StructDeclaration *pStructDecl;
   Declarator        *pDecl;
   HV                *hash = NULL;
@@ -130,11 +131,13 @@ static void get_init_str_struct(pTHX_ CBC *THIS, Struct *pStruct, SV *init,
   ENTER_LEVEL;
   IDLIST_PUSH(idl, ID);
 
-  LL_foreach(pStructDecl, pStruct->declarations)
+  LL_foreach(pStructDecl, sdi, pStruct->declarations)
   {
     if (pStructDecl->declarators)
     {
-      LL_foreach(pDecl, pStructDecl->declarators)
+      ListIterator di;
+
+      LL_foreach(pDecl, di, pStructDecl->declarators)
       {
         SV **e;
 

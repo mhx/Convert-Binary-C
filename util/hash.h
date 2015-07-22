@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:26 +0000 $
-* $Revision: 17 $
+* $Date: 2006/08/26 16:42:53 +0100 $
+* $Revision: 18 $
 * $Source: /util/hash.h $
 *
 ********************************************************************************
@@ -150,6 +150,7 @@
  *  Hash Table Handle
  */
 typedef struct _hashTable * HashTable;
+typedef const struct _hashTable * ConstHashTable;
 
 /**
  *  Hash Sum
@@ -160,14 +161,28 @@ typedef unsigned long HashSum;
  *  Hash Node
  */
 typedef struct _hashNode *HashNode;
+typedef const struct _hashNode *ConstHashNode;
 
 struct _hashNode {
-  HashNode    next;
-  void       *pObj;
-  HashSum     hash;
-  int         keylen;
-  char        key[1];
+  HashNode  next;
+  void     *pObj;
+  HashSum   hash;
+  int       keylen;
+  char      key[1];
 };
+
+/**
+ *  Hash Table Iterator
+ */
+typedef struct _hashIterator {
+  ConstHashNode pNode;
+  HashNode *pBucket;
+  int remain;
+#ifdef DEBUG_UTIL_HASH
+  ConstHashTable table;
+  unsigned orig_state;
+#endif
+} HashIterator;
 
 /**
  *  Destructor Function Pointer
@@ -183,26 +198,26 @@ HashTable  HT_new_ex( int size, unsigned long flags );
 void       HT_delete( HashTable table );
 void       HT_flush( HashTable table, HTDestroyFunc destroy );
 void       HT_destroy( HashTable table, HTDestroyFunc destroy );
-HashTable  HT_clone( HashTable table, HTCloneFunc func );
+HashTable  HT_clone( ConstHashTable table, HTCloneFunc func );
 
 int        HT_resize( HashTable table, int size );
-int        HT_size( const HashTable table );
-int        HT_count( const HashTable table );
+int        HT_size( ConstHashTable table );
+int        HT_count( ConstHashTable table );
 
 HashNode   HN_new( const char *key, int keylen, HashSum hash );
 void       HN_delete( HashNode node );
 
-int        HT_storenode( const HashTable table, HashNode node, void *pObj );
-void *     HT_fetchnode( const HashTable table, HashNode node );
-void *     HT_rmnode( const HashTable table, HashNode node );
+int        HT_storenode( HashTable table, HashNode node, void *pObj );
+void *     HT_fetchnode( HashTable table, HashNode node );
+void *     HT_rmnode( HashTable table, HashNode node );
 
-int        HT_store( const HashTable table, const char *key, int keylen, HashSum hash, void *pObj );
-void *     HT_fetch( const HashTable table, const char *key, int keylen, HashSum hash );
-void *     HT_get( const HashTable table, const char *key, int keylen, HashSum hash );
-int        HT_exists( const HashTable table, const char *key, int keylen, HashSum hash );
+int        HT_store( HashTable table, const char *key, int keylen, HashSum hash, void *pObj );
+void *     HT_fetch( HashTable table, const char *key, int keylen, HashSum hash );
+void *     HT_get( ConstHashTable table, const char *key, int keylen, HashSum hash );
+int        HT_exists( ConstHashTable table, const char *key, int keylen, HashSum hash );
 
-void       HT_reset( const HashTable table );
-int        HT_next( const HashTable table, char **pKey, int *pKeylen, void **ppObj );
+void       HI_init(HashIterator *it, ConstHashTable table);
+int        HI_next(HashIterator *it, const char **ppKey, int *pKeylen, void **ppObj);
 
 /* hash table flags */
 #define HT_AUTOGROW            0x00000001
@@ -212,8 +227,8 @@ int        HT_next( const HashTable table, char **pKey, int *pKeylen, void **ppO
 /* debug flags */
 #define DB_HASH_MAIN           0x00000001
 
-#ifdef DEBUG_HASH
-void HT_dump( const HashTable table );
+#ifdef DEBUG_UTIL_HASH
+void HT_dump( ConstHashTable table );
 int  SetDebugHash( void (*dbfunc)(const char *, ...), unsigned long dbflags );
 #else
 #define SetDebugHash( func, flags ) 0
@@ -264,13 +279,15 @@ int  SetDebugHash( void (*dbfunc)(const char *, ...), unsigned long dbflags );
  *  \param pObj         Variable that will receive a pointer
  *                      to the current object.
  *
+ *  \param iter         Pointer to hash iterator object.
+ *
  *  \param table        Handle to an existing hash table.
  *
  *  \see HT_reset() and HT_next()
  *  \hideinitializer
  */
-#define HT_foreach( pKey, pObj, table ) \
-          for( HT_reset(table); HT_next(table, (char **)&(pKey), NULL, (void **)&(pObj)); )
+#define HT_foreach(pKey, pObj, iter, table) \
+          for (HI_init(&iter, table); HI_next(&iter, &(pKey), NULL, (void **)&(pObj)); )
 
 /**
  *  Loop over all hash keys.
@@ -283,13 +300,15 @@ int  SetDebugHash( void (*dbfunc)(const char *, ...), unsigned long dbflags );
  *  \param pKey         Variable that will receive a pointer
  *                      to the current hash key string.
  *
+ *  \param iter         Pointer to hash iterator object.
+ *
  *  \param table        Handle to an existing hash table.
  *
  *  \see HT_foreach() and HT_foreach_values()
  *  \hideinitializer
  */
-#define HT_foreach_keys( pKey, table ) \
-          for( HT_reset(table); HT_next(table, (char **)&(pKey), NULL, NULL); )
+#define HT_foreach_keys(pKey, iter, table) \
+          for (HI_init(&iter, table); HI_next(&iter, &(pKey), NULL, NULL); )
 
 /**
  *  Loop over all hash values.
@@ -302,12 +321,14 @@ int  SetDebugHash( void (*dbfunc)(const char *, ...), unsigned long dbflags );
  *  \param pObj         Variable that will receive a pointer
  *                      to the current object.
  *
+ *  \param iter         Pointer to hash iterator object.
+ *
  *  \param table        Handle to an existing hash table.
  *
  *  \see HT_foreach() and HT_foreach_keys()
  *  \hideinitializer
  */
-#define HT_foreach_values( pObj, table ) \
-          for( HT_reset(table); HT_next(table, NULL, NULL, (void **)&(pObj)); )
+#define HT_foreach_values(pObj, iter, table) \
+          for (HI_init(&iter, table); HI_next(&iter, NULL, NULL, (void **)&(pObj)); )
 
 #endif

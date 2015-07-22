@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/02/26 00:46:10 +0000 $
-* $Revision: 60 $
+* $Date: 2006/08/26 16:42:26 +0100 $
+* $Revision: 62 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -446,7 +446,9 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
 
     if (infile == NULL)
     {
-      LL_foreach(str, pCPC->includes)
+      ListIterator li;
+
+      LL_foreach(str, li, pCPC->includes)
       {
         Free(file);
 
@@ -549,9 +551,11 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
 
   if (pp_needs_init)
   {
+    ListIterator li;
+
     /* Add includes */
 
-    LL_foreach(str, pCPC->includes)
+    LL_foreach(str, li, pCPC->includes)
     {
       CT_DEBUG(CTLIB, ("adding include path '%s'", str));
       add_incpath(aUCPP_ str);
@@ -559,7 +563,7 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
 
     /* Make defines */
 
-    LL_foreach(str, pCPC->defines)
+    LL_foreach(str, li, pCPC->defines)
     {
       CT_DEBUG(CTLIB, ("defining macro '%s'", str));
       (void) define_macro(aUCPP_ &lexer, str);
@@ -567,7 +571,7 @@ int parse_buffer(const char *filename, const Buffer *pBuf,
 
     /* Make assertions */
 
-    LL_foreach(str, pCPC->assertions)
+    LL_foreach(str, li, pCPC->assertions)
     {
       CT_DEBUG(CTLIB, ("making assertion '%s'", str));
       (void) make_assertion(aUCPP_ str);
@@ -787,6 +791,7 @@ void free_parse_info(CParseInfo *pCPI)
 
 void reset_parse_info(CParseInfo *pCPI)
 {
+  ListIterator li, ti;
   Struct *pStruct;
   TypedefList *pTDL;
   Typedef *pTD;
@@ -795,7 +800,7 @@ void reset_parse_info(CParseInfo *pCPI)
                    LL_count(pCPI->structs)));
 
   /* clear size and align fields */
-  LL_foreach(pStruct, pCPI->structs)
+  LL_foreach(pStruct, li, pCPI->structs)
   {
     CT_DEBUG(CTLIB, ("resetting struct '%s':", pStruct->identifier[0] ?
                      pStruct->identifier : "<no-identifier>"));
@@ -804,8 +809,8 @@ void reset_parse_info(CParseInfo *pCPI)
     pStruct->size  = 0;
   }
 
-  LL_foreach(pTDL, pCPI->typedef_lists)
-    LL_foreach(pTD, pTDL->typedefs)
+  LL_foreach(pTDL, li, pCPI->typedef_lists)
+    LL_foreach(pTD, ti, pTDL->typedefs)
     {
       pTD->pDecl->size      = -1;
       pTD->pDecl->item_size = -1;
@@ -833,6 +838,7 @@ void reset_parse_info(CParseInfo *pCPI)
 
 void update_parse_info(CParseInfo *pCPI, const CParseConfig *pCPC)
 {
+  ListIterator li, ti;
   Struct *pStruct;
   TypedefList *pTDL;
   Typedef *pTD;
@@ -841,7 +847,7 @@ void update_parse_info(CParseInfo *pCPI, const CParseConfig *pCPC)
                    LL_count(pCPI->structs)));
 
   /* compute size and alignment */
-  LL_foreach(pStruct, pCPI->structs)
+  LL_foreach(pStruct, li, pCPI->structs)
   {
     CT_DEBUG(CTLIB, ("updating struct '%s':", pStruct->identifier[0] ?
                      pStruct->identifier : "<no-identifier>"));
@@ -850,8 +856,8 @@ void update_parse_info(CParseInfo *pCPI, const CParseConfig *pCPC)
       pCPC->layout_compound(&pCPC->layout, pStruct);
   }
 
-  LL_foreach(pTDL, pCPI->typedef_lists)
-    LL_foreach(pTD, pTDL->typedefs)
+  LL_foreach(pTDL, li, pCPI->typedef_lists)
+    LL_foreach(pTD, ti, pTDL->typedefs)
       if (pTD->pDecl->size < 0)
       {
         unsigned size, item_size;
@@ -906,6 +912,7 @@ void update_parse_info(CParseInfo *pCPI, const CParseConfig *pCPC)
 
 void clone_parse_info(CParseInfo *pDest, const CParseInfo *pSrc)
 {
+  ListIterator   li;
   HashTable      ptrmap;
   EnumSpecifier *pES;
   Struct        *pStruct;
@@ -954,8 +961,9 @@ void clone_parse_info(CParseInfo *pDest, const CParseInfo *pSrc)
 
   CT_DEBUG(CTLIB, ("cloning enums"));
 
-  LL_foreach(pES, pSrc->enums)
+  LL_foreach(pES, li, pSrc->enums)
   {
+    ListIterator   ei;
     Enumerator    *pEnum;
     EnumSpecifier *pClone = enumspec_clone(pES);
 
@@ -966,13 +974,13 @@ void clone_parse_info(CParseInfo *pDest, const CParseInfo *pSrc)
     if (pClone->identifier[0])
       HT_store(pDest->htEnums, pClone->identifier, 0, 0, pClone);
 
-    LL_foreach(pEnum, pClone->enumerators)
+    LL_foreach(pEnum, ei, pClone->enumerators)
       HT_store(pDest->htEnumerators, pEnum->identifier, 0, 0, pEnum);
   }
 
   CT_DEBUG(CTLIB, ("cloning structs"));
 
-  LL_foreach(pStruct, pSrc->structs)
+  LL_foreach(pStruct, li, pSrc->structs)
   {
     Struct *pClone = struct_clone(pStruct);
 
@@ -986,17 +994,17 @@ void clone_parse_info(CParseInfo *pDest, const CParseInfo *pSrc)
 
   CT_DEBUG(CTLIB, ("cloning typedefs"));
 
-  LL_foreach(pTDL, pSrc->typedef_lists)
+  LL_foreach(pTDL, li, pSrc->typedef_lists)
   {
+    ListIterator oi, ci;
     TypedefList *pClone = typedef_list_clone(pTDL);
-    Typedef *pOld, *pNew;
 
-    LL_reset(pTDL->typedefs);
-    LL_reset(pClone->typedefs);
+    LI_init(&oi, pTDL->typedefs);
+    LI_init(&ci, pClone->typedefs);
 
-    while ((pOld = LL_next(pTDL->typedefs))   != NULL &&
-           (pNew = LL_next(pClone->typedefs)) != NULL)
+    while (LI_next(&oi) && LI_next(&ci))
     {
+      Typedef *pOld = LI_curr(&oi), *pNew = LI_curr(&ci);
       CT_DEBUG(CTLIB, ("storing pointer to map: %p <=> %p", pOld, pNew));
       HT_store(ptrmap, (const char *) &pOld, sizeof(pOld), 0, pNew);
       HT_store(pDest->htTypedefs, pNew->pDecl->identifier, 0, 0, pNew);
@@ -1008,15 +1016,16 @@ void clone_parse_info(CParseInfo *pDest, const CParseInfo *pSrc)
   CT_DEBUG(CTLIB, ("cloning file information"));
 
   {
+    HashIterator isrc, idst;
     void *pOld, *pNew;
 
     pDest->htFiles = HT_clone(pSrc->htFiles, (HTCloneFunc) fileinfo_clone);
 
-    HT_reset(pSrc->htFiles);
-    HT_reset(pDest->htFiles);
+    HI_init(&isrc, pSrc->htFiles);
+    HI_init(&idst, pDest->htFiles);
 
-    while (HT_next(pSrc->htFiles, NULL, NULL, &pOld) &&
-           HT_next(pDest->htFiles, NULL, NULL, &pNew))
+    while (HI_next(&isrc, NULL, NULL, &pOld) &&
+           HI_next(&idst, NULL, NULL, &pNew))
     {
       CT_DEBUG(CTLIB, ("storing pointer to map: %p <=> %p", pOld, pNew));
       HT_store(ptrmap, (const char *) &pOld, sizeof(pOld), 0, pNew);
@@ -1029,19 +1038,20 @@ void clone_parse_info(CParseInfo *pDest, const CParseInfo *pSrc)
 
   CT_DEBUG(CTLIB, ("remapping pointers for enums"));
 
-  LL_foreach(pES, pDest->enums)
+  LL_foreach(pES, li, pDest->enums)
     REMAP_PTR(EnumSpec, pES->context.pFI);
 
   CT_DEBUG(CTLIB, ("remapping pointers for structs"));
 
-  LL_foreach(pStruct, pDest->structs)
+  LL_foreach(pStruct, li, pDest->structs)
   {
+    ListIterator sdi;
     StructDeclaration *pStructDecl;
 
     CT_DEBUG(CTLIB, ("remapping pointers for struct @ %p ('%s')",
                      pStruct, pStruct->identifier));
 
-    LL_foreach(pStructDecl, pStruct->declarations)
+    LL_foreach(pStructDecl, sdi, pStruct->declarations)
       REMAP_PTR(StructDecl, pStructDecl->type.ptr);
 
     REMAP_PTR(Struct, pStruct->context.pFI);
@@ -1049,7 +1059,7 @@ void clone_parse_info(CParseInfo *pDest, const CParseInfo *pSrc)
 
   CT_DEBUG(CTLIB, ("remapping pointers for typedef lists"));
 
-  LL_foreach(pTDL, pDest->typedef_lists)
+  LL_foreach(pTDL, li, pDest->typedef_lists)
     REMAP_PTR(TypedefList, pTDL->type.ptr);
 
   HT_destroy(ptrmap, NULL);

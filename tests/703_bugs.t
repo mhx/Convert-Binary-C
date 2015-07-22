@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/01 09:38:21 +0000 $
-# $Revision: 2 $
+# $Date: 2006/08/26 14:43:20 +0100 $
+# $Revision: 3 $
 # $Source: /tests/703_bugs.t $
 #
 ################################################################################
@@ -14,7 +14,7 @@
 #
 ################################################################################
 
-use Test::More tests => 8;
+use Test::More tests => 10;
 use Convert::Binary::C @ARGV;
 
 my $code = <<ENDC;
@@ -52,4 +52,43 @@ for my $c ($c1, $c2) {
   is($t->{a}, 1, 'a');
   is($t->{b}, 2, 'b');
   is($t->{c}, 3, 'c');
+}
+
+### Ooops, the hash/list iterators were not reentrant...
+
+$c1->clean->parse(<<'ENDC');
+
+struct hash
+{
+  struct hash *a;
+  struct hash *b;
+};
+
+ENDC
+
+$c1->tag('hash', Hooks => { unpack_ptr => [\&unpack_hash, $c1->arg(qw(SELF TYPE DATA))] });
+
+{
+  my $i;
+
+  sub unpack_hash
+  {
+    my($self, $type, $ptr) = @_;
+    ++$i < 3 ? $self->unpack($type, $self->pack($type, { a => $i, b => 10 + $i })) : $ptr;
+  }
+}
+
+{
+  my @warn;
+  local $SIG{__WARN__} = sub { push @warn, @_ };
+
+  my $dummy = $c1->unpack('hash', $c1->pack('hash', { a => 0, b => 10 }));
+  is(scalar @warn, 0, 'hash/list iterator reentrancy');
+
+  ### An assertion in hook_call() could fail if a hook was called
+  ### for a member that didn't actually exist in the hash.
+
+  @warn = ();
+  $dummy = $c1->unpack('hash', $c1->pack('hash', { a => 0 }));
+  is(scalar @warn, 0, 'hook_call assertion failed');
 }

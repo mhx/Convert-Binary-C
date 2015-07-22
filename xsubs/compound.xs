@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/03/12 11:10:52 +0000 $
-# $Revision: 6 $
+# $Date: 2006/08/27 13:22:04 +0100 $
+# $Revision: 8 $
 # $Source: /xsubs/compound.xs $
 #
 ################################################################################
@@ -32,6 +32,7 @@ CBC::compound_names()
 
   PREINIT:
     CBC_METHOD_VAR;
+    ListIterator li;
     Struct *pStruct;
     int count = 0;
     U32 context;
@@ -61,7 +62,7 @@ CBC::compound_names()
 
     context = GIMME_V;
 
-    LL_foreach(pStruct, THIS->cpi.structs)
+    LL_foreach(pStruct, li, THIS->cpi.structs)
       if (pStruct->identifier[0] &&
           pStruct->declarations &&
           pStruct->tflags & mask)
@@ -130,9 +131,10 @@ CBC::compound(...)
         XSRETURN_IV(LL_count(THIS->cpi.structs));
       else
       {
+        ListIterator li;
         int count = 0;
 
-        LL_foreach(pStruct, THIS->cpi.structs)
+        LL_foreach(pStruct, li, THIS->cpi.structs)
           if (pStruct->tflags & mask)
             count++;
 
@@ -148,10 +150,10 @@ CBC::compound(...)
 
       for (i = 1; i < items; i++)
       {
-        const char *full, *name;
+        const char *name;
         u_32 limit = mask;
 
-        full = name = SvPV_nolen(ST(i));
+        name = SvPV_nolen(ST(i));
 
         /* skip optional union/struct */
         if(mask & T_UNION && 
@@ -194,9 +196,10 @@ CBC::compound(...)
     }
     else
     {
+      ListIterator li;
       int count = 0;
 
-      LL_foreach(pStruct, THIS->cpi.structs)
+      LL_foreach(pStruct, li, THIS->cpi.structs)
         if (pStruct->tflags & mask)
         {
           XPUSHs(sv_2mortal(get_struct_spec_def(aTHX_ &THIS->cfg, pStruct)));

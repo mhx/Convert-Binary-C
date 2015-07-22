@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/02/24 21:49:32 +0000 $
-* $Revision: 28 $
+* $Date: 2006/08/26 15:19:23 +0100 $
+* $Revision: 29 $
 * $Source: /util/memalloc.c $
 *
 ********************************************************************************
@@ -827,12 +827,12 @@ static inline int trace_check_range( const void *ptr, size_t size, const char *f
 
 
 #ifdef DEBUG_MEMALLOC
-void *_memAlloc( register size_t size, const char *file, int line )
+void *_memAlloc( size_t size, const char *file, int line )
 #else
-void *_memAlloc( register size_t size )
+void *_memAlloc( size_t size )
 #endif
 {
-  register void *p;
+  void *p;
 
 #if defined(DEBUG_MEMALLOC) && defined(AUTOPURGE_MEMALLOC)
   p = UTIL_MALLOC( size + sizeof( size_t ) );
@@ -856,12 +856,12 @@ void *_memAlloc( register size_t size )
 }
 
 #ifdef DEBUG_MEMALLOC
-void *_memCAlloc( register size_t nobj, register size_t size, const char *file, int line )
+void *_memCAlloc( size_t nobj, size_t size, const char *file, int line )
 #else
-void *_memCAlloc( register size_t nobj, register size_t size )
+void *_memCAlloc( size_t nobj, size_t size )
 #endif
 {
-  register void *p;
+  void *p;
 
 #if defined(DEBUG_MEMALLOC) && defined(AUTOPURGE_MEMALLOC)
   p = UTIL_MALLOC( nobj*size + sizeof( size_t ) );
@@ -886,9 +886,9 @@ void *_memCAlloc( register size_t nobj, register size_t size )
 }
 
 #ifdef DEBUG_MEMALLOC
-void *_memReAlloc( register void *p, register size_t size, const char *file, int line )
+void *_memReAlloc( void *p, size_t size, const char *file, int line )
 #else
-void *_memReAlloc( register void *p, register size_t size )
+void *_memReAlloc( void *p, size_t size )
 #endif
 {
 #if defined(DEBUG_MEMALLOC) && defined(TRACE_MEMALLOC)
@@ -938,7 +938,7 @@ void *_memReAlloc( register void *p, register size_t size )
 
 #ifdef DEBUG_MEMALLOC
 
-void _memFree( register void *p, const char *file, int line )
+void _memFree( void *p, const char *file, int line )
 {
   DEBUG( TRACE, ("%s(%d):F=%08lX\n", file, line, (unsigned long)p) );
 
@@ -953,13 +953,13 @@ void _memFree( register void *p, const char *file, int line )
   }
 }
 
-void _assertValidPtr( register void *p, const char *file, int line )
+void _assertValidPtr( const void *p, const char *file, int line )
 {
   DEBUG( ASSERT, ("%s(%d):V=%08lX\n", file, line, (unsigned long)p) );
   (void) trace_check_ptr( p, file, line );
 }
 
-void _assertValidBlock( register void *p, register size_t size, const char *file, int line )
+void _assertValidBlock( const void *p, size_t size, const char *file, int line )
 {
   DEBUG( ASSERT, ("%s(%d):B=%d@%08lX\n", file, line, size, (unsigned long)p) );
   (void) trace_check_range( p, size, file, line );

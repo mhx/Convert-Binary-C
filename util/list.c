@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:26 +0000 $
-* $Revision: 13 $
+* $Date: 2006/08/26 16:41:50 +0100 $
+* $Revision: 16 $
 * $Source: /util/list.c $
 *
 ********************************************************************************
@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "ccattr.h"
 #include "memalloc.h"
@@ -50,16 +51,24 @@ struct _link {
 
 struct _linkedList {
   Link  link;
-  Link *cur;
   int   size;
+#ifdef DEBUG_UTIL_LIST
+  unsigned state;
+#endif
 };
+
+#ifdef DEBUG_UTIL_LIST
+#  define CHANGE_STATE(list)   (list)->state++
+#else
+#  define CHANGE_STATE(list)   (void) 0
+#endif
 
 /*------------------*/
 /* Static Functions */
 /*------------------*/
-static inline Link *GetLink( const LinkedList list, int item );
-static inline void *Extract( const LinkedList list, Link *pLink );
-static inline Link *Insert( const LinkedList list, Link *pLink, void *pObj );
+static inline Link *GetLink( LinkedList list, int item );
+static inline void *Extract( LinkedList list, Link *pLink );
+static inline Link *Insert( LinkedList list, Link *pLink, void *pObj );
 static void QuickSort( Link *l, Link *r, int size, LLCompareFunc cmp );
 
 
@@ -84,7 +93,7 @@ static void QuickSort( Link *l, Link *r, int size, LLCompareFunc cmp );
  *    return NULL
  */
 
-static inline Link *GetLink( const LinkedList list, int item )
+static inline Link *GetLink( LinkedList list, int item )
 {
   Link *pLink = &list->link;
 
@@ -114,7 +123,7 @@ static inline Link *GetLink( const LinkedList list, int item )
  *  associated object.
  */
 
-static inline void *Extract( const LinkedList list, Link *pLink )
+static inline void *Extract( LinkedList list, Link *pLink )
 {
   void *pObj = pLink->pObj;
 
@@ -122,7 +131,6 @@ static inline void *Extract( const LinkedList list, Link *pLink )
   pLink->next->prev = pLink->prev;
 
   list->size--;
-  list->cur = &list->link;
 
   Free( pLink );
 
@@ -137,7 +145,7 @@ static inline void *Extract( const LinkedList list, Link *pLink )
  *  to the inserted link.
  */
 
-static inline Link *Insert( const LinkedList list, Link *pLink, void *pObj )
+static inline Link *Insert( LinkedList list, Link *pLink, void *pObj )
 {
   Link *pLinkNew;
 
@@ -152,8 +160,6 @@ static inline Link *Insert( const LinkedList list, Link *pLink, void *pObj )
   pLink->prev       = pLinkNew;
 
   list->size++;
-
-  list->cur = &list->link;
 
   return pLinkNew;
 }
@@ -230,9 +236,13 @@ LinkedList LL_new( void )
 
   AllocF( LinkedList, list, sizeof( struct _linkedList ) );
 
-  list->link.prev = list->link.next = list->cur = &list->link;
+  list->link.prev = list->link.next = &list->link;
   list->link.pObj = NULL;
   list->size      = 0;
+
+#ifdef DEBUG_UTIL_LIST
+  list->state     = 0;
+#endif
 
   return list;
 }
@@ -255,6 +265,8 @@ void LL_delete( LinkedList list )
 {
   if( list == NULL || list->size )
     return;
+
+  CHANGE_STATE(list);
 
   Free( list );
 }
@@ -283,6 +295,8 @@ void LL_flush( LinkedList list, LLDestroyFunc destroy )
   if( list == NULL )
     return;
 
+  CHANGE_STATE(list);
+
   while( (pObj = LL_shift( list )) != NULL )
     if( destroy ) destroy( pObj );
 }
@@ -309,6 +323,8 @@ void LL_destroy( LinkedList list, LLDestroyFunc destroy )
   if( list == NULL )
     return;
 
+  CHANGE_STATE(list);
+
   LL_flush( list, destroy );
   LL_delete( list );
 }
@@ -334,8 +350,9 @@ void LL_destroy( LinkedList list, LLDestroyFunc destroy )
  *  \see LL_new()
  */
 
-LinkedList LL_clone( LinkedList list, LLCloneFunc func )
+LinkedList LL_clone( ConstLinkedList list, LLCloneFunc func )
 {
+  ListIterator li;
   LinkedList clone;
   void *pObj;
 
@@ -344,8 +361,8 @@ LinkedList LL_clone( LinkedList list, LLCloneFunc func )
 
   clone = LL_new();
 
-  LL_foreach( pObj, list )
-    LL_push( clone, func ? func( pObj ) : pObj );
+  LL_foreach(pObj, li, list)
+    LL_push(clone, func ? func(pObj) : pObj);
 
   return clone;
 }
@@ -362,7 +379,7 @@ LinkedList LL_clone( LinkedList list, LLCloneFunc func )
  *          was passed.
  */
 
-int LL_count( const LinkedList list )
+int LL_count( ConstLinkedList list )
 {
   if( list == NULL )
     return -1;
@@ -389,12 +406,14 @@ int LL_count( const LinkedList list )
  *  \see LL_pop()
  */
 
-void LL_push( const LinkedList list, void *pObj )
+void LL_push( LinkedList list, void *pObj )
 {
   if( list == NULL || pObj == NULL )
     return;
 
   AssertValidPtr( list );
+
+  CHANGE_STATE(list);
 
   (void) Insert( list, &list->link, pObj );
 }
@@ -415,12 +434,14 @@ void LL_push( const LinkedList list, void *pObj )
  *  \see LL_push()
  */
 
-void *LL_pop( const LinkedList list )
+void *LL_pop( LinkedList list )
 {
   if( list == NULL || list->size == 0 )
     return NULL;
 
   AssertValidPtr( list );
+
+  CHANGE_STATE(list);
 
   return Extract( list, list->link.prev );
 }
@@ -442,12 +463,14 @@ void *LL_pop( const LinkedList list )
  *  \see LL_shift()
  */
 
-void LL_unshift( const LinkedList list, void *pObj )
+void LL_unshift( LinkedList list, void *pObj )
 {
   if( list == NULL || pObj == NULL )
     return;
 
   AssertValidPtr( list );
+
+  CHANGE_STATE(list);
 
   (void) Insert( list, list->link.next, pObj );
 }
@@ -468,12 +491,14 @@ void LL_unshift( const LinkedList list, void *pObj )
  *  \see LL_unshift()
  */
 
-void *LL_shift( const LinkedList list )
+void *LL_shift( LinkedList list )
 {
   if( list == NULL || list->size == 0 )
     return NULL;
 
   AssertValidPtr( list );
+
+  CHANGE_STATE(list);
 
   return Extract( list, list->link.next );
 }
@@ -509,7 +534,7 @@ void *LL_shift( const LinkedList list )
  *  \see LL_extract()
  */
 
-void LL_insert( const LinkedList list, int item, void *pObj )
+void LL_insert( LinkedList list, int item, void *pObj )
 {
   Link *pLink;
 
@@ -517,6 +542,8 @@ void LL_insert( const LinkedList list, int item, void *pObj )
     return;
 
   AssertValidPtr( list );
+
+  CHANGE_STATE(list);
 
   /*
    * We have to do some faking here because adding to the end
@@ -559,7 +586,7 @@ void LL_insert( const LinkedList list, int item, void *pObj )
  *  \see LL_insert()
  */
 
-void *LL_extract( const LinkedList list, int item )
+void *LL_extract( LinkedList list, int item )
 {
   Link *pLink;
 
@@ -567,6 +594,8 @@ void *LL_extract( const LinkedList list, int item )
     return NULL;
 
   AssertValidPtr( list );
+
+  CHANGE_STATE(list);
 
   pLink = GetLink( list, item );
 
@@ -594,7 +623,7 @@ void *LL_extract( const LinkedList list, int item )
  *          is out of range, NULL will be returned.
  */
 
-void *LL_get( const LinkedList list, int item )
+void *LL_get( ConstLinkedList list, int item )
 {
   Link *pLink;
 
@@ -603,7 +632,7 @@ void *LL_get( const LinkedList list, int item )
 
   AssertValidPtr( list );
 
-  pLink = GetLink( list, item );
+  pLink = GetLink( (LinkedList) list, item );
 
   return pLink ? pLink->pObj : NULL;
 }
@@ -644,7 +673,7 @@ void *LL_get( const LinkedList list, int item )
  *          if any. NULL if LL_splice() fails for some reason.
  */
 
-LinkedList LL_splice( const LinkedList list, int offset, int length, LinkedList rlist )
+LinkedList LL_splice( LinkedList list, int offset, int length, LinkedList rlist )
 {
   LinkedList nlist;
   Link *pLink, *pLast;
@@ -653,6 +682,8 @@ LinkedList LL_splice( const LinkedList list, int offset, int length, LinkedList 
     return NULL;
 
   AssertValidPtr( list );
+
+  CHANGE_STATE(list);
 
   pLink = offset == list->size ? &list->link : GetLink( list, offset );
 
@@ -701,84 +732,111 @@ LinkedList LL_splice( const LinkedList list, int offset, int length, LinkedList 
     Free( rlist );
   }
 
-  list->cur = &list->link;
-
   return nlist;
 }
 
 /**
- *  Reset list iterator.
+ *  Initialize list iterator.
  *
- *  LL_reset() will reset the lists internal iterator.
- *  When using the lists iterator functionality, keep in
- *  mind that the iterator is reset whenever the list is
- *  modified.
+ *  LI_init() will initialize a list iterator object.
+ *  Keep in mind that modifying the list invalidates all
+ *  list iterators.
+ *
+ *  \param it           Pointer to a list iterator object.
  *
  *  \param list         Handle to an existing linked list.
  *
- *  \see LL_next() and LL_prev()
+ *  \see LI_next(), LI_prev() and LI_curr()
  */
 
-void LL_reset( const LinkedList list )
+void LI_init(ListIterator *it, ConstLinkedList list)
 {
-  if( list == NULL )
-    return;
+  it->list = list;
 
-  AssertValidPtr( list );
-
-  list->cur = &list->link;
+  if (list)
+  {
+    AssertValidPtr(list);
+    it->cur = &list->link;
+#ifdef DEBUG_UTIL_LIST
+    it->orig_state = list->state;
+#endif
+  }
 }
 
 /**
- *  Get next list element.
+ *  Move iterator to next list element.
  *
- *  LL_next() will advance to the next element and return a
- *  pointer to the object associated with that element.
+ *  LI_next() will advance to the next element in the list.
  *
- *  \param list         Handle to an existing linked list.
+ *  \param it           Pointer to a list iterator object.
  *
- *  \return Pointer to the object associated with the next
- *          list element.
+ *  \return Nonzero as long as the next element is valid,
+ *          zero at the end of the list.
  *
- *  \see LL_reset() and LL_prev()
+ *  \see LI_init(), LI_prev() and LI_curr()
  */
 
-void *LL_next( const LinkedList list )
+int LI_next(ListIterator *it)
 {
-  if( list == NULL )
-    return NULL;
+  if (it == NULL || it->list == NULL)
+    return 0;
 
-  AssertValidPtr( list );
+  AssertValidPtr(it->list);
 
-  list->cur = list->cur->next;
+#ifdef DEBUG_UTIL_LIST
+  assert(it->orig_state == it->list->state);
+#endif
 
-  return list->cur->pObj;
+  it->cur = it->cur->next;
+
+  return it->cur != &it->list->link;
 }
 
 /**
- *  Get previous list element.
+ *  Move iterator to previous list element.
  *
- *  LL_prev() will go back to the previous element and return a
- *  pointer to the object associated with that element.
+ *  LI_prev() will advance to the previous element in the list.
  *
- *  \param list         Handle to an existing linked list.
+ *  \param it           Pointer to a list iterator object.
  *
- *  \return Pointer to the object associated with the previous
- *          list element.
+ *  \return Nonzero as long as the previous element is valid,
+ *          zero at the beginning of the list.
  *
- *  \see LL_reset() and LL_next()
+ *  \see LI_init(), LI_next() and LI_curr()
  */
 
-void *LL_prev( const LinkedList list )
+int LI_prev(ListIterator *it)
 {
-  if( list == NULL )
+  if (it == NULL || it->list == NULL)
+    return 0;
+
+  AssertValidPtr(it->list);
+
+  it->cur = it->cur->prev;
+
+  return it->cur != &it->list->link;
+}
+
+/**
+ *  Return the object associated with the current list element.
+ *
+ *  LI_curr() will return a pointer to the current object.
+ *
+ *  \param it           Pointer to a list iterator object.
+ *
+ *  \return Pointer to the current object in the list.
+ *
+ *  \see LI_init(), LI_next() and LI_prev()
+ */
+
+void *LI_curr(const ListIterator *it)
+{
+  if (it == NULL || it->list == NULL)
     return NULL;
 
-  AssertValidPtr( list );
+  AssertValidPtr(it->list);
 
-  list->cur = list->cur->prev;
-
-  return list->cur->pObj;
+  return it->cur->pObj;
 }
 
 /**
@@ -801,7 +859,7 @@ void *LL_prev( const LinkedList list )
  *                        are considered to be equal
  */
 
-void LL_sort( const LinkedList list, LLCompareFunc cmp )
+void LL_sort( LinkedList list, LLCompareFunc cmp )
 {
   if( list == NULL || list->size <= 1 )
     return;

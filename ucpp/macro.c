@@ -1024,7 +1024,6 @@ static char *tokenize_string(pCPP_ struct lexer_state *ls, char *buf)
 {
 	struct token_fifo tf;
 	size_t bl = strlen(buf);
-	int r;
 
 	tokenize_lexer.input = 0;
 	tokenize_lexer.input_string = (unsigned char *)buf;
@@ -1034,7 +1033,7 @@ static char *tokenize_string(pCPP_ struct lexer_state *ls, char *buf)
 	tokenize_lexer.flags = ls->flags | LEXER;
 	tokenize_lexer.pending_token = 0;
 	tf.art = tf.nt = 0;
-	while (!(r = next_token(aCPP_ &tokenize_lexer))) {
+	while (!next_token(aCPP_ &tokenize_lexer)) {
 		struct token t, *ct = tokenize_lexer.ctok;
 
 		if (ttWHI(ct->type)) continue;

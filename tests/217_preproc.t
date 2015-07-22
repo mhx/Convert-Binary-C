@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/23 21:00:56 +0000 $
-# $Revision: 15 $
+# $Date: 2006/04/21 13:47:04 +0100 $
+# $Revision: 17 $
 # $Source: /tests/217_preproc.t $
 #
 ################################################################################
@@ -14,7 +14,7 @@
 #
 ################################################################################
 
-use Test::More tests => 17;
+use Test::More tests => 29;
 use Convert::Binary::C @ARGV;
 
 eval {
@@ -95,4 +95,186 @@ like($warn[2], qr/included from \[buffer\]:1/);
 like($warn[3], qr/trigraph\.h, line 3: \(warning\) trigraph \?\?\) encountered/);
 like($warn[3], qr/included from \[buffer\]:1/);
 like($warn[4], qr/^\[buffer\]: \(warning\) 4 trigraph\(s\) encountered/);
+
+#--------------------------------------------
+# promotion of conditional operator operands
+#--------------------------------------------
+
+$c->clean;
+
+eval {
+  $c->parse(<<'END');
+
+enum test {
+
+#if 1 > (0 ? (~1) : (~1))
+  SS0 = 1,
+#else
+  SS0 = 0,
+#endif
+
+#if 1 > (1 ? (~1) : (~1))
+  SS1 = 1,
+#else
+  SS1 = 0,
+#endif
+
+#if 1 > (0 ? (~1U) : (~1))
+  US0 = 1,
+#else
+  US0 = 0,
+#endif
+
+#if 1 > (1 ? (~1U) : (~1))
+  US1 = 1,
+#else
+  US1 = 0,
+#endif
+
+#if 1 > (0 ? (~1) : (~1U))
+  SU0 = 1,
+#else
+  SU0 = 0,
+#endif
+
+#if 1 > (1 ? (~1) : (~1U))
+  SU1 = 1,
+#else
+  SU1 = 0,
+#endif
+
+#if 1 > (0 ? (~1U) : (~1U))
+  UU0 = 1,
+#else
+  UU0 = 0,
+#endif
+
+#if 1 > (1 ? (~1U) : (~1U))
+  UU1 = 1,
+#else
+  UU1 = 0,
+#endif
+
+};
+
+END
+};
+
+is($@, '');
+is_deeply($c->enum('test')->{enumerators}, {
+  SS0 => 1,
+  SS1 => 1,
+  US0 => 0,
+  US1 => 0,
+  SU0 => 0,
+  SU1 => 0,
+  UU0 => 0,
+  UU1 => 0,
+}, 'operands of conditional operator promoted correctly');
+
+#---------------------------------------------------------
+# make sure that the promotion fix doesn't break anything
+#---------------------------------------------------------
+
+$c->clean;
+
+eval {
+  $c->parse(<<'END');
+
+#if 1 ? 0 : 1/0
+#  error broken
+#else
+#  define OK
+#endif
+
+END
+};
+
+is($@, '');
+ok($c->defined('OK'), 'branch of conditional operator not evaluated');
+
+#---------------------------------------------------------
+
+$c->clean;
+
+eval {
+  $c->parse(<<'END');
+
+#if (1 || 1/0) && !(0 && 2/0)
+#  define OK
+#else
+#  error broken
+#endif
+
+END
+};
+
+is($@, '');
+ok($c->defined('OK'), 'branch of short-circuiting operator not evaluated');
+
+#---------------------------------------------------------
+
+$c->clean;
+
+eval {
+  $c->parse(<<'END');
+
+#if 1 + 2 + 3 / 3 == 6 - (1 << 1)
+#  define OK
+#else
+#  error broken
+#endif
+
+END
+};
+
+is($@, '');
+ok($c->defined('OK'), 'arithmetic expressions evaluated correctly');
+
+#---------------------------------------------------------
+
+$c->clean;
+
+eval {
+  $c->parse(<<'END');
+
+#if (1 && 3 == 4 - 1 ? 5 - 3 : 7) == 2
+#  define OK
+#else
+#  error broken
+#endif
+
+END
+};
+
+is($@, '');
+ok($c->defined('OK'), 'arithmetic expressions evaluated correctly');
+
+#-------------------------
+# tests arithmetic errors
+#-------------------------
+
+$c->clean;
+
+eval {
+  $c->parse(<<'END');
+#if 18446744073709551615U
+#endif
+END
+};
+
+is($@, '');
+
+$c->clean;
+
+eval {
+  $c->parse(<<'END');
+#if 18446744073709551616U
+#endif
+END
+};
+
+like($@, qr/constant too large/);
+
+# TODO: more arith checks (errors/warnings)
 

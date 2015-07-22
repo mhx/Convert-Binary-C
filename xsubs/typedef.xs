@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/04 22:44:07 +0000 $
-# $Revision: 5 $
+# $Date: 2006/08/26 12:33:45 +0100 $
+# $Revision: 6 $
 # $Source: /xsubs/typedef.xs $
 #
 ################################################################################
@@ -28,6 +28,7 @@ void
 CBC::typedef_names()
   PREINIT:
     CBC_METHOD(typedef_names);
+    ListIterator tli, ti;
     TypedefList *pTDL;
     Typedef     *pTypedef;
     int          count = 0;
@@ -41,8 +42,8 @@ CBC::typedef_names()
 
     context = GIMME_V;
 
-    LL_foreach(pTDL, THIS->cpi.typedef_lists)
-      LL_foreach(pTypedef, pTDL->typedefs)
+    LL_foreach(pTDL, tli, THIS->cpi.typedef_lists)
+      LL_foreach(pTypedef, ti, pTDL->typedefs)
         if (is_typedef_defined(pTypedef))
         {
           if (context == G_ARRAY)
@@ -105,6 +106,7 @@ CBC::typedef(...)
     }
     else
     {
+      ListIterator tli, ti;
       TypedefList *pTDL;
       int size = HT_count(THIS->cpi.htTypedefs);
 
@@ -113,8 +115,8 @@ CBC::typedef(...)
 
       EXTEND(SP, size);
 
-      LL_foreach(pTDL, THIS->cpi.typedef_lists)
-        LL_foreach(pTypedef, pTDL->typedefs)
+      LL_foreach(pTDL, tli, THIS->cpi.typedef_lists)
+        LL_foreach(pTypedef, ti, pTDL->typedefs)
           PUSHs(sv_2mortal(get_typedef_def(aTHX_ &THIS->cfg, pTypedef)));
 
       XSRETURN(size);

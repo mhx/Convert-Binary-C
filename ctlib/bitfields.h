@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/01/01 09:38:02 +0000 $
-* $Revision: 5 $
+* $Date: 2006/04/21 12:55:51 +0100 $
+* $Revision: 6 $
 * $Source: /ctlib/bitfields.h $
 *
 ********************************************************************************
@@ -56,7 +56,7 @@ typedef signed long BLPropValInt;
 typedef struct _BLPropValue {
   enum BLPVType {
     BLPVT_INT,
-    BLPVT_STR,
+    BLPVT_STR
   } type;
   union {
     BLPropValInt v_int;

@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2006/03/11 13:48:10 +0000 $
-* $Revision: 7 $
+* $Date: 2006/08/27 10:55:02 +0100 $
+* $Revision: 8 $
 * $Source: /cbc/member.h $
 *
 ********************************************************************************
@@ -105,15 +105,15 @@ int get_member(pTHX_ const MemberInfo *pMI, const char *member,
                MemberInfo *pMIout, unsigned gm_flags);
 
 #define member_expr_walker_new CBC_member_expr_walker_new
-MemberExprWalker member_expr_walker_new(const char *expr, size_t len);
+MemberExprWalker member_expr_walker_new(pTHX_ const char *expr, size_t len);
 
 #define member_expr_walker_retval_string CBC_member_expr_walker_retval_string
 const char *member_expr_walker_retval_string(enum me_walk_rv retval);
 
 #define member_expr_walker_walk CBC_member_expr_walker_walk
-void member_expr_walker_walk(MemberExprWalker me, struct me_walk_info *info);
+void member_expr_walker_walk(pTHX_ MemberExprWalker me, struct me_walk_info *info);
 
 #define member_expr_walker_delete CBC_member_expr_walker_delete
-void member_expr_walker_delete(MemberExprWalker me);
+void member_expr_walker_delete(pTHX_ MemberExprWalker me);
 
 #endif
