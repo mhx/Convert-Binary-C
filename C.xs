@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/07/01 07:38:16 +0100 $
-* $Revision: 125 $
-* $Snapshot: /Convert-Binary-C/0.54 $
+* $Date: 2004/08/22 21:41:49 +0100 $
+* $Revision: 129 $
+* $Snapshot: /Convert-Binary-C/0.55 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -36,6 +36,8 @@
 #include <perl.h>
 #include <XSUB.h>
 
+#define NEED_newRV_noinc
+#define NEED_sv_2pv_nolen
 #include "ppport.h"
 
 
@@ -82,116 +84,116 @@
 /* some defaults */
 /*---------------*/
 
-#ifndef DEFAULT_PTR_SIZE
-#define DEFAULT_PTR_SIZE    CTLIB_POINTER_SIZE
-#elif   DEFAULT_PTR_SIZE != 1 && \
-        DEFAULT_PTR_SIZE != 2 && \
-        DEFAULT_PTR_SIZE != 4 && \
-        DEFAULT_PTR_SIZE != 8
-#error "DEFAULT_PTR_SIZE is invalid!"
+#ifndef CBC_DEFAULT_PTR_SIZE
+#define CBC_DEFAULT_PTR_SIZE    CTLIB_POINTER_SIZE
+#elif   CBC_DEFAULT_PTR_SIZE != 1 && \
+        CBC_DEFAULT_PTR_SIZE != 2 && \
+        CBC_DEFAULT_PTR_SIZE != 4 && \
+        CBC_DEFAULT_PTR_SIZE != 8
+#error "CBC_DEFAULT_PTR_SIZE is invalid!"
 #endif
 
-#ifndef DEFAULT_ENUM_SIZE
-#define DEFAULT_ENUM_SIZE    sizeof( int )
-#elif   DEFAULT_ENUM_SIZE != 0 && \
-        DEFAULT_ENUM_SIZE != 1 && \
-        DEFAULT_ENUM_SIZE != 2 && \
-        DEFAULT_ENUM_SIZE != 4 && \
-        DEFAULT_ENUM_SIZE != 8
-#error "DEFAULT_ENUM_SIZE is invalid!"
+#ifndef CBC_DEFAULT_ENUM_SIZE
+#define CBC_DEFAULT_ENUM_SIZE    sizeof( int )
+#elif   CBC_DEFAULT_ENUM_SIZE != 0 && \
+        CBC_DEFAULT_ENUM_SIZE != 1 && \
+        CBC_DEFAULT_ENUM_SIZE != 2 && \
+        CBC_DEFAULT_ENUM_SIZE != 4 && \
+        CBC_DEFAULT_ENUM_SIZE != 8
+#error "CBC_DEFAULT_ENUM_SIZE is invalid!"
 #endif
 
-#ifndef DEFAULT_INT_SIZE
-#define DEFAULT_INT_SIZE    CTLIB_int_SIZE
-#elif   DEFAULT_INT_SIZE != 1 && \
-        DEFAULT_INT_SIZE != 2 && \
-        DEFAULT_INT_SIZE != 4 && \
-        DEFAULT_INT_SIZE != 8
-#error "DEFAULT_INT_SIZE is invalid!"
+#ifndef CBC_DEFAULT_INT_SIZE
+#define CBC_DEFAULT_INT_SIZE    CTLIB_int_SIZE
+#elif   CBC_DEFAULT_INT_SIZE != 1 && \
+        CBC_DEFAULT_INT_SIZE != 2 && \
+        CBC_DEFAULT_INT_SIZE != 4 && \
+        CBC_DEFAULT_INT_SIZE != 8
+#error "CBC_DEFAULT_INT_SIZE is invalid!"
 #endif
 
-#ifndef DEFAULT_SHORT_SIZE
-#define DEFAULT_SHORT_SIZE    CTLIB_short_SIZE
-#elif   DEFAULT_SHORT_SIZE != 1 && \
-        DEFAULT_SHORT_SIZE != 2 && \
-        DEFAULT_SHORT_SIZE != 4 && \
-        DEFAULT_SHORT_SIZE != 8
-#error "DEFAULT_SHORT_SIZE is invalid!"
+#ifndef CBC_DEFAULT_SHORT_SIZE
+#define CBC_DEFAULT_SHORT_SIZE    CTLIB_short_SIZE
+#elif   CBC_DEFAULT_SHORT_SIZE != 1 && \
+        CBC_DEFAULT_SHORT_SIZE != 2 && \
+        CBC_DEFAULT_SHORT_SIZE != 4 && \
+        CBC_DEFAULT_SHORT_SIZE != 8
+#error "CBC_DEFAULT_SHORT_SIZE is invalid!"
 #endif
 
-#ifndef DEFAULT_LONG_SIZE
-#define DEFAULT_LONG_SIZE    CTLIB_long_SIZE
-#elif   DEFAULT_LONG_SIZE != 1 && \
-        DEFAULT_LONG_SIZE != 2 && \
-        DEFAULT_LONG_SIZE != 4 && \
-        DEFAULT_LONG_SIZE != 8
-#error "DEFAULT_LONG_SIZE is invalid!"
+#ifndef CBC_DEFAULT_LONG_SIZE
+#define CBC_DEFAULT_LONG_SIZE    CTLIB_long_SIZE
+#elif   CBC_DEFAULT_LONG_SIZE != 1 && \
+        CBC_DEFAULT_LONG_SIZE != 2 && \
+        CBC_DEFAULT_LONG_SIZE != 4 && \
+        CBC_DEFAULT_LONG_SIZE != 8
+#error "CBC_DEFAULT_LONG_SIZE is invalid!"
 #endif
 
-#ifndef DEFAULT_LONG_LONG_SIZE
-#define DEFAULT_LONG_LONG_SIZE    CTLIB_long_long_SIZE
-#elif   DEFAULT_LONG_LONG_SIZE != 1 && \
-        DEFAULT_LONG_LONG_SIZE != 2 && \
-        DEFAULT_LONG_LONG_SIZE != 4 && \
-        DEFAULT_LONG_LONG_SIZE != 8
-#error "DEFAULT_LONG_LONG_SIZE is invalid!"
+#ifndef CBC_DEFAULT_LONG_LONG_SIZE
+#define CBC_DEFAULT_LONG_LONG_SIZE    CTLIB_long_long_SIZE
+#elif   CBC_DEFAULT_LONG_LONG_SIZE != 1 && \
+        CBC_DEFAULT_LONG_LONG_SIZE != 2 && \
+        CBC_DEFAULT_LONG_LONG_SIZE != 4 && \
+        CBC_DEFAULT_LONG_LONG_SIZE != 8
+#error "CBC_DEFAULT_LONG_LONG_SIZE is invalid!"
 #endif
 
-#ifndef DEFAULT_FLOAT_SIZE
-#define DEFAULT_FLOAT_SIZE    CTLIB_float_SIZE
-#elif   DEFAULT_FLOAT_SIZE != 1  && \
-        DEFAULT_FLOAT_SIZE != 2  && \
-        DEFAULT_FLOAT_SIZE != 4  && \
-        DEFAULT_FLOAT_SIZE != 8  && \
-        DEFAULT_FLOAT_SIZE != 12 && \
-        DEFAULT_FLOAT_SIZE != 16
-#error "DEFAULT_FLOAT_SIZE is invalid!"
+#ifndef CBC_DEFAULT_FLOAT_SIZE
+#define CBC_DEFAULT_FLOAT_SIZE    CTLIB_float_SIZE
+#elif   CBC_DEFAULT_FLOAT_SIZE != 1  && \
+        CBC_DEFAULT_FLOAT_SIZE != 2  && \
+        CBC_DEFAULT_FLOAT_SIZE != 4  && \
+        CBC_DEFAULT_FLOAT_SIZE != 8  && \
+        CBC_DEFAULT_FLOAT_SIZE != 12 && \
+        CBC_DEFAULT_FLOAT_SIZE != 16
+#error "CBC_DEFAULT_FLOAT_SIZE is invalid!"
 #endif
 
-#ifndef DEFAULT_DOUBLE_SIZE
-#define DEFAULT_DOUBLE_SIZE    CTLIB_double_SIZE
-#elif   DEFAULT_DOUBLE_SIZE != 1  && \
-        DEFAULT_DOUBLE_SIZE != 2  && \
-        DEFAULT_DOUBLE_SIZE != 4  && \
-        DEFAULT_DOUBLE_SIZE != 8  && \
-        DEFAULT_DOUBLE_SIZE != 12 && \
-        DEFAULT_DOUBLE_SIZE != 16
-#error "DEFAULT_DOUBLE_SIZE is invalid!"
+#ifndef CBC_DEFAULT_DOUBLE_SIZE
+#define CBC_DEFAULT_DOUBLE_SIZE    CTLIB_double_SIZE
+#elif   CBC_DEFAULT_DOUBLE_SIZE != 1  && \
+        CBC_DEFAULT_DOUBLE_SIZE != 2  && \
+        CBC_DEFAULT_DOUBLE_SIZE != 4  && \
+        CBC_DEFAULT_DOUBLE_SIZE != 8  && \
+        CBC_DEFAULT_DOUBLE_SIZE != 12 && \
+        CBC_DEFAULT_DOUBLE_SIZE != 16
+#error "CBC_DEFAULT_DOUBLE_SIZE is invalid!"
 #endif
 
-#ifndef DEFAULT_LONG_DOUBLE_SIZE
-#define DEFAULT_LONG_DOUBLE_SIZE    CTLIB_long_double_SIZE
-#elif   DEFAULT_LONG_DOUBLE_SIZE != 1  && \
-        DEFAULT_LONG_DOUBLE_SIZE != 2  && \
-        DEFAULT_LONG_DOUBLE_SIZE != 4  && \
-        DEFAULT_LONG_DOUBLE_SIZE != 8  && \
-        DEFAULT_LONG_DOUBLE_SIZE != 12 && \
-        DEFAULT_LONG_DOUBLE_SIZE != 16
-#error "DEFAULT_LONG_DOUBLE_SIZE is invalid!"
+#ifndef CBC_DEFAULT_LONG_DOUBLE_SIZE
+#define CBC_DEFAULT_LONG_DOUBLE_SIZE    CTLIB_long_double_SIZE
+#elif   CBC_DEFAULT_LONG_DOUBLE_SIZE != 1  && \
+        CBC_DEFAULT_LONG_DOUBLE_SIZE != 2  && \
+        CBC_DEFAULT_LONG_DOUBLE_SIZE != 4  && \
+        CBC_DEFAULT_LONG_DOUBLE_SIZE != 8  && \
+        CBC_DEFAULT_LONG_DOUBLE_SIZE != 12 && \
+        CBC_DEFAULT_LONG_DOUBLE_SIZE != 16
+#error "CBC_DEFAULT_LONG_DOUBLE_SIZE is invalid!"
 #endif
 
-#ifndef DEFAULT_ALIGNMENT
-#define DEFAULT_ALIGNMENT    1
-#elif   DEFAULT_ALIGNMENT != 1  && \
-        DEFAULT_ALIGNMENT != 2  && \
-        DEFAULT_ALIGNMENT != 4  && \
-        DEFAULT_ALIGNMENT != 8  && \
-        DEFAULT_ALIGNMENT != 16
-#error "DEFAULT_ALIGNMENT is invalid!"
+#ifndef CBC_DEFAULT_ALIGNMENT
+#define CBC_DEFAULT_ALIGNMENT    1
+#elif   CBC_DEFAULT_ALIGNMENT != 1  && \
+        CBC_DEFAULT_ALIGNMENT != 2  && \
+        CBC_DEFAULT_ALIGNMENT != 4  && \
+        CBC_DEFAULT_ALIGNMENT != 8  && \
+        CBC_DEFAULT_ALIGNMENT != 16
+#error "CBC_DEFAULT_ALIGNMENT is invalid!"
 #endif
 
-#ifndef DEFAULT_COMPOUND_ALIGNMENT
-#define DEFAULT_COMPOUND_ALIGNMENT    1
-#elif   DEFAULT_COMPOUND_ALIGNMENT != 1  && \
-        DEFAULT_COMPOUND_ALIGNMENT != 2  && \
-        DEFAULT_COMPOUND_ALIGNMENT != 4  && \
-        DEFAULT_COMPOUND_ALIGNMENT != 8  && \
-        DEFAULT_COMPOUND_ALIGNMENT != 16
-#error "DEFAULT_COMPOUND_ALIGNMENT is invalid!"
+#ifndef CBC_DEFAULT_COMPOUND_ALIGNMENT
+#define CBC_DEFAULT_COMPOUND_ALIGNMENT    1
+#elif   CBC_DEFAULT_COMPOUND_ALIGNMENT != 1  && \
+        CBC_DEFAULT_COMPOUND_ALIGNMENT != 2  && \
+        CBC_DEFAULT_COMPOUND_ALIGNMENT != 4  && \
+        CBC_DEFAULT_COMPOUND_ALIGNMENT != 8  && \
+        CBC_DEFAULT_COMPOUND_ALIGNMENT != 16
+#error "CBC_DEFAULT_COMPOUND_ALIGNMENT is invalid!"
 #endif
 
-#ifndef DEFAULT_ENUMTYPE
-#define DEFAULT_ENUMTYPE    ET_INTEGER
+#ifndef CBC_DEFAULT_ENUMTYPE
+#define CBC_DEFAULT_ENUMTYPE    ET_INTEGER
 #endif
 
 #ifdef NATIVE_BIG_ENDIAN
@@ -200,60 +202,20 @@
 #define NATIVE_BYTEORDER   BO_LITTLE_ENDIAN
 #endif
 
-#ifndef DEFAULT_BYTEORDER
-#define DEFAULT_BYTEORDER  NATIVE_BYTEORDER
+#ifndef CBC_DEFAULT_BYTEORDER
+#define CBC_DEFAULT_BYTEORDER  NATIVE_BYTEORDER
 #endif
 
 
-/*-----------------------------*/
-/* some stuff for older perl's */
-/*-----------------------------*/
-
-/*   <HACK>   */
+/*----------------------------------*/
+/* avoid warnings with older perl's */
+/*----------------------------------*/
 
 #if PERL_REVISION == 5 && PERL_VERSION < 6
 # define CONST_CHAR(x) ((char *)(x))
 #else
 # define CONST_CHAR(x) (x)
 #endif
-
-#ifndef sv_vcatpvf
-static void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
-{
-  sv_vcatpvfn( sv, pat, strlen(pat), args, NULL, 0, NULL );
-}
-#endif
-
-#ifndef sv_catpvn_nomg
-#define sv_catpvn_nomg sv_catpvn
-#endif
-
-#ifndef call_sv
-#define call_sv(a,b) perl_call_sv(a,b)
-#endif
-
-#ifdef IVdf
-# define IVdf_cast
-#else
-# define IVdf "ld"
-# define IVdf_cast (long)
-#endif
-
-#ifdef UVuf
-# define UVuf_cast
-#else
-# define UVuf "lu"
-# define UVuf_cast (unsigned long)
-#endif
-
-#ifdef NVff
-# define NVff_cast
-#else
-# define NVff "lf"
-# define NVff_cast (double)
-#endif
-
-/*   </HACK>   */
 
 /* values passed between all packing/unpacking routines */
 #define pPACKARGS   pTHX_ const CBC *THIS, PackInfo *PACK
@@ -898,6 +860,14 @@ static perl_mutex gs_parse_mutex;
 static int gs_DisableParser;
 static int gs_OrderMembers;
 static const char *gs_IndexHashMod;
+
+static const char *gs_NativeByteOrder =
+#ifdef NATIVE_BIG_ENDIAN
+		  "BigEndian"
+#else
+		  "LittleEndian"
+#endif
+		;
 
 /* Do NOT change the order between TypeHooksS and TypeHooks (see above)! */
 static struct {
@@ -1559,7 +1529,7 @@ static SV *hook_call(pTHX_ SV *self, const char *id_pre, const char *id,
             sv = sv_newmortal();
             if (id_pre) {
               sv_setpv(sv, id_pre);
-              sv_catpv(sv, id);
+              sv_catpv(sv, CONST_CHAR(id));
             }
             else
               sv_setpv(sv, id);
@@ -2011,7 +1981,7 @@ static void StoreIntSV( pPACKARGS, unsigned size, unsigned sign, SV *sv )
 
     if( sign ) {
       IV val = SvIV( sv );
-      CT_DEBUG( MAIN, ("SvIV( sv ) = %" IVdf, IVdf_cast val) );
+      CT_DEBUG( MAIN, ("SvIV( sv ) = %" IVdf, val) );
 #ifdef NATIVE_64_BIT_INTEGER
       iv.value.s = val;
 #else
@@ -2021,7 +1991,7 @@ static void StoreIntSV( pPACKARGS, unsigned size, unsigned sign, SV *sv )
     }
     else {
       UV val = SvUV( sv );
-      CT_DEBUG( MAIN, ("SvUV( sv ) = %" UVuf, UVuf_cast val) );
+      CT_DEBUG( MAIN, ("SvUV( sv ) = %" UVuf, val) );
 #ifdef NATIVE_64_BIT_INTEGER
       iv.value.u = val;
 #else
@@ -2167,7 +2137,7 @@ static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv )
   pos              = PACK->buf.pos;
   old_align        = PACK->alignment;
   old_base         = PACK->align_base;
-  PACK->alignment  = pStruct->pack ? pStruct->pack : THIS->cfg.alignment;
+  PACK->alignment  = pStruct->pack ? pStruct->pack : CPC_ALIGNMENT(&THIS->cfg);
   PACK->align_base = 0;
 
   if( DEFINED( sv ) ) {
@@ -2291,7 +2261,7 @@ static void SetEnum( pPACKARGS, EnumSpecifier *pEnumSpec, SV *sv )
         value = SvIV( sv );
     }
 
-    CT_DEBUG( MAIN, ("value(sv) = %" IVdf, IVdf_cast value) );
+    CT_DEBUG( MAIN, ("value(sv) = %" IVdf, value) );
 
     iv.string = NULL;
     iv.sign = value < 0;
@@ -2580,7 +2550,7 @@ static SV *GetStruct( pPACKARGS, Struct *pStruct, HV *hash )
   pos              = PACK->buf.pos;
   old_align        = PACK->alignment;
   old_base         = PACK->align_base;
-  PACK->alignment  = pStruct->pack ? pStruct->pack : THIS->cfg.alignment;
+  PACK->alignment  = pStruct->pack ? pStruct->pack : CPC_ALIGNMENT(&THIS->cfg);
   PACK->align_base = 0;
 
   LL_foreach( pStructDecl, pStruct->declarations ) {
@@ -2719,7 +2689,7 @@ static SV *GetEnum( pPACKARGS, EnumSpecifier *pEnumSpec )
         if( pEnum )
           sv_setpv( sv, pEnum->identifier );
         else
-          sv_setpvf( sv, "<ENUM:%" IVdf ">", IVdf_cast value );
+          sv_setpvf( sv, "<ENUM:%" IVdf ">", value );
         SvIOK_on( sv );
         break;
 
@@ -2727,7 +2697,7 @@ static SV *GetEnum( pPACKARGS, EnumSpecifier *pEnumSpec )
         if( pEnum )
           sv = newSVpv( pEnum->identifier, 0 );
         else
-          sv = newSVpvf( "<ENUM:%" IVdf ">", IVdf_cast value );
+          sv = newSVpvf( "<ENUM:%" IVdf ">", value );
         break;
 
       default:
@@ -5812,11 +5782,11 @@ static int CheckIntegerOption( pTHX_ const IV *options, int count, SV *sv,
     SV *str = sv_2mortal( newSVpvn( "", 0 ) );
 
     for( n = 0; n < count; n++ )
-      sv_catpvf( str, "%" IVdf "%s", IVdf_cast *options++,
+      sv_catpvf( str, "%" IVdf "%s", *options++,
                       n <  count-2 ? ", " : n == count-2 ? " or " : "" );
 
     Perl_croak(aTHX_ "%s must be %s, not %" IVdf, name, SvPV_nolen( str ),
-                                            IVdf_cast *value);
+                                            *value);
   }
 
   return 0;
@@ -6303,8 +6273,8 @@ static const IV LongLongSizeOption[]      = {     0, 1, 2, 4, 8         };
 static const IV FloatSizeOption[]         = {     0, 1, 2, 4, 8, 12, 16 };
 static const IV DoubleSizeOption[]        = {     0, 1, 2, 4, 8, 12, 16 };
 static const IV LongDoubleSizeOption[]    = {     0, 1, 2, 4, 8, 12, 16 };
-static const IV AlignmentOption[]         = {        1, 2, 4, 8,     16 };
-static const IV CompoundAlignmentOption[] = {        1, 2, 4, 8,     16 };
+static const IV AlignmentOption[]         = {     0, 1, 2, 4, 8,     16 };
+static const IV CompoundAlignmentOption[] = {     0, 1, 2, 4, 8,     16 };
 
 #define START_OPTIONS                                                          \
           int changes = 0;                                                     \
@@ -6743,8 +6713,8 @@ CBC::new( ... )
 		  sv_bless(ST(0), gv_stashpv(CLASS, 0));
 		  sv_2mortal(ST(0));
 
-		  THIS->as.bo                  = DEFAULT_BYTEORDER;
-		  THIS->enumType               = DEFAULT_ENUMTYPE;
+		  THIS->as.bo                  = CBC_DEFAULT_BYTEORDER;
+		  THIS->enumType               = CBC_DEFAULT_ENUMTYPE;
 		  THIS->ixhash                 = NULL;
 		  THIS->flags                  = 0;
 		  THIS->enum_hooks             = HT_new_ex(1, HT_AUTOGROW);
@@ -6756,17 +6726,17 @@ CBC::new( ... )
 		  THIS->cfg.assertions         = LL_new();
 		  THIS->cfg.disabled_keywords  = LL_new();
 		  THIS->cfg.keyword_map        = HT_new(1);
-		  THIS->cfg.ptr_size           = DEFAULT_PTR_SIZE;
-		  THIS->cfg.enum_size          = DEFAULT_ENUM_SIZE;
-		  THIS->cfg.int_size           = DEFAULT_INT_SIZE;
-		  THIS->cfg.short_size         = DEFAULT_SHORT_SIZE;
-		  THIS->cfg.long_size          = DEFAULT_LONG_SIZE;
-		  THIS->cfg.long_long_size     = DEFAULT_LONG_LONG_SIZE;
-		  THIS->cfg.float_size         = DEFAULT_FLOAT_SIZE;
-		  THIS->cfg.double_size        = DEFAULT_DOUBLE_SIZE;
-		  THIS->cfg.long_double_size   = DEFAULT_LONG_DOUBLE_SIZE;
-		  THIS->cfg.alignment          = DEFAULT_ALIGNMENT;
-		  THIS->cfg.compound_alignment = DEFAULT_COMPOUND_ALIGNMENT;
+		  THIS->cfg.ptr_size           = CBC_DEFAULT_PTR_SIZE;
+		  THIS->cfg.enum_size          = CBC_DEFAULT_ENUM_SIZE;
+		  THIS->cfg.int_size           = CBC_DEFAULT_INT_SIZE;
+		  THIS->cfg.short_size         = CBC_DEFAULT_SHORT_SIZE;
+		  THIS->cfg.long_size          = CBC_DEFAULT_LONG_SIZE;
+		  THIS->cfg.long_long_size     = CBC_DEFAULT_LONG_LONG_SIZE;
+		  THIS->cfg.float_size         = CBC_DEFAULT_FLOAT_SIZE;
+		  THIS->cfg.double_size        = CBC_DEFAULT_DOUBLE_SIZE;
+		  THIS->cfg.long_double_size   = CBC_DEFAULT_LONG_DOUBLE_SIZE;
+		  THIS->cfg.alignment          = CBC_DEFAULT_ALIGNMENT;
+		  THIS->cfg.compound_alignment = CBC_DEFAULT_COMPOUND_ALIGNMENT;
 		  THIS->cfg.keywords           = HAS_ALL_KEYWORDS;
 		  THIS->cfg.flags              = HAS_CPP_COMMENTS
 		                               | HAS_MACRO_VAARGS;
@@ -7341,7 +7311,7 @@ CBC::pack( type, data = &PL_sv_undef, string = NULL )
 		pack.buf.pos    = 0;
 
 		pack.align_base = 0;
-		pack.alignment  = THIS->cfg.alignment;
+		pack.alignment  = CPC_ALIGNMENT(&THIS->cfg);
 
 		IDLIST_INIT( &pack.idl );
 		IDLIST_PUSH( &pack.idl, ID );
@@ -7407,7 +7377,7 @@ CBC::unpack( type, string )
 		pack.self       = ST(0);
 		pack.buf.buffer = SvPV(string, len);
 		pack.buf.length = len;
-		pack.alignment  = THIS->cfg.alignment;
+		pack.alignment  = CPC_ALIGNMENT(&THIS->cfg);
 
 		if (GIMME_V == G_SCALAR)
 		{
@@ -8694,13 +8664,26 @@ import( ... )
 ################################################################################
 
 void
-feature( feat )
-	const char *feat
+feature(...)
+	PREINIT:
+		CBC_METHOD(feature);
+		int method_call;
+		const char *feat;
 
-	CODE:
-		switch( *feat ) {
+	PPCODE:
+		method_call = items > 0 && sv_isobject(ST(0));
+
+		if (items > (method_call ? 2 : 1))
+		  Perl_croak(aTHX_ "Usage: Convert::Binary::C::feature(feat)");
+
+		CHECK_VOID_CONTEXT;
+
+		feat = (const char *)SvPV_nolen(ST(items-1));
+
+		switch (*feat)
+		{
 		  case 'd':
-		    if( strEQ( feat, "debug" ) )
+		    if (strEQ(feat, "debug"))
 #ifdef CTYPE_DEBUGGING
 		      XSRETURN_YES;
 #else
@@ -8709,7 +8692,7 @@ feature( feat )
 		    break;
 
 		  case 'i':
-		    if( strEQ( feat, "ieeefp" ) )
+		    if (strEQ(feat, "ieeefp"))
 #ifdef CBC_HAVE_IEEE_FP
 		      XSRETURN_YES;
 #else
@@ -8718,7 +8701,7 @@ feature( feat )
 		    break;
 
 		  case 't':
-		    if( strEQ( feat, "threads" ) )
+		    if (strEQ(feat, "threads"))
 #ifdef CBC_THREAD_SAFE
 		      XSRETURN_YES;
 #else
@@ -8728,6 +8711,107 @@ feature( feat )
 		}
 
 		XSRETURN_UNDEF;
+
+################################################################################
+#
+#   FUNCTION: native
+#
+#   WRITTEN BY: Marcus Holland-Moritz             ON: Aug 2004
+#   CHANGED BY:                                   ON:
+#
+################################################################################
+#
+# DESCRIPTION: Get property of the native platform.
+#
+#   ARGUMENTS:
+#
+#     RETURNS:
+#
+################################################################################
+
+SV *
+native(...)
+	PREINIT:
+		CBC_METHOD(native);
+		int method_call;
+
+	CODE:
+		method_call = items > 0 && sv_isobject(ST(0));
+
+		if (items > (method_call ? 2 : 1))
+		  Perl_croak(aTHX_ "Usage: Convert::Binary::C::native(property)");
+
+		CHECK_VOID_CONTEXT;
+
+		if (items == (method_call ? 1 : 0))
+		{
+		  HV *h = newHV();
+
+		  HV_STORE_CONST(h, "PointerSize", newSViv(CTLIB_POINTER_SIZE));
+		  HV_STORE_CONST(h, "IntSize", newSViv(CTLIB_int_SIZE));
+		  HV_STORE_CONST(h, "ShortSize", newSViv(CTLIB_short_SIZE));
+		  HV_STORE_CONST(h, "LongSize", newSViv(CTLIB_long_SIZE));
+		  HV_STORE_CONST(h, "LongLongSize", newSViv(CTLIB_long_long_SIZE));
+		  HV_STORE_CONST(h, "FloatSize", newSViv(CTLIB_float_SIZE));
+		  HV_STORE_CONST(h, "DoubleSize", newSViv(CTLIB_double_SIZE));
+		  HV_STORE_CONST(h, "LongDoubleSize", newSViv(CTLIB_long_double_SIZE));
+		  HV_STORE_CONST(h, "Alignment", newSViv(CTLIB_ALIGNMENT));
+		  HV_STORE_CONST(h, "CompoundAlignment", newSViv(CTLIB_COMPOUND_ALIGNMENT));
+		  HV_STORE_CONST(h, "EnumSize", newSViv(get_native_enum_size()));
+		  HV_STORE_CONST(h, "ByteOrder", newSVpv(gs_NativeByteOrder, 0));
+
+		  RETVAL = newRV_noinc((SV *)h);
+		}
+		else
+		{
+		  const char *property = (const char *)SvPV_nolen(ST(items-1));
+
+		  switch (GetConfigOption(property))
+		  {
+		    case OPTION_PointerSize:
+		      RETVAL = newSViv(CTLIB_POINTER_SIZE);
+		      break;
+		    case OPTION_IntSize:
+		      RETVAL = newSViv(CTLIB_int_SIZE);
+		      break;
+		    case OPTION_ShortSize:
+		      RETVAL = newSViv(CTLIB_short_SIZE);
+		      break;
+		    case OPTION_LongSize:
+		      RETVAL = newSViv(CTLIB_long_SIZE);
+		      break;
+		    case OPTION_LongLongSize:
+		      RETVAL = newSViv(CTLIB_long_long_SIZE);
+		      break;
+		    case OPTION_FloatSize:
+		      RETVAL = newSViv(CTLIB_float_SIZE);
+		      break;
+		    case OPTION_DoubleSize:
+		      RETVAL = newSViv(CTLIB_double_SIZE);
+		      break;
+		    case OPTION_LongDoubleSize:
+		      RETVAL = newSViv(CTLIB_long_double_SIZE);
+		      break;
+		    case OPTION_Alignment:
+		      RETVAL = newSViv(CTLIB_ALIGNMENT);
+		      break;
+		    case OPTION_CompoundAlignment:
+		      RETVAL = newSViv(CTLIB_COMPOUND_ALIGNMENT);
+		      break;
+		    case OPTION_EnumSize:
+		      RETVAL = newSViv(get_native_enum_size());
+		      break;
+		    case OPTION_ByteOrder:
+		      RETVAL = newSVpv(gs_NativeByteOrder, 0);
+		      break;
+		    default:
+		      Perl_croak(aTHX_ "Invalid property '%s'", property);
+		      break;
+		  }
+		}
+
+	OUTPUT:
+		RETVAL
 
 ################################################################################
 #

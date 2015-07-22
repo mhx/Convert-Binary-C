@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/05/20 20:22:00 +0100 $
-* $Revision: 38 $
-* $Snapshot: /Convert-Binary-C/0.54 $
+* $Date: 2004/08/22 19:39:59 +0100 $
+* $Revision: 39 $
+* $Snapshot: /Convert-Binary-C/0.55 $
 * $Source: /ctlib/ctparse.c $
 *
 ********************************************************************************
@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stddef.h>
 
 
 /*===== LOCAL INCLUDES =======================================================*/
@@ -80,6 +81,9 @@ static void update_struct( const CParseConfig *pCPC, Struct *pStruct );
 CParseInfo *g_current_cpi;
 #endif
 
+int native_alignment          = 0;
+int native_compound_alignment = 0;
+
 
 /*===== STATIC VARIABLES =====================================================*/
 
@@ -118,10 +122,10 @@ static void update_struct( const CParseConfig *pCPC, Struct *pStruct )
     return;
   }
 
-  alignment = pStruct->pack ? pStruct->pack : pCPC->alignment;
+  alignment = pStruct->pack ? pStruct->pack : CPC_ALIGNMENT(pCPC);
 
-  pStruct->align = alignment < pCPC->compound_alignment
-                 ? alignment : pCPC->compound_alignment;
+  pStruct->align = alignment < CPC_COMPOUND_ALIGNMENT(pCPC)
+                 ? alignment : CPC_COMPOUND_ALIGNMENT(pCPC);
 
   LL_foreach( pStructDecl, pStruct->declarations ) {
 
@@ -1075,5 +1079,138 @@ ErrorGTI get_type_info( const CParseConfig *pCPC, const TypeSpec *pTS,
                     pFlags, (unsigned long) (pFlags ? *pFlags : 0)) );
 
   return err;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: get_native_alignment
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Aug 2004
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Determine the native struct member alignment and store it to
+*              the global native_alignment.
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+#define CHECK_NATIVE_ALIGNMENT(type)                                           \
+        do {                                                                   \
+          struct _align { char a; type b; };                                   \
+          int off = offsetof(struct _align, b);                                \
+          if (off > align)                                                     \
+            align = off;                                                       \
+        } while (0)
+
+int get_native_alignment(void)
+{
+  int align = 0;
+
+  CHECK_NATIVE_ALIGNMENT(int);
+  CHECK_NATIVE_ALIGNMENT(int *);
+  CHECK_NATIVE_ALIGNMENT(long);
+  CHECK_NATIVE_ALIGNMENT(float);
+  CHECK_NATIVE_ALIGNMENT(double);
+#ifdef HAVE_LONG_LONG
+  CHECK_NATIVE_ALIGNMENT(long long);
+#endif
+#ifdef HAVE_LONG_DOUBLE
+  CHECK_NATIVE_ALIGNMENT(long double);
+#endif
+
+  native_alignment = align;
+
+  return align;
+}
+
+#undef CHECK_NATIVE_ALIGNMENT
+
+/*******************************************************************************
+*
+*   ROUTINE: get_native_compound_alignment
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Aug 2004
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Determine the native compound alignment and store it to the
+*              global native_compound_alignment.
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+int get_native_compound_alignment(void)
+{
+  struct _align {
+    char a;
+    struct {
+      char x;
+    }    b;
+  };
+
+  int align = offsetof(struct _align, b);
+
+  native_compound_alignment = align;
+
+  return align;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: get_native_enum_size
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Aug 2004
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION: Determine the native enum size.
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+int get_native_enum_size(void)
+{
+  enum pbyte { PB1 =      0, PB2 =   255 };
+  enum nbyte { NB1 =   -128, NB2 =   127 };
+  enum pword { PW1 =      0, PW2 = 65535 };
+  enum nword { NW1 = -32768, NW2 = 32767 };
+  enum plong { PL1 =      0, PL2 = 65536 };
+  enum nlong { NL1 = -32768, NL2 = 32768 };
+
+  if (sizeof(enum pbyte) == 2 && sizeof(enum nbyte) == 1 &&
+      sizeof(enum pword) == 4 && sizeof(enum nword) == 2 &&
+      sizeof(enum plong) == 4 && sizeof(enum nlong) == 4)
+    return -1;
+
+  if (sizeof(enum pbyte) == 1 && sizeof(enum nbyte) == 1 &&
+      sizeof(enum pword) == 2 && sizeof(enum nword) == 2 &&
+      sizeof(enum plong) == 4 && sizeof(enum nlong) == 4)
+    return 0;
+
+  if (sizeof(enum pbyte) == sizeof(enum nbyte) &&
+      sizeof(enum pbyte) == sizeof(enum pword) &&
+      sizeof(enum pbyte) == sizeof(enum nword) &&
+      sizeof(enum pbyte) == sizeof(enum plong) &&
+      sizeof(enum pbyte) == sizeof(enum nlong))
+    return sizeof(enum pbyte);
+
+  fatal_error("Unsupported native enum size (%d:%d:%d:%d:%d:%d)",
+              sizeof(enum pbyte), sizeof(enum nbyte), sizeof(enum pword),
+              sizeof(enum nword), sizeof(enum plong), sizeof(enum nlong));
+
+  return -1000;
 }
 

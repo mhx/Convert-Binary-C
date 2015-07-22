@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/05/20 20:22:55 +0100 $
-# $Revision: 21 $
-# $Snapshot: /Convert-Binary-C/0.54 $
+# $Date: 2004/08/22 19:41:58 +0100 $
+# $Revision: 22 $
+# $Snapshot: /Convert-Binary-C/0.55 $
 # $Source: /t/101_config.t $
 #
 ################################################################################
@@ -23,7 +23,7 @@ use constant FAIL    => 0;
 
 $^W = 1;
 
-BEGIN { plan tests => 1910 }
+BEGIN { plan tests => 1914 }
 
 $debug = Convert::Binary::C::feature( 'debug' );
 
@@ -349,7 +349,7 @@ check_config( $_, @tests ) for qw( FloatSize
 
 @tests = (
   { in => -1, result => FAIL    },
-  { in =>  0, result => FAIL    },
+  { in =>  0, result => SUCCEED },
   { in =>  1, result => SUCCEED },
   { in =>  2, result => SUCCEED },
   { in =>  3, result => FAIL    },

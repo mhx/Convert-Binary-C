@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:37:55 +0000 $
-# $Revision: 12 $
-# $Snapshot: /Convert-Binary-C/0.54 $
+# $Date: 2004/08/21 12:15:29 +0100 $
+# $Revision: 13 $
+# $Snapshot: /Convert-Binary-C/0.55 $
 # $Source: /ctlib/arch.pl $
 #
 ################################################################################
@@ -25,7 +25,8 @@
 
 use Config;
 
-open OUT, ">".shift or die $!;
+$file = @ARGV ? shift : 'ctlib/arch.h';
+open OUT, ">$file" or die "$file: $!\n";
 
 %cfg = %Config;  # because we modify some values in %cfg
 

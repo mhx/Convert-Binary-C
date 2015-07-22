@@ -4,7 +4,7 @@
 # $Author: mhx $
 # $Date: 2004/05/28 09:53:12 +0100 $
 # $Revision: 21 $
-# $Snapshot: /Convert-Binary-C/0.54 $
+# $Snapshot: /Convert-Binary-C/0.55 $
 # $Source: /t/106_parse.t $
 #
 ################################################################################

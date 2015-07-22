@@ -123,6 +123,7 @@ t/128_hooks.t
 t/129_substr.t
 t/130_compiler.t
 t/131_align.t
+t/132_native.t
 t/801_speed.t
 t/802_threads.t
 t/803_debug.t

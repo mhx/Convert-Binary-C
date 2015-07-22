@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/07/01 07:35:10 +0100 $
-# $Revision: 40 $
-# $Snapshot: /Convert-Binary-C/0.54 $
+# $Date: 2004/08/22 18:42:56 +0100 $
+# $Revision: 41 $
+# $Snapshot: /Convert-Binary-C/0.55 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
@@ -21,7 +21,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 5254 }
+BEGIN { plan tests => 5330 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -64,6 +64,14 @@ ENDC
 eval_test(q{
 
   $p->configure;                                           # (1) Useless use of configure in void context
+
+  Convert::Binary::C::feature('foo');                      # (1) Useless use of feature in void context
+  $p->feature('foo');                                      # (1) Useless use of feature in void context
+
+  Convert::Binary::C::native('IntSize');                   # (1) Useless use of native in void context
+  $p->native('IntSize');                                   # (1) Useless use of native in void context
+
+  $x = $p->native('foobar');                               # (E) Invalid property 'foobar'
 
   $p->member( 'xxx', 666 );                                # (E) Call to member without parse data
   $p->def( 'xxx' );                                        # (1) Useless use of def in void context

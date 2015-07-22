@@ -1,5 +1,5 @@
 use Config;
-$file = shift;
+$file = @ARGV ? shift : 'examples/memmap.pl';
 open OUT, ">$file" or die "Can't create $file: $!";
 print OUT <<"!GROK!THIS!";
 $Config{startperl} -w
@@ -9,9 +9,9 @@ print OUT <<'!NO!SUBS!';
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/03/22 19:37:55 +0000 $
-# $Revision: 5 $
-# $Snapshot: /Convert-Binary-C/0.54 $
+# $Date: 2004/08/21 12:15:29 +0100 $
+# $Revision: 6 $
+# $Snapshot: /Convert-Binary-C/0.55 $
 # $Source: /bin/memmap.PL $
 #
 ################################################################################

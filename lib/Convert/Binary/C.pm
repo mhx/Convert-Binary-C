@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/07/01 09:01:38 +0100 $
-# $Revision: 63 $
-# $Snapshot: /Convert-Binary-C/0.54 $
+# $Date: 2004/08/22 21:43:33 +0100 $
+# $Revision: 65 $
+# $Snapshot: /Convert-Binary-C/0.55 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.54 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.55 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -956,7 +956,7 @@ as it can already handle C<AV> pointers. And this is what we get:
 
   $VAR1 = {
     'sv_any' => {
-      'xav_array' => '137944496',
+      'xav_array' => '137956408',
       'xav_fill' => '0',
       'xav_max' => '0',
       'xof_off' => '0',
@@ -974,12 +974,12 @@ as it can already handle C<AV> pointers. And this is what we get:
           'xhv_riter' => '-1',
           'xhv_eiter' => '0',
           'xhv_pmroot' => '0',
-          'xhv_name' => '138048400'
+          'xhv_name' => '138060312'
         },
         'sv_refcnt' => '2',
         'sv_flags' => '536870923'
       },
-      'xav_alloc' => '137944496',
+      'xav_alloc' => '137956408',
       'xav_arylen' => '0',
       'xav_flags' => '1'
     },
@@ -1174,7 +1174,7 @@ exceptions.
 Set the number of bytes that are occupied by an integer. This is
 in most cases 2 or 4. If you set it to zero, the size of an
 integer on the host system will be used. This is also the
-default.
+default unless overridden by C<CBC_DEFAULT_INT_SIZE> at compile time.
 
 =item C<ShortSize> =E<gt> 0 | 1 | 2 | 4 | 8
 
@@ -1183,27 +1183,31 @@ Although integers explicitly declared as C<short> should be
 always 16 bit, there are compilers that make a short
 8 bit wide. If you set it to zero, the size of a short
 integer on the host system will be used. This is also the
-default.
+default unless overridden by C<CBC_DEFAULT_SHORT_SIZE> at compile
+time.
 
 =item C<LongSize> =E<gt> 0 | 1 | 2 | 4 | 8
 
 Set the number of bytes that are occupied by a long integer.
 If set to zero, the size of a long integer on the host system
-will be used. This is also the default.
+will be used. This is also the default unless overridden
+by C<CBC_DEFAULT_LONG_SIZE> at compile time.
 
 =item C<LongLongSize> =E<gt> 0 | 1 | 2 | 4 | 8
 
 Set the number of bytes that are occupied by a long long
 integer. If set to zero, the size of a long long integer
 on the host system, or 8, will be used. This is also the
-default.
+default unless overridden by C<CBC_DEFAULT_LONG_LONG_SIZE> at
+compile time.
 
 =item C<FloatSize> =E<gt> 0 | 1 | 2 | 4 | 8 | 12 | 16
 
 Set the number of bytes that are occupied by a single
 precision floating point value.
 If you set it to zero, the size of a C<float> on the
-host system will be used. This is also the default.
+host system will be used. This is also the default unless
+overridden by C<CBC_DEFAULT_FLOAT_SIZE> at compile time.
 For details on floating point support,
 see L<"FLOATING POINT VALUES">.
 
@@ -1212,7 +1216,8 @@ see L<"FLOATING POINT VALUES">.
 Set the number of bytes that are occupied by a double
 precision floating point value.
 If you set it to zero, the size of a C<double> on the
-host system will be used. This is also the default.
+host system will be used. This is also the default unless
+overridden by C<CBC_DEFAULT_DOUBLE_SIZE> at compile time.
 For details on floating point support,
 see L<"FLOATING POINT VALUES">.
 
@@ -1222,7 +1227,8 @@ Set the number of bytes that are occupied by a double
 precision floating point value.
 If you set it to zero, the size of a C<long double> on
 the host system, or 12 will be used. This is also the
-default. For details on floating point support,
+default unless overridden by C<CBC_DEFAULT_LONG_DOUBLE_SIZE> at compile
+time. For details on floating point support,
 see L<"FLOATING POINT VALUES">.
 
 =item C<PointerSize> =E<gt> 0 | 1 | 2 | 4 | 8
@@ -1230,7 +1236,7 @@ see L<"FLOATING POINT VALUES">.
 Set the number of bytes that are occupied by a pointer. This is
 in most cases 2 or 4. If you set it to zero, the size of a
 pointer on the host system will be used. This is also the
-default.
+default unless overridden by C<CBC_DEFAULT_PTR_SIZE> at compile time.
 
 =item C<EnumSize> =E<gt> -1 | 0 | 1 | 2 | 4 | 8
 
@@ -1269,7 +1275,7 @@ will occupy two bytes, even though it could be represented
 by a unsigned one-byte value. If this is the behaviour of
 your compiler, set EnumSize to C<-1>.
 
-=item C<Alignment> =E<gt> 1 | 2 | 4 | 8 | 16
+=item C<Alignment> =E<gt> 0 | 1 | 2 | 4 | 8 | 16
 
 Set the struct member alignment. This option controls where
 padding bytes are inserted between struct members. It globally
@@ -1277,7 +1283,10 @@ sets the alignment for all structs/unions. However, this can
 be overridden from within the source code with the
 common C<pack> pragma as explained in L<"Supported pragma directives">.
 The default alignment is 1, which means no padding bytes are
-inserted.
+inserted. A setting of C<0> means I<native> alignment, i.e.
+the alignment of the system that Convert::Binary::C has been
+compiled on. You can determine the native properties using
+the L<C<native>|/"native"> function.
 
 The C<Alignment> option is similar to the C<-Zp[n]> option
 of the Intel compiler. It globally specifies the maximum
@@ -1395,7 +1404,7 @@ The alignment behaviour described here seems to be common for all
 compilers. However, not all compilers have an option to configure
 their default alignment.
 
-=item C<CompoundAlignment> =E<gt> 1 | 2 | 4 | 8 | 16
+=item C<CompoundAlignment> =E<gt> 0 | 1 | 2 | 4 | 8 | 16
 
 Usually, the alignment of a compound (i.e. a C<struct> or
 a C<union>) depends only on its largest member and on the setting
@@ -1415,6 +1424,11 @@ alignment of 4, and thus also a size of 4.
 
 You can configure this by setting C<CompoundAlignment> to 4. This
 will ensure that the alignment of compounds is always 4.
+
+Setting C<CompoundAlignment> to C<0> means I<native> compound
+alignment, i.e. the compound alignment of the system that
+Convert::Binary::C has been compiled on. You can determine the
+native properties using the L<C<native>|/"native"> function.
 
 There are also compilers for certain platforms that allow you to
 adjust the compound alignment. If you're not aware of the fact
@@ -1453,7 +1467,8 @@ Set the byte order for integers larger than a single byte.
 Little endian (Intel, least significant byte first) and
 big endian (Motorola, most significant byte first) byte
 order are supported. The default byte order is the same as
-the byte order of the host system.
+the byte order of the host system unless overridden
+by C<CBC_DEFAULT_BYTEORDER> at compile time.
 
 =item C<EnumType> =E<gt> 'Integer' | 'String' | 'Both'
 
@@ -2824,18 +2839,18 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1088459294,
-      'mtime' => 1088459256,
+      'ctime' => 1092288224,
+      'mtime' => 1092288215,
       'size' => 10792
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1088459288,
-      'mtime' => 1088459256,
+      'ctime' => 1092288222,
+      'mtime' => 1092288215,
       'size' => 8600
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1088459287,
-      'mtime' => 1088459256,
+      'ctime' => 1092288221,
+      'mtime' => 1092288215,
       'size' => 818
     },
     '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.3/include/stddef.h' => {
@@ -2844,8 +2859,8 @@ The above code would print something like this:
       'size' => 12695
     },
     '/usr/include/string.h' => {
-      'ctime' => 1088459293,
-      'mtime' => 1088459256,
+      'ctime' => 1092288224,
+      'mtime' => 1092288215,
       'size' => 15011
     }
   };
@@ -3730,6 +3745,9 @@ being passed.
 
 =head1 FUNCTIONS
 
+You can alternatively call the following functions as methods
+on Convert::Binary::C objects.
+
 =head2 Convert::Binary::C::feature
 
 =over 8
@@ -3740,7 +3758,7 @@ Checks if Convert::Binary::C was built with certain features.
 For example,
 
   print "debugging version"
-      if Convert::Binary::C::feature( 'debug' );
+      if Convert::Binary::C::feature('debug');
 
 will check if Convert::Binary::C was built with debugging support
 enabled. The C<feature> function returns C<1> if the feature is
@@ -3754,6 +3772,59 @@ module by using the
   perl Makefile.PL enable-feature disable-feature
 
 syntax.
+
+=back
+
+=head2 Convert::Binary::C::native
+
+=over 8
+
+=item C<native>
+
+=item C<native> STRING
+
+Returns the value of a property of the native system that
+Convert::Binary::C was built on. For example,
+
+  $size = Convert::Binary::C::native('IntSize');
+
+will fetch the size of an C<int> on the native system.
+The following properties can be queried:
+
+  Alignment
+  ByteOrder
+  CompoundAlignment
+  DoubleSize
+  EnumSize
+  FloatSize
+  IntSize
+  LongDoubleSize
+  LongLongSize
+  LongSize
+  PointerSize
+  ShortSize
+
+You can also call L<C<native>|/"native"> without arguments,
+in which case it will return a reference to a hash with all
+properties, like:
+
+  $native = {
+    'ByteOrder' => 'LittleEndian',
+    'LongSize' => 4,
+    'IntSize' => 4,
+    'ShortSize' => 2,
+    'FloatSize' => 4,
+    'Alignment' => 4,
+    'LongLongSize' => 8,
+    'LongDoubleSize' => 12,
+    'DoubleSize' => 8,
+    'EnumSize' => 4,
+    'CompoundAlignment' => 1,
+    'PointerSize' => 4
+  };
+
+The contents of that hash are suitable for passing them to
+the L<C<configure>|/"configure"> method.
 
 =back
 
@@ -4323,4 +4394,5 @@ linked to the source code of this module in any other way.
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
+
 

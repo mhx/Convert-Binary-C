@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/05/20 20:23:48 +0100 $
-# $Revision: 1 $
-# $Snapshot: /Convert-Binary-C/0.54 $
+# $Date: 2004/08/22 19:42:15 +0100 $
+# $Revision: 2 $
+# $Snapshot: /Convert-Binary-C/0.55 $
 # $Source: /t/131_align.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 190 }
+BEGIN { plan tests => 212 }
 
 $c = new Convert::Binary::C ShortSize => 2
                           , LongSize  => 4
@@ -94,9 +94,33 @@ ok($@, '');
   'g.b' =>     [     0,      0,      0,      0,      0,      0,      0,      0,      0],
 );
 
+my $natcfg = -1;
+my $natalign = $c->native('Alignment');
+my $natcmpnd = $c->native('CompoundAlignment');
+
+$natalign = 4 if $natalign > 4;
+$natcmpnd = 4 if $natcmpnd > 4;
+
 for my $i (0 .. $#config) {
   print "# --- Alignment => $config[$i][0], CompoundAlignment => $config[$i][1] ---\n";
   $c->configure(Alignment => $config[$i][0], CompoundAlignment => $config[$i][1]);
+
+  if ($config[$i][0] == $natalign &&
+      $config[$i][1] == $natcmpnd) {
+    $natcfg = $i;
+  }
+
+  check_it($c, $i);
+}
+
+ok($natcfg >= 0);
+
+$c->configure(Alignment => 0, CompoundAlignment => 0);
+check_it($c, $natcfg);
+
+sub check_it
+{
+  my($c, $i) = @_;
 
   for my $t (sort keys %sizeof) {
     my $s = $c->sizeof($t);
@@ -113,3 +137,5 @@ for my $i (0 .. $#config) {
     ok(scalar(grep { $_ =~ $r } @m), 1);
   }
 }
+
+

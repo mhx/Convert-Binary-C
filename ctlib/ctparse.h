@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2004/05/20 20:22:02 +0100 $
-* $Revision: 22 $
-* $Snapshot: /Convert-Binary-C/0.54 $
+* $Date: 2004/08/22 19:40:01 +0100 $
+* $Revision: 23 $
+* $Snapshot: /Convert-Binary-C/0.55 $
 * $Source: /ctlib/ctparse.h $
 *
 ********************************************************************************
@@ -57,6 +57,20 @@
 #define CTLIB_int_SIZE     sizeof( int )
 
 #define CTLIB_POINTER_SIZE sizeof( void * )
+
+#define CTLIB_ALIGNMENT    (native_alignment ? native_alignment                \
+                                             : get_native_alignment())
+
+#define CTLIB_COMPOUND_ALIGNMENT    (native_compound_alignment                 \
+                                     ? native_compound_alignment               \
+                                     : get_native_compound_alignment())
+
+#define CPC_ALIGNMENT(pCPC)  ((pCPC)->alignment ? (pCPC)->alignment            \
+                                                : CTLIB_ALIGNMENT)
+
+#define CPC_COMPOUND_ALIGNMENT(pCPC)  ((pCPC)->compound_alignment              \
+                                       ? (pCPC)->compound_alignment            \
+                                       : CTLIB_COMPOUND_ALIGNMENT)
 
 /*===== TYPEDEFS =============================================================*/
 
@@ -139,6 +153,15 @@ typedef enum {
 } ErrorGTI;
 
 
+/*===== EXTERNAL VARIABLES ===================================================*/
+
+#define native_alignment CTlib_native_alignment
+extern int native_alignment;
+
+#define native_compound_alignment CTlib_native_compound_alignment
+extern int native_compound_alignment;
+
+
 /*===== FUNCTION PROTOTYPES ==================================================*/
 
 #define parse_buffer CTlib_parse_buffer
@@ -164,5 +187,14 @@ void clone_parse_info( CParseInfo *pDest, CParseInfo *pSrc );
 ErrorGTI get_type_info( const CParseConfig *pCPC, const TypeSpec *pTS,
                         const Declarator *pDecl, unsigned *pSize,
                         unsigned *pAlign, unsigned *pItemSize, u_32 *pFlags );
+
+#define get_native_alignment CTlib_get_native_alignment
+int get_native_alignment(void);
+
+#define get_native_compound_alignment CTlib_get_native_compound_alignment
+int get_native_compound_alignment(void);
+
+#define get_native_enum_size CTlib_get_native_enum_size
+int get_native_enum_size(void);
 
 #endif

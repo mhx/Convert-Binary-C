@@ -1,4 +1,21 @@
 -------------------------
+Version 0.55 (2004-08-22)
+-------------------------
+
+* new native() function to query native properties
+
+* feature() and native() can now also be called as methods
+
+* allow setting Alignment and CompoundAlignment to zero to
+  request native alignment and compound alignment
+
+* prefix compile-time defaults with CBC_ and document them
+
+* upgrade ppport.h
+
+* minor cleanups
+
+-------------------------
 Version 0.54 (2004-07-01)
 -------------------------
 

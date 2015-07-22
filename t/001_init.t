@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2004/05/23 23:07:50 +0100 $
-# $Revision: 14 $
-# $Snapshot: /Convert-Binary-C/0.54 $
+# $Date: 2004/08/22 18:18:17 +0100 $
+# $Revision: 15 $
+# $Snapshot: /Convert-Binary-C/0.55 $
 # $Source: /t/001_init.t $
 #
 ################################################################################
@@ -22,7 +22,7 @@ use constant FAIL    => 0;
 
 $^W = 1;
 
-BEGIN { plan tests => 27 }
+BEGIN { plan tests => 29 }
 
 #===================================================================
 # try to require the modules (2 tests)
@@ -143,6 +143,16 @@ eval {
 };
 ok($@,'');
 ok(not defined $p);
+
+#===================================================================
+# check calling feature as method (2 tests)
+#===================================================================
+eval {
+  $p = new Convert::Binary::C;
+  $p = $p->feature('debug');
+};
+ok($@,'');
+ok(defined $p);
 
 #===================================================================
 # check object corruption (8 tests)
