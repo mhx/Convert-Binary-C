@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/17 13:39:07 +0100 $
-# $Revision: 10 $
-# $Snapshot: /Convert-Binary-C/0.42 $
+# $Date: 2003/07/24 16:54:26 +0100 $
+# $Revision: 12 $
+# $Snapshot: /Convert-Binary-C/0.43 $
 # $Source: /t/105_pack.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 167 }
+BEGIN { plan tests => 180 }
 
 eval {
   $p = new Convert::Binary::C ByteOrder     => 'BigEndian'
@@ -41,6 +41,7 @@ typedef char c_8;
 typedef unsigned char u_8;
 typedef signed char i_8;
 typedef long double ldbl;
+typedef struct { char a; int b[3][3]; } undef_test[3];
 EOF
 };
 ok($@,'',"parse() failed");
@@ -292,4 +293,90 @@ else {
   ok($@,'',"failed in unpack");
   chkwarn();
   ok( $packed-3.14159 < 0.0001 );
+}
+
+#===================================================================
+# check for warnings when explicitly passing undef (1 test)
+#===================================================================
+
+$val = [ undef, { b => [undef, [undef, 2]] } ];  # undef_test[1].b[1][1] = 2
+eval { $packed = $p->pack('undef_test', $val) };
+ok($@,'',"failed in pack");
+chkwarn;
+
+#===================================================================
+# check for existence of members with undef values
+#===================================================================
+
+$val = $p->sizeof( 'undef_test[0]' );
+chkwarn();
+
+$packed = 'x' x $val;
+eval { $val = $p->unpack( 'undef_test', $packed ) };
+ok($@,'',"failed in unpack");
+chkwarn( qr/Data too short/ );
+
+ok(reccmp_keys($val->[0], $val->[1]), '', 'deep compare failed');
+ok(reccmp_keys($val->[0], $val->[2]), '', 'deep compare failed');
+ok(reccmp_keys($val->[1], $val->[2]), '', 'deep compare failed');
+chkwarn();
+
+ok(rec_write($val->[0]), '', 'write check failed');
+ok(rec_write($val->[1]), '', 'write check failed');
+ok(rec_write($val->[2]), '', 'write check failed');
+chkwarn();
+
+sub rec_write
+{
+  my $ref = shift;
+  my $r = ref $ref;
+  if( $r eq 'HASH' ) {
+    for my $k ( keys %$ref ) {
+      if( ref $ref->{$k} ) {
+        $r = rec_write( $ref->{$k} );
+        $r and return $r;
+      }
+      else {
+        eval { $ref->{$k} = 42 };
+        $@ and return $@;
+      }
+    }
+  }
+  elsif( $r eq 'ARRAY' ) {
+    for my $i ( 0 .. $#$ref ) {
+      if( ref $ref->[$i] ) {
+        $r = rec_write( $ref->[$i] );
+        $r and return $r;
+      }
+      else {
+        eval { $ref->[$i] = 42 };
+        $@ and return $@;
+      }
+    }
+  }
+  return '';
+}
+
+sub reccmp_keys
+{
+  my($ref,$chk) = @_;
+  my $r = ref $ref;
+  if( $r eq 'HASH' ) {
+    defined $chk or return "undefined hash reference";
+    keys(%$ref) == keys(%$chk) or return "key counts differ";
+    for my $k ( keys %$ref ) {
+      exists $chk->{$k} or return "reference key '$k' not found";
+      $r = reccmp_keys( $ref->{$k}, $chk->{$k} );
+      $r and return $r;
+    }
+  }
+  elsif( $r eq 'ARRAY' ) {
+    defined $chk or return "undefined array reference";
+    @$ref == @$chk or return "array lengths differ";
+    for my $i ( 0 .. $#$ref ) {
+      $r = reccmp_keys( $ref->[$i], $chk->[$i] );
+      $r and return $r;
+    }
+  }
+  return '';
 }

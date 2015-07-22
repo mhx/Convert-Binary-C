@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/06/23 19:18:07 +0100 $
-# $Revision: 42 $
-# $Snapshot: /Convert-Binary-C/0.42 $
+# $Date: 2003/07/15 16:00:40 +0100 $
+# $Revision: 43 $
+# $Snapshot: /Convert-Binary-C/0.43 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -397,7 +397,7 @@ END
 
   $::FEATURES{'$coverage'}{enabled} and $postamble .= <<END;
 
-coverage: test
+coverage:
 	\@for file in *.bb; do gcov \$\$file; done
 END
 

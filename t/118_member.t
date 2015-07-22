@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/20 04:16:16 +0100 $
-# $Revision: 4 $
-# $Snapshot: /Convert-Binary-C/0.42 $
+# $Date: 2003/07/15 22:06:31 +0100 $
+# $Revision: 6 $
+# $Snapshot: /Convert-Binary-C/0.43 $
 # $Source: /t/118_member.t $
 #
 ################################################################################
@@ -21,7 +21,7 @@ use Convert::Binary::C @ARGV;
 $^W = 1;
 
 BEGIN {
-  plan tests => 1291;
+  plan tests => 1777;
 }
 
 %basic = ( char => 1, short => 1, int => 1,
@@ -244,11 +244,15 @@ sub run_tests {
 
   for my $t ( $c->compound_names, $c->typedef_names ) {
     my %h;
+    my @m;
     my $fail = 0;
     my $success = 0;
     my $meth = $c->def($t) or next;
+    my $def = $c->$meth( $t );
+
     $meth eq 'typedef' and $h{$t} = $t;
-    get_types( \%h, $c, $t, $c->$meth( $t ) );
+    get_types( \%h, \@m, $c, $t, $def );
+
     while( my($k,$v) = each %h ) {
       my $to = $c->typeof($k);
       unless( $to eq $v ) {
@@ -259,33 +263,60 @@ sub run_tests {
     }
     ok( $fail == 0 );
     ok( $success > 0 );
+
+    if( @m >= 2 ) {
+      $fail = $success = 0;
+      my %dup;
+      for my $member ( $c->member($t) ) {
+        my $ref = shift @m;
+        if( $t.$member ne $ref ) {
+          print "# '$t$member' ne '$ref'\n";
+          $fail++;
+        }
+        else { $success++ }
+        if( $dup{$member}++ ) {
+          print "# duplicate member '$t$member' (count=$dup{$member})\n";
+          $fail++;
+        }
+        else { $success++ }
+      }
+      ok( $fail == 0 );
+      ok( $success > 0 );
+    }
   }
 }
 
 
 sub get_types {
-  my($r, $c, $t, $d) = @_;
+  my($r, $m, $c, $t, $d) = @_;
   if( exists $d->{declarator} ) {
     my($p,$n,$a) = $d->{declarator} =~ /^(\*?)(\w+)((?:\[\d+\])*)$/ or die "BOO!";
     my $dim = [$a =~ /\[(\d+)\]/g];
-    get_array($r, $c, $t, $d->{type}, $p, $dim);
+    get_array($r, $m, $c, $t, $d->{type}, $p, $dim);
   }
   elsif( exists $d->{declarations} ) {
     # it's a compound
     for my $d1 ( @{$d->{declarations}} ) {
-      for my $d2 ( @{$d1->{declarators}} ) {
-        my($p,$n,$b,$a) = $d2->{declarator} =~ /^(\*?)(\w*(:\d+)?)((?:\[\d+\])*)$/ or die "BOO!";
-        defined $b and next;
-        my $dim = [$a =~ /\[(\d+)\]/g];
-        get_array($r, $c, "$t.$n", $d1->{type}, $p, $dim);
+      if( exists $d1->{declarators} ) {
+        for my $d2 ( @{$d1->{declarators}} ) {
+          my($p,$n,$b,$a) = $d2->{declarator} =~ /^(\*?)(\w*)(:\d+)?((?:\[\d+\])*)$/ or die "BOO!";
+          defined $b and next;
+          my $dim = [$a =~ /\[(\d+)\]/g];
+          get_array($r, $m, $c, "$t.$n", $d1->{type}, $p, $dim);
+        }
+      }
+      else {
+        get_types($r, $m, $c, $t, $d1->{type});
       }
     }
   }
-  # don't care about enums
+  else {
+    push @$m, $t;
+  }
 }
 
 sub get_array {
-  my($r, $c, $t, $d, $p, $dim) = @_;
+  my($r, $m, $c, $t, $d, $p, $dim) = @_;
   my $rt;
 
   if( ref $d ) {
@@ -310,23 +341,29 @@ sub get_array {
     my @dim = @$dim;
     my $cd = shift @dim;
     for my $i ( 0 .. $cd-1 ) {
-      get_array($r, $c, $t."[$i]", $d, $p, \@dim);
+      get_array($r, $m, $c, $t."[$i]", $d, $p, \@dim);
     }
   }
   elsif( !$p ) {
     if( ref $d ) {
-      get_types($r, $c, $t.$a, $d);
+      get_types($r, $m, $c, $t.$a, $d);
     }
     else {
       if( $d =~ /^(?:struct|union)/ ) {
-        get_types($r, $c, $t.$a, $c->compound($d));
+        get_types($r, $m, $c, $t.$a, $c->compound($d));
       }
       elsif( $d =~ /^enum\s+\w+/ ) {
-        # ignore
+        push @$m, $t;
       }
       elsif( $d =~ /^\w+$/ and not exists $basic{$d} ) {
-        get_types($r, $c, $t.$a, $c->typedef($d));
+        get_types($r, $m, $c, $t.$a, $c->typedef($d));
+      }
+      else {
+        push @$m, $t;
       }
     }
+  }
+  else {
+    push @$m, $t;
   }
 }

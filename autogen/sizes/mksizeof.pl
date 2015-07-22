@@ -19,6 +19,6 @@ print <<'END';
 END
 
 for( sort keys %defs ) {
-  printf "  %-${maxt}s => %${maxs}d,\n", "'$_'", $defs{$_};
+  printf "\t%s\t=>\t%${maxs}d,\n", "'$_'", $defs{$_};
 }
 print ");\n";

@@ -11,9 +11,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/06/23 19:18:11 +0100 $
-# $Revision: 44 $
-# $Snapshot: /Convert-Binary-C/0.42 $
+# $Date: 2003/07/16 08:53:15 +0100 $
+# $Revision: 45 $
+# $Snapshot: /Convert-Binary-C/0.43 $
 # $Source: /bin/ccconfig $
 #
 ################################################################################
@@ -30,7 +30,7 @@ use Data::Dumper;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = ('$Snapshot: /Convert-Binary-C/0.42 $' =~ /([^\/\s]+)\s*\$$/)[0];
+my $VERSION = ('$Snapshot: /Convert-Binary-C/0.43 $' =~ /([^\/\s]+)\s*\$$/)[0];
 my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT;
 
@@ -2578,7 +2578,7 @@ automatically, use
 if your compiler's name is C<gcc32>.
 
 If you want to pass additional options to the compiler, you
-can do so after a double-dash on the commandline:
+can do so after a double-dash on the command line:
 
   ccconfig -- -g -DDEBUGGING
 

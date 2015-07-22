@@ -125,7 +125,7 @@ automatically, use
 if your compiler's name is C<gcc32>.
 
 If you want to pass additional options to the compiler, you
-can do so after a double-dash on the commandline:
+can do so after a double-dash on the command line:
 
   ccconfig -- -g -DDEBUGGING
 

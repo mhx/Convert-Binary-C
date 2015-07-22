@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/06/17 22:30:50 +0100 $
-# $Revision: 23 $
-# $Snapshot: /Convert-Binary-C/0.42 $
+# $Date: 2003/07/24 16:37:16 +0100 $
+# $Revision: 29 $
+# $Snapshot: /Convert-Binary-C/0.43 $
 # $Source: /t/103_warnings.t $
 #
 ################################################################################
@@ -21,7 +21,7 @@ use Convert::Binary::C::Cached;
 
 $^W = 1;
 
-BEGIN { plan tests => 3494 }
+BEGIN { plan tests => 4578 }
 
 my($code, $data);
 $code = do { local $/; <DATA> };
@@ -98,6 +98,7 @@ eval_test(q{
   $p->FloatSize( 1 );                                      # no warning
 
   $x = $p->def( '' );                                      # no warning
+  $x = $p->def( 'struct  ' );                              # no warning
   $x = $p->def( 'notthere' );                              # no warning
   $x = $p->def( 'notthere.yyy' );                          # (1) Ignoring potential member expression ('.yyy') after type name
   $x = $p->def( 'xxx.yyy' );                               # (1) Ignoring potential member expression ('.yyy') after type name
@@ -125,6 +126,27 @@ eval_test(q{
   $x = $p->pack( 'test.bar', [] );                         # (1) 'test.bar' should be a scalar value
   $x = $p->pack( 'test.xxx', {} );                         # (1) 'test.xxx' should be a scalar value
 
+  $x = $p->pack( 'test', {foo => {}} );                    # (1) 'test.foo' should be an array reference
+  $x = $p->pack( 'test', {foo => [undef, {}] } );          # (1) 'test.foo[1]' should be an array reference
+  $x = $p->pack( 'test', {foo => [undef, [1]] } );         # (1) 'test.foo[1][0]' should be a hash reference
+  $x = $p->pack( 'test', {foo => [undef, [{a => {}}]]} );  # (1) 'test.foo[1][0].a' should be a scalar value
+  $x = $p->pack( 'test', {foo => [undef, [{b => {}}]]} );  # (1) 'test.foo[1][0].b' should be an array reference
+
+  $x = []; $x->[1]{d}[2] = 1;
+  $x = $p->pack( 'stuff', $x );                            # (1) 'stuff[1].d[2]' should be an array reference
+  $x = []; $x->[10]{u} = 1;
+  $x = $p->pack( 'stuff', $x );                            # (1) 'stuff[10].u' should be a hash reference
+  $x = []; $x->[11]{u} = [1];
+  $x = $p->pack( 'stuff', $x );                            # (1) 'stuff[11].u' should be a hash reference
+  $x = []; $x->[8]{u}{b} = {};
+  $x = $p->pack( 'stuff', $x );                            # (1) 'stuff[8].u.b' should be an array reference
+  $x = []; $x->[7]{u}{b} = [undef, {}];
+  $x = $p->pack( 'stuff', $x );                            # (1) 'stuff[7].u.b[1]' should be a scalar value
+  $x = []; $x->[6]{d}[5][4] = undef;
+  $x = $p->pack( 'stuff', $x );                            # no warning
+  $x = []; $x->[6]{d}[5][4] = sub { 1 };
+  $x = $p->pack( 'stuff', $x );                            # (1) 'stuff[6].d[5][4]' should be a scalar value
+
   $x = $p->pack( 'unsigned char', 42 );                    # no warning
   $x = $p->pack( 'double', 42 );                           # no warning
   $x = $p->pack( 'short double', 42 );                     # (1) Unsupported floating point type 'short double' in pack
@@ -151,6 +173,41 @@ eval_test(q{
   $x = $p->unpack( 'signed float', 'x'x100 );              # (1) Unsupported floating point type 'signed float' in unpack
   $x = $p->unpack( 'fp_unsupp', 'x'x100 );                 # (1) Unsupported floating point type 'short float' in unpack
 
+  $p->initializer( 'test' );                               # (1) Useless use of initializer in void context
+  $p->initializer( 'test', $data );                        # (1) Useless use of initializer in void context
+  $x = $p->initializer( '', $data );                       # (E) Cannot find ''
+  $x = $p->initializer( 'na' );                            # (E) Cannot find 'na'
+  $x = $p->initializer( 'na', $data );                     # (E) Cannot find 'na'
+  $x = $p->initializer( 'nodef', $data );                  # (E) Got no struct declarations in resolution of 'nodef'
+  $x = $p->initializer( 'xxx', $data );                    # (E) Got no definition for 'union xxx'
+
+  $x = $p->initializer( 'test.foo', 23 );                  # (1) 'test.foo' should be an array reference
+  $x = $p->initializer( 'test.foo', {} );                  # (1) 'test.foo' should be an array reference
+  $x = $p->initializer( 'test.foo', sub { 1 } );           # (1) 'test.foo' should be an array reference
+  $x = $p->initializer( 'test.bar', [] );                  # (1) 'test.bar' should be a scalar value
+  $x = $p->initializer( 'test.xxx', {} );                  # (1) 'test.xxx' should be a scalar value
+
+  $x = $p->initializer( 'test', {foo => {}} );                    # (1) 'test.foo' should be an array reference
+  $x = $p->initializer( 'test', {foo => [undef, {}] } );          # (1) 'test.foo[1]' should be an array reference
+  $x = $p->initializer( 'test', {foo => [undef, [1]] } );         # (1) 'test.foo[1][0]' should be a hash reference
+  $x = $p->initializer( 'test', {foo => [undef, [{a => {}}]]} );  # (1) 'test.foo[1][0].a' should be a scalar value
+  $x = $p->initializer( 'test', {foo => [undef, [{b => {}}]]} );  # (1) 'test.foo[1][0].b' should be an array reference
+
+  $x = []; $x->[1]{d}[2] = 1;
+  $x = $p->initializer( 'stuff', $x );                     # (1) 'stuff[1].d[2]' should be an array reference
+  $x = []; $x->[10]{c} = 1;
+  $x = $p->initializer( 'stuff', $x );                     # (1) 'stuff[10].c' should be a hash reference
+  $x = []; $x->[11]{c} = [1];
+  $x = $p->initializer( 'stuff', $x );                     # (1) 'stuff[11].c' should be a hash reference
+  $x = []; $x->[8]{c}{b} = {};
+  $x = $p->initializer( 'stuff', $x );                     # (1) 'stuff[8].c.b' should be an array reference
+  $x = []; $x->[7]{c}{b} = [undef, {}];
+  $x = $p->initializer( 'stuff', $x );                     # (1) 'stuff[7].c.b[1]' should be a scalar value
+  $x = []; $x->[6]{d}[5][4] = undef;
+  $x = $p->initializer( 'stuff', $x );                     # no warning
+  $x = []; $x->[6]{d}[5][4] = sub { 1 };
+  $x = $p->initializer( 'stuff', $x );                     # (1) 'stuff[6].d[5][4]' should be a scalar value
+
   $p->sizeof( 'na' );                                      # (1) Useless use of sizeof in void context
   $x = $p->sizeof( '' );                                   # (E) Cannot find ''
   $x = $p->sizeof( 'na' );                                 # (E) Cannot find 'na'
@@ -158,6 +215,7 @@ eval_test(q{
   $x = $p->sizeof( 'nodef' );                              # (E) Got no struct declarations in resolution of 'nodef'
   $x = $p->sizeof( 'xxx' );                                # (E) Got no definition for 'union xxx'
   $x = $p->sizeof( 'hasbf' );                              # (1) Bitfields are unsupported in sizeof('hasbf')
+  $x = $p->sizeof( 'hasbf.bf.c' );                         # (E) Cannot use sizeof on bitfields
   $x = $p->sizeof( 't_unsafe' );                           # (1) Unsafe values used in sizeof('t_unsafe')
   $x = $p->sizeof( 's_unsafe' );                           # (1) Unsafe values used in sizeof('s_unsafe')
   $x = $p->sizeof( 'enum enu . foo' );                     # (E) Cannot access member '. foo' of non-compound type
@@ -258,6 +316,9 @@ eval_test(q{
   $x = $p->offsetof( 'test.ary[2][2]', '' );               # (1) Empty string passed as member expression
   $x = $p->offsetof( 'test.ary[2][2]', "\t " );            # (1) Empty string passed as member expression
 
+  $x = $p->offsetof( 'hasbf', 'bf' );                      # (1) Bitfields are unsupported in offsetof('hasbf')
+  $x = $p->offsetof( 'hasbf', 'bf.c' );                    # (E) Cannot use offsetof on bitfields
+
   $p->member( 'xxx', 6666 );                               # (1) Useless use of member in void context
   $x = $p->member( '', 6666 );                             # (E) Cannot find ''
   $x = $p->member( 'abc', 6666 );                          # (E) Cannot find 'abc'
@@ -281,6 +342,27 @@ eval_test(q{
   $x = $p->member( 'test.ary[2][3].uni', 0 );              # no error
   $x = $p->member( 'test.ary[2][3].uni[0].a', 6666 );      # (E) Cannot use member on an enum
   $x = $p->member( 'test.ary[2][3].uni[0].str.a', 6666 );  # (E) Cannot use member on a pointer type
+
+  $p->member( 'xxx' );                                     # (1) Useless use of member in void context
+  $x = $p->member( '' );                                   # (E) Cannot find ''
+  $x = $p->member( 'abc' );                                # (E) Cannot find 'abc'
+  $x = $p->member( 'nodef' );                              # (E) Got no struct declarations in resolution of 'nodef'
+  $x = $p->member( 'xxx' );                                # (E) Got no definition for 'union xxx'
+  $x = $p->member( 'ptrtype' );                            # (E) Cannot use member on a pointer type
+  $x = $p->member( 'basic' );                              # (E) Cannot use member on a basic type
+  $x = $p->member( 'long long' );                          # (E) Cannot use member on a basic type
+  $x = $p->member( 'enu' );                                # (E) Cannot use member on an enum
+  $x = $p->member( 'hasbf' );                              # no warning
+  $x = $p->member( 's_unsafe' );                           # (1) Unsafe values used in member('s_unsafe')
+
+  $x = $p->member( 'test.bar' );                           # (E) Cannot use member on a basic type
+  $x = $p->member( 'test.arx[3][4]' );                     # (E) Cannot find struct member 'arx'
+  $x = $p->member( 'test.ary[3][4]' );                     # (E) Cannot use index 3 into array of size 3
+  $x = $p->member( 'test.ary[2][4]' );                     # (E) Cannot use index 4 into array of size 4
+  $x = $p->member( 'test.ary[2][3].uni.a' );               # (E) Cannot access member '.a' of array type
+  $x = $p->member( 'test.ary[2][3].uni' );                 # no error
+  $x = $p->member( 'test.ary[2][3].uni[0].a' );            # (E) Cannot use member on an enum
+  $x = $p->member( 'test.ary[2][3].uni[0].str.a' );        # (E) Cannot use member on a pointer type
 
   $p->enum_names;                                          # (1) Useless use of enum_names in void context
   $p->enum;                                                # (1) Useless use of enum in void context
@@ -334,6 +416,13 @@ eval_test(q{
   $x = $p->unpack( 'e_unsafe', $data );                    # (1) Enumeration 'e_unsafe' contains unsafe values
   $p->EnumType( 'Both' );
   $x = $p->unpack( 'e_unsafe', $data );                    # (1) Enumeration 'e_unsafe' contains unsafe values
+
+  $p->EnumType( 'Integer' );
+  $x = $p->unpack( 'e_unsafe_noname', $data );             # no warning
+  $p->EnumType( 'String' );
+  $x = $p->unpack( 'e_unsafe_noname', $data );             # (1) Enumeration contains unsafe values
+  $p->EnumType( 'Both' );
+  $x = $p->unpack( 'e_unsafe_noname', $data );             # (1) Enumeration contains unsafe values
 
 }, [0 .. 2], [qw( Convert::Binary::C Convert::Binary::C::Cached )]);
 
@@ -519,7 +608,34 @@ struct s_unsafe {
   int foo[BAD];  /* uuuhhh!! */
 };
 
+typedef struct {
+  enum {
+    SAFE2 = 42,
+    GOOD2,
+    UNSAFE2 = sizeof( union __hasbf ),
+    BAD2
+  } noname;
+} e_unsafe_noname;
+
 typedef short float fp_unsupp;
+
+typedef struct {
+  int b;
+  struct {
+    int x;
+    char b[sizeof(int)];
+  }   c;
+  union {
+    int x;
+    char b[sizeof(int)];
+  }   u;
+} inner;
+
+typedef struct {
+  int a;
+  inner;
+  int d[6][6];
+} stuff[12];
 
 #endif
 

@@ -22,7 +22,7 @@ my @o = (0 .. $c->sizeof('aaa')-1);
 my @m = map { $c->member( 'aaa', $_ ) } @o;
 my @a = map { 'aaa'.$_ } @m;
 
-my $res = timethese( -10, {
+my %tests = (
 
   parse        => sub {
                     $c->clean->parse_file( 't/include/include.c' )->parse_file( 'devel/bench.h' );
@@ -40,6 +40,14 @@ my $res = timethese( -10, {
                     my $x = $c->pack( 'aaa', $p );
                   },
 
+  init_zero    => sub {
+                    my $x = $c->initializer( 'aaa.fiw' );
+                  },
+
+  init_full    => sub {
+                    my $x = $c->initializer( 'aaa.fiw', $p->{fiw} );
+                  },
+
   unpack       => sub {
                     my $x = $c->unpack( 'aaa', $d );
                   },
@@ -50,6 +58,10 @@ my $res = timethese( -10, {
 
   member_l     => sub {
                     for my $o ( @o ) { my @x = $c->member( 'aaa', $o ) }
+                  },
+
+  member_a     => sub {
+                    my @x = $c->member( 'aaa' );
                   },
 
   offsetof     => sub {
@@ -64,7 +76,15 @@ my $res = timethese( -10, {
                     for my $a ( @a ) { my $x = $c->sizeof( $a ) }
                   },
 
-} );
+);
+
+if( @ARGV ) {
+  my %only;
+  @only{@ARGV} = (1)x@ARGV;
+  $only{$_} or delete $tests{$_} for keys %tests;
+}
+
+my $res = timethese( -10, \%tests );
 
 my %corr = (
   member   => scalar @o,

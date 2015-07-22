@@ -85,4 +85,9 @@ for my $offset ( 0 .. $c->sizeof('choice') - 1 ) {
     $off = '';
   }
 }
+print "#-8<-\n";
+
+#-8<-
+
+print "$_\n" for $c->member( 'choice' );
 

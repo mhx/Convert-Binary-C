@@ -10,7 +10,6 @@ $c->parse_file( '../../t/include/include.c' );
 my $defs = $c->sourcify;
 
 my %skip = map { ($_ => 1) } qw( _IO_lock_t );
-my %seen;
 
 print <<ENDC;
 
@@ -21,21 +20,15 @@ $defs
 int main( void ) {
 ENDC
 
-for my $t ( $c->enum_names ) {
-  next unless $c->def( $t );
-  print <<ENDC;
-  printf("$t=%d\\n", sizeof( enum $t ));
-ENDC
-}
-
-print_sizes( $_ ) for qw( struct union typedef );
+print_offsets( $_ ) for qw( struct union typedef );
 
 print <<ENDC;
   return 0;
 }
 ENDC
 
-sub print_sizes
+
+sub print_offsets
 {
   my $what = shift;
   my($meth, $prefix);
@@ -49,7 +42,6 @@ sub print_sizes
     print <<ENDC;
   {
     $prefix$t dummy;
-    printf("$t=%d\\n", sizeof(dummy));
 ENDC
     my @m = eval { $c->member( $t ) };
     if( $@ ) {
@@ -58,16 +50,21 @@ ENDC
     else {
       for my $m ( @m ) {
         do {
-          unless( $seen{"$t$m"}++ ) {
-            eval { my $s = $c->sizeof( $t.$m ) };
-            if( $@ ) {
-              $@ =~ /Cannot use sizeof on bitfields/ or warn $@;
-            }
-            else {
+          eval { my $s = $c->sizeof( $t.$m ) };
+          if( $@ ) {
+            $@ =~ /Cannot use sizeof on bitfields/ or warn $@;
+          }
+          else {
+            my $type   = $m;
+            my $member = '';
+            do {
+              $type =~ s/(\[\d+\]|\.\w+)$//;
+              $member = $1 . $member;
+
               print <<ENDC;
-    printf("$t$m=%d\\n", sizeof(dummy$m));
+    printf("$t$type,$member=%d\\n", ((char *)&dummy$type$member) - ((char *)&dummy$type));
 ENDC
-            }
+            } while( $type );
           }
           $m =~ s/(?:\[\d+\]|\.\w+)$//;
         } while( $m );

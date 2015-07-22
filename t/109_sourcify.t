@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/17 13:39:08 +0100 $
-# $Revision: 7 $
-# $Snapshot: /Convert-Binary-C/0.42 $
+# $Date: 2003/07/15 16:13:02 +0100 $
+# $Revision: 8 $
+# $Snapshot: /Convert-Binary-C/0.43 $
 # $Source: /t/109_sourcify.t $
 #
 ################################################################################
@@ -34,6 +34,7 @@ eval {
   $orig->parse( <<ENDPARSE );
   enum __foobar__;
   enum __undefined__;
+  typedef int _int_2_, _int_3_, _int_4_;
 ENDPARSE
 };
 ok($@,'',"failed to parse C-file");

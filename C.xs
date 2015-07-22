@@ -10,9 +10,9 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2003/06/23 14:17:07 +0100 $
-* $Revision: 83 $
-* $Snapshot: /Convert-Binary-C/0.42 $
+* $Date: 2003/07/22 22:15:00 +0100 $
+* $Revision: 93 $
+* $Snapshot: /Convert-Binary-C/0.43 $
 * $Source: /C.xs $
 *
 ********************************************************************************
@@ -213,6 +213,10 @@ static void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 }
 #endif
 
+#ifndef sv_catpvn_nomg
+#define sv_catpvn_nomg sv_catpvn
+#endif
+
 #ifdef IVdf
 # define IVdf_cast
 #else
@@ -261,7 +265,7 @@ static void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
             if( PACK->buf.pos + (size) > PACK->buf.length ) {                  \
               PACK->dataTooShortFlag = 1;                                      \
               PACK->buf.pos = PACK->buf.length;                                \
-              return &PL_sv_undef;                                             \
+              return newSV(0);                                                 \
             }                                                                  \
           } while(0)
 
@@ -403,7 +407,7 @@ static void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 /* checks if an SV is defined */
 /*----------------------------*/
 
-#define DEFINED( sv ) ( (sv) != NULL && (sv) != &PL_sv_undef )
+#define DEFINED( sv ) ( (sv) != NULL && SvOK(sv) )
 
 /*---------------*/
 /* other defines */
@@ -421,6 +425,9 @@ static void sv_vcatpvf( SV *sv, const char *pat, va_list *args )
 #define ALLOW_POINTERS     0x00000008
 #define ALLOW_ARRAYS       0x00000010
 #define ALLOW_BASIC_TYPES  0x00000020
+
+/* for fast index -> string conversion */
+#define MAX_IXSTR 15
 
 /*-----------------*/
 /* debugging stuff */
@@ -471,6 +478,61 @@ typedef FILE * DebugStream;
 # define fclose PerlIO_close
 #endif
 
+/*-----------------------*/
+/* IDList handling stuff */
+/*-----------------------*/
+
+#define IDLIST_GRANULARITY    8
+#define IDLIST_INITIAL_SIZE   (2*IDLIST_GRANULARITY)
+
+#define IDLIST_GROW( idl, size )                                               \
+        do {                                                                   \
+          if( (size) > (idl)->max ) {                                          \
+            int grow = ((size)+(IDLIST_GRANULARITY-1))/IDLIST_GRANULARITY;     \
+            grow *= IDLIST_GRANULARITY;                                        \
+            Renew( (idl)->list, grow, struct IDList_list );                    \
+            (idl)->max = grow;                                                 \
+          }                                                                    \
+        } while(0)
+
+#define IDLIST_INIT( idl )                                                     \
+        do {                                                                   \
+          (idl)->count = 0;                                                    \
+          (idl)->max   = IDLIST_INITIAL_SIZE;                                  \
+          (idl)->cur   = NULL;                                                 \
+          New( 0, (idl)->list, (idl)->max, struct IDList_list );               \
+        } while(0)
+
+#define IDLIST_FREE( idl )                                                     \
+        do {                                                                   \
+          Safefree( (idl)->list );                                             \
+        } while(0)
+
+#define IDLIST_PUSH( idl, what )                                               \
+        do {                                                                   \
+          IDLIST_GROW( idl, (idl)->count+1 );                                  \
+          (idl)->cur = (idl)->list + (idl)->count++;                           \
+          (idl)->cur->choice = IDL_ ## what;                                   \
+        } while(0)
+
+#define IDLIST_SET_ID( idl, value )                                            \
+        do {                                                                   \
+          (idl)->cur->val.id = value;                                          \
+        } while(0)
+
+#define IDLIST_SET_IX( idl, value )                                            \
+        do {                                                                   \
+          (idl)->cur->val.ix = value;                                          \
+        } while(0)
+
+#define IDLIST_POP( idl )                                                      \
+        do {                                                                   \
+          if( --(idl)->count > 0 )                                             \
+            (idl)->cur--;                                                      \
+          else                                                                 \
+            (idl)->cur = NULL;                                                 \
+        } while(0)
+
 
 /*===== TYPEDEFS =============================================================*/
 
@@ -487,6 +549,22 @@ typedef struct {
   LinkedList hit, off, pad;
   HashTable  htpad;
 } GMSInfo;
+
+typedef union {
+  LinkedList list;
+  int        count;
+} AMSInfo;
+
+typedef struct {
+  int count, max;
+  struct IDList_list {
+    enum { IDL_ID, IDL_IX } choice;
+    union {
+      const char *id;
+      long        ix;
+    } val;
+  } *cur, *list;
+} IDList;
 
 typedef struct {
   char         *bufptr;
@@ -545,6 +623,8 @@ static void string_delete( char *sv );
 
 static void CroakGTI( pTHX_ ErrorGTI error, const char *name, int warnOnly );
 
+static const char *IDListToStr( pTHX_ IDList *idl );
+
 static FPType GetFPType( u_32 flags );
 static void StoreFloatSV( pPACKARGS, unsigned size, u_32 flags, SV *sv );
 static SV *FetchFloatSV( pPACKARGS, unsigned size, u_32 flags );
@@ -556,17 +636,15 @@ static SV *GetPointer( pPACKARGS );
 static SV *GetStruct( pPACKARGS, Struct *pStruct, HV *hash );
 static SV *GetEnum( pPACKARGS, EnumSpecifier *pEnumSpec );
 static SV *GetBasicType( pPACKARGS, u_32 flags );
-static SV *GetTypedef( pPACKARGS, Typedef *pTypedef );
 static SV *GetType( pPACKARGS, TypeSpec *pTS, Declarator *pDecl,
                     int dimension );
 
 static void SetPointer( pPACKARGS, SV *sv );
-static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv );
+static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv, IDList *idl );
 static void SetEnum( pPACKARGS, EnumSpecifier *pEnumSpec, SV *sv );
 static void SetBasicType( pPACKARGS, u_32 flags, SV *sv );
-static void SetTypedef( pPACKARGS, Typedef *pTypedef, SV *sv, const char *name );
 static void SetType( pPACKARGS, TypeSpec *pTS, Declarator *pDecl,
-                     int dimension, SV *sv, const char *name );
+                     int dimension, SV *sv, IDList *idl );
 
 static void GetBasicTypeSpecString( pTHX_ SV **sv, u_32 flags );
 
@@ -584,6 +662,22 @@ static void AddEnumSpecString( pTHX_ SV *str, EnumSpecifier *pES );
 static void AddStructSpecString( pTHX_ SV *str, Struct *pStruct );
 
 static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI );
+
+static void GetInitStrStruct( pTHX_ CBC *THIS, Struct *pStruct, SV *init,
+                              IDList *idl, int level, SV *string );
+static void GetInitStrType( pTHX_ CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
+                            int dimension, SV *init, IDList *idl,
+                            int level, SV *string );
+
+static SV *GetInitializerString( pTHX_ CBC *THIS, MemberInfo *pMI, SV *init,
+                                 const char *name );
+
+static void GetAMSStruct( pTHX_ Struct *pStruct, SV *name, int level,
+                          AMSInfo *info );
+static void GetAMSType( pTHX_ TypeSpec *pTS, Declarator *pDecl, int dimension,
+                        SV *name, int level, AMSInfo *info );
+
+static int GetAllMemberStrings( pTHX_ MemberInfo *pMI, LinkedList list );
 
 static SV *GetTypeSpecDef( pTHX_ TypeSpec *pTSpec );
 static SV *GetTypedefDef( pTHX_ Typedef *pTypedef );
@@ -626,7 +720,6 @@ static void  UpdateConfiguration( CBC *THIS );
 
 static void CheckAllowedTypes( pTHX_ const MemberInfo *pMI, const char *method,
                                U32 allowedTypes );
-
 
 /*===== EXTERNAL VARIABLES ===================================================*/
 
@@ -1015,6 +1108,54 @@ static void CroakGTI( pTHX_ ErrorGTI error, const char *name, int warnOnly )
     else
       Perl_croak(aTHX_ "%s in resolution of typedef", errstr);
   }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: IDListToStr
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jul 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static const char *IDListToStr( pTHX_ IDList *idl )
+{
+  SV *sv;
+  int i;
+  struct IDList_list *cur;
+
+  sv = sv_2mortal( newSVpvn( "", 0 ) );
+  cur = idl->list;
+
+  for( i = 0; i < idl->count; ++i, ++cur ) {
+    switch( cur->choice ) {
+      case IDL_ID:
+        if( i == 0 )
+          sv_catpv( sv, cur->val.id );
+        else
+          sv_catpvf( sv, ".%s", cur->val.id );
+        break;
+
+      case IDL_IX:
+        sv_catpvf( sv, "[%ld]", cur->val.ix );
+        break;
+
+      default:
+        /* TODO: fatal() ? */
+        break;
+    }
+  }
+
+  return SvPV_nolen(sv);
 }
 
 /*******************************************************************************
@@ -1435,7 +1576,7 @@ static void SetPointer( pPACKARGS, SV *sv )
 *
 *******************************************************************************/
 
-static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv )
+static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv, IDList *idl )
 {
   StructDeclaration *pStructDecl;
   Declarator        *pDecl;
@@ -1443,8 +1584,8 @@ static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv )
   long               pos;
   unsigned           old_align, old_base;
 
-  CT_DEBUG( MAIN, (XSCLASS "::SetStruct( THIS=%p, pStruct=%p, sv=%p )",
-            THIS, pStruct, sv) );
+  CT_DEBUG( MAIN, (XSCLASS "::SetStruct( THIS=%p, pStruct=%p, sv=%p, idl=%p )",
+            THIS, pStruct, sv, idl) );
 
   ALIGN_BUFFER( pStruct->align );
 
@@ -1461,14 +1602,18 @@ static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv )
     if( SvROK( sv ) && SvTYPE( hash = SvRV(sv) ) == SVt_PVHV ) {
       HV *h = (HV *) hash;
 
+      IDLIST_PUSH( idl, ID );
+
       LL_foreach( pStructDecl, pStruct->declarations ) {
         if( pStructDecl->declarators ) {
           LL_foreach( pDecl, pStructDecl->declarators ) {
-            SV **e = hv_fetch( h, pDecl->identifier,
-                               strlen(pDecl->identifier), 0 );
+            size_t id_len = strlen(pDecl->identifier);
+            SV **e = hv_fetch( h, pDecl->identifier, id_len, 0 );
+
+            IDLIST_SET_ID( idl, pDecl->identifier );
 
             SetType( aPACKARGS, &pStructDecl->type, pDecl, 0,
-                     e ? *e : NULL, pDecl->identifier );
+                     e ? *e : NULL, idl );
 
             if( pStruct->tflags & T_UNION ) {
               PACK->bufptr  = bufptr;
@@ -1482,7 +1627,11 @@ static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv )
 
           FOLLOW_AND_CHECK_TSPTR( pTS );
 
-          SetStruct( aPACKARGS, (Struct *) pTS->ptr, sv );
+          IDLIST_POP( idl );
+
+          SetStruct( aPACKARGS, (Struct *) pTS->ptr, sv, idl );
+
+          IDLIST_PUSH( idl, ID );
 
           if( pStruct->tflags & T_UNION ) {
             PACK->bufptr     = bufptr;
@@ -1491,7 +1640,11 @@ static void SetStruct( pPACKARGS, Struct *pStruct, SV *sv )
           }
         }
       }
+
+      IDLIST_POP( idl );
     }
+    else
+      WARN((aTHX_ "'%s' should be a hash reference", IDListToStr(aTHX_ idl)));
   }
 
   PACK->alignment  = old_align;
@@ -1635,31 +1788,6 @@ static void SetBasicType( pPACKARGS, u_32 flags, SV *sv )
 
 /*******************************************************************************
 *
-*   ROUTINE: SetTypedef
-*
-*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
-*   CHANGED BY:                                   ON:
-*
-********************************************************************************
-*
-* DESCRIPTION:
-*
-*   ARGUMENTS:
-*
-*     RETURNS:
-*
-*******************************************************************************/
-
-static void SetTypedef( pPACKARGS, Typedef *pTypedef, SV *sv, const char *name )
-{
-  CT_DEBUG( MAIN, (XSCLASS "::SetTypedef( THIS=%p, pTypedef=%p, sv=%p, name='%s' )",
-                   THIS, pTypedef, sv, name) );
-
-  SetType( aPACKARGS, pTypedef->pType, pTypedef->pDecl, 0, sv, name );
-}
-
-/*******************************************************************************
-*
 *   ROUTINE: SetType
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
@@ -1676,35 +1804,42 @@ static void SetTypedef( pPACKARGS, Typedef *pTypedef, SV *sv, const char *name )
 *******************************************************************************/
 
 static void SetType( pPACKARGS, TypeSpec *pTS, Declarator *pDecl,
-                     int dimension, SV *sv, const char *name )
+                     int dimension, SV *sv, IDList *idl )
 {
   CT_DEBUG( MAIN, (XSCLASS "::SetType( THIS=%p, pTS=%p, pDecl=%p, "
-            "dimension=%d, sv=%p, name='%s' )",
-            THIS, pTS, pDecl, dimension, sv, name) );
+            "dimension=%d, sv=%p, idl=%p )",
+            THIS, pTS, pDecl, dimension, sv, idl) );
 
   if( pDecl && dimension < LL_count( pDecl->array ) ) {
     SV *ary;
 
-    if( sv && SvROK( sv ) && SvTYPE( ary = SvRV(sv) ) == SVt_PVAV ) {
+    if( DEFINED(sv) && SvROK(sv) && SvTYPE( ary = SvRV(sv) ) == SVt_PVAV ) {
       long i, s = ((Value *) LL_get( pDecl->array, dimension ))->iv;
       AV *a = (AV *) ary;
 
+      IDLIST_PUSH( idl, IX );
+
       for( i = 0; i < s; ++i ) {
         SV **e = av_fetch( a, i, 0 );
-        SetType( aPACKARGS, pTS, pDecl, dimension+1, e ? *e : NULL, name );
+
+        IDLIST_SET_IX( idl, i );
+
+        SetType( aPACKARGS, pTS, pDecl, dimension+1, e ? *e : NULL, idl );
       }
+
+      IDLIST_POP( idl );
     }
     else {
       unsigned size, align;
       int dim;
       ErrorGTI err;
 
-      if( sv )
-        WARN((aTHX_ "'%s' should be an array reference", name));
+      if( DEFINED(sv) )
+        WARN((aTHX_ "'%s' should be an array reference", IDListToStr(aTHX_ idl)));
 
       err = get_type_info( &THIS->cfg, pTS, NULL, &size, &align, NULL, NULL );
       if( err != GTI_NO_ERROR )
-        CroakGTI( aTHX_ err, name, 1 );
+        CroakGTI( aTHX_ err, IDListToStr(aTHX_ idl), 1 );
 
       ALIGN_BUFFER( align );
 
@@ -1718,31 +1853,28 @@ static void SetType( pPACKARGS, TypeSpec *pTS, Declarator *pDecl,
   }
   else {
     if( pDecl && pDecl->pointer_flag ) {
-      if( sv && SvROK( sv ) )
-        WARN((aTHX_ "'%s' should be a scalar value", name));
+      if( DEFINED(sv) && SvROK(sv) )
+        WARN((aTHX_ "'%s' should be a scalar value", IDListToStr(aTHX_ idl)));
       SetPointer( aPACKARGS, sv );
     }
     else if( pDecl && pDecl->bitfield_size >= 0 ) {
       /* unsupported */
     }
     else if( pTS->tflags & T_TYPE ) {
-      SetTypedef( aPACKARGS, pTS->ptr, sv, name );
+      Typedef *pTD = pTS->ptr;
+      SetType( aPACKARGS, pTD->pType, pTD->pDecl, 0, sv, idl );
+      /* SetTypedef( aPACKARGS, pTS->ptr, sv, idl ); */
     }
     else if( pTS->tflags & (T_STRUCT|T_UNION) ) {
-      Struct *pStruct = pTS->ptr;
-      if( pStruct->declarations == NULL ) {
+      Struct *pStruct = (Struct *) pTS->ptr;
+      if( pStruct->declarations == NULL )
         WARN_UNDEF_STRUCT( pStruct );
-        return;
-      }
-      else {
-        if( sv && !(SvROK( sv ) && SvTYPE( SvRV(sv) ) == SVt_PVHV) )
-          WARN((aTHX_ "'%s' should be a hash reference", name));
-        SetStruct( aPACKARGS, pStruct, sv );
-      }
+      else
+        SetStruct( aPACKARGS, pStruct, sv, idl );
     }
     else {
-      if( sv && SvROK( sv ) )
-        WARN((aTHX_ "'%s' should be a scalar value", name));
+      if( DEFINED(sv) && SvROK(sv) )
+        WARN((aTHX_ "'%s' should be a scalar value", IDListToStr(aTHX_ idl)));
 
       CT_DEBUG( MAIN, ("SET '%s' @ %lu", pDecl ? pDecl->identifier : "", PACK->buf.pos ) );
 
@@ -2034,31 +2166,6 @@ static SV *GetBasicType( pPACKARGS, u_32 flags )
 
 /*******************************************************************************
 *
-*   ROUTINE: GetTypedef
-*
-*   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
-*   CHANGED BY:                                   ON:
-*
-********************************************************************************
-*
-* DESCRIPTION:
-*
-*   ARGUMENTS:
-*
-*     RETURNS:
-*
-*******************************************************************************/
-
-static SV *GetTypedef( pPACKARGS, Typedef *pTypedef )
-{
-  CT_DEBUG( MAIN, (XSCLASS "::GetTypedef( THIS=%p, pTypedef=%p )",
-            THIS, pTypedef) );
-
-  return GetType( aPACKARGS, pTypedef->pType, pTypedef->pDecl, 0 );
-}
-
-/*******************************************************************************
-*
 *   ROUTINE: GetType
 *
 *   WRITTEN BY: Marcus Holland-Moritz             ON: Jan 2002
@@ -2092,13 +2199,16 @@ static SV *GetType( pPACKARGS, TypeSpec *pTS, Declarator *pDecl, int dimension )
   }
   else {
     if( pDecl && pDecl->pointer_flag )       return GetPointer( aPACKARGS );
-    if( pDecl && pDecl->bitfield_size >= 0 ) return &PL_sv_undef;  /* unsupported */
-    if( pTS->tflags & T_TYPE )               return GetTypedef( aPACKARGS, pTS->ptr );
+    if( pDecl && pDecl->bitfield_size >= 0 ) return newSV(0);  /* unsupported */
+    if( pTS->tflags & T_TYPE ) {
+      Typedef *pTD = pTS->ptr;
+      return GetType( aPACKARGS, pTD->pType, pTD->pDecl, 0 );
+    }
     if( pTS->tflags & (T_STRUCT|T_UNION) ) {
       Struct *pStruct = pTS->ptr;
       if( pStruct->declarations == NULL ) {
         WARN_UNDEF_STRUCT( pStruct );
-        return &PL_sv_undef;
+        return newSV(0);
       }
       return GetStruct( aPACKARGS, pTS->ptr, NULL );
     }
@@ -2159,12 +2269,6 @@ static void GetBasicTypeSpecString( pTHX_ SV **sv, u_32 flags )
     }
   }
 }
-
-#define INDENT                           \
-        do {                             \
-          if( level > 0 )                \
-            AddIndent( aTHX_ s, level ); \
-        } while(0)
 
 /*******************************************************************************
 *
@@ -2253,6 +2357,12 @@ static void CheckDefineType( pTHX_ SV *str, TypeSpec *pTS )
       AddStructSpecString( aTHX_ str, pStruct );
   }
 }
+
+#define INDENT                           \
+        do {                             \
+          if( level > 0 )                \
+            AddIndent( aTHX_ s, level ); \
+        } while(0)
 
 /*******************************************************************************
 *
@@ -2846,6 +2956,402 @@ static SV *GetParsedDefinitionsString( pTHX_ CParseInfo *pCPI )
   }
 
   return s;
+}
+
+#define INDENT                                \
+        do {                                  \
+          if( level > 0 )                     \
+            AddIndent( aTHX_ string, level ); \
+        } while(0)
+
+#define APPEND_COMMA                          \
+        do {                                  \
+          if( first )                         \
+            first = 0;                        \
+          else                                \
+            sv_catpv( string, ",\n" );        \
+        } while(0)
+
+#define ENTER_LEVEL                           \
+        do {                                  \
+          INDENT;                             \
+          sv_catpv( string, "{\n" );          \
+        } while(0)
+
+#define LEAVE_LEVEL                           \
+        do {                                  \
+          sv_catpv( string, "\n" );           \
+          INDENT;                             \
+          sv_catpv( string, "}" );            \
+        } while(0)
+
+/*******************************************************************************
+*
+*   ROUTINE: GetInitStrStruct
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jun 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void GetInitStrStruct( pTHX_ CBC *THIS, Struct *pStruct, SV *init,
+                              IDList *idl, int level, SV *string )
+{
+  StructDeclaration *pStructDecl;
+  Declarator        *pDecl;
+  HV                *hash = NULL;
+  int                first = 1;
+
+  CT_DEBUG( MAIN, (XSCLASS "::GetInitStrStruct( THIS=%p, pStruct=%p, "
+            "init=%p, idl=%p, level=%d, string=%p )",
+            THIS, pStruct, init, idl, level, string) );
+
+  if( DEFINED(init) ) {
+    SV *h;
+    if( SvROK(init) && SvTYPE( h = SvRV(init) ) == SVt_PVHV )
+      hash = (HV *) h;
+    else
+      WARN((aTHX_ "'%s' should be a hash reference", IDListToStr(aTHX_ idl)));
+  }
+
+  ENTER_LEVEL;
+  IDLIST_PUSH( idl, ID );
+
+  LL_foreach( pStructDecl, pStruct->declarations ) {
+    if( pStructDecl->declarators ) {
+      LL_foreach( pDecl, pStructDecl->declarators ) {
+        size_t id_len;
+        SV **e;
+
+        /* skip unnamed bitfield members right here */
+        if( pDecl->bitfield_size >= 0 && pDecl->identifier[0] == '\0' )
+          continue;
+
+        id_len = strlen(pDecl->identifier);
+        e = hash ? hv_fetch( hash, pDecl->identifier, id_len, 0 ) : NULL;
+
+        IDLIST_SET_ID( idl, pDecl->identifier );
+        APPEND_COMMA;
+
+        GetInitStrType( aTHX_ THIS, &pStructDecl->type, pDecl, 0,
+                        e ? *e : NULL, idl, level+1, string );
+
+        /* only initialize first union member */
+        if( pStruct->tflags & T_UNION )
+          goto handle_end;
+      }
+    }
+    else {
+      TypeSpec *pTS = &pStructDecl->type;
+      FOLLOW_AND_CHECK_TSPTR( pTS );
+      APPEND_COMMA;
+      IDLIST_POP( idl );
+      GetInitStrStruct( aTHX_ THIS, (Struct *) pTS->ptr,
+                        init, idl, level+1, string );
+      IDLIST_PUSH( idl, ID );
+    }
+  }
+
+handle_end:
+  IDLIST_POP( idl );
+  LEAVE_LEVEL;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: GetInitStrType
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jun 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void GetInitStrType( pTHX_ CBC *THIS, TypeSpec *pTS, Declarator *pDecl,
+                            int dimension, SV *init, IDList *idl,
+                            int level, SV *string )
+{
+  CT_DEBUG( MAIN, (XSCLASS "::GetInitStrType( THIS=%p, pTS=%p, pDecl=%p, "
+            "dimension=%d, init=%p, idl=%p, level=%d, string=%p )",
+            THIS, pTS, pDecl, dimension, init, idl, level, string) );
+
+  if( pDecl && dimension < LL_count( pDecl->array ) ) {
+    AV *ary = NULL;
+    long i, s = ((Value *) LL_get( pDecl->array, dimension ))->iv;
+    int first = 1;
+
+    if( DEFINED(init) ) {
+      SV *sv;
+      if( SvROK(init) && SvTYPE( sv = SvRV(init) ) == SVt_PVAV )
+        ary = (AV *) sv;
+      else
+        WARN((aTHX_ "'%s' should be an array reference", IDListToStr(aTHX_ idl)));
+    }
+
+    ENTER_LEVEL;
+    IDLIST_PUSH( idl, IX );
+
+    for( i = 0; i < s; ++i ) {
+      SV **e = ary ? av_fetch( ary, i, 0 ) : NULL;
+
+      IDLIST_SET_IX( idl, i );
+      APPEND_COMMA;
+
+      GetInitStrType( aTHX_ THIS, pTS, pDecl, dimension+1,
+                      e ? *e : NULL, idl, level+1, string );
+    }
+
+    IDLIST_POP( idl );
+    LEAVE_LEVEL;
+  }
+  else {
+    if( pDecl && pDecl->pointer_flag )
+      goto handle_basic;
+    else if( pTS->tflags & T_TYPE ) {
+      Typedef *pTD = (Typedef *) pTS->ptr;
+      GetInitStrType( aTHX_ THIS, pTD->pType, pTD->pDecl, 0,
+                      init, idl, level, string );
+    }
+    else if( pTS->tflags & (T_STRUCT|T_UNION) ) {
+      Struct *pStruct = pTS->ptr;
+      if( pStruct->declarations == NULL )
+        WARN_UNDEF_STRUCT( pStruct );
+      GetInitStrStruct( aTHX_ THIS, pStruct, init, idl, level, string );
+    }
+    else {
+handle_basic:
+      INDENT;
+      if( DEFINED(init) ) {
+        if( SvROK(init) )
+          WARN((aTHX_ "'%s' should be a scalar value", IDListToStr(aTHX_ idl)));
+        sv_catsv( string, init );
+      }
+      else
+        sv_catpvn( string, "0", 1 );
+    }
+  }
+}
+
+#undef INDENT
+#undef APPEND_COMMA
+#undef ENTER_LEVEL
+#undef LEAVE_LEVEL
+
+/*******************************************************************************
+*
+*   ROUTINE: GetInitializerString
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jun 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static SV *GetInitializerString( pTHX_ CBC *THIS, MemberInfo *pMI, SV *init,
+                                 const char *name )
+{
+  SV *string = newSVpvn( "", 0 );
+  IDList idl;
+
+  IDLIST_INIT( &idl );
+  IDLIST_PUSH( &idl, ID );
+  IDLIST_SET_ID( &idl, name );
+
+  GetInitStrType( aTHX_ THIS, &pMI->type, pMI->pDecl, pMI->level,
+                  init, &idl, 0, string );
+
+  IDLIST_FREE( &idl );
+
+  return string;
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: GetAMSStruct
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jul 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void GetAMSStruct( pTHX_ Struct *pStruct, SV *name, int level,
+                          AMSInfo *info )
+{
+  StructDeclaration *pStructDecl;
+  Declarator        *pDecl;
+  STRLEN             len;
+
+  CT_DEBUG( MAIN, (XSCLASS "::GetAMSStruct( pStruct=%p, name='%s', level=%d, "
+            "info=%p )", pStruct, name ? SvPV_nolen(name) : "", level, info) );
+
+  if( name ) {
+    len = SvCUR( name );
+    sv_catpvn_nomg( name, ".", 1 );
+  }
+
+  LL_foreach( pStructDecl, pStruct->declarations ) {
+    if( pStructDecl->declarators ) {
+      LL_foreach( pDecl, pStructDecl->declarators ) {
+        /* skip unnamed bitfield members right here */
+        if( pDecl->bitfield_size >= 0 && pDecl->identifier[0] == '\0' )
+          continue;
+
+        if( name ) {
+          SvCUR_set( name, len+1 );
+          sv_catpvn_nomg( name, pDecl->identifier, strlen(pDecl->identifier) );
+        }
+
+        GetAMSType( aTHX_ &pStructDecl->type, pDecl, 0, name, level+1, info );
+      }
+    }
+    else {
+      TypeSpec *pTS = &pStructDecl->type;
+      FOLLOW_AND_CHECK_TSPTR( pTS );
+      if( name )
+        SvCUR_set( name, len );
+      GetAMSStruct( aTHX_ (Struct *) pTS->ptr, name, level+1, info );
+    }
+  }
+
+  if( name )
+    SvCUR_set( name, len );
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: GetAMSType
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jul 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static void GetAMSType( pTHX_ TypeSpec *pTS, Declarator *pDecl, int dimension,
+                        SV *name, int level, AMSInfo *info )
+{
+  CT_DEBUG( MAIN, (XSCLASS "::GetAMSType( pTS=%p, pDecl=%p, dimension=%d, "
+            "name='%s', level=%d, info=%p )", pTS, pDecl, dimension,
+            name ? SvPV_nolen(name) : "", level, info) );
+
+  if( pDecl && dimension < LL_count( pDecl->array ) ) {
+    long i, ix, s = ((Value *) LL_get( pDecl->array, dimension ))->iv;
+    STRLEN len;
+    char ixstr[MAX_IXSTR+1];
+    int  ixlen;
+
+    if( name ) {
+      len = SvCUR( name );
+      sv_catpvn_nomg( name, "[", 1 );
+      ixstr[MAX_IXSTR-1] = ']';
+      ixstr[MAX_IXSTR]   = '\0';
+    }
+
+    for( i = 0; i < s; ++i ) {
+      if( name ) {
+        SvCUR_set( name, len+1 );
+        for( ix=i, ixlen=2; ixlen < MAX_IXSTR; ix /= 10, ixlen++ ) {
+          ixstr[MAX_IXSTR-ixlen] = (char)('0'+(ix%10));
+          if( ix < 10 ) break;
+        }
+        sv_catpvn_nomg( name, ixstr+MAX_IXSTR-ixlen, ixlen );
+      }
+
+      GetAMSType( aTHX_ pTS, pDecl, dimension+1, name, level+1, info );
+    }
+
+    if( name )
+      SvCUR_set( name, len );
+  }
+  else {
+    if( pDecl && pDecl->pointer_flag )
+      goto handle_basic;
+    else if( pTS->tflags & T_TYPE ) {
+      Typedef *pTD = (Typedef *) pTS->ptr;
+      GetAMSType( aTHX_ pTD->pType, pTD->pDecl, 0, name, level, info );
+    }
+    else if( pTS->tflags & (T_STRUCT|T_UNION) ) {
+      Struct *pStruct = pTS->ptr;
+      if( pStruct->declarations == NULL )
+        WARN_UNDEF_STRUCT( pStruct );
+      GetAMSStruct( aTHX_ pStruct, name, level, info );
+    }
+    else {
+handle_basic:
+      if( name )
+        LL_push( info->list, newSVsv( name ) );
+      else
+        info->count++;
+    }
+  }
+}
+
+/*******************************************************************************
+*
+*   ROUTINE: GetAllMemberStrings
+*
+*   WRITTEN BY: Marcus Holland-Moritz             ON: Jul 2003
+*   CHANGED BY:                                   ON:
+*
+********************************************************************************
+*
+* DESCRIPTION:
+*
+*   ARGUMENTS:
+*
+*     RETURNS:
+*
+*******************************************************************************/
+
+static int GetAllMemberStrings( pTHX_ MemberInfo *pMI, LinkedList list )
+{
+  AMSInfo info;
+  if( list )
+    info.list = list;
+  else
+    info.count = 0;
+
+  GetAMSType( aTHX_ &pMI->type, pMI->pDecl, pMI->level,
+              list ? sv_2mortal(newSVpvn("", 0)) : NULL, 0, &info );
+
+  return list ? LL_count( list ) : info.count;
 }
 
 /*******************************************************************************
@@ -3479,7 +3985,7 @@ static SV *GetMemberString( pTHX_ const MemberInfo *pMI, int offset, GMSInfo *pI
 
   if( rval == GMS_NONE ) {
     SvREFCNT_dec( sv );
-    return &PL_sv_undef;
+    sv = newSV(0);
   }
 
   return sv_2mortal( sv );
@@ -3599,8 +4105,6 @@ static void GetMember( pTHX_ const MemberInfo *pMI, const char *member,
     Typedef *pTypedef = (Typedef *) pType->ptr;
     pDecl = pTypedef->pDecl;
     pType = pTypedef->pType;
-    if( pDecl->size < 0 )
-      fatal( "pDecl->size is not initialized in GetMember()" );
   }
 
   err    = NULL;
@@ -3608,7 +4112,19 @@ static void GetMember( pTHX_ const MemberInfo *pMI, const char *member,
   state  = ST_SEARCH;
   offset = 0;
   level  = pMI->level;
-  size   = pMI->size;
+  size   = -1;
+
+  if( pDecl ) {
+    int i;
+
+    if( pDecl->size < 0 )
+      fatal( "pDecl->size is not initialized in GetMember()" );
+
+    size = pDecl->size;
+
+    for( i = 0; i < level; ++i )
+      size /= ((Value *) LL_get( pDecl->array, i ))->iv;
+  }
 
   for(;;) {
     CT_DEBUG( MAIN, ("state = %d \"%s\"", state, c) );
@@ -3689,6 +4205,9 @@ static void GetMember( pTHX_ const MemberInfo *pMI, const char *member,
                             index, dim );
             goto error;
           }
+
+          if( size < 0 )
+            fatal( "size is not initialized in GetMember()" );
 
           size   /= dim;
           offset += index * size;
@@ -4716,7 +5235,7 @@ static void KeywordMap( pTHX_ HashTable *current, SV *sv, SV **rval )
 
           value = hv_iterval( hv, entry );
 
-          if( value == &PL_sv_undef || !SvOK(value) )
+          if( !SvOK(value) )
             pTok = get_skip_token();
           else {
             const char *map;
@@ -5621,7 +6140,7 @@ CBC::def( type )
 		    WARN((aTHX_ "Ignoring %s ('%s') after type name", kind, eos));
 		  }
 		  if( ptr == NULL )
-		     XSRETURN_UNDEF;
+		    XSRETURN_UNDEF;
 		  else {
 		    switch( GET_CTYPE( ptr ) ) {
 		      case TYP_TYPEDEF:
@@ -5668,7 +6187,7 @@ CBC::def( type )
 ################################################################################
 
 SV *
-CBC::pack( type, data, string = NULL )
+CBC::pack( type, data = &PL_sv_undef, string = NULL )
 	const char *type
 	SV *data
 	SV *string
@@ -5678,6 +6197,7 @@ CBC::pack( type, data, string = NULL )
 		char *buffer;
 		MemberInfo mi;
 		PackInfo pack;
+		IDList idl;
 
 	CODE:
 		CT_DEBUG_METHOD1( "'%s'", type );
@@ -5736,8 +6256,14 @@ CBC::pack( type, data, string = NULL )
 		pack.align_base = 0;
 		pack.alignment  = THIS->cfg.alignment;
 
-		SetType( aTHX_ THIS, &pack, &mi.type,
-		               mi.pDecl, mi.level, data, type );
+		IDLIST_INIT( &idl );
+		IDLIST_PUSH( &idl, ID );
+		IDLIST_SET_ID( &idl, type );
+
+		SetType( aTHX_ THIS, &pack, &mi.type, mi.pDecl, mi.level,
+                         data, &idl );
+
+		IDLIST_FREE( &idl );
 
 	OUTPUT:
 		RETVAL
@@ -5836,6 +6362,9 @@ CBC::sizeof( type )
 		if( !GetMemberInfo( aTHX_ THIS, type, &mi ) )
 		  Perl_croak(aTHX_ "Cannot find '%s'", type);
 
+		if( mi.pDecl && mi.pDecl->bitfield_size >= 0 )
+		  Perl_croak(aTHX_ "Cannot use %s on bitfields", method);
+
 		if( mi.flags )
 		  WARN_FLAGS( type, mi.flags );
 #ifdef newSVuv
@@ -5925,10 +6454,13 @@ CBC::offsetof( type, member )
 		if( !GetMemberInfo( aTHX_ THIS, type, &mi ) )
 		  Perl_croak(aTHX_ "Cannot find '%s'", type);
 
+		GetMember( aTHX_ &mi, member, &mi2, 1 );
+
+		if( mi2.pDecl && mi2.pDecl->bitfield_size >= 0 )
+		  Perl_croak(aTHX_ "Cannot use %s on bitfields", method);
+
 		if( mi.flags )
 		  WARN_FLAGS( type, mi.flags );
-
-		GetMember( aTHX_ &mi, member, &mi2, 1 );
 #ifdef newSVuv
 		RETVAL = newSVuv( mi2.offset );
 #else
@@ -5956,16 +6488,19 @@ CBC::offsetof( type, member )
 ################################################################################
 
 void
-CBC::member( type, offset )
+CBC::member( type, offset = NULL )
 	const char *type
-	int offset
+	SV *offset
 
 	PREINIT:
 		CBC_METHOD( member );
 		MemberInfo mi;
+		int have_offset, off;
 
 	PPCODE:
-		CT_DEBUG_METHOD2( "'%s', %d", type, offset );
+		off = (have_offset = DEFINED(offset)) ? SvIV(offset) : 0;
+
+		CT_DEBUG_METHOD2( "'%s', %d", type, off );
 
 		CHECK_PARSE_DATA;
 		CHECK_VOID_CONTEXT;
@@ -5977,49 +6512,79 @@ CBC::member( type, offset )
 		                                      | ALLOW_UNIONS
 		                                      | ALLOW_ARRAYS );
 
-		if( mi.flags )
-		  WARN_FLAGS( type, mi.flags );
+		if( mi.flags ) {
+		  u_32 flags = mi.flags;
 
-		if( offset < 0 || offset >= (int) mi.size )
-		  Perl_croak(aTHX_ "Offset %d out of range (0 <= offset < %d)",
-                                   offset, mi.size);
+		  /* bitfields are not a problem without offset given */
+		  if( !have_offset )
+		    flags &= ~T_HASBITFIELD;
 
-		if( GIMME_V == G_ARRAY ) {
-		  GMSInfo info;
-		  SV     *member;
-		  int     count;
+		  WARN_FLAGS( type, flags );
+		}
 
-		  info.hit = LL_new();
-		  info.off = LL_new();
-		  info.pad = LL_new();
+		if( have_offset ) {
+		  if( off < 0 || off >= (int) mi.size )
+		    Perl_croak(aTHX_ "Offset %d out of range (0 <= offset < %d)",
+                                     off, mi.size);
 
-		  (void) GetMemberString( aTHX_ &mi, offset, &info );
+		  if( GIMME_V == G_ARRAY ) {
+		    GMSInfo info;
+		    SV     *member;
+		    int     count;
 
-		  count = LL_count( info.hit )
-		        + LL_count( info.off )
-		        + LL_count( info.pad );
+		    info.hit = LL_new();
+		    info.off = LL_new();
+		    info.pad = LL_new();
 
-		  EXTEND( SP, count );
+		    (void) GetMemberString( aTHX_ &mi, off, &info );
 
-		  LL_foreach( member, info.hit )
+		    count = LL_count( info.hit )
+		          + LL_count( info.off )
+		          + LL_count( info.pad );
+
+		    EXTEND( SP, count );
+
+		    LL_foreach( member, info.hit )
+		      PUSHs( member );
+
+		    LL_foreach( member, info.off )
+		      PUSHs( member );
+
+		    LL_foreach( member, info.pad )
+		      PUSHs( member );
+
+		    LL_destroy( info.hit, NULL );
+		    LL_destroy( info.off, NULL );
+		    LL_destroy( info.pad, NULL );
+
+		    XSRETURN( count );
+		  }
+		  else {
+		    SV *member = GetMemberString( aTHX_ &mi, off, NULL );
 		    PUSHs( member );
-
-		  LL_foreach( member, info.off )
-		    PUSHs( member );
-
-		  LL_foreach( member, info.pad )
-		    PUSHs( member );
-
-		  LL_destroy( info.hit, NULL );
-		  LL_destroy( info.off, NULL );
-		  LL_destroy( info.pad, NULL );
-
-		  XSRETURN( count );
+		    XSRETURN( 1 );
+		  }
 		}
 		else {
-		  SV *member = GetMemberString( aTHX_ &mi, offset, NULL );
-		  PUSHs( member );
-		  XSRETURN( 1 );
+		  LinkedList list;
+		  SV *member;
+		  int count;
+
+		  list = GIMME_V == G_ARRAY ? LL_new() : NULL;
+		  count = GetAllMemberStrings( aTHX_ &mi, list );
+
+		  if( GIMME_V == G_ARRAY ) {
+		    EXTEND( SP, count );
+
+		    LL_foreach( member, list )
+		      PUSHs( member );
+
+		    LL_destroy( list, NULL );
+
+		    XSRETURN( count );
+		  }
+		  else
+		    XSRETURN_IV( count );
 		}
 
 ################################################################################
@@ -6502,6 +7067,46 @@ CBC::sourcify()
 
 ################################################################################
 #
+#   METHOD: initializer
+#
+#   WRITTEN BY: Marcus Holland-Moritz             ON: Jun 2003
+#   CHANGED BY:                                   ON:
+#
+################################################################################
+#
+# DESCRIPTION:
+#
+#   ARGUMENTS:
+#
+#     RETURNS:
+#
+################################################################################
+
+SV *
+CBC::initializer( type, init = &PL_sv_undef )
+	const char *type
+	SV *init
+
+	PREINIT:
+		CBC_METHOD( initializer );
+		MemberInfo mi;
+
+	CODE:
+		CT_DEBUG_METHOD1( "'%s'", type );
+
+		CHECK_VOID_CONTEXT;
+
+		if( !GetMemberInfo( aTHX_ THIS, type, &mi ) )
+		  Perl_croak(aTHX_ "Cannot find '%s'", type);
+
+		RETVAL = GetInitializerString( aTHX_ THIS, &mi, init, type );
+
+	OUTPUT:
+		RETVAL
+
+
+################################################################################
+#
 #   METHOD: dependencies
 #
 #   WRITTEN BY: Marcus Holland-Moritz             ON: Sep 2002
@@ -6634,47 +7239,41 @@ import( ... )
 #
 ################################################################################
 
-int
+void
 feature( feat )
 	const char *feat
 
 	CODE:
-		RETVAL = -1;
-
 		switch( *feat ) {
 		  case 'd':
 		    if( strEQ( feat, "debug" ) )
 #ifdef CTYPE_DEBUGGING
-		      RETVAL = 1;
+		      XSRETURN_YES;
 #else
-		      RETVAL = 0;
+		      XSRETURN_NO;
 #endif
 		    break;
 
 		  case 'i':
 		    if( strEQ( feat, "ieeefp" ) )
 #ifdef CBC_HAVE_IEEE_FP
-		      RETVAL = 1;
+		      XSRETURN_YES;
 #else
-		      RETVAL = 0;
+		      XSRETURN_NO;
 #endif
 		    break;
 
 		  case 't':
 		    if( strEQ( feat, "threads" ) )
 #ifdef CBC_THREAD_SAFE
-		      RETVAL = 1;
+		      XSRETURN_YES;
 #else
-		      RETVAL = 0;
+		      XSRETURN_NO;
 #endif
 		    break;
 		}
 
-		if( RETVAL < 0 )
-		  XSRETURN_UNDEF;
-
-	OUTPUT:
-		RETVAL
+		XSRETURN_UNDEF;
 
 ################################################################################
 #

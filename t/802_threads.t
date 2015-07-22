@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/17 13:39:10 +0100 $
-# $Revision: 16 $
-# $Snapshot: /Convert-Binary-C/0.42 $
+# $Date: 2003/07/24 17:08:02 +0100 $
+# $Revision: 17 $
+# $Snapshot: /Convert-Binary-C/0.43 $
 # $Source: /t/802_threads.t $
 #
 ################################################################################
@@ -122,33 +122,39 @@ END
   @unions     ==  19 or return "incorrect number of unions";
   @typedefs   == 303 or return "incorrect number of typedefs";
 
-  local $SIG{__WARN__} = sub {};
-
   my %size = do { local (@ARGV, $/) = ('t/include/sizeof.pl'); eval <> };
   my $max_size = 0;
   my @fail = ();
+  my $bitfield;
 
-  foreach( @enum_ids, @compound_ids, @typedef_ids ) {
-    my $s = eval { $p->sizeof($_) };
+  local $SIG{__WARN__} = sub {
+    if( $_[0] =~ /Bitfields are unsupported in \w+\('wait[^']*'\)/ ) {
+      $bitfield = 1;
+      return;
+    }
+    print "# unexpected warning: $_[0]";
+    push @fail, $_[0];
+  };
+
+  for my $t ( keys %size ) {
+    $bitfield = 0;
+    my $s = eval { $p->sizeof($t) };
 
     if( $@ ) {
-      print "# ($arg) sizeof failed for '$_': $@\n";
+      print "# sizeof failed for '$t': $@\n";
     }
-    elsif( not defined $s and not exists $size{$_} ) {
-      next;
+    elsif( $bitfield ) {
+      next;  # cannot handle bitfields yet
     }
-    elsif( not exists $size{$_} ) {
-      print "# ($arg) can't find size for '$_'\n";
-    }
-    elsif( $size{$_} != $s ) {
-      print "# ($arg) incorrect size for '$_' (expected $size{$_}, got $s)\n";
+    elsif( $size{$t} != $s ) {
+      print "# incorrect size for '$t' (expected $size{$t}, got $s)\n";
     }
     else {
       $max_size = $s if $s > $max_size;
       next;
     }
 
-    push @fail, $_ unless $s == $size{$_}
+    push @fail, $t unless $s == $size{$t}
   }
 
   @fail == 0 or return "size test failed for [@fail]";

@@ -2,9 +2,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/04/23 11:21:22 +0100 $
-# $Revision: 14 $
-# $Snapshot: /Convert-Binary-C/0.42 $
+# $Date: 2003/07/24 16:55:37 +0100 $
+# $Revision: 16 $
+# $Snapshot: /Convert-Binary-C/0.43 $
 # $Source: /t/106_parse.t $
 #
 ################################################################################
@@ -20,7 +20,7 @@ use Convert::Binary::C @ARGV;
 
 $^W = 1;
 
-BEGIN { plan tests => 75 }
+BEGIN { plan tests => 78 }
 
 #===================================================================
 # create object (1 tests)
@@ -144,12 +144,6 @@ ok($s1,301,"incorrect number of typedef identifiers");
 
 # catch warnings
 
-$SIG{__WARN__} = sub {
-  $_[0] =~ /Bitfields are unsupported in \w+\('wait'\)/ and return;
-  print "# unexpected warning: $_[0]";
-  push @fail, $_[0];
-};
-
 #===================================================================
 # check if all sizes are correct (1 big test)
 #===================================================================
@@ -157,36 +151,47 @@ $SIG{__WARN__} = sub {
 do 't/include/sizeof.pl';
 $max_size = 0;
 @fail = ();
+@success = ();
 
-foreach( @enum_ids, @compound_ids, @typedef_ids ) {
-  eval { $s = $p->sizeof($_) };
+$SIG{__WARN__} = sub {
+  if( $_[0] =~ /Bitfields are unsupported in \w+\('wait[^']*'\)/ ) {
+    $bitfield = 1;
+    return;
+  }
+  print "# unexpected warning: $_[0]";
+  push @fail, $_[0];
+};
+
+for my $t ( keys %size ) {
+  $bitfield = 0;  # reset!!!
+  eval { $s = $p->sizeof($t) };
 
   if( $@ ) {
-    print "# sizeof failed for '$_': $@\n";
+    print "# sizeof failed for '$t': $@\n";
   }
-  elsif( not defined $s and not exists $size{$_} ) {
-    next;
+  elsif( $bitfield ) {
+    next;  # cannot handle bitfields yet
   }
-  elsif( not exists $size{$_} ) {
-    print "# can't find size for '$_'\n";
-  }
-  elsif( $size{$_} != $s ) {
-    print "# incorrect size for '$_' (expected $size{$_}, got $s)\n";
+  elsif( $size{$t} != $s ) {
+    print "# incorrect size for '$t' (expected $size{$t}, got $s)\n";
   }
   else {
     $max_size = $s if $s > $max_size;
+    push @success, $t;
     next;
   }
 
-  push @fail, $_ unless $s == $size{$_}
+  push @fail, $t unless $s == $size{$t}
 }
 
 ok(@fail == 0);
+ok(@success > 0);
 
 #===================================================================
 # check if the def method works correctly (1 big test)
 #===================================================================
 
+$size{'_IO_lock_t'} = undef;
 @names = ();
 @fail = ();
 push @names, map { { type => qr/^enum$/, id => $_ } }
@@ -308,7 +313,7 @@ foreach $type ( @compound_ids ) {
 ok(@fail == 0);
 
 #===================================================================
-# check reference counts (36 tests)
+# check reference counts (38 tests)
 #===================================================================
 
 eval {
@@ -352,8 +357,10 @@ eval {
     sizeof        => $p->sizeof( 'AMT' ),
     typeof        => $p->typeof( 'AMT.table[2]' ),
     offsetof      => $p->offsetof( 'AMT', 'table[2]' ),
-    member_sx     => scalar $p->member( 'AMT', 100 ),
-    member_ax     => [$p->member( 'AMT', 100 )],
+    member_sxx    => scalar $p->member( 'AMT', 100 ),
+    member_axx    => [$p->member( 'AMT', 100 )],
+    member_sx     => scalar $p->member( 'AMT' ),
+    member_ax     => [$p->member( 'AMT' )],
 
     dependencies  => $p->dependencies,
     sourcify      => $p->sourcify,

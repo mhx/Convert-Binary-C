@@ -10,9 +10,9 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2003/06/22 23:01:58 +0100 $
-# $Revision: 45 $
-# $Snapshot: /Convert-Binary-C/0.42 $
+# $Date: 2003/07/16 08:53:29 +0100 $
+# $Revision: 47 $
+# $Snapshot: /Convert-Binary-C/0.43 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.42 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.43 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -171,26 +171,26 @@ to retrieve information about the C types that have been parsed.
 
 =head2 Background and History
 
-In late 2000 I wrote a realtime debugging interface for an
+In late 2000 I wrote a real-time debugging interface for an
 embedded medical device that allowed me to send out data from
-that device over its integrated ethernet adapter.
+that device over its integrated Ethernet adapter.
 The interface was C<printf()>-like, so you could easily send
 out strings or numbers. But you could also send out what I
 called I<arbitrary data>, which was intended for arbitrary
 blocks of the device's memory.
 
-Another part of this realtime debugger was a Perl application
+Another part of this real-time debugger was a Perl application
 running on my workstation that gathered all the messages that
 were sent out from the embedded device. It printed all the
-strings and numbers, and hexdumped the arbitrary data.
-However, manually parsing a couple of 300 byte hexdumps of a
+strings and numbers, and hex-dumped the arbitrary data.
+However, manually parsing a couple of 300 byte hex-dumps of a
 complex C structure is not only frustrating, but also error-prone
 and time consuming.
 
 Using L<C<unpack>|perlfunc/"unpack"> to retrieve the contents
 of a C structure works fine for small structures and if you
 don't have to deal with struct member alignment. But otherwise,
-maintaining such code can be as awful as deciphering hexdumps.
+maintaining such code can be as awful as deciphering hex-dumps.
 
 As I didn't find anything to solve my problem on the CPAN,
 I wrote a little module that translated simple C structs
@@ -381,7 +381,7 @@ Or by parsing C code embedded in your script:
 
 Now the object C<$c> will know everything about C<struct foo>.
 The example above uses a so-called here-document. It allows to
-easily embed multiline strings in your code. You can find more
+easily embed multi-line strings in your code. You can find more
 about here-documents in L<perldata> or L<perlop>.
 
 Since the L<C<parse>|/"parse"> and L<C<parse_file>|/"parse_file"> methods
@@ -1259,7 +1259,7 @@ unexpected identifier.
 Instead of utilizing the preprocessor, you'll have to create
 mappings for the new keywords directly in the parser
 using C<KeywordMap>. In the above example, you want to
-map C<__signed__> to the builtin C keyword C<signed> and
+map C<__signed__> to the built-in C keyword C<signed> and
 ignore C<__extension__>. This could be done with the following
 code:
 
@@ -1575,6 +1575,8 @@ or C<"union"> in front of the type's name.
 
 =over 8
 
+=item C<pack> TYPE
+
 =item C<pack> TYPE, DATA
 
 =item C<pack> TYPE, DATA, STRING
@@ -1609,8 +1611,10 @@ and arrays may be truncated:
   $binary = $c->pack( 'test', { ary => [1, 2], uni => { quad => 42 } } );
 
 Elements not defined in the Perl data structure will be
-set to zero in the packed byte string. On success, the
-packed byte string is returned.
+set to zero in the packed byte string. If you pass C<undef> as
+or simply omit the second parameter, the whole string will be
+initialized with zero bytes. On success, the packed byte
+string is returned.
 
   print hexdump( data => $binary );
 
@@ -1959,6 +1963,8 @@ the L<MEMBER|/"Member Expressions"> argument.
 
 =over 8
 
+=item C<member> TYPE
+
 =item C<member> TYPE, OFFSET
 
 You can think of L<C<member>|/"member"> as being the reverse
@@ -1966,8 +1972,9 @@ of the L<C<offsetof>|/"offsetof"> method. However, as this is
 more complex, there's no equivalent to L<C<member>|/"member"> in
 the C language.
 
-Use this method if you want to retrieve the name of the member
-that is located at a specific offset of a previously parsed type.
+Usually this method is used if you want to retrieve the name of
+the member that is located at a specific offset of a previously
+parsed type.
 
   use Convert::Binary::C;
   
@@ -2159,6 +2166,129 @@ The first member returned is always the I<best> member. The other
 members are sorted according to the rules given above. This means
 that members referenced without an offset are followed by members
 referenced with an offset. Padding regions will be at the end.
+
+If OFFSET is not given in the method call, L<C<member>|/"member"> will
+return a list of I<all> possible members of L<TYPE|/"UNDERSTANDING TYPES">.
+
+  print "$_\n" for $c->member( 'choice' );
+
+This will print:
+
+  .apple.color[0]
+  .apple.color[1]
+  .apple.size
+  .apple.taste
+  .grape[0]
+  .grape[1]
+  .grape[2]
+  .melon.weight
+  .melon.price[0]
+  .melon.price[1]
+  .melon.price[2]
+
+In scalar context, the number of possible members is returned.
+
+=back
+
+=head2 initializer
+
+=over 8
+
+=item C<initializer> TYPE
+
+=item C<initializer> TYPE, DATA
+
+The L<C<initializer>|/"initializer"> method can be used retrieve
+an initializer string for a certain L<TYPE|/"UNDERSTANDING TYPES">.
+This can be useful if you have to initialize only a couple of
+members in a huge compound type or if you simply want to generate
+initializers automatically.
+
+  struct date {
+    unsigned year : 12;
+    unsigned month:  4;
+    unsigned day  :  5;
+    unsigned hour :  5;
+    unsigned min  :  6;
+  };
+  
+  typedef struct {
+    enum { DATE, QWORD } type;
+    short number;
+    union {
+      struct date   date;
+      unsigned long qword;
+    } choice;
+  } data;
+
+Given the above code has been parsed
+
+  $init = $c->initializer( 'data' );
+  print "data x = $init;\n";
+
+would print the following:
+
+  data x = {
+  	0,
+  	0,
+  	{
+  		{
+  			0,
+  			0,
+  			0,
+  			0,
+  			0
+  		}
+  	}
+  };
+
+You could directly put that into a C program, although it probably
+isn't very useful yet. It becomes more useful if you actually specify
+how you want to initialize the type:
+
+  $data = {
+    type   => 'QWORD',
+    choice => {
+      date  => { month => 12, day => 24 },
+      qword => 4711,
+    },
+    stuff => 'yes?',
+  };
+  
+  $init = $c->initializer( 'data', $data );
+  print "data x = $init;\n";
+
+This would print the following:
+
+  data x = {
+  	QWORD,
+  	0,
+  	{
+  		{
+  			0,
+  			12,
+  			24,
+  			0,
+  			0
+  		}
+  	}
+  };
+
+As only the first member of a C<union> can be initialized, C<choice.qword> is
+ignored. You will not be warned about the fact that you probably tried
+to initialize a member other than the first. This is considered
+a feature, because it allows you to use L<C<unpack>|/"unpack"> to generate
+the initializer data:
+
+  $data = $c->unpack( 'data', $binary );
+  $init = $c->initializer( 'data', $data );
+
+Since L<C<unpack>|/"unpack"> unpacks all union members, you would
+otherwise have to delete all but the first one previous to feeding
+it into L<C<initializer>|/"initializer">.
+
+Also, C<stuff> is ignored, because it actually isn't a member
+of C<data>. You won't be warned about that either.
 
 =back
 
@@ -3206,6 +3336,13 @@ support.
 
 =item *
 
+Alexis Denis for making me improve (externally) and simplify
+(internally) floating point support. He can also be blamed
+(indirectly) for the L<C<initializer>|/"initializer"> method,
+as I need it in my effort to support bitfields some day.
+
+=item *
+
 Michael J. Hohmann E<lt>mjh@scientist.deE<gt> for endless discussions
 on our way to and back home from work, and for making me think
 about supporting L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> for
@@ -3278,7 +3415,7 @@ Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
-The C<ucpp> library is (c) 1998-2002 Thomas Pornin. For licence
+The C<ucpp> library is (c) 1998-2002 Thomas Pornin. For license
 and redistribution details refer to F<ctlib/ucpp/README>.
 
 Portions copyright (c) 1989, 1990 James A. Roskind.

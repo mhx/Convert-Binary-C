@@ -134,7 +134,7 @@ I have tested it on:
   - Various BSD systems
   - HP-UX
   - Compaq/HP Tru64 Unix
-  - MacOS X
+  - Mac-OS X
   - Cygwin
   - Windows 98/NT/2000
 
@@ -143,7 +143,7 @@ Also, most architectures should be supported. Tests were done on:
   - Various Intel Pentium and Itanium systems
   - Various Alpha systems
   - HP PA-RISC
-  - PowerPC
+  - Power-PC
   - StrongARM (the module worked fine on an IPAQ system)
 
 The module should build with any perl from 5.005_03 up to 5.9.0.
@@ -197,7 +197,7 @@ Copyright (c) 2002-2003 Marcus Holland-Moritz. All rights reserved.
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
-The ucpp library is (c) 1998-2002 Thomas Pornin. For licence
+The ucpp library is (c) 1998-2002 Thomas Pornin. For license
 and redistribution details refer to 'ctlib/ucpp/README'.
 
 Portions copyright (c) 1989, 1990 James A. Roskind.

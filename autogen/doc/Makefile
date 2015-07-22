@@ -3,6 +3,7 @@ PERL      = perl
 CHECKOUT  = checkout_file
 CECHO     = $(PERL) -e'use Term::ANSIColor; print color(shift); print @ARGV, color("reset"), "\n"'
 BLUE      = $(CECHO) "blue"
+ISPELL    = /usr/bin/ispell -b
 
 CBC_PM    = ../../lib/Convert/Binary/C.pm
 CBCC_PM   = ../../lib/Convert/Binary/C/Cached.pm
@@ -82,12 +83,6 @@ diff:
 	@wdiff -u $(CCCONFIG)
 
 ispell:
-	@-wdiff $(CBC_PM) | grep '^>' >/tmp/diff
-	@ispell /tmp/diff
-	@rm -f /tmp/diff
-	@-wdiff $(CBCC_PM) | grep '^>' >/tmp/diff
-	@ispell /tmp/diff
-	@rm -f /tmp/diff
-	@-wdiff $(CCCONFIG) | grep '^>' >/tmp/diff
-	@ispell /tmp/diff
-	@rm -f /tmp/diff
+	@$(ISPELL) C.pod
+	@$(ISPELL) Cached.pod
+	@$(ISPELL) ccconfig.pod
