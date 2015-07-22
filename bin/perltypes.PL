@@ -9,8 +9,8 @@ print OUT <<'!NO!SUBS!';
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/01/23 11:49:34 +0000 $
-# $Revision: 11 $
+# $Date: 2005/10/25 17:42:50 +0100 $
+# $Revision: 12 $
 # $Source: /bin/perltypes.PL $
 #
 ################################################################################
@@ -32,7 +32,7 @@ use Data::Dumper;
 use strict;
 
 my $base;
--d "$_/include" and $base = "$_/include" and last for qw( t ../t );
+-d "$_/include" and $base = "$_/include" and last for qw( tests ../tests );
 defined $base or die <<MSG;
 Please run this script from either the 'examples' directory
 or the distribution base directory.

@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/06/10 13:15:47 +0100 $
-# $Revision: 73 $
+# $Date: 2005/10/25 19:27:57 +0100 $
+# $Revision: 75 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -31,7 +31,7 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.59 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.60 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
 
 bootstrap Convert::Binary::C $VERSION;
 
@@ -64,56 +64,6 @@ sub AUTOLOAD
     croak $@;
   }
   $opt;
-}
-
-# temporary backwards compatibility code
-
-sub add_hooks
-{
-  my $self = shift;
-
-  $^W and carp "add_hooks() is deprecated, use tag() to modify hooks";
-
-  croak "Number of arguments to add_hooks must be even" if @_ % 2;
-
-  while (@_) {
-    my($t, $h) = splice @_, 0, 2;
-    $self->tag($t, Hooks => $h);
-  }
-
-  return $self;
-}
-
-sub delete_hooks
-{
-  my $self = shift;
-
-  $^W and carp "delete_hooks() is deprecated, use tag() to modify hooks";
-
-  for my $t (@_) {
-    $self->untag($t, 'Hooks');
-  }
-
-  return $self;
-}
-
-sub delete_all_hooks
-{
-  my $self = shift;
-  my @t;
-
-  $^W and carp "delete_all_hooks() is deprecated, use tag() to modify hooks";
-
-  push @t, $self->typedef_names;
-  push @t, map "struct $_", $self->struct_names;
-  push @t, map "union $_", $self->union_names;
-  push @t, map "enum $_", $self->enum_names;
-
-  for my $t (@t) {
-    $self->untag($t, 'Hooks');
-  }
-
-  return $self;
 }
 
 1;
@@ -166,7 +116,7 @@ Convert::Binary::C - Binary Data Conversion using C Types
   #---------------------------------------------------
   # Add include paths and global preprocessor defines
   #---------------------------------------------------
-  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5-20050130/include',
+  $c->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include',
                '/usr/include' )
     ->Define( qw( __USE_POSIX __USE_ISOC99=1 ) );
   
@@ -1194,7 +1144,7 @@ as it can already handle C<AV> pointers. And this is what we get:
 
   $VAR1 = {
     'sv_any' => {
-      'xav_array' => '136389768',
+      'xav_array' => '137122120',
       'xav_fill' => '0',
       'xav_max' => '0',
       'xof_off' => '0',
@@ -1212,12 +1162,12 @@ as it can already handle C<AV> pointers. And this is what we get:
           'xhv_riter' => '-1',
           'xhv_eiter' => '0',
           'xhv_pmroot' => '0',
-          'xhv_name' => '137098848'
+          'xhv_name' => '136851000'
         },
         'sv_refcnt' => '2',
         'sv_flags' => '536870923'
       },
-      'xav_alloc' => '136389768',
+      'xav_alloc' => '137122120',
       'xav_arylen' => '0',
       'xav_flags' => '1'
     },
@@ -3367,7 +3317,7 @@ moment it was parsed.
   # Create object, set include path, parse 'string.h' header
   #----------------------------------------------------------
   my $c = Convert::Binary::C->new
-          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5-20050130/include',
+          ->Include( '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include',
                      '/usr/include' )
           ->parse_file( 'string.h' );
   
@@ -3387,37 +3337,37 @@ The above code would print something like this:
 
   $depend = {
     '/usr/include/features.h' => {
-      'ctime' => 1118258518,
-      'mtime' => 1118258507,
-      'size' => 11587
+      'ctime' => 1128621760,
+      'mtime' => 1128621726,
+      'size' => 11340
     },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1118258517,
-      'mtime' => 1118258507,
+      'ctime' => 1128621753,
+      'mtime' => 1128621726,
       'size' => 9633
     },
     '/usr/include/gnu/stubs.h' => {
-      'ctime' => 1118258517,
-      'mtime' => 1118258507,
-      'size' => 694
-    },
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5-20050130/include/stddef.h' => {
-      'ctime' => 1113250846,
-      'mtime' => 1113250845,
-      'size' => 12695
+      'ctime' => 1128621751,
+      'mtime' => 1128621726,
+      'size' => 622
     },
     '/usr/include/string.h' => {
-      'ctime' => 1118258518,
-      'mtime' => 1118258507,
+      'ctime' => 1128621759,
+      'mtime' => 1128621726,
       'size' => 16281
+    },
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include/stddef.h' => {
+      'ctime' => 1126119265,
+      'mtime' => 1126119264,
+      'size' => 12695
     }
   };
   @files = (
     '/usr/include/features.h',
     '/usr/include/sys/cdefs.h',
     '/usr/include/gnu/stubs.h',
-    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5-20050130/include/stddef.h',
-    '/usr/include/string.h'
+    '/usr/include/string.h',
+    '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include/stddef.h'
   );
 
 In list context, the method returns the names of all

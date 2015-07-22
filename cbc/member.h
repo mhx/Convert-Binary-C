@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/02/21 09:18:38 +0000 $
-* $Revision: 2 $
+* $Date: 2005/10/19 10:31:14 +0100 $
+* $Revision: 3 $
 * $Source: /cbc/member.h $
 *
 ********************************************************************************
@@ -31,7 +31,8 @@
 /*===== LOCAL INCLUDES =======================================================*/
 
 #include "util/list.h"
-#include "cbc/cbc.h"
+#include "util/hash.h"
+#include "ctlib/cttype.h"
 
 
 /*===== DEFINES ==============================================================*/
@@ -63,7 +64,7 @@ int get_all_member_strings(pTHX_ MemberInfo *pMI, LinkedList list);
 SV *get_member_string(pTHX_ const MemberInfo *pMI, int offset, GMSInfo *pInfo);
 
 #define get_member CBC_get_member
-int get_member(pTHX_ CBC *THIS, const MemberInfo *pMI, const char *member,
+int get_member(pTHX_ const MemberInfo *pMI, const char *member,
                MemberInfo *pMIout, int accept_dotless_member, int dont_croak);
 
 #endif

@@ -5,6 +5,7 @@ $Data::Dumper::Indent = 1;
 
 %CC = (
             'Define' => [
+                          '__CHECKER__=1',
                           '__CHAR_BIT__=8',
                           '__DBL_DIG__=15',
                           '__DBL_EPSILON__=2.2204460492503131e-16',
@@ -112,7 +113,7 @@ $Data::Dumper::Indent = 1;
                             },
             'HasCPPComments' => 1,
             'Include' => [
-                           '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.5-20050130/include',
+                           '/usr/lib/gcc-lib/i686-pc-linux-gnu/3.3.6/include',
                            '/usr/include'
                          ],
             'CompoundAlignment' => 1

@@ -5,11 +5,11 @@ What's to do?
 for future releases (in no special order):
 ------------------------------------------
 
+* do we need a GCC bitfields engine? (dcc, ...?)
+
 * test bitfields in bench.pl
 
 * add tags to bench.pl
-
-* remove deprecated hooks methods
 
 * compile with normal perl and -Wall will show some interesting
   warnings (uninit, unused, ...)
@@ -101,12 +101,6 @@ for future releases (in no special order):
     print $c->eval("VALUE+2");
 
   would then print 6.
-
-* bitfields: add state to all functions processing bitfields
-
-    type => current type of bitfield, to detect
-            when we switch to a new type
-    bpos => bit position within current bitfield
 
 * update / cleanup test suite using Test::More
 
@@ -220,9 +214,4 @@ for future releases (in no special order):
   - should allow for use with PerlIO layers (?)
   - I have to think about that!!!
   - Any suggestions are strongly appreciated!
-
-* add bitfield support
-
-  - would need something like compiler definition files to
-    describe the behaviour of different compilers
 

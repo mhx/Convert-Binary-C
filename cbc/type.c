@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/04/22 12:51:53 +0100 $
-* $Revision: 15 $
+* $Date: 2005/10/19 16:31:26 +0100 $
+* $Revision: 17 $
 * $Source: /cbc/type.c $
 *
 ********************************************************************************
@@ -212,7 +212,7 @@ int get_member_info(pTHX_ CBC *THIS, const char *name, MemberInfo *pMI)
     {
       mi.pDecl = NULL;
       mi.level = 0;
-      (void) get_member(aTHX_ THIS, &mi, member, pMI, 0, 0);
+      (void) get_member(aTHX_ &mi, member, pMI, 0, 0);
     }
     else if (mi.type.ptr == NULL)
     {
@@ -424,7 +424,7 @@ SV *get_type_name_string(pTHX_ const MemberInfo *pMI)
             if (pValue->flags & V_IS_UNDEF)
               sv_catpvn(sv, "[]", 2);
             else
-              sv_catpvf(sv, "[%d]", pValue->iv);
+              sv_catpvf(sv, "[%ld]", pValue->iv);
 
             level++;
           }

@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/04/02 11:13:06 +0100 $
-* $Revision: 9 $
+* $Date: 2005/10/19 16:31:42 +0100 $
+* $Revision: 10 $
 * $Source: /cbc/util.c $
 *
 ********************************************************************************
@@ -633,7 +633,8 @@ void dump_sv(pTHX_ SV *buf, int level, SV *sv)
 #endif
 
   DUMP_INDENT; level++;
-  sv_catpvf(buf, "SV = %s @ %p (REFCNT = %d)\n", str, sv, SvREFCNT(sv));
+  sv_catpvf(buf, "SV = %s @ %p (REFCNT = %lu)\n",
+                 str, sv, (unsigned long) SvREFCNT(sv));
 
   switch (type)
   {
@@ -651,7 +652,7 @@ void dump_sv(pTHX_ SV *buf, int level, SV *sv)
           if (p)
           {
             DUMP_INDENT;
-            sv_catpvf(buf, "index = %d\n", c);
+            sv_catpvf(buf, "index = %ld\n", (long) c);
             dump_sv(aTHX_ buf, level, *p);
           }
         }

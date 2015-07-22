@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/02/21 09:18:43 +0000 $
-# $Revision: 2 $
+# $Date: 2005/10/19 10:31:14 +0100 $
+# $Revision: 3 $
 # $Source: /xsubs/def.xs $
 #
 ################################################################################
@@ -72,7 +72,7 @@ CBC::def(type)
       {
         mi.pDecl = NULL;
         mi.level = 0;
-        RETVAL = get_member(aTHX_ THIS, &mi, member, NULL, 0, 1) ? "member" : "";
+        RETVAL = get_member(aTHX_ &mi, member, NULL, 0, 1) ? "member" : "";
       }
     }
 

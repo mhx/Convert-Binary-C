@@ -3,8 +3,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/05/20 15:33:32 +0100 $
-# $Revision: 76 $
+# $Date: 2005/10/25 18:35:39 +0100 $
+# $Revision: 79 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -19,7 +19,7 @@
 # and emit some warnings when appropriate.
 
 BEGIN {
-  if( $] < 5.006 ) {
+  if ($] < 5.006) {
     print STDERR <<ENDWARN;
 
 --> WARNING: The version of perl you're using ($]) is very old.
@@ -29,26 +29,26 @@ BEGIN {
 -->   to make the code compatible with older versions.
 -->
 ENDWARN
-    if( $] == 5.005_03 ) {
-      print STDERR "-->   Although the module should build without problems,\n",
-                   "-->   you should try to update your perl installation.\n\n";
+    if ($] < 5.004) {
+      print STDERR "-->   But the module will not build with perl < 5.004.\n\n";
+      exit;
+    }
+    elsif ($] < 5.005) {
+      print STDERR "-->   Chances are quite good that the module will\n",
+                   "-->   build successfully, but you won't be able to\n",
+                   "-->   run the test suite, as it uses features not\n",
+                   "-->   available in perl < 5.005.\n";
     }
     else {
-      if( $] < 5.005_03 ) {
-        print STDERR "-->   Chances aren't very good that the module will\n",
-                     "-->   build successfully.\n";
-      }
-      else {
-        print STDERR "-->   Chances are quite good that the module will\n",
-                     "-->   build successfully.\n";
-      }
-      print STDERR <<ENDWARN;
+      print STDERR "-->   Chances are quite good that the module will\n",
+                   "-->   build and test successfully.\n";
+    }
+    print STDERR <<ENDWARN;
 -->
 -->   You can try to build the module with this version of
 -->   perl, but you should rather update your perl installation.
 
 ENDWARN
-    }
   }
 }
 
@@ -332,6 +332,11 @@ sub configure
     }
   }
 
+  if (eval $ExtUtils::MakeMaker::VERSION >= 6.30_01) {
+    print "Setting license tag...\n";
+    $config->{'LICENSE'} = 'perl';
+  }
+
   $config;
 }
 
@@ -559,29 +564,6 @@ sub MY::perldepend
   $dep =~ s/^(C\.c\s*:)/$1 @deps /m;
 
   $dep
-}
-
-sub MY::metafile
-{
-  package MY;
-  my $self = shift;
-  eval { require YAML; 1 }
-      or return $self->SUPER::metafile_target(@_);
-
-  my $node = new YAML::Node {};
-
-  $node->{name}              = $self->{DISTNAME};
-  $node->{version}           = $self->{VERSION};
-  $node->{license}           = 'perl';
-  $node->{distribution_type} = 'module';
-  $node->{generated_by}      = "$::MODULE $0";
-
-  my $dump = YAML::Dump($node);
-
-  $dump =~ s/^(.*)$/\t\$(NOECHO) \$(ECHO) "$1" >>META.yml/gm;
-  $dump =~ s/>>META\.yml/>META.yml/;
-
-  return "metafile:\n$dump";
 }
 
 # The following routines will extract the include dependencies

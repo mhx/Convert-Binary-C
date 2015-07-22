@@ -21,8 +21,8 @@ struct test2 {
 END
 
 $d = $c->clone;
-$d->add_hooks(hook => { pack   => \&identity,
-                        unpack => \&identity });
+$d->tag('hook', Hooks => { pack   => \&identity,
+                           unpack => \&identity });
 
 $string = 'x' x 400;
 $test1 = { a => [1 .. 10], b => [11 .. 100] };

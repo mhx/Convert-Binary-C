@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/05/29 09:23:02 +0100 $
-* $Revision: 11 $
+* $Date: 2005/10/19 16:30:50 +0100 $
+* $Revision: 12 $
 * $Source: /cbc/option.c $
 *
 ********************************************************************************
@@ -382,7 +382,7 @@ static void keyword_map(pTHX_ HashTable *current, SV *sv, SV **rval)
             const char *map;
 
             if (SvROK(value))
-              FAIL_CLEAN((aTHX_ "Cannot use a reference as a keyword", key));
+              FAIL_CLEAN((aTHX_ "Cannot use a reference as a keyword"));
 
             map = SvPV_nolen(value);
 
@@ -1088,7 +1088,7 @@ SV *get_native_property(pTHX_ const char *property)
 void post_configure_update(pTHX_ CBC *THIS)
 {
   BitfieldLayouter bl = THIS->cfg.layout.bflayouter;
-  BLPropValue val = { BLPVT_STR };
+  BLPropValue val = { BLPVT_STR, { 0 } };
   enum BLError error;
 
   switch (THIS->as.bo)

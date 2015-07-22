@@ -89,4 +89,4 @@ ispell:
 	@$(ISPELL) ccconfig.pod
 
 include:
-	@ln -s ../../t/include/include include
+	@ln -s ../../tests/include/include include

@@ -17,7 +17,7 @@ $|++;
 
 print <<ENDHDR;
 ========================================================================
-          Benchmarking Convert::Binary::C release $Convert::Binary::C::VERSION
+          Benchmarking Convert::Binary::C release $Convert::Binary::C::XS_VERSION
 ========================================================================
 ENDHDR
 
@@ -45,11 +45,12 @@ for my $k (keys %config) {
   eval { $c->configure($k => $config{$k}) };
   if ($@) {
     $@ =~ s/^/| /mg;
-    warn "Option '$k' doesn't seem to be supported in release $Convert::Binary::C::VERSION:\n$@";
+    warn "Option '$k' doesn't seem to be supported in release $Convert::Binary::C::XS_VERSION:\n$@";
   }
 }
 
-$c->parse_file('t/include/include.c')->parse_file('devel/bench.h');
+$c->parse_file('t/include/include.c');
+$c->parse_file('devel/bench.h');
 my $type = 'forfaulture';
 
 my $d = 'x' x $c->sizeof( $type );
@@ -126,7 +127,7 @@ for my $test (sort keys %tests) {
   eval { $tests{$test}->() };
   if ($@) {
     $@ =~ s/^/| /mg;
-    warn "Cannot run '$test' test on release $Convert::Binary::C::VERSION:\n$@";
+    warn "Cannot run '$test' test on release $Convert::Binary::C::XS_VERSION:\n$@";
     delete $tests{$test};
   }
 }

@@ -2,8 +2,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/04/22 12:51:54 +0100 $
-# $Revision: 4 $
+# $Date: 2005/10/19 10:31:15 +0100 $
+# $Revision: 5 $
 # $Source: /xsubs/offsetof.xs $
 #
 ################################################################################
@@ -49,7 +49,7 @@ CBC::offsetof(type, member)
     if (!get_member_info(aTHX_ THIS, type, &mi))
       Perl_croak(aTHX_ "Cannot find '%s'", type);
 
-    (void) get_member(aTHX_ THIS, &mi, member, &mi2, 1, 0);
+    (void) get_member(aTHX_ &mi, member, &mi2, 1, 0);
 
     if (mi2.pDecl && mi2.pDecl->bitfield_flag)
       Perl_croak(aTHX_ "Cannot use %s on bitfields", method);

@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/06/13 20:34:35 +0100 $
-* $Revision: 33 $
+* $Date: 2005/10/19 16:31:14 +0100 $
+* $Revision: 34 $
 * $Source: /cbc/pack.c $
 *
 ********************************************************************************
@@ -1198,7 +1198,7 @@ static SV *unpack_struct(pPACKARGS, const Struct *pStruct, HV *hash)
           {
             if (hv_exists(h, pDecl->identifier, klen))
             {
-              WARN((aTHX_ "Member '%s' used more than once in %s%s%s defined in %s(%d)",
+              WARN((aTHX_ "Member '%s' used more than once in %s%s%s defined in %s(%ld)",
                     pDecl->identifier,
                     pStruct->tflags & T_UNION ? "union" : "struct",
                     pStruct->identifier[0] != '\0' ? " " : "",

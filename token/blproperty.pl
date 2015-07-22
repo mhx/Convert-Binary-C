@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2005/05/23 14:08:55 +0100 $
-# $Revision: 6 $
+# $Date: 2005/10/19 16:32:15 +0100 $
+# $Revision: 7 $
 # $Source: /token/blproperty.pl $
 #
 ################################################################################
@@ -144,7 +144,7 @@ END
           push @optspec, "{ $name, BLPVT_$uctype, sizeof $opt / sizeof $opt\[0], &$opt\[0] }";
         }
         else {
-          push @optspec, "{ $name, BLPVT_$uctype, 0 }";
+          push @optspec, "{ $name, BLPVT_$uctype, 0, 0 }";
         }
       }
 
@@ -236,7 +236,7 @@ const char *bl_property_string(BLProperty property)
 $blp_strings
   };
 
-  if (property >= 0 && property < sizeof properties / sizeof properties[0])
+  if (property < sizeof properties / sizeof properties[0])
     return properties[property];
 
   return NULL;
@@ -248,7 +248,7 @@ const char *bl_propval_string(BLPropValStr propval)
 $blpv_strings
   };
 
-  if (propval >= 0 && propval < sizeof propvalues / sizeof propvalues[0])
+  if (propval < sizeof propvalues / sizeof propvalues[0])
     return propvalues[propval];
 
   return NULL;

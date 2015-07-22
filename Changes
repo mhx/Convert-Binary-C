@@ -1,4 +1,26 @@
 -------------------------
+Version 0.60 (2005-10-26)
+-------------------------
+
+* fixed: the byte order setting was not correctly handed
+  to the bitfield layouter when using configure() before
+  using parse(); since that's what C::B::C::Cached does,
+  C::B::C::Cached could be using the wrong byte order for
+  bitfields
+
+* the deprecated methods add_hooks(), delete_hooks() and
+  delete_all_hooks() have been removed
+
+* silence some warnings with newer gcc versions
+
+* start moving test suite to use Test::More
+
+* bundle Test, Test::More and Test::Harness for older
+  perl versions
+
+* extend compatibility down to perl 5.005
+
+-------------------------
 Version 0.59 (2005-06-13)
 -------------------------
 

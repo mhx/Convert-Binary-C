@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/04/22 21:33:41 +0100 $
-* $Revision: 10 $
+* $Date: 2005/10/19 10:31:12 +0100 $
+* $Revision: 11 $
 * $Source: /cbc/member.c $
 *
 ********************************************************************************
@@ -34,7 +34,6 @@
 
 /*===== LOCAL INCLUDES =======================================================*/
 
-#include "ctlib/cttype.h"
 #include "cbc/member.h"
 #include "cbc/util.h"
 
@@ -729,7 +728,7 @@ SV *get_member_string(pTHX_ const MemberInfo *pMI, int offset, GMSInfo *pInfo)
           goto error;                                                          \
         } STMT_END
 
-int get_member(pTHX_ CBC *THIS, const MemberInfo *pMI, const char *member,
+int get_member(pTHX_ const MemberInfo *pMI, const char *member,
                MemberInfo *pMIout, int accept_dotless_member, int dont_croak)
 {
   const TypeSpec    *pType;

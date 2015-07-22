@@ -10,8 +10,8 @@
 *
 * $Project: /Convert-Binary-C $
 * $Author: mhx $
-* $Date: 2005/06/10 13:26:54 +0100 $
-* $Revision: 16 $
+* $Date: 2005/10/25 18:54:43 +0100 $
+* $Revision: 18 $
 * $Source: /ctlib/bitfields.c $
 *
 ********************************************************************************
@@ -49,6 +49,8 @@
 #  undef BITS
 #endif
 #define BITS(bytes)        (8*(bytes))
+
+#define BYTE_ORDER_STRING  (self->byte_order == BLPV_BIG_ENDIAN ? "BE" : "LE")
 
 /*===== TYPEDEFS =============================================================*/
 
@@ -353,9 +355,9 @@ static enum BLError Generic_push(aSELF, const BLPushParam *pParam)
     self->bit_offset = new_bit_offset;
   }
 
-  CT_DEBUG(CTLIB, ("(Generic) new bitfield (%s) at (offset=%d, size=%d, pos=%d, bits=%d)",
-                   pParam->pDecl->identifier, pParam->pDecl->offset,
-                   bit->size, bit->pos, bit->bits));
+  CT_DEBUG(CTLIB, ("(Generic) new %s bitfield (%s) at (offset=%d, size=%d, pos=%d, bits=%d)",
+                   BYTE_ORDER_STRING, pParam->pDecl->identifier,
+                   pParam->pDecl->offset, bit->size, bit->pos, bit->bits));
 
   return BLE_NO_ERROR;
 }
@@ -550,9 +552,9 @@ static enum BLError Microsoft_push(aSELF, const BLPushParam *pParam)
     pParam->pDecl->size   = self->cur_type_size;
     bit->size             = self->cur_type_size;
 
-    CT_DEBUG(CTLIB, ("(Microsoft) new bitfield (%s) at (offset=%d, size=%d, pos=%d, bits=%d), bit_offset=%d",
-                     pParam->pDecl->identifier, pParam->pDecl->offset, bit->size,
-                     bit->pos, bit->bits, self->bit_offset));
+    CT_DEBUG(CTLIB, ("(Microsoft) new %s bitfield (%s) at (offset=%d, size=%d, pos=%d, bits=%d), bit_offset=%d",
+                     BYTE_ORDER_STRING, pParam->pDecl->identifier,
+                     pParam->pDecl->offset, bit->size, bit->pos, bit->bits, self->bit_offset));
   }
 
   return BLE_NO_ERROR;
@@ -711,9 +713,9 @@ static enum BLError Simple_push(aSELF, const BLPushParam *pParam)
 
     self->bits_left -= bit->bits;
 
-    CT_DEBUG(CTLIB, ("(Simple) new bitfield (%s) at (offset=%d, size=%d, pos=%d, bits=%d), bits_left=%d",
-                     pParam->pDecl->identifier, pParam->pDecl->offset, pParam->pDecl->size,
-                     bit->pos, bit->bits, self->bits_left));
+    CT_DEBUG(CTLIB, ("(Simple) new %s bitfield (%s) at (offset=%d, size=%d, pos=%d, bits=%d), bits_left=%d",
+                     BYTE_ORDER_STRING, pParam->pDecl->identifier,
+                     pParam->pDecl->offset, pParam->pDecl->size, bit->pos, bit->bits, self->bits_left));
   }
 
   return BLE_NO_ERROR;
@@ -860,10 +862,12 @@ static const char *bl_class_name(BitfieldLayouter self)
 BitfieldLayouter bl_create(const char *class_name)
 {
   BitfieldLayouter self;
-  int i;
+  unsigned i;
   const struct BLClass *pc = NULL;
 
   assert(class_name != NULL);
+
+  CT_DEBUG(CTLIB, ("trying to create new [%s] bitfield layouter", class_name));
 
   for (i = 0; i < sizeof bl_classes / sizeof bl_classes[0]; i++)
     if (strcmp(class_name, bl_classes[i].name) == 0)
@@ -873,7 +877,10 @@ BitfieldLayouter bl_create(const char *class_name)
     }
 
   if (pc == NULL)
+  {
+    CT_DEBUG(CTLIB, ("no such bitfield layouter class [%s]", class_name));
     return NULL;
+  }
 
   AllocF(BitfieldLayouter, self, pc->size);
   memset(self, 0, pc->size);
@@ -883,6 +890,8 @@ BitfieldLayouter bl_create(const char *class_name)
 
   if (self->m->init)
     self->m->init(self);
+
+  CT_DEBUG(CTLIB, ("created new [%s] bitfield layouter", class_name));
 
   return self;
 }
