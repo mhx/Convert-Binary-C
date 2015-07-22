@@ -3,8 +3,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/09 18:18:05 +0000 $
-# $Revision: 88 $
+# $Date: 2006/01/16 17:03:09 +0000 $
+# $Revision: 89 $
 # $Source: /Makefile.PL $
 #
 ################################################################################
@@ -340,6 +340,8 @@ sub configure
 no_index:
     directory:
         - support
+    file:
+        - bin/elf.PL
 META
   }
 

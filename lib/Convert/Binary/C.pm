@@ -10,8 +10,8 @@
 #
 # $Project: /Convert-Binary-C $
 # $Author: mhx $
-# $Date: 2006/01/04 22:47:09 +0000 $
-# $Revision: 78 $
+# $Date: 2006/01/16 17:02:50 +0000 $
+# $Revision: 79 $
 # $Source: /lib/Convert/Binary/C.pm $
 #
 ################################################################################
@@ -31,9 +31,11 @@ use vars qw( @ISA $VERSION $XS_VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = do { my @r = '$Snapshot: /Convert-Binary-C/0.63_01 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$VERSION    = do { my @r = '$Snapshot: /Convert-Binary-C/0.64 $' =~ /(\d+\.\d+(?:_\d+)?)/; @r ? $r[0] : '9.99' };
+$XS_VERSION = $VERSION;
+$VERSION    = eval $VERSION;
 
-bootstrap Convert::Binary::C $VERSION;
+bootstrap Convert::Binary::C $XS_VERSION;
 
 # Unfortunately, XS AUTOLOAD isn't supported
 # by stable perl distributions before 5.8.0.
