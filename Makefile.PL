@@ -348,6 +348,7 @@ sub configure
     $config->{'LICENSE'} = 'perl';
     if (eval $ExtUtils::MakeMaker::VERSION >= 6.45_01) {
       $config->{'META_MERGE'} = {
+        'meta-spec' => { version => 2 },
         no_index => {
           directory => [qw( support )],
           file      => [qw( bin/elf.PL )],
@@ -357,6 +358,11 @@ sub configure
           homepage    => 'http://search.cpan.org/~mhx/Convert-Binary-C/',
           bugtracker  => 'http://rt.cpan.org/NoAuth/Bugs.html?Dist=Convert-Binary-C',
           MailingList => 'convert-binary-c@yahoogroups.com',
+          repository  => {
+            type => 'git',
+            url  => 'https://github.com/mhx/Convert-Binary-C.git',
+            web  => 'https://github.com/mhx/Convert-Binary-C',
+          },
         },
       }
     }
