@@ -157,7 +157,7 @@ arbitrarily complex data structures. Its object-oriented
 interface has L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> methods
 that act as replacements for
 Perl's L<C<pack>|perlfunc/"pack"> and L<C<unpack>|perlfunc/"unpack"> and
-allow to use C types instead of a string representation
+allow one to use C types instead of a string representation
 of the data structure for conversion of binary data from and
 to Perl's complex data structures.
 
@@ -557,7 +557,7 @@ stack.
 
 The C<pack> pragma as it is currently implemented only affects
 the I<maximum> struct member alignment. There are compilers
-that also allow to specify the I<minimum> struct member
+that also allow one to specify the I<minimum> struct member
 alignment. This is not supported by Convert::Binary::C.
 
 =head2 Automatic configuration using C<ccconfig>
