@@ -1,4 +1,18 @@
 -------------------------
+Version 0.78 (2016-02-14)
+-------------------------
+
+* added Clang support to ccconfig
+
+* fix cpan #109978: improve wording/grammar in POD; thanks to
+  gregor herrmann for providing a patch
+
+* fix cpan #95716: Add support for #warn/#warning; thanks to
+  Jon DuSaint for providing an initial patch
+
+* update module metadata
+
+-------------------------
 Version 0.77 (2015-07-22)
 -------------------------
 
