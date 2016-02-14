@@ -130,6 +130,7 @@ use constant UNKNOWN     => 0;
 use constant GNU_GCC     => 1;
 use constant INTEL_ICC   => 2;
 use constant MS_VCPP     => 3;
+use constant CLANG       => 4;
 
 my %type_map;
 
@@ -449,30 +450,24 @@ sub get_config
   my %def;
   my $compiler = $self->_compiler;
 
-  if( $compiler == GNU_GCC ) {
-    $self->_msg( "You're using the GNU compiler." );
-    %def = (
-      '__attribute(x)'    => '',
-      '__attribute__(x)'  => '',
-      '__typeof(x)'       => 'int',
-      '__typeof__(x)'     => 'int',
-      '__alignof(x)'      => '1',
-      '__alignof__(x)'    => '1',
-      '__label__'         => 'int',
-      '__builtin_va_list' => 'int',
+  if( $compiler == GNU_GCC || $compiler == CLANG || $compiler == INTEL_ICC ) {
+    my %name = (
+      GNU_GCC, 'GNU',
+      INTEL_ICC, 'Intel ICC',
+      CLANG, 'Clang',
     );
-  }
-  elsif( $compiler == INTEL_ICC ) {
-    $self->_msg( "You're using the Intel compiler." );
+    $self->_msg( "You're using the $name{$compiler} compiler." );
     %def = (
-      '__attribute(x)'    => '',
-      '__attribute__(x)'  => '',
-      '__typeof(x)'       => 'int',
-      '__typeof__(x)'     => 'int',
-      '__alignof(x)'      => '1',
-      '__alignof__(x)'    => '1',
-      '__label__'         => 'int',
-      '__builtin_va_list' => 'int',
+      '__attribute(x)'         => '',
+      '__attribute__(x)'       => '',
+      '__typeof(x)'            => 'int',
+      '__typeof__(x)'          => 'int',
+      '__alignof(x)'           => '1',
+      '__alignof__(x)'         => '1',
+      '__label__'              => 'int',
+      '__builtin_va_list'      => 'int',
+      '__has_feature(x)'       => '0',
+      '__has_include_next(x)'  => '0',
     );
   }
   elsif( $compiler == MS_VCPP ) {
@@ -831,6 +826,8 @@ sub run_checks
 sub _compiler
 {
   my $self = shift;
+
+  exists $self->{predefined}{__clang__}        and return CLANG;
 
   exists $self->{predefined}{__GNUC__}         and return GNU_GCC;
 
@@ -1739,6 +1736,7 @@ sub _get_predefined
   my $pos = 0;
 
   my @stdnames = qw( __LINE__ __FILE__ __DATE__ __TIME__ __STDC__ _Pragma );
+  my @special = qw( __has_extension __has_include_next __has_feature __has_attribute );
 
   $self->_msg( "\nChecking for predefined macros (this may take a while)..." );
 
@@ -1756,6 +1754,7 @@ sub _get_predefined
 
   while(1) {
     delete @defs{@stdnames};
+    delete @defs{@special};
 
     $self->_work_in_progress( "($count) $pos/$max" );
 
