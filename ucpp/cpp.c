@@ -1645,10 +1645,10 @@ line_macro_err:
 }
 
 /*
- * a #error directive: we emit the message without any modification
- * (except the usual backslash+newline and trigraphs)
+ * An #error or #warning directive: we emit the message without any
+ * modification (except the usual backslash+newline and trigraphs)
  */
-static void handle_error(pCPP_ struct lexer_state *ls)
+static void handle_error(pCPP_ struct lexer_state *ls, int iserror)
 {
 	int c;
 	size_t p = 0, lp = 128;
@@ -1660,7 +1660,8 @@ static void handle_error(pCPP_ struct lexer_state *ls)
 		wan(buf, p, (unsigned char)c, lp);
 	}
 	wan(buf, p, 0, lp);
-	error(aCPP_ l, "#error%s", buf);
+	if (iserror) error(aCPP_ l, "#error%s", buf);
+	else         warning(aCPP_ l, "#warning%s", buf);
 	freemem(buf);
 }
 
@@ -1982,9 +1983,13 @@ static int handle_cpp(pCPP_ struct lexer_state *ls, int sharp_type)
 				handle_pragma(aCPP_ ls);
 				goto handle_exit;
 
+                        case PPDIR_WARNING:
+				handle_error(aCPP_ ls, 0);
+				goto handle_exit;
+
 			case PPDIR_ERROR:
 				ret = 1;
-				handle_error(aCPP_ ls);
+				handle_error(aCPP_ ls, 1);
 				goto handle_exit;
 
 			case PPDIR_LINE:

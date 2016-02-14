@@ -6,7 +6,7 @@
 #
 ################################################################################
 
-use Test::More tests => 37;
+use Test::More tests => 39;
 use Convert::Binary::C @ARGV;
 use strict;
 
@@ -52,6 +52,15 @@ END
 };
 is($@, '', "parse code with #ident correctly");
 is($s, $c->sizeof('int'));
+
+#------------------------------
+# check #warn / #warning
+#------------------------------
+
+$s = $c->clean->parse('#warning "A #warning!"');
+ok($s, qr/#warn/);
+$s = $c->clean->parse('#warn "A #warn!"');
+ok($s, qr/#warning/);
 
 #----------------
 # various checks

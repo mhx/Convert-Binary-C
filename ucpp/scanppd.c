@@ -15,6 +15,7 @@ static enum {
   PPDIR_ASSERT,
   PPDIR_UNASSERT,
   PPDIR_IDENT,
+  PPDIR_WARNING,
   PPDIR_UNKNOWN
 }
 scan_pp_directive(const char *ppdir)
@@ -275,6 +276,21 @@ switch( ppdir[0] )
       default:
         goto unknown;
     }
+
+  case 'w':
+    if( ppdir[1] == 'a' &&
+        ppdir[2] == 'r' &&
+        ppdir[3] == 'n' &&
+        (ppdir[4] == '\0' ||
+         (ppdir[4] == 'i' &&
+          ppdir[5] == 'n' &&
+          ppdir[6] == 'g' &&
+          ppdir[7] == '\0' )))                       /* warning    */
+    {
+      return PPDIR_WARNING;
+    }
+
+    goto unknown;
 
   default:
     goto unknown;
