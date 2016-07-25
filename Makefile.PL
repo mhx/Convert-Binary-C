@@ -354,9 +354,11 @@ sub configure
           file      => [qw( bin/elf.PL )],
         },
         resources => {
-          license     => 'http://dev.perl.org/licenses/',
+          license     => [ 'http://dev.perl.org/licenses/' ],
           homepage    => 'http://search.cpan.org/~mhx/Convert-Binary-C/',
-          bugtracker  => 'http://rt.cpan.org/NoAuth/Bugs.html?Dist=Convert-Binary-C',
+          bugtracker  => {
+            web => 'http://rt.cpan.org/NoAuth/Bugs.html?Dist=Convert-Binary-C',
+          },
           MailingList => 'convert-binary-c@yahoogroups.com',
           repository  => {
             type => 'git',
