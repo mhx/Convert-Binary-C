@@ -8,7 +8,7 @@ my @inc = qw(
   /usr/include
 );
 
-my $p = new Convert::Binary::C Include => [@inc];
+my $p = Convert::Binary::C->new(Include => [@inc]);
 
 $p->parse( <<'ENDC' );
 #include <stdio.h>

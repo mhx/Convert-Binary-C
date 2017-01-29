@@ -5,7 +5,7 @@ use strict;
 my $cfg = require '../../tests/include/config.pl';
 s!^tests!../../tests! for @{$cfg->{Include}};
 
-my $c = new Convert::Binary::C %$cfg;
+my $c = Convert::Binary::C->new(%$cfg);
 
 $c->parse_file( '../../tests/include/include.c' );
 

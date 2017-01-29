@@ -7,7 +7,7 @@ struct foo {
 typedef int foo;
 #-8<-
 
-$c = new Convert::Binary::C;
+$c = Convert::Binary::C->new;
 $size = $c->sizeof('unsigned long');
 $data = $c->pack('short int', 42);
 

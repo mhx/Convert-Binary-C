@@ -2,7 +2,7 @@ use Convert::Binary::C;
 use Data::Dumper;
 $Data::Dumper::Indent = 0;
 
-$c = new Convert::Binary::C;
+$c = Convert::Binary::C->new;
 
 #-8<-
 

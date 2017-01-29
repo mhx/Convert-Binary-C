@@ -6,7 +6,7 @@ $c = Convert::Binary::C->new;
 
 #-8<-
 
-$c = new Convert::Binary::C;
+$c = Convert::Binary::C->new;
 
 #-8<-
 
@@ -15,8 +15,8 @@ $c->configure(ByteOrder => 'LittleEndian',
 
 #-8<-
 
-$c = new Convert::Binary::C ByteOrder => 'LittleEndian',
-                            Alignment => 2;
+$c = Convert::Binary::C->new(ByteOrder => 'LittleEndian',
+                             Alignment => 2);
 
 #-8<-
 

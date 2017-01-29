@@ -64,7 +64,7 @@ use vars qw(%config);
 
 do $OPT{cfgfile};
 
-my $c = new Convert::Binary::C %config;
+my $c = Convert::Binary::C->new(%config);
 
 $c->parse_file('test.h');
 
@@ -86,7 +86,7 @@ $init =~ s/(-?\d+)/
            "$1$suf";
          /ge;
 
-my $cc  = new Compiler::Config %OPT, ccflags => [@ARGV];
+my $cc  = Compiler::Config->new(%OPT, ccflags => [@ARGV]);
 # my $cfg = $cc->get_config;
 
 my $bin = $cc->_test_type($c->sourcify, 'test', $init, $c->sizeof('test'));
@@ -411,7 +411,7 @@ sub check_config
 
   $self->{debug} and import Convert::Binary::C debug => 'all';
 
-  my $c = eval { new Convert::Binary::C };
+  my $c = eval { Convert::Binary::C->new };
   $@ and return {code => ERR_CREATE};
 
   eval { $c->configure( %$config ) };
@@ -888,7 +888,7 @@ ENDC
   my $res = $self->_compile_temp;
   $res->{status} and return undef;
 
-  my $fh = new IO::File $self->{obj} or return undef;
+  my $fh = IO::File->new($self->{obj}) or return undef;
   binmode $fh;
 
   my $obj = do { local $/; <$fh> };
@@ -1977,7 +1977,7 @@ sub _names
     $files{$file} = 1;
     $ff = keys %files;
     $self->_work_in_progress( "$ff files found" );
-    my $fh = new IO::File $file;
+    my $fh = IO::File->new($file);
     next unless defined $fh;
     while( <$fh> ) {
       if( /^\s*#\s*include\s*[<"]([^>"]+)[>"]/ ) {
@@ -1999,7 +1999,7 @@ sub _names
     $fs++;
     $self->_work_in_progress( "($count) $fs/$ff files scanned" );
     -e $name or next;
-    my $fh = new IO::File $name;
+    my $fh = IO::File->new($name);
     next unless defined $fh;
     my $file = do { local $/; <$fh> };
     $file =~ s{\\\s*$/}{}g;
@@ -2240,7 +2240,7 @@ sub _temp
     unlink $self->{temp}
       or croak "Could not remove temporary file '$self->{temp}': $!\n";
   }
-  my $f = new IO::File ">$self->{temp}";
+  my $f = IO::File->new(">$self->{temp}");
   defined $f
     or croak "Could not open temporary file '$self->{temp}': $!\n";
   $f->print( @_ );

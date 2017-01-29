@@ -85,10 +85,10 @@ $OPT{upload} and upload_file( $hosts[0], $file );
 $OPT{remove} and remove_reports( $hosts[0] );
 
 if ($OPT{compile}) {
-  my @t = map { new threads
+  my @t = map { threads->new(
    \&test_compile, $_, $file
   # \&version, $_
-  } @hosts;
+  ) } @hosts;
   
   $_->join for @t;
 }
@@ -161,7 +161,7 @@ $perl -v
 $perl -V
 END
 
-  my $f = new IO::File;
+  my $f = IO::File->new;
   $f->open( ">version-$host->{ip}.log" );
   $f->print( @lines );
   $f->close;
@@ -203,7 +203,7 @@ cd ..
 rm -rf $dist
 END
 
-  my $f = new IO::File;
+  my $f = IO::File->new;
   $f->open( ">testdrive-$host->{ip}.log" );
   $f->print( @lines );
   $f->close;

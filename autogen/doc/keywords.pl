@@ -11,7 +11,7 @@ while (<FILE>) {
 
 close FILE;
 
-my $c = new Convert::Binary::C;
+my $c = Convert::Binary::C->new;
 my @kw;
 
 for my $k (sort keys %h) {

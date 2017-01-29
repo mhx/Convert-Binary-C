@@ -6,7 +6,7 @@ use Data::Dumper;
 
 my $code = do { local $/; <DATA> };
 
-my $p = new Convert::Binary::C;
+my $p = Convert::Binary::C->new;
 $p->parse( $code );
 
 print Data::Dumper->Dump( [[$p->enum],[$p->struct],[$p->typedef]],

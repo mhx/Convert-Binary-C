@@ -21,7 +21,7 @@ Pod::ParseUtils - helpers for POD parsing and conversion
 
   use Pod::ParseUtils;
 
-  my $list = new Pod::List;
+  my $list = Pod::List->new;
   my $link = Pod::Hyperlink->new('Pod::Parser');
 
 =head1 DESCRIPTION
