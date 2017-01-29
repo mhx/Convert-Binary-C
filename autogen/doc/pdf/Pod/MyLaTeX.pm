@@ -1117,7 +1117,7 @@ sub interior_sequence {
 
   } elsif ($seq_command eq 'L') {
 
-    my $link = new Pod::Hyperlink($seq_argument);
+    my $link = Pod::Hyperlink->new($seq_argument);
 
     # undef on failure
     unless (defined $link) {
@@ -1161,7 +1161,7 @@ sub interior_sequence {
   } elsif ($seq_command eq 'P') {
     print "[$seq_argument]\n";
     if( exists $self->{KnownPODs}{$seq_argument} ) {
-      my $link = new Pod::Hyperlink($seq_argument);
+      my $link = Pod::Hyperlink->new($seq_argument);
 
       # undef on failure
       unless (defined $link) {
@@ -1232,7 +1232,7 @@ sub begin_list {
 
   # Indicate that a list should be started for the next item
   # need to do this to work out the type of list
-  push ( @{$self->lists}, new Pod::List(-indent => $indent, 
+  push ( @{$self->lists}, Pod::List->new(-indent => $indent, 
 					-start => $line_num,
 					-file => $self->input_file,
 				       )	 

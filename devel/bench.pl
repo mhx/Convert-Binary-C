@@ -44,7 +44,7 @@ my %config = (
   Include      => ['tests/include/perlinc', 'tests/include/include'],
 );
 
-my $c = new Convert::Binary::C;
+my $c = Convert::Binary::C->new;
 
 for my $k (keys %config) {
   eval { $c->configure($k => $config{$k}) };

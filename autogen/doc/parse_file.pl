@@ -1,6 +1,6 @@
 use Convert::Binary::C;
 
-$c = new Convert::Binary::C;
+$c = Convert::Binary::C->new;
 
 #-8<-
 $c->parse(<<'#-8<-');

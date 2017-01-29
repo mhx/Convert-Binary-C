@@ -16,8 +16,8 @@
 
 use Devel::Tokenizer::C;
 
-$t = new Devel::Tokenizer::C TokenFunc => \&tok_code,
-                             TokenEnd  => 'PRAGMA_TOKEN_END';
+$t = Devel::Tokenizer::C->new(TokenFunc => \&tok_code,
+                              TokenEnd  => 'PRAGMA_TOKEN_END');
 
 $t->add_tokens( qw(
   pack
