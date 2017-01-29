@@ -218,7 +218,7 @@ $Data::Dumper::Indent = 1;
 
 use Config;
 
-$c = new Convert::Binary::C %CC, OrderMembers => 1;
+$c = Convert::Binary::C->new(%CC, OrderMembers => 1);
 $c->Include(["$Config{archlib}/CORE", @{$c->Include}]);
 $c->parse(<<ENDC);
 #include "EXTERN.h"

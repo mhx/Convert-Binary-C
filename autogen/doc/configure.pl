@@ -3,8 +3,8 @@ use Data::Dumper;
 use vars qw( $order ); #-8<-
 $Data::Dumper::Indent = 1; #-8<-
 
-$c = new Convert::Binary::C Define  => ['DEBUGGING', 'FOO=123'],
-                            Include => ['/usr/include'];
+$c = Convert::Binary::C->new(Define  => ['DEBUGGING', 'FOO=123'],
+                             Include => ['/usr/include']);
 
 print Dumper($c->configure);
 
@@ -29,7 +29,7 @@ $c->Define(['foo', 'bar=123']);
 
 #-8<- 6
 
-$c = new Convert::Binary::C Include => ['/include'];
+$c = Convert::Binary::C->new(Include => ['/include']);
 $c->Include('/usr/include', '/usr/local/include');
 print Dumper($c->Include);
 

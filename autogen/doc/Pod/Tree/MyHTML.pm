@@ -61,7 +61,7 @@ sub _resolve_source
 
     isa $source, 'Pod::Tree' and return $source;
 
-    my $tree = new Pod::Tree;
+    my $tree = Pod::Tree->new;
     not $ref		    and $tree->load_file      ( $source);
     isa $source, 'IO::File' and $tree->load_fh	      ( $source);
     $ref eq 'SCALAR'        and $tree->load_string    ($$source);
@@ -80,11 +80,11 @@ sub _resolve_dest
     local *isa = \&UNIVERSAL::isa;
 
     isa $dest, 'HTML::Stream' and return 		  $dest;
-    ref $dest 		      and return new HTML::Stream $dest;
+    ref $dest 		      and return HTML::Stream->new($dest);
 
-    my $fh = new IO::File;
+    my $fh = IO::File->new;
     $fh->open(">$dest") or die "Pod::Tree::MyHTML::new: Can't open $dest: $!\n";
-    new HTML::Stream $fh
+    HTML::Stream->new($fh)
 }
 
 

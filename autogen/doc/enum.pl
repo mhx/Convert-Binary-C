@@ -2,7 +2,7 @@ use Convert::Binary::C;
 use Data::Dumper;
 $Data::Dumper::Indent = 1;
 
-$c = new Convert::Binary::C;
+$c = Convert::Binary::C->new;
 $c->parse_file('definitions.c');
 
 #-8<-
