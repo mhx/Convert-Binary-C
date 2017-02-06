@@ -9,7 +9,7 @@
 use Test::More tests => 377;
 use Convert::Binary::C @ARGV;
 
-my $c = new Convert::Binary::C IntSize => 4, CharSize => 1, Alignment => 1;
+my $c = Convert::Binary::C->new(IntSize => 4, CharSize => 1, Alignment => 1);
 
 eval {
 $c->parse(<<'ENDC');

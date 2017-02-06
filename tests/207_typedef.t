@@ -13,7 +13,7 @@ $^W = 1;
 
 BEGIN { plan tests => 30 }
 
-eval { $c = new Convert::Binary::C; };
+eval { $c = Convert::Binary::C->new; };
 ok($@,'',"failed to create Convert::Binary::C object");
 
 eval {

@@ -20,11 +20,11 @@ unless ($reason) {
   $reason = 'cannot use dualvar()' if $@;
 }
 
-my $c = new Convert::Binary::C ByteOrder   => 'BigEndian',
+my $c = Convert::Binary::C->new(ByteOrder   => 'BigEndian',
                                EnumType    => 'String',
                                EnumSize    => 4,
                                IntSize     => 4,
-                               PointerSize => 4;
+                               PointerSize => 4);
 
 $c->parse(<<'ENDC');
 

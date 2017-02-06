@@ -35,7 +35,7 @@ MSG
 #-------------------------------------
 
 my $cfg = require "$base/config.pl";
-my $c = new Convert::Binary::C %$cfg;
+my $c = Convert::Binary::C->new(%$cfg);
 
 #------------------
 # Parse the C file.

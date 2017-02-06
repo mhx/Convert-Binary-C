@@ -13,9 +13,10 @@ $^W = 1;
 
 BEGIN { plan tests => 212 }
 
-$c = new Convert::Binary::C ShortSize => 2
-                          , LongSize  => 4
-                          ;
+$c = Convert::Binary::C->new(
+    ShortSize => 2,
+    LongSize  => 4,
+);
 
 eval { $c->parse(<<ENDC) };
 

@@ -18,7 +18,7 @@ BEGIN {
 $SIG{__WARN__} = sub { push @warn, $_[0] };
 
 eval {
-  $c = new Convert::Binary::C;
+  $c = Convert::Binary::C->new;
 };
 ok($@,'',"failed to create Convert::Binary::C object");
 

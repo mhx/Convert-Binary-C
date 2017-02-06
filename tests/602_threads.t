@@ -56,16 +56,18 @@ sub task
   my $p;
 
   eval {
-    $p = new Convert::Binary::C %$CCCFG,
-                                EnumSize       => 0,
-                                ShortSize      => 2,
-                                IntSize        => 4,
-                                LongSize       => 4,
-                                LongLongSize   => 8,
-                                PointerSize    => 4,
-                                FloatSize      => 4,
-                                DoubleSize     => 8,
-                                LongDoubleSize => 12;
+    $p = Convert::Binary::C->new(
+        %$CCCFG,
+        EnumSize       => 0,
+        ShortSize      => 2,
+        IntSize        => 4,
+        LongSize       => 4,
+        LongLongSize   => 8,
+        PointerSize    => 4,
+        FloatSize      => 4,
+        DoubleSize     => 8,
+        LongDoubleSize => 12,
+    );
     if ($arg % 2) {
       print "# parse_file ($arg) called\n";
       $p->parse_file('tests/include/include.c');

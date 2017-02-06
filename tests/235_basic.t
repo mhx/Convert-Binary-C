@@ -13,7 +13,7 @@ $^W = 1;
 
 BEGIN { plan tests => 54 }
 
-my $c = new Convert::Binary::C;
+my $c = Convert::Binary::C->new();
 
 for my $t ( 'char'
           , 'signed char'
