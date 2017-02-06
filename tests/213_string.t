@@ -14,9 +14,9 @@ $^W = 1;
 BEGIN { plan tests => 91 }
 
 eval {
-  $C{B} = new Convert::Binary::C LongSize     => 4,
+  $C{B} = Convert::Binary::C->new(LongSize     => 4,
                                  LongLongSize => 8,
-                                 ByteOrder    => 'BigEndian';
+                                 ByteOrder    => 'BigEndian');
 };
 ok($@,'',"failed to create Convert::Binary::C object");
 

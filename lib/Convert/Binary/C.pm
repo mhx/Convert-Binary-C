@@ -326,13 +326,9 @@ to load the module. Its interface is completely object
 oriented, so it doesn't export any functions.
 
 Next, you need to create a new Convert::Binary::C object. This
-can be done by either
+can be done via
 
   $c = Convert::Binary::C->new;
-
-or
-
-  $c = new Convert::Binary::C;
 
 You can optionally pass configuration options to
 the L<constructor|/"new"> as described in the next section.

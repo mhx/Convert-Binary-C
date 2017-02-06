@@ -9,8 +9,11 @@
 use Test::More tests => 32;
 use Convert::Binary::C @ARGV;
 
-my $c = new Convert::Binary::C ByteOrder => 'LittleEndian',
-                               IntSize => 4, EnumSize => 4;
+my $c = Convert::Binary::C->new(
+    ByteOrder => 'LittleEndian',
+    IntSize => 4,
+    EnumSize => 4,
+);
 
 eval {
   $c->parse(<<ENDC);

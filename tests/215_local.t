@@ -18,7 +18,7 @@ BEGIN {
 my $CCCFG = require 'tests/include/config.pl';
 
 eval {
-  $c = new Convert::Binary::C;
+  $c = Convert::Binary::C->new;
 };
 ok($@,'',"failed to create Convert::Binary::C::Cached object");
 

@@ -12,7 +12,7 @@ use Convert::Binary::C @ARGV;
 my @stdname = qw( __STDC_HOSTED__ __STDC_VERSION__ );
 my @stddef  = qw( __STDC_HOSTED__=1 __STDC_VERSION__=199901L );
 
-my $c = new Convert::Binary::C;
+my $c = Convert::Binary::C->new();
 
 eval {
   $c->parse('');

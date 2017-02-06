@@ -3013,14 +3013,16 @@ sub checkrc
   }
 }
 
-my $p = new Convert::Binary::C ByteOrder   => 'LittleEndian',
-                               ShortSize   => 2,
-                               IntSize     => 4,
-                               LongSize    => 4,
-                               PointerSize => 4,
-                               FloatSize   => 4,
-                               DoubleSize  => 8,
-                               Alignment   => 4;
+my $p = Convert::Binary::C->new(
+    ByteOrder   => 'LittleEndian',
+    ShortSize   => 2,
+    IntSize     => 4,
+    LongSize    => 4,
+    PointerSize => 4,
+    FloatSize   => 4,
+    DoubleSize  => 8,
+    Alignment   => 4,
+);
 
 $p->parse($types);
 

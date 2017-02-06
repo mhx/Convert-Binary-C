@@ -48,14 +48,16 @@ print "1..211\n";
 #===================================================================
 
 eval {
-  $p = new Convert::Binary::C PointerSize => 4,
-                              EnumSize    => 4,
-                              IntSize     => 4,
-                              LongSize    => 4,
-                              Alignment   => 2,
-                              ByteOrder   => 'BigEndian',
-                              EnumType    => 'String';
-  $q = new Convert::Binary::C;
+  $p = Convert::Binary::C->new(
+    PointerSize => 4,
+    EnumSize    => 4,
+    IntSize     => 4,
+    LongSize    => 4,
+    Alignment   => 2,
+    ByteOrder   => 'BigEndian',
+    EnumType    => 'String',
+  );
+  $q = Convert::Binary::C->new;
 };
 ok($@,'');
 
@@ -285,7 +287,7 @@ reccmp( $refres, $result );
 # test pack/unpack/sizeof/typeof for basic types
 #------------------------------------------------
 
-$p = new Convert::Binary::C;
+$p = Convert::Binary::C->new;
 
 @tests = (
   ['char',        $p->CharSize      ],
