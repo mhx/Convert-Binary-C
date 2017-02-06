@@ -41,7 +41,7 @@ else {
 ok( -e $dbfile xor not $debug );
 ok( -z $dbfile xor not $debug );
 
-eval { $p = new Convert::Binary::C };
+eval { $p = Convert::Binary::C->new };
 
 ok( $@, '' );
 ok( ref $p, 'Convert::Binary::C' );
@@ -81,7 +81,7 @@ else {
 @warnings = ();
 
 eval qq{
-  import Convert::Binary::C 'debug';
+  Convert::Binary::C->import('debug');
 };
 
 ok( $@, qr/^You must pass an even number of module arguments/ );

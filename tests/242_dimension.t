@@ -12,11 +12,13 @@ use strict;
 
 $^W = 1;
 
-my $c = new Convert::Binary::C CharSize  => 1
-                             , ShortSize => 2
-                             , IntSize   => 4
-                             , Alignment => 1
-                             , ByteOrder => 'BigEndian';
+my $c = Convert::Binary::C->new(
+    CharSize  => 1,
+    ShortSize => 2,
+    IntSize   => 4,
+    Alignment => 1,
+    ByteOrder => 'BigEndian',
+);
 
 $c->parse(<<'ENDC');
 

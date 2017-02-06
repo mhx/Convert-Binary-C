@@ -15,8 +15,12 @@ BEGIN { plan tests => 148 }
 
 # TODO: different alignments
 
-my $c = new Convert::Binary::C ByteOrder => 'LittleEndian',
-                               IntSize => 4, CharSize => 1, EnumSize => 4;
+my $c = Convert::Binary::C->new(
+    ByteOrder => 'LittleEndian',
+    IntSize => 4,
+    CharSize => 1,
+    EnumSize => 4,
+);
 
 eval {
   $c->parse(<<ENDC);

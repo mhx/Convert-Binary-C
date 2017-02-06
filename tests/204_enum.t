@@ -14,9 +14,9 @@ $^W = 1;
 BEGIN { plan tests => 182 }
 
 eval {
-  $p = new Convert::Binary::C ByteOrder => 'BigEndian',
+  $p = Convert::Binary::C->new(ByteOrder => 'BigEndian',
                               EnumSize  => 4,
-                              EnumType  => 'Integer';
+                              EnumType  => 'Integer');
 };
 ok($@,'',"failed to create Convert::Binary::C object");
 

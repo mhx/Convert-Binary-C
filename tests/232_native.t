@@ -30,7 +30,7 @@ eval {
 };
 ok($@, qr/^Invalid property 'EnumType'/);
 
-$c = new Convert::Binary::C;
+$c = Convert::Binary::C->new();
 eval {
   $s2 = $c->native('IntSize');
 };

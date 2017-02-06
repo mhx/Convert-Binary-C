@@ -354,7 +354,7 @@ for future releases (in no special order):
 
   - for example:
 
-      $p = new Convert::Binary::C;
+      $p = Convert::Binary::C->new;
       $p->parse_file( 'some_code.h' );
       $type = $p->get_type( 'type' );
       $data = $type->unpack( $raw );
