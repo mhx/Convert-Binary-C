@@ -2,7 +2,7 @@ use Convert::Binary::C;
 use Data::Dumper;
 $Data::Dumper::Indent = 0;
 
-$c = new Convert::Binary::C Alignment => 4, CompoundAlignment => 4;
+$c = Convert::Binary::C->new(Alignment => 4, CompoundAlignment => 4);
 
 #-8<-
 

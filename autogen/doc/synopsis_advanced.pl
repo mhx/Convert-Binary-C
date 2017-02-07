@@ -4,7 +4,7 @@ use Data::Dumper;
 #---------------------
 # Create a new object
 #---------------------
-my $c = new Convert::Binary::C ByteOrder => 'BigEndian';
+my $c = Convert::Binary::C->(ByteOrder => 'BigEndian');
 
 #---------------------------------------------------
 # Add include paths and global preprocessor defines

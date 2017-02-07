@@ -6,12 +6,14 @@ use Devel::Peek;
 
 my $code = do { local $/; <DATA> };
 
-my $p = new Convert::Binary::C ByteOrder   => 'BigEndian',
-                               IntSize     => 4,
-                               PointerSize => 4,
-                               EnumSize    => 0,
-                               Warnings    => 1,
-                               Alignment   => 4;
+my $p = Convert::Binary::C->new(
+    ByteOrder   => 'BigEndian',
+    IntSize     => 4,
+    PointerSize => 4,
+    EnumSize    => 0,
+    Warnings    => 1,
+    Alignment   => 4
+);
 
 $p->parse( $code );
 
