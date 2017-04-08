@@ -71,7 +71,7 @@ exit 0;
 sub getsym
 {
   /\.h$/ or return;
-  my $fh = new IO::File $_ or return;
+  my $fh = IO::File->new($_) or return;
   my $file = do { local $/; <$fh> };
   my $id = '[a-zA-Z_]\w*';
 

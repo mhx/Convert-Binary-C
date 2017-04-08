@@ -227,7 +227,7 @@ sub __parse
 sub __can_use_cache
 {
   my $self = shift;
-  my $fh = new IO::File;
+  my $fh = IO::File->new;
 
   unless (-e $self->{cache} and -s _) {
     $ENV{CBCC_DEBUG} and print STDERR "CBCC: cache file '$self->{cache}' doesn't exist or is empty\n";
@@ -304,7 +304,7 @@ sub __can_use_cache
 sub __save_cache
 {
   my $self = shift;
-  my $fh = new IO::File;
+  my $fh = IO::File->new;
 
   $fh->open(">$self->{cache}") or croak "Cannot open '$self->{cache}': $!";
 
