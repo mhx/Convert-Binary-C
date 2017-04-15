@@ -13,7 +13,7 @@ $^W = 1;
 
 BEGIN { plan tests => 18 }
 
-my $c = eval { new Convert::Binary::C };
+my $c = eval { Convert::Binary::C->new };
 ok($@,'',"failed to create Convert::Binary::C object");
 
 $c->PointerSize(4)->IntSize(2)->CharSize(1);

@@ -16,8 +16,8 @@ BEGIN { plan tests => 98 }
 my $CCCFG = require 'tests/include/config.pl';
 
 eval {
-  $orig  = new Convert::Binary::C %$CCCFG;
-  @clone = map { new Convert::Binary::C %$CCCFG } 1 .. 2;
+  $orig  = Convert::Binary::C->new( %$CCCFG );
+  @clone = map { Convert::Binary::C->new( %$CCCFG ) } 1 .. 2;
 };
 ok($@,'',"failed to create Convert::Binary::C objects");
 

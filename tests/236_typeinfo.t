@@ -13,7 +13,7 @@ $^W = 1;
 
 BEGIN { plan tests => 49 }
 
-my $c = new Convert::Binary::C;
+my $c = Convert::Binary::C->new;
 
 $c->parse(<<ENDC);
 

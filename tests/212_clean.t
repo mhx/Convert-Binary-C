@@ -14,7 +14,7 @@ $^W = 1;
 BEGIN { plan tests => 6 }
 
 eval {
-  $c = new Convert::Binary::C;
+  $c = Convert::Binary::C->new;
 };
 ok($@,'',"failed to create Convert::Binary::C object");
 

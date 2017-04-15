@@ -13,7 +13,7 @@ $^W = 1;
 
 BEGIN { plan tests => 49 }
 
-my $c = new Convert::Binary::C IntSize => 4, ShortSize => 2, Alignment => 4;
+my $c = Convert::Binary::C->new( IntSize => 4, ShortSize => 2, Alignment => 4 );
 
 $c->parse(<<ENDC);
 

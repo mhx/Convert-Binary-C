@@ -34,7 +34,7 @@ sub chkwarn {
   @warn = ();
 }
 
-$c = new Convert::Binary::C ByteOrder => 'BigEndian', IntSize => 4;
+$c = Convert::Binary::C->new( ByteOrder => 'BigEndian', IntSize => 4 );
 $c->parse("typedef unsigned int u_32;");
 
 $ref  = pack "N*", 1000000, 5000000, 3000000, 4000000;

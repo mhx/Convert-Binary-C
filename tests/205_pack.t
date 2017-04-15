@@ -14,8 +14,7 @@ $^W = 1;
 BEGIN { plan tests => 275 }
 
 eval {
-  $p = new Convert::Binary::C ByteOrder     => 'BigEndian'
-                            , UnsignedChars => 0
+  $p = Convert::Binary::C->new( ByteOrder => 'BigEndian', UnsignedChars => 0 );
 };
 ok($@,'',"failed to create Convert::Binary::C object");
 
@@ -431,7 +430,7 @@ ok($packed =~ /^$val.*$/);
 {
   my @res;
 
-  my $c = new Convert::Binary::C;
+  my $c = Convert::Binary::C->new;
   $c->parse(<<ENDC);
 typedef unsigned char u;
 typedef struct {

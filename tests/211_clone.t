@@ -16,7 +16,7 @@ BEGIN { plan tests => 35 }
 my $CCCFG = require 'tests/include/config.pl';
 
 eval {
-  $orig = new Convert::Binary::C %$CCCFG;
+  $orig = Convert::Binary::C->new( %$CCCFG );
 };
 ok($@,'',"failed to create Convert::Binary::C object");
 
