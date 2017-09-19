@@ -17,7 +17,7 @@ BEGIN {
   plan tests => NUM_THREADS
 }
 
-my $CCCFG = require 'tests/include/config.pl';
+my $CCCFG = require './tests/include/config.pl';
 
 #===================================================================
 # load appropriate threads module and start a couple of threads

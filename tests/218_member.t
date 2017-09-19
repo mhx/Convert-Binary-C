@@ -15,7 +15,7 @@ BEGIN {
   plan tests => 1907;
 }
 
-my $CCCFG = require 'tests/include/config.pl';
+my $CCCFG = require './tests/include/config.pl';
 
 %basic = ( char => 1, short => 1, int => 1,
            long => 1, signed => 1, unsigned => 1,

@@ -37,7 +37,7 @@ for my $cur (sort keys %cc) {
   $bin =~ s/\s+//gms;
   $bin = pack "H*", $bin;
 
-  do $cc{$cur}{cfg};
+  do "./$cc{$cur}{cfg}";
 
   my $c = new Convert::Binary::C %config;
   $c->parse_file('tests/compiler/test.h');

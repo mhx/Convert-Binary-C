@@ -13,7 +13,7 @@ $^W = 1;
 
 BEGIN { plan tests => 116 }
 
-my $CCCFG = require 'tests/include/config.pl';
+my $CCCFG = require './tests/include/config.pl';
 
 #===================================================================
 # create object (1 tests)
@@ -140,7 +140,7 @@ ok($s1,329,"incorrect number of typedef identifiers");
 # check if all sizes are correct (1 big test)
 #===================================================================
 
-do 'tests/include/sizeof.pl';
+do './tests/include/sizeof.pl';
 $max_size = 0;
 @fail = ();
 @success = ();

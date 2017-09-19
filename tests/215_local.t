@@ -15,7 +15,7 @@ BEGIN {
   plan tests => 10;
 }
 
-my $CCCFG = require 'tests/include/config.pl';
+my $CCCFG = require './tests/include/config.pl';
 
 eval {
   $c = new Convert::Binary::C;

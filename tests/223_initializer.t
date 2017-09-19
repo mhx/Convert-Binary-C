@@ -13,7 +13,7 @@ $^W = 1;
 
 BEGIN { plan tests => 27 }
 
-my $CCCFG = require 'tests/include/config.pl';
+my $CCCFG = require './tests/include/config.pl';
 
 $c = eval { new Convert::Binary::C %$CCCFG };
 ok($@,'',"failed to create Convert::Binary::C objects");
