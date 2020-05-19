@@ -6,7 +6,7 @@
 #
 ################################################################################
 
-use Test::More tests => 39;
+use Test::More tests => 43;
 use Convert::Binary::C @ARGV;
 use strict;
 
@@ -57,10 +57,20 @@ is($s, $c->sizeof('int'));
 # check #warn / #warning
 #------------------------------
 
-$s = $c->clean->parse('#warning "A #warning!"');
-ok($s, qr/#warn/);
-$s = $c->clean->parse('#warn "A #warn!"');
-ok($s, qr/#warning/);
+{
+  my @warn;
+  local $SIG{'__WARN__'} = sub { push @warn, $_[0] };
+
+  $s = $c->clean->parse('#warning "A #warning!"');
+  ok($s);
+  is(scalar @warn, 1);
+  like($warn[0], qr/#warning/);
+  @warn = ();
+  $s = $c->clean->parse('#warn "A #warn!"');
+  ok($s);
+  is(scalar @warn, 1);
+  like($warn[0], qr/#warn/);
+}
 
 #----------------
 # various checks
