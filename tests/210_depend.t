@@ -16,8 +16,8 @@ BEGIN { plan tests => 483 }
 my $CCCFG = require './tests/include/config.pl';
 
 eval {
-  $c1 = new Convert::Binary::C Include => ['tests/include/files'];
-  $c2 = new Convert::Binary::C Include => ['tests/include/files'];
+  $c1 = Convert::Binary::C->new( Include => ['tests/include/files'] );
+  $c2 = Convert::Binary::C->new( Include => ['tests/include/files'] );
 };
 ok($@,'',"failed to create Convert::Binary::C objects");
 
@@ -76,7 +76,7 @@ ok( join(',', sort @ref2), join(',', sort @files2s),
     "dependency names differ" );
 
 eval {
-  $c2 = new Convert::Binary::C %$CCCFG;
+  $c2 = Convert::Binary::C->new( %$CCCFG );
   $c2->parse_file( 'tests/include/include.c' );
 };
 ok($@,'',"failed to create object / parse file");

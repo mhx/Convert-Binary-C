@@ -19,7 +19,7 @@ $reason = Convert::Binary::C::feature('ieeefp') ? '' : 'no IEEE floating point';
 
 $SIG{__WARN__} = sub { push @warn, $_[0] };
 
-my $c = eval { new Convert::Binary::C };
+my $c = eval { Convert::Binary::C->new };
 skip($reason,$@,'');
 
 # check with reference data

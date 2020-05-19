@@ -66,7 +66,7 @@ $start_time = mytime();
 $fail = 0;
 do {
   eval {
-    $c = new Convert::Binary::C %$CCCFG;
+    $c = Convert::Binary::C->new( %$CCCFG );
     $c->parse_file( 'tests/include/include.c' );
   };
   $@ and $fail = 1 and last;
@@ -89,7 +89,7 @@ print "# uncached: $iterations iterations in $elapsed_time seconds\n";
 
 # create cache file
 eval {
-  $c = new Convert::Binary::C::Cached Cache => $cache, %$CCCFG;
+  $c = Convert::Binary::C::Cached->new( Cache => $cache, %$CCCFG );
 
   $c->parse_file( 'tests/include/include.c' );
 };
@@ -102,7 +102,7 @@ ok( -e $cache );
 $start_time = mytime();
 eval {
   for( 1 .. $iterations ) {
-    $c = new Convert::Binary::C::Cached Cache => $cache, %$CCCFG;
+    $c = Convert::Binary::C::Cached->new( Cache => $cache, %$CCCFG );
     $c->parse_file( 'tests/include/include.c' );
   }
 };

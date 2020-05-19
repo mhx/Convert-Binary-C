@@ -17,7 +17,7 @@ BEGIN { plan tests => 31 }
 @tests = map { chomp; /^\s*(.*?)\s*=>\s*(.*?)\s*$/ ? { name => $1, type => $2 } : () }
          split $/, $tests;
 
-$c = eval { new Convert::Binary::C };
+$c = eval { Convert::Binary::C->new };
 ok($@,'',"failed to create Convert::Binary::C object");
 
 eval { $c->parse( $code ) };

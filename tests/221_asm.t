@@ -16,12 +16,13 @@ BEGIN {
 }
 
 my $c = eval {
-          new Convert::Binary::C
-          KeywordMap => { __asm__ => 'asm', __volatile__ => 'volatile' }
-        };
+  Convert::Binary::C->new(
+    KeywordMap => { __asm__ => 'asm', __volatile__ => 'volatile' }
+  );
+};
 ok($@,'');
 
-my $d = eval { new Convert::Binary::C DisabledKeywords => [ 'asm' ] };
+my $d = eval { Convert::Binary::C->new( DisabledKeywords => [ 'asm' ] ) };
 ok($@,'');
 
 for my $code ( do { local $/; split /-{20,}\r?\n?/, <DATA> } ) {

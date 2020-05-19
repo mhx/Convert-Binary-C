@@ -17,11 +17,11 @@ BEGIN {
 
 # This test is basically only for the 901_memory.t test
 
-$c = eval { new Convert::Binary::C };
+$c = eval { Convert::Binary::C->new };
 ok( $@, '' );
 
-$c = eval { new Convert::Binary::C 'foo' };
+$c = eval { Convert::Binary::C->new( 'foo' ) };
 ok( $@, qr/^Number of configuration arguments to new must be even/ );
 
-$c = eval { new Convert::Binary::C foo => 42 };
+$c = eval { Convert::Binary::C->new( foo => 42 ) };
 ok( $@, qr/^Invalid option 'foo'/ );

@@ -12,7 +12,7 @@ use strict;
 
 $^W = 1;
 
-my $c = new Convert::Binary::C;
+my $c = Convert::Binary::C->new;
 
 eval { $c->parse_file('tests/parser/context.c') };
 

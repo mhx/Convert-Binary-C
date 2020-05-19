@@ -49,7 +49,7 @@ chkwarn();
 @w= ( qr/^Convert::Binary::C parser is DISABLED/ );
 $ixhash or push @w, qr/^Couldn't load a module for member ordering/;
 
-$c = eval { new Convert::Binary::C };
+$c = eval { Convert::Binary::C->new };
 ok( $@, '', "could not create Convert::Binary::C object" );
 chkwarn( @w );
 ok( $c->OrderMembers, 1 );
@@ -59,7 +59,7 @@ chkwarn();
 ok( $c->OrderMembers, 0 );
 chkwarn();
 
-$c = eval { new Convert::Binary::C OrderMembers => 0 };
+$c = eval { Convert::Binary::C->new( OrderMembers => 0 ) };
 ok( $@, '', "could not create Convert::Binary::C object" );
 chkwarn( $w[0] );
 ok( $c->OrderMembers, 0 );

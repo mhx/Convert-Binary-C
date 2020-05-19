@@ -15,7 +15,7 @@ BEGIN { plan tests => 27 }
 
 my $CCCFG = require './tests/include/config.pl';
 
-$c = eval { new Convert::Binary::C %$CCCFG };
+$c = eval { Convert::Binary::C->new( %$CCCFG ) };
 ok($@,'',"failed to create Convert::Binary::C objects");
 
 eval { $c->parse_file( 'tests/include/include.c' ) };
@@ -32,7 +32,7 @@ for( $c->typedef_names ) {
   $full .= $pre . $c->initializer( $_, $init ) . $post;
 }
 
-$c = eval { new Convert::Binary::C };
+$c = eval { Convert::Binary::C->new };
 ok($@,'',"failed to create Convert::Binary::C objects");
 
 {

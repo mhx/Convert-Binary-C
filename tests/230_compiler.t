@@ -39,7 +39,7 @@ for my $cur (sort keys %cc) {
 
   do "./$cc{$cur}{cfg}";
 
-  my $c = new Convert::Binary::C %config;
+  my $c = Convert::Binary::C->new( %config );
   $c->parse_file('tests/compiler/test.h');
   my $pck = $c->pack('test', $dat);
 
