@@ -209,7 +209,7 @@ static        void         packelem_delete(PackElement *pPack);
 
 %token PUSH_TOK POP_TOK
 
-%pure_parser
+%pure-parser
 
 %start pragma
 %%
