@@ -21,10 +21,11 @@ print OUT <<'!NO!SUBS!';
 
 use Convert::Binary::C;
 use Data::Dumper;
+use File::Spec::Functions qw(rel2abs);
 use strict;
 
 my $base;
--d "$_/include" and $base = "$_/include" and last for qw( tests ../tests );
+-d "$_/include" and $base = rel2abs("$_/include") and last for qw( tests ../tests );
 defined $base or die <<MSG;
 Please run this script from either the 'examples' directory
 or the distribution base directory.

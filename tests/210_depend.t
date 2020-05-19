@@ -13,7 +13,7 @@ $^W = 1;
 
 BEGIN { plan tests => 483 }
 
-my $CCCFG = require 'tests/include/config.pl';
+my $CCCFG = require './tests/include/config.pl';
 
 eval {
   $c1 = new Convert::Binary::C Include => ['tests/include/files'];

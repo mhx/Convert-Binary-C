@@ -16,7 +16,7 @@ BEGIN {
   plan tests => 11;
 }
 
-my $CCCFG = require 'tests/include/config.pl';
+my $CCCFG = require './tests/include/config.pl';
 
 eval { require Data::Dumper }; $Data_Dumper = $@;
 eval { require IO::File };     $IO_File = $@;

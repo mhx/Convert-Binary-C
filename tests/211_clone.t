@@ -13,7 +13,7 @@ $^W = 1;
 
 BEGIN { plan tests => 35 }
 
-my $CCCFG = require 'tests/include/config.pl';
+my $CCCFG = require './tests/include/config.pl';
 
 eval {
   $orig = new Convert::Binary::C %$CCCFG;
