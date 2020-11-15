@@ -447,4 +447,3 @@ it under the same terms as Perl itself.
 See L<Convert::Binary::C>.
 
 =cut
-

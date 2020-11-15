@@ -1524,15 +1524,15 @@ as it can already handle C<AV> pointers. And this is what we get:
     'sv_refcnt' => 1,
     'sv_flags' => 536870924,
     'sv_u' => {
-      'svu_pv' => '94100102592432',
-      'svu_iv' => '94100102592432',
-      'svu_uv' => '94100102592432',
-      'svu_nv' => '4.64916279610575e-310',
-      'svu_rv' => '94100102592432',
-      'svu_array' => '94100102592432',
-      'svu_hash' => '94100102592432',
-      'svu_gp' => '94100102592432',
-      'svu_fp' => '94100102592432'
+      'svu_pv' => '94206640063120',
+      'svu_iv' => '94206640063120',
+      'svu_uv' => '94206640063120',
+      'svu_nv' => '4.65442644653192e-310',
+      'svu_rv' => '94206640063120',
+      'svu_array' => '94206640063120',
+      'svu_hash' => '94206640063120',
+      'svu_gp' => '94206640063120',
+      'svu_fp' => '94206640063120'
     }
   };
 
@@ -1639,41 +1639,41 @@ used with the L<Data::Dumper|Data::Dumper> module, for example:
 Which will print something like this:
 
   $VAR1 = {
+    'DisabledKeywords' => [],
+    'HasCPPComments' => 1,
+    'UnsignedChars' => 0,
+    'LongDoubleSize' => 16,
+    'OrderMembers' => 1,
+    'CompoundAlignment' => 1,
     'UnsignedBitfields' => 0,
     'DoubleSize' => 8,
-    'CharSize' => 1,
-    'StdCVersion' => 199901,
+    'Assert' => [],
+    'PointerSize' => 8,
+    'ByteOrder' => 'LittleEndian',
+    'Warnings' => 0,
     'LongSize' => 8,
+    'Include' => [
+      '/usr/include'
+    ],
+    'EnumType' => 'Integer',
+    'EnumSize' => 4,
+    'ShortSize' => 2,
+    'IntSize' => 4,
+    'StdCVersion' => 199901,
+    'HostedC' => 1,
+    'Alignment' => 1,
+    'HasMacroVAARGS' => 1,
+    'KeywordMap' => {},
     'Define' => [
       'DEBUGGING',
       'FOO=123'
     ],
+    'LongLongSize' => 8,
+    'CharSize' => 1,
     'FloatSize' => 4,
-    'ShortSize' => 2,
-    'Alignment' => 1,
-    'OrderMembers' => 1,
-    'LongDoubleSize' => 16,
-    'DisabledKeywords' => [],
-    'CompoundAlignment' => 1,
-    'EnumSize' => 4,
     'Bitfields' => {
       'Engine' => 'Generic'
-    },
-    'UnsignedChars' => 0,
-    'PointerSize' => 8,
-    'Include' => [
-      '/usr/include'
-    ],
-    'LongLongSize' => 8,
-    'HasMacroVAARGS' => 1,
-    'IntSize' => 4,
-    'Assert' => [],
-    'KeywordMap' => {},
-    'ByteOrder' => 'LittleEndian',
-    'HasCPPComments' => 1,
-    'Warnings' => 0,
-    'EnumType' => 'Integer',
-    'HostedC' => 1
+    }
   };
 
 Since you may not always want to write a L<C<configure>|/"configure"> call
@@ -3853,39 +3853,9 @@ moment it was parsed.
 The above code would print something like this:
 
   $depend = {
-    '/usr/include/gnu/stubs.h' => {
-      'size' => 384,
-      'mtime' => 1604969927,
-      'ctime' => 1604969964
-    },
-    '/usr/include/string.h' => {
-      'mtime' => 1604969936,
-      'size' => 18766,
-      'ctime' => 1604969964
-    },
     '/usr/include/sys/cdefs.h' => {
-      'ctime' => 1604969964,
+      'size' => 20051,
       'mtime' => 1604969938,
-      'size' => 20051
-    },
-    '/usr/include/features.h' => {
-      'size' => 17235,
-      'mtime' => 1604969927,
-      'ctime' => 1604969964
-    },
-    '/usr/include/bits/types/locale_t.h' => {
-      'ctime' => 1604969964,
-      'mtime' => 1604969927,
-      'size' => 983
-    },
-    '/usr/include/bits/long-double.h' => {
-      'ctime' => 1604969964,
-      'mtime' => 1604969933,
-      'size' => 970
-    },
-    '/usr/include/bits/types/__locale_t.h' => {
-      'mtime' => 1604969927,
-      'size' => 1722,
       'ctime' => 1604969964
     },
     '/usr/include/gnu/stubs-32.h' => {
@@ -3893,46 +3863,76 @@ The above code would print something like this:
       'mtime' => 1604969908,
       'ctime' => 1604969964
     },
-    '/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include/stddef.h' => {
-      'mtime' => 1604974286,
-      'size' => 12959,
-      'ctime' => 1604975398
-    },
     '/usr/include/bits/wordsize.h' => {
-      'mtime' => 1604969934,
       'size' => 442,
+      'mtime' => 1604969934,
       'ctime' => 1604969964
     },
-    '/usr/include/strings.h' => {
-      'ctime' => 1604969964,
-      'size' => 4753,
-      'mtime' => 1604969936
+    '/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include/stddef.h' => {
+      'size' => 12959,
+      'mtime' => 1604974286,
+      'ctime' => 1604975398
     },
     '/usr/include/stdc-predef.h' => {
-      'mtime' => 1604969927,
       'size' => 2290,
+      'mtime' => 1604969927,
+      'ctime' => 1604969964
+    },
+    '/usr/include/string.h' => {
+      'size' => 18766,
+      'mtime' => 1604969936,
+      'ctime' => 1604969964
+    },
+    '/usr/include/bits/types/locale_t.h' => {
+      'size' => 983,
+      'mtime' => 1604969927,
+      'ctime' => 1604969964
+    },
+    '/usr/include/bits/long-double.h' => {
+      'size' => 970,
+      'mtime' => 1604969933,
       'ctime' => 1604969964
     },
     '/usr/include/bits/libc-header-start.h' => {
-      'ctime' => 1604969964,
+      'size' => 3288,
       'mtime' => 1604969927,
-      'size' => 3288
+      'ctime' => 1604969964
+    },
+    '/usr/include/strings.h' => {
+      'size' => 4753,
+      'mtime' => 1604969936,
+      'ctime' => 1604969964
+    },
+    '/usr/include/gnu/stubs.h' => {
+      'size' => 384,
+      'mtime' => 1604969927,
+      'ctime' => 1604969964
+    },
+    '/usr/include/bits/types/__locale_t.h' => {
+      'size' => 1722,
+      'mtime' => 1604969927,
+      'ctime' => 1604969964
+    },
+    '/usr/include/features.h' => {
+      'size' => 17235,
+      'mtime' => 1604969927,
+      'ctime' => 1604969964
     }
   };
   @files = (
-    '/usr/include/gnu/stubs.h',
-    '/usr/include/string.h',
     '/usr/include/sys/cdefs.h',
-    '/usr/include/features.h',
+    '/usr/include/gnu/stubs-32.h',
+    '/usr/include/bits/wordsize.h',
+    '/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include/stddef.h',
+    '/usr/include/stdc-predef.h',
+    '/usr/include/string.h',
     '/usr/include/bits/types/locale_t.h',
     '/usr/include/bits/long-double.h',
-    '/usr/include/bits/types/__locale_t.h',
-    '/usr/include/gnu/stubs-32.h',
-    '/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include/stddef.h',
-    '/usr/include/bits/wordsize.h',
+    '/usr/include/bits/libc-header-start.h',
     '/usr/include/strings.h',
-    '/usr/include/stdc-predef.h',
-    '/usr/include/bits/libc-header-start.h'
+    '/usr/include/gnu/stubs.h',
+    '/usr/include/bits/types/__locale_t.h',
+    '/usr/include/features.h'
   );
 
 In list context, the method returns the names of all
@@ -4267,18 +4267,18 @@ similar to this:
 
   @enum = (
     {
-      'identifier' => '__socket_type',
-      'context' => 'definitions.c(13)',
       'enumerators' => {
-        'SOCK_PACKET' => 10,
-        'SOCK_DGRAM' => 2,
         'SOCK_STREAM' => 1,
+        'SOCK_DGRAM' => 2,
+        'SOCK_PACKET' => 10,
+        'SOCK_SEQPACKET' => 5,
         'SOCK_RDM' => 4,
-        'SOCK_RAW' => 3,
-        'SOCK_SEQPACKET' => 5
+        'SOCK_RAW' => 3
       },
+      'identifier' => '__socket_type',
+      'size' => 4,
       'sign' => 0,
-      'size' => 4
+      'context' => 'definitions.c(13)'
     }
   );
 
@@ -4314,12 +4314,12 @@ holds all enumerators of all defined enumerations:
 The C<%enum> hash table would then be:
 
   %enum = (
-    'SOCK_STREAM' => 1,
-    'SOCK_DGRAM' => 2,
     'SOCK_RDM' => 4,
     'SOCK_SEQPACKET' => 5,
-    'SOCK_RAW' => 3,
-    'SOCK_PACKET' => 10
+    'SOCK_PACKET' => 10,
+    'SOCK_STREAM' => 1,
+    'SOCK_DGRAM' => 2,
+    'SOCK_RAW' => 3
   );
 
 =back
@@ -4384,113 +4384,113 @@ to this:
 
   @compound = (
     {
-      'pack' => 0,
-      'type' => 'struct',
       'identifier' => 'STRUCT_SV',
-      'context' => 'definitions.c(23)',
-      'size' => 24,
+      'align' => 1,
       'declarations' => [
         {
           'type' => 'void',
           'declarators' => [
             {
-              'declarator' => '*sv_any',
               'size' => 8,
-              'offset' => 0
+              'offset' => 0,
+              'declarator' => '*sv_any'
             }
           ]
-        },
-        {
-          'declarators' => [
-            {
-              'declarator' => 'sv_refcnt',
-              'size' => 8,
-              'offset' => 8
-            }
-          ],
-          'type' => 'U32'
         },
         {
           'type' => 'U32',
           'declarators' => [
             {
               'size' => 8,
-              'declarator' => 'sv_flags',
-              'offset' => 16
+              'offset' => 8,
+              'declarator' => 'sv_refcnt'
+            }
+          ]
+        },
+        {
+          'type' => 'U32',
+          'declarators' => [
+            {
+              'size' => 8,
+              'offset' => 16,
+              'declarator' => 'sv_flags'
             }
           ]
         }
       ],
-      'align' => 1
-    },
-    {
-      'align' => 1,
-      'declarations' => [
-        {
-          'declarators' => [
-            {
-              'declarator' => 'a',
-              'size' => 4,
-              'offset' => 0
-            }
-          ],
-          'type' => 'int'
-        },
-        {
-          'declarators' => [
-            {
-              'size' => 4,
-              'declarator' => 'b',
-              'offset' => 4
-            }
-          ],
-          'type' => 'int'
-        }
-      ],
-      'size' => 8,
-      'context' => 'definitions.c(31)',
       'type' => 'struct',
-      'pack' => 0,
-      'identifier' => 'xxx'
+      'size' => 24,
+      'context' => 'definitions.c(23)',
+      'pack' => 0
     },
     {
-      'size' => 96,
+      'identifier' => 'xxx',
+      'align' => 1,
       'declarations' => [
         {
           'type' => 'int',
           'declarators' => [
             {
+              'size' => 4,
               'offset' => 0,
+              'declarator' => 'a'
+            }
+          ]
+        },
+        {
+          'type' => 'int',
+          'declarators' => [
+            {
+              'size' => 4,
+              'offset' => 4,
+              'declarator' => 'b'
+            }
+          ]
+        }
+      ],
+      'type' => 'struct',
+      'size' => 8,
+      'context' => 'definitions.c(31)',
+      'pack' => 0
+    },
+    {
+      'align' => 1,
+      'declarations' => [
+        {
+          'type' => 'int',
+          'declarators' => [
+            {
               'size' => 8,
+              'offset' => 0,
               'declarator' => 'abc[2]'
             }
           ]
         },
         {
+          'type' => 'struct xxx',
           'declarators' => [
             {
               'size' => 96,
-              'declarator' => 'ab[3][4]',
-              'offset' => 0
+              'offset' => 0,
+              'declarator' => 'ab[3][4]'
             }
-          ],
-          'type' => 'struct xxx'
+          ]
         },
         {
           'type' => 'any',
           'declarators' => [
             {
-              'declarator' => 'ptr',
               'size' => 8,
-              'offset' => 0
+              'offset' => 0,
+              'declarator' => 'ptr'
             }
           ]
         }
       ],
       'type' => 'union',
-      'pack' => 0,
-      'align' => 1,
-      'context' => 'definitions.c(29)'
+      'size' => 96,
+      'context' => 'definitions.c(29)',
+      'pack' => 0
     }
   );
 
@@ -4671,54 +4671,54 @@ to this:
 
   @typedef = (
     {
-      'declarator' => 'U32',
-      'type' => 'unsigned long'
+      'type' => 'unsigned long',
+      'declarator' => 'U32'
     },
     {
       'type' => 'void',
       'declarator' => '*any'
     },
     {
-      'declarator' => 'test',
       'type' => {
-        'pack' => 0,
         'align' => 1,
-        'size' => 96,
-        'type' => 'union',
-        'context' => 'definitions.c(29)',
         'declarations' => [
           {
+            'type' => 'int',
             'declarators' => [
               {
                 'size' => 8,
-                'declarator' => 'abc[2]',
-                'offset' => 0
+                'offset' => 0,
+                'declarator' => 'abc[2]'
               }
-            ],
-            'type' => 'int'
+            ]
           },
           {
+            'type' => 'struct xxx',
             'declarators' => [
               {
+                'size' => 96,
                 'offset' => 0,
-                'declarator' => 'ab[3][4]',
-                'size' => 96
+                'declarator' => 'ab[3][4]'
               }
-            ],
-            'type' => 'struct xxx'
+            ]
           },
           {
+            'type' => 'any',
             'declarators' => [
               {
+                'size' => 8,
                 'offset' => 0,
-                'declarator' => 'ptr',
-                'size' => 8
+                'declarator' => 'ptr'
               }
-            ],
-            'type' => 'any'
+            ]
           }
-        ]
-      }
+        ],
+        'type' => 'union',
+        'size' => 96,
+        'context' => 'definitions.c(29)',
+        'pack' => 0
+      },
+      'declarator' => 'test'
     }
   );
 
@@ -4864,23 +4864,23 @@ in which case it will return a reference to a hash with all
 properties, like:
 
   $native = {
+    'EnumSize' => 4,
+    'ShortSize' => 2,
+    'UnsignedChars' => 0,
+    'IntSize' => 4,
+    'LongDoubleSize' => 16,
+    'StdCVersion' => 201710,
     'HostedC' => 1,
     'CompoundAlignment' => 1,
-    'LongLongSize' => 8,
-    'UnsignedChars' => 0,
-    'FloatSize' => 4,
-    'Alignment' => 16,
-    'ByteOrder' => 'LittleEndian',
-    'CharSize' => 1,
-    'LongDoubleSize' => 16,
-    'DoubleSize' => 8,
-    'ShortSize' => 2,
-    'StdCVersion' => 201710,
-    'EnumSize' => 4,
-    'IntSize' => 4,
-    'PointerSize' => 8,
     'UnsignedBitfields' => 0,
-    'LongSize' => 8
+    'DoubleSize' => 8,
+    'Alignment' => 16,
+    'PointerSize' => 8,
+    'ByteOrder' => 'LittleEndian',
+    'LongLongSize' => 8,
+    'CharSize' => 1,
+    'LongSize' => 8,
+    'FloatSize' => 4
   };
 
 The contents of that hash are suitable for passing them to
@@ -5160,12 +5160,8 @@ a call to L<C<struct>|/"struct"> will return
 
   @struct = (
     {
-      'type' => 'struct',
-      'context' => 'bitfields.c(1)',
-      'align' => 1,
-      'size' => 8,
-      'pack' => 0,
       'identifier' => 'bitfield',
+      'align' => 1,
       'declarations' => [
         {
           'type' => 'int',
@@ -5195,16 +5191,20 @@ a call to L<C<struct>|/"struct"> will return
           ]
         },
         {
+          'type' => 'int',
           'declarators' => [
             {
-              'declarator' => 'integer',
+              'size' => 4,
               'offset' => 4,
-              'size' => 4
+              'declarator' => 'integer'
             }
-          ],
-          'type' => 'int'
+          ]
         }
-      ]
+      ],
+      'type' => 'struct',
+      'size' => 8,
+      'context' => 'bitfields.c(1)',
+      'pack' => 0
     }
   );
 

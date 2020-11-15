@@ -27,17 +27,17 @@ install :: ins_c ins_cached ins_ccconfig
 C.pm: module include
 	@$(BLUE) "making C.pm"
 	@$(PERL) -ne'print;/^__END__/ and exit' <$(CBC_PM) >C.pm
-	@export CBC_ORDER_MEMBERS=1 && $(PERL) ./gendoc.pl <C.pod >>C.pm
+	@export CBC_ORDER_MEMBERS=1 PERL_PERTURB_KEYS=0 PERL_HASH_SEED=0 && $(PERL) ./gendoc.pl <C.pod >>C.pm
 
 Cached.pm: module include
 	@$(BLUE) "making Cached.pm"
 	@$(PERL) -ne'print;/^__END__/ and exit' <$(CBCC_PM) >Cached.pm
-	@export CBC_ORDER_MEMBERS=1 && $(PERL) ./gendoc.pl <Cached.pod >>Cached.pm
+	@export CBC_ORDER_MEMBERS=1 PERL_PERTURB_KEYS=0 PERL_HASH_SEED=0 && $(PERL) ./gendoc.pl <Cached.pod >>Cached.pm
 
 ccconfig: module include
 	@$(BLUE) "making ccconfig"
 	@$(PERL) -ne'print;/^__END__/ and exit' <$(CCCONFIG) >ccconfig
-	@export CBC_ORDER_MEMBERS=1 && $(PERL) ./gendoc.pl <ccconfig.pod >>ccconfig
+	@export CBC_ORDER_MEMBERS=1 PERL_PERTURB_KEYS=0 PERL_HASH_SEED=0 && $(PERL) ./gendoc.pl <ccconfig.pod >>ccconfig
 	@chmod 755 ccconfig
 
 clean:
