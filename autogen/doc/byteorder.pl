@@ -9,7 +9,7 @@ $c->parse(<<'ENDC');
 typedef unsigned short u_16;
 
 struct coords_3d {
-  long x, y, z;
+  int x, y, z;
 };
 
 struct coords_msg {

@@ -21,7 +21,7 @@ arbitrarily complex data structures. Its object-oriented
 interface has L<C<pack>|/"pack"> and L<C<unpack>|/"unpack"> methods
 that act as replacements for
 Perl's L<C<pack>|perlfunc/"pack"> and L<C<unpack>|perlfunc/"unpack"> and
-allow to use C types instead of a string representation
+allow one to use C types instead of a string representation
 of the data structure for conversion of binary data from and
 to Perl's complex data structures.
 
@@ -351,7 +351,7 @@ stack.
 
 The C<pack> pragma as it is currently implemented only affects
 the I<maximum> struct member alignment. There are compilers
-that also allow to specify the I<minimum> struct member
+that also allow one to specify the I<minimum> struct member
 alignment. This is not supported by Convert::Binary::C.
 
 =head2 Automatic configuration using C<ccconfig>
@@ -1031,7 +1031,7 @@ wins.
 The constructor is used to create a new Convert::Binary::C object.
 You can simply use
 
-  $c = new Convert::Binary::C;
+  $c = Convert::Binary::C->new;
 
 without additional arguments to create an object, or you can
 optionally pass any arguments to the constructor that are
@@ -3579,11 +3579,6 @@ structs for interfacing Perl code with Windows API code.
 
 =item *
 
-My love Jennifer for always being there, for filling my life with
-joy and last but not least for proofreading the documentation.
-
-=item *
-
 Alain Barbet E<lt>alian@cpan.orgE<gt> for testing and debugging
 support.
 
@@ -3643,19 +3638,6 @@ algorithm.
 
 =back
 
-=head1 MAILING LIST
-
-There's also a mailing list that you can join:
-
-  convert-binary-c@yahoogroups.com
-
-To subscribe, simply send mail to:
-
-  convert-binary-c-subscribe@yahoogroups.com
-
-You can use this mailing list for non-bug problems, questions
-or discussions.
-
 =head1 BUGS
 
 I'm sure there are still lots of bugs in the code for this
@@ -3697,21 +3679,6 @@ interface may change in future releases of this module.
 If you're interested in what I currently plan to improve
 (or fix), have a look at the F<TODO> file.
 
-=head1 POSTCARDS
-
-If you're using my module and like it, you can show your appreciation
-by sending me a postcard from where you live. I won't urge you to do it,
-it's completely up to you. To me, this is just a very nice way of
-receiving feedback about my work. Please send your postcard to:
-
-  Marcus Holland-Moritz
-  Kuppinger Weg 28
-  71116 Gaertringen
-  GERMANY
-
-If you feel that sending a postcard is too much effort, you maybe
-want to rate the module at L<http://cpanratings.perl.org/>.
-
 =head1 COPYRIGHT
 
 Copyright (c) 2002-2020 Marcus Holland-Moritz. All rights reserved.
@@ -3723,15 +3690,8 @@ and redistribution details refer to F<ctlib/ucpp/README>.
 
 Portions copyright (c) 1989, 1990 James A. Roskind.
 
-The include files located in F<tests/include/include>, which are used
-in some of the test scripts are (c) 1991-1999, 2000, 2001 Free Software
-Foundation, Inc. They are neither required to create the binary nor
-linked to the source code of this module in any other way.
-
 =head1 SEE ALSO
 
 See L<ccconfig>, L<perl>, L<perldata>, L<perlop>, L<perlvar>, L<Data::Dumper> and L<Scalar::Util>.
 
 =cut
-
-

@@ -3,9 +3,9 @@ use Data::Dumper; #-8<-
 $Data::Dumper::Indent = 1; #-8<-
 
 $c = Convert::Binary::C->new(ByteOrder => 'BigEndian')->parse(<<'#-8<-');
-typedef unsigned long u_32;
-typedef u_32          ProtoId;
-typedef ProtoId       MyProtoId;
+typedef unsigned int u_32;
+typedef u_32         ProtoId;
+typedef ProtoId      MyProtoId;
 
 struct MsgHeader {
   MyProtoId id;

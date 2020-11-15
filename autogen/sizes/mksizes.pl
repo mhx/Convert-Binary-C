@@ -29,7 +29,7 @@ ENDC
 for my $t ( $c->enum_names ) {
   next unless $c->def( $t );
   print <<ENDC;
-  printf("$t=%d\\n", sizeof( enum $t ));
+  printf("$t=%ld\\n", sizeof( enum $t ));
 ENDC
 }
 
@@ -54,7 +54,7 @@ sub print_sizes
     print <<ENDC;
   {
     $prefix$t dummy;
-    printf("$t=%d\\n", sizeof(dummy));
+    printf("$t=%ld\\n", sizeof(dummy));
 ENDC
     my @m = eval { $c->member( $t ) };
     if( $@ ) {
@@ -70,7 +70,7 @@ ENDC
             }
             else {
               print <<ENDC;
-    printf("$t$m=%d\\n", sizeof(dummy$m));
+    printf("$t$m=%ld\\n", sizeof(dummy$m));
 ENDC
             }
           }

@@ -1,5 +1,5 @@
 SHELL     = /bin/bash
-PERL      = bleadperl-debug
+PERL      = perl
 CECHO     = $(PERL) -e'use Term::ANSIColor; print color(shift); print @ARGV, color("reset"), "\n"'
 BLUE      = $(CECHO) "blue"
 ISPELL    = /usr/bin/ispell -b
@@ -27,17 +27,17 @@ install :: ins_c ins_cached ins_ccconfig
 C.pm: module include
 	@$(BLUE) "making C.pm"
 	@$(PERL) -ne'print;/^__END__/ and exit' <$(CBC_PM) >C.pm
-	@$(PERL) ./gendoc.pl <C.pod >>C.pm
+	@export CBC_ORDER_MEMBERS=1 && $(PERL) ./gendoc.pl <C.pod >>C.pm
 
 Cached.pm: module include
 	@$(BLUE) "making Cached.pm"
 	@$(PERL) -ne'print;/^__END__/ and exit' <$(CBCC_PM) >Cached.pm
-	@$(PERL) ./gendoc.pl <Cached.pod >>Cached.pm
+	@export CBC_ORDER_MEMBERS=1 && $(PERL) ./gendoc.pl <Cached.pod >>Cached.pm
 
 ccconfig: module include
 	@$(BLUE) "making ccconfig"
 	@$(PERL) -ne'print;/^__END__/ and exit' <$(CCCONFIG) >ccconfig
-	@$(PERL) ./gendoc.pl <ccconfig.pod >>ccconfig
+	@export CBC_ORDER_MEMBERS=1 && $(PERL) ./gendoc.pl <ccconfig.pod >>ccconfig
 	@chmod 755 ccconfig
 
 clean:
@@ -85,4 +85,4 @@ ispell:
 	@$(ISPELL) ccconfig.pod
 
 include:
-	@ln -s ../../tests/include/include include
+	@echo ln -s ../../tests/include/include include
