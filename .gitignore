@@ -24,3 +24,5 @@
 /token/t_*.c
 *.o
 *.output
+/Convert-Binary-C-*.tar.*
+/autogen/doc/pdf/CBC-*.pdf
