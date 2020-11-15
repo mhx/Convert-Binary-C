@@ -12,6 +12,6 @@
 ^devel
 ^autogen
 ^tags$
-^Convert-Binary-C-*.tar\..*
+^Convert-Binary-C-.*\.tar\..*
 ^MYMETA.*
 .*\.o$
