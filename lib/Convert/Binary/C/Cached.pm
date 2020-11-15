@@ -23,7 +23,7 @@ use vars qw( @ISA $VERSION );
 
 @ISA = qw(Convert::Binary::C);
 
-$VERSION = '0.79';
+$VERSION = '0.79_01';
 
 sub new
 {

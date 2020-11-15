@@ -22,7 +22,7 @@ use Convert::Binary::C;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = '0.79';
+my $VERSION = '0.79_01';
 my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT;
 
@@ -2689,5 +2689,3 @@ it under the same terms as Perl itself.
 See L<Convert::Binary::C>.
 
 =cut
-
-
