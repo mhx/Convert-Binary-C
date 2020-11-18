@@ -376,10 +376,10 @@ sub MY::c_o
   package MY;
   my $c_o = shift->SUPER::c_o(@_);
   if (!$ENV{CBC_MAKEFILE_DEBUG} and eval $ExtUtils::MakeMaker::VERSION >= 6.17) {
-    $c_o =~ s/^(\s+)(\$\(CCCMD\).*)$/$1\$(NOECHO) \$(ECHO) Compiling [\$(CC) \$(OPTIMIZE)] \$<\n$1\$(NOECHO) $2\n$1\$(NOECHO) \$(MV) \$(\@F) t_object.tmp\n$1\$(NOECHO) \$(MV) t_object.tmp \$\@/mg;
+    $c_o =~ s/^(\s+)(\$\(CCCMD\).*)$/$1\$(NOECHO) \$(ECHO) Compiling [\$(CC) \$(OPTIMIZE)] \$<\n$1\$(NOECHO) $2\n$1\$(NOECHO) \$(MV) \$(\@F) tmp\$(\@F)\n$1\$(NOECHO) \$(MV) tmp\$(\@F) \$\@/mg;
   }
   else {
-    $c_o =~ s/^\s+\$\(CCCMD\).*$/$&\n\t\$(MV) \$(\@F) t_object.tmp\n\t\$(MV) t_object.tmp \$\@/mg;
+    $c_o =~ s/^\s+\$\(CCCMD\).*$/$&\n\t\$(MV) \$(\@F) tmp\$(\@F)\n\t\$(MV) tmp\$(\@F) \$\@/mg;
   }
   $c_o;
 }
