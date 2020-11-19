@@ -458,7 +458,7 @@ sub MY::postamble
     {
       cmd => '$(PERL) {src} tests/include/stuff',
       src => 'tests/include/stuff/generate.pl',
-      dst => [map { "tests/include/stuff/$_.h" } 'aa' .. 'zz'],
+      dst => [map { "tests/include/stuff/$_.h" } 'aa' .. 'az'],
     },
   );
 
