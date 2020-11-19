@@ -456,16 +456,22 @@ sub MY::postamble
       dst => ['token/t_blproperty.h',
               'token/t_blproperty.c'],
     },
+    {
+      cmd => '$(PERL) {src} tests/include/stuff',
+      src => 'tests/include/stuff/generate.pl',
+      dst => [map { "tests/include/stuff/$_.h" } 'aa' .. 'zz'],
+    },
   );
 
   my(@gen, @old_dst, @old_src, @missing);
 
   for my $s (@spec) {
+    my %seen;
     for my $dst (@{$s->{dst}}) {
       my $cmd = $s->{cmd};
       $cmd =~ s/\{dst\}/$dst/g;
       $cmd =~ s/\{(\w+)\}/$s->{$1}/g;
-      push @gen, $cmd;
+      push @gen, $cmd unless $seen{$cmd}++;
       if (-f $dst) {
         if (-M $s->{src} < -M $dst) {
           push @old_dst, $dst;

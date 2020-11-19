@@ -18,6 +18,8 @@ BEGIN {
 
 my $CCCFG = require './tests/include/config.pl';
 
+push @{$CCCFG->{Define}}, 'CACHE_TEST=1';
+
 eval { require Data::Dumper }; $Data_Dumper = $@;
 eval { require IO::File };     $IO_File = $@;
 
