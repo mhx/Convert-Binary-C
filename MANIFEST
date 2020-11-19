@@ -70,7 +70,7 @@ lib/Convert/Binary/C/Cached.pm
 Makefile.PL
 MANIFEST
 ppport.h
-README
+README.md
 support/Test.pm
 support/Test/Builder.pm
 support/Test/Builder/Module.pm
