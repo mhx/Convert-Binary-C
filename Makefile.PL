@@ -351,11 +351,10 @@ sub configure
         file      => [qw( bin/elf.PL )],
       },
       resources => {
-        homepage    => 'http://search.cpan.org/~mhx/Convert-Binary-C/',
+        homepage    => 'https://metacpan.org/release/Convert-Binary-C',
         bugtracker  => {
-          web => 'http://rt.cpan.org/NoAuth/Bugs.html?Dist=Convert-Binary-C',
+          web => 'https://github.com/mhx/Convert-Binary-C/issues',
         },
-        MailingList => 'convert-binary-c@yahoogroups.com',
         repository  => {
           type => 'git',
           url  => 'https://github.com/mhx/Convert-Binary-C.git',
