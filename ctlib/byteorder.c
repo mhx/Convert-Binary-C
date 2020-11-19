@@ -19,7 +19,7 @@
 #include <ctype.h>
 #include <assert.h>
 
-#if __STDC_VERSION__ >= 199901L
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 #include <stdint.h>
 #endif
 
@@ -35,7 +35,7 @@
 #define NULL ((void *) 0)
 #endif
 
-#if __STDC_VERSION__ >= 199901L
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 typedef uintptr_t uintptr_type;
 #else
 typedef unsigned long uintptr_type;
