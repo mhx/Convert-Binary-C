@@ -33,10 +33,10 @@ Perl Way and should not be harder than:
     make test
     make install
 
-Note that you may need to become superuser to 'make install'.
+Note that you may need to become superuser to `make install`.
 
 If you're building the module under Windows, you may need to use a
-different make program, such as 'nmake', instead of 'make'.
+different make program, such as `nmake`, instead of `make`.
 
 When running 'make test' on on slower systems please be patient,
 since some of the tests are quite time consuming. The time required
