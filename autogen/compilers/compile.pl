@@ -22,7 +22,7 @@ use Convert::Binary::C;
 use strict;
 
 my($NAME) = $0 =~ /([\w\.]+)$/;
-my $VERSION = '0.82';
+my $VERSION = '0.83';
 my $MESSAGE = "\nThis is $NAME, v$VERSION ($0).\n";
 my %OPT;
 
