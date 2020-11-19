@@ -1682,11 +1682,11 @@ This will print something like:
   @@order.pl@@
 
 To be able to use this option, you have to install
-either the L<Tie::Hash::Indexed|Tie::Hash::Indexed> or
-the L<Tie::IxHash|Tie::IxHash> module. If both are
-installed, Convert::Binary::C will give preference
-to L<Tie::Hash::Indexed|Tie::Hash::Indexed> because
-it's faster.
+one of the following modules: L<Tie::Hash::Indexed|Tie::Hash::Indexed>,
+L<Hash::Ordered|Hash::Ordered> or L<Tie::IxHash|Tie::IxHash>.
+If more than one of these modules is installed,
+Convert::Binary::C will use them in that order
+of preference.
 
 When using this option, you should keep in mind that
 tied hashes are significantly slower and consume
