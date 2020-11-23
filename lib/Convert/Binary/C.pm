@@ -23,7 +23,7 @@ use vars qw( @ISA $VERSION $AUTOLOAD );
 
 @ISA = qw(DynaLoader);
 
-$VERSION = '0.83';
+$VERSION = '0.84';
 
 bootstrap Convert::Binary::C $VERSION;
 
