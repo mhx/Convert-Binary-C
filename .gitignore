@@ -7,6 +7,7 @@
 /releases/
 /Build
 /Build.bat
+/.gdb_history
 /.last_cover_stats
 /Makefile
 /Makefile.old
