@@ -33,6 +33,25 @@
 
 /*===== DEFINES ==============================================================*/
 
+#define CTLIB_STRINGIFY(x) #x
+
+#if defined(__GNUC__) && !defined(__clang__)
+#  define CTLIB_DIAG_PUSH _Pragma("GCC diagnostic push")
+#  define CTLIB_DIAG_POP  _Pragma("GCC diagnostic pop")
+#  define CTLIB_DIAG_GCC_IGNORE(what) \
+     _Pragma(CTLIB_STRINGIFY(GCC diagnostic ignored what))
+#else
+#  define CTLIB_DIAG_PUSH
+#  define CTLIB_DIAG_POP
+#  define CTLIB_DIAG_GCC_IGNORE(what)
+#endif
+
+#define CTLIB_DIAG_IGNORE_STRINGOP_OVERFLOW \
+          CTLIB_DIAG_GCC_IGNORE("-Wstringop-overflow")
+
+#define CTLIB_DIAG_IGNORE_STRINGOP_OVERREAD \
+          CTLIB_DIAG_GCC_IGNORE("-Wstringop-overread")
+
 #define CONSTRUCT_OBJECT(type, name)                                           \
   type *name;                                                                  \
   AllocF(type *, name, sizeof(type));                                          \
@@ -53,8 +72,12 @@
   AllocF(type *, name, offsetof(type, identifier) + id_len + 1);               \
   if (identifier)                                                              \
   {                                                                            \
+    CTLIB_DIAG_PUSH \
+    CTLIB_DIAG_IGNORE_STRINGOP_OVERFLOW \
+    CTLIB_DIAG_IGNORE_STRINGOP_OVERREAD \
     strncpy(name->identifier, identifier, id_len);                             \
     name->identifier[id_len] = '\0';                                           \
+    CTLIB_DIAG_POP \
   }                                                                            \
   else                                                                         \
     name->identifier[0] = '\0';                                                \
