@@ -468,7 +468,15 @@ sub get_config
       '__builtin_va_list'      => 'int',
       '__has_feature(x)'       => '0',
       '__has_include_next(x)'  => '0',
+      '__building_module(x)'   => '0',
     );
+
+    if( $compiler == CLANG ) {
+      $def{'__float128'} = 'int';
+      $def{'_Complex'} = '';
+    } else {
+      $def{'_Float128'} = 'int';
+    }
   }
   elsif( $compiler == MS_VCPP ) {
     $self->_msg( "You're using the Microsoft compiler." );
@@ -1736,7 +1744,20 @@ sub _get_predefined
   my $pos = 0;
 
   my @stdnames = qw( __LINE__ __FILE__ __DATE__ __TIME__ __STDC__ _Pragma );
-  my @special = qw( __has_extension __has_include_next __has_feature __has_attribute );
+  my @special = qw(
+    __building_module
+    __has_builtin
+    __has_extension
+    __has_include
+    __has_include_next
+    __has_feature
+    __has_attribute
+    __has_c_attribute
+    __has_cpp_attribute
+    __has_declspec_attribute
+    __has_warning
+    __HAVE_FLOAT128
+  );
 
   $self->_msg( "\nChecking for predefined macros (this may take a while)..." );
 
@@ -1982,6 +2003,7 @@ sub _names
     my $fh = new IO::File $name;
     next unless defined $fh;
     my $file = do { local $/; <$fh> };
+    next unless defined $file;
     $file =~ s{\\\s*$/}{}g;
     while( $file =~ /\b([A-Za-z_]\w*)\b/g ) {
       $names{$1} ||= 1;
